@@ -7,6 +7,7 @@ updated: 2026-11-22
 A Steel Ball Run-inspired Roblox Battlegrounds game. This vault is the project's memory: read it first, update it after every session.
 
 ## Start here
+- ⭐ **[[Quick Install]]** (one file installs everything)
 - [[Vision]] · [[Ground Rules]] · [[Roadmap]]
 - **[[Where To Put Code]]** (every script, its location and its code)
 - [[Where Every File Goes]] · [[Install Steps]]
