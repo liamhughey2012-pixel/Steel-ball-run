@@ -7,7 +7,7 @@ updated: 2026-11-22
 Pick him from the character dropdown (top-left card ▼ → GYRO ZEPPELI → SELECT). Numbers: `TuskConfig.Gyro`.
 He always holds the green Steel Ball, spinning in his right hand.
 
-**Look** (`GyroOutfit`, built from parts, everyone sees it): cream wide-brimmed hat with a dark band, gold "GO! GO! ZEPPELI" plate and eyelets; long blond hair with side locks, braids and a fringe; purple outfit with black stripes; dark gloves; brown belt with a gold buckle; brown boots. Your own hats, hair and clothes are hidden while you play Gyro and come back when you switch to Johnny.
+**Look** (`GyroOutfit`, everyone sees it): your own clothes stay on. Gyro gets his **hat** from the owner's pictures (tan, wide brim with slots cut all round, slits round the crown, domed top, two big ridged silver goggles on a dark strap) and long blond hair. Your own hats and hair are hidden while you play Gyro.
 
 | Input | Move | What it does |
 |---|---|---|

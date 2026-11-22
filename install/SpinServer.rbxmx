@@ -307,15 +307,14 @@ return CooldownService
 ]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX14"><Properties><string name="Name">GyroOutfit</string><ProtectedString name="Source"><![CDATA[--[[
 	GyroOutfit  (ServerScriptService.SpinServer.GyroOutfit)
 
-	Dresses a character as Gyro Zeppeli while they play Gyro (TuskAct 5),
-	built from parts so no catalog asset ids are needed:
-	  * cream wide-brimmed hat, dark band, gold "GO! GO! ZEPPELI" plate
-	  * long blond hair with two braids
-	  * purple outfit with black stripes (shirt/pants swapped for body
-	    colours + stripe bands), dark gloves, belt with a gold buckle, boots
-	The player's own hats/hair are hidden and their clothes put back when
-	they switch to another character. Works on R15 and R6. Built on the
-	server so every player sees it.
+	Gives a character Gyro Zeppeli's hat and hair while they play Gyro
+	(TuskAct 5), built from parts so no catalog asset ids are needed:
+	  * tan wide-brimmed hat with slots cut round the brim, slits round the
+	    crown, a domed top and two big ridged silver goggles on a strap
+	  * long blond hair with side locks, braids and a fringe
+	The player's own clothes stay on. Their own hats/hair are hidden while
+	they play Gyro and come back when they switch. Built on the server so
+	every player sees it.
 ]]
 
 local Players = game:GetService("Players")
@@ -324,17 +323,17 @@ local GyroOutfit = {}
 GyroOutfit.GyroAct = 5
 
 local C = {
-	Hat = Color3.fromRGB(232, 222, 200),
+	Hat = Color3.fromRGB(206, 168, 128),
+	HatShade = Color3.fromRGB(150, 105, 70),
+	Slot = Color3.fromRGB(55, 38, 26),
+	Strap = Color3.fromRGB(80, 84, 92),
+	Goggle = Color3.fromRGB(176, 182, 192),
 	HatBand = Color3.fromRGB(60, 40, 90),
 	Gold = Color3.fromRGB(235, 190, 70),
 	Hair = Color3.fromRGB(240, 205, 110),
 	HairDark = Color3.fromRGB(210, 170, 80),
 	Shirt = Color3.fromRGB(102, 64, 150),
 	Pants = Color3.fromRGB(70, 46, 110),
-	Stripe = Color3.fromRGB(25, 20, 35),
-	Glove = Color3.fromRGB(45, 32, 70),
-	Belt = Color3.fromRGB(95, 60, 35),
-	Boot = Color3.fromRGB(70, 45, 30),
 }
 
 local saved = setmetatable({}, { __mode = "k" }) -- character -> what to restore
@@ -367,38 +366,41 @@ local function piece(parent, outfit, props, offset, ellipsoid)
 	return p
 end
 
--- A flat stripe wrapped around a limb (limbs are boxes, so a box band fits).
-local function band(limb, outfit, y, thickness, color)
-	return piece(limb, outfit, { Name = "Band", Size = Vector3.new(limb.Size.X * 1.05, thickness, limb.Size.Z * 1.05), Color = color }, CFrame.new(0, y, 0))
-end
-
+-- Gyro's hat (from the owner's pictures): tan, a wide brim with slots cut
+-- all the way round, slits around the crown, a domed top, and two big silver
+-- goggles with ridged lenses strapped to the front.
 local function hat(head, outfit)
 	local s = head.Size.Y / 1.2
 	local top = head.Size.Y * 0.5
 	local base = CFrame.new(0, top - 0.05 * s, 0.05 * s) * CFrame.Angles(-0.12, 0, 0)
-	piece(head, outfit, { Name = "HatBrim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.1 * s, 2.7 * s, 2.7 * s), Color = C.Hat }, base * CFrame.Angles(0, 0, math.pi / 2))
-	piece(head, outfit, { Name = "HatCrown", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.75 * s, 1.35 * s, 1.35 * s), Color = C.Hat }, base * CFrame.new(0, 0.42 * s, 0) * CFrame.Angles(0, 0, math.pi / 2))
-	piece(head, outfit, { Name = "HatTop", Size = Vector3.new(1.3, 0.45, 1.3) * s, Color = C.Hat }, base * CFrame.new(0, 0.8 * s, 0), true)
-	piece(head, outfit, { Name = "HatBand", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.22 * s, 1.39 * s, 1.39 * s), Color = C.HatBand }, base * CFrame.new(0, 0.18 * s, 0) * CFrame.Angles(0, 0, math.pi / 2))
-	-- Gold plate on the front of the band with the motto.
-	local plate = piece(head, outfit, { Name = "HatPlate", Size = Vector3.new(0.9, 0.2, 0.05) * s, Color = C.Gold, Material = Enum.Material.Metal }, base * CFrame.new(0, 0.18 * s, -0.7 * s))
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 120
-	gui.Parent = plate
-	local text = Instance.new("TextLabel")
-	text.BackgroundTransparency = 1
-	text.Size = UDim2.fromScale(1, 1)
-	text.Font = Enum.Font.GothamBlack
-	text.TextScaled = true
-	text.TextColor3 = Color3.fromRGB(60, 30, 10)
-	text.Text = "GO! GO! ZEPPELI"
-	text.Parent = gui
-	-- Two eyelets on the crown, like Gyro's hat.
-	for _, side in ipairs({ -1, 1 }) do
-		piece(head, outfit, { Name = "HatEyelet", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.05, 0.2, 0.2) * s, Color = C.Gold, Material = Enum.Material.Metal }, base * CFrame.new(side * 0.3 * s, 0.55 * s, -0.62 * s) * CFrame.Angles(0, math.pi / 2, 0))
+	local tan, tanDark = C.Hat, C.HatShade
+	piece(head, outfit, { Name = "HatBrim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.1 * s, 2.9 * s, 2.9 * s), Color = tan }, base * CFrame.Angles(0, 0, math.pi / 2))
+	piece(head, outfit, { Name = "HatBrimEdge", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.09 * s, 2.96 * s, 2.96 * s), Color = tanDark }, base * CFrame.new(0, -0.01 * s, 0) * CFrame.Angles(0, 0, math.pi / 2))
+	-- Slots cut into the brim, all the way round.
+	for i = 0, 21 do
+		local a = i / 22 * math.pi * 2
+		local r = 1.08 * s
+		piece(head, outfit, { Name = "BrimSlot", Size = Vector3.new(0.08 * s, 0.03 * s, 0.34 * s), Color = C.Slot }, base * CFrame.Angles(0, a, 0) * CFrame.new(0, 0.055 * s, -r))
 	end
+	-- Crown with slits, domed top.
+	piece(head, outfit, { Name = "HatCrown", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.72 * s, 1.45 * s, 1.45 * s), Color = tan }, base * CFrame.new(0, 0.4 * s, 0) * CFrame.Angles(0, 0, math.pi / 2))
+	piece(head, outfit, { Name = "HatTop", Size = Vector3.new(1.45, 0.42, 1.45) * s, Color = Color3.fromRGB(226, 196, 160) }, base * CFrame.new(0, 0.76 * s, 0), true)
+	for i = 0, 15 do
+		local a = i / 16 * math.pi * 2
+		piece(head, outfit, { Name = "CrownSlit", Size = Vector3.new(0.06 * s, 0.34 * s, 0.03 * s), Color = C.Slot }, base * CFrame.new(0, 0.48 * s, 0) * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, -0.73 * s))
+	end
+	-- Goggle strap around the crown.
+	piece(head, outfit, { Name = "GoggleStrap", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.16 * s, 1.5 * s, 1.5 * s), Color = C.Strap }, base * CFrame.new(0, 0.24 * s, 0) * CFrame.Angles(0, 0, math.pi / 2))
+	-- Two big silver goggles with horizontal ridges, joined by a bridge.
+	for _, side in ipairs({ -1, 1 }) do
+		local lensCF = base * CFrame.new(side * 0.4 * s, 0.38 * s, -0.8 * s) * CFrame.Angles(0, side * 0.35, 0)
+		piece(head, outfit, { Name = "GoggleRim", Size = Vector3.new(0.8, 0.62, 0.28) * s, Color = C.Strap, Material = Enum.Material.Metal }, lensCF * CFrame.new(0, 0, 0.04 * s), true)
+		piece(head, outfit, { Name = "GoggleLens", Size = Vector3.new(0.72, 0.55, 0.32) * s, Color = C.Goggle, Material = Enum.Material.Metal, Reflectance = 0.25 }, lensCF, true)
+		for r = -1, 1 do
+			piece(head, outfit, { Name = "GoggleRidge", Size = Vector3.new(0.58 * s, 0.04 * s, 0.05 * s), Color = C.Strap, Material = Enum.Material.Metal }, lensCF * CFrame.new(0, r * 0.13 * s, -0.15 * s))
+		end
+	end
+	piece(head, outfit, { Name = "GoggleBridge", Size = Vector3.new(0.22, 0.14, 0.14) * s, Color = C.Strap, Material = Enum.Material.Metal }, base * CFrame.new(0, 0.38 * s, -0.84 * s))
 end
 
 local function hair(head, outfit)
@@ -416,25 +418,6 @@ local function hair(head, outfit)
 	piece(head, outfit, { Name = "Fringe", Size = Vector3.new(1.1, 0.25, 0.3) * s, Color = C.Hair }, CFrame.new(0, 0.42 * s, -0.5 * s), true)
 end
 
-local LIMBS = {
-	R15 = {
-		Arms = { "LeftUpperArm", "LeftLowerArm", "RightUpperArm", "RightLowerArm" },
-		Legs = { "LeftUpperLeg", "LeftLowerLeg", "RightUpperLeg", "RightLowerLeg" },
-		Hands = { "LeftHand", "RightHand" },
-		Feet = { "LeftFoot", "RightFoot" },
-		Torso = "UpperTorso",
-		Waist = "LowerTorso",
-	},
-	R6 = {
-		Arms = { "Left Arm", "Right Arm" },
-		Legs = { "Left Leg", "Right Leg" },
-		Hands = {},
-		Feet = {},
-		Torso = "Torso",
-		Waist = "Torso",
-	},
-}
-
 function GyroOutfit.apply(character)
 	if character:FindFirstChild("GyroOutfit") then
 		return
@@ -443,105 +426,24 @@ function GyroOutfit.apply(character)
 	if not head then
 		return
 	end
-	local rig = character:FindFirstChild("UpperTorso") and "R15" or "R6"
-	local parts = LIMBS[rig]
-	local store = { Clothes = {}, Hidden = {}, Colors = nil }
+	local store = { Hidden = {} }
 	saved[character] = store
-
-	-- Hide the player's own hats and hair; take off shirt / pants.
+	-- Hide the player's own hats and hair so they don't poke through Gyro's.
 	for _, d in ipairs(character:GetChildren()) do
 		if d:IsA("Accessory") then
 			local handle = d:FindFirstChild("Handle")
-			if handle and (d.AccessoryType == Enum.AccessoryType.Hat or d.AccessoryType == Enum.AccessoryType.Hair or d.AccessoryType == Enum.AccessoryType.Face or d.AccessoryType == Enum.AccessoryType.Unknown) then
+			local kind = d.AccessoryType
+			if handle and (kind == Enum.AccessoryType.Hat or kind == Enum.AccessoryType.Hair or kind == Enum.AccessoryType.Unknown) then
 				store.Hidden[handle] = handle.Transparency
 				handle.Transparency = 1
 			end
-		elseif d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") then
-			table.insert(store.Clothes, d)
-			d.Parent = nil
 		end
 	end
-	local colors = character:FindFirstChildOfClass("BodyColors")
-	if colors then
-		store.Colors = {
-			TorsoColor3 = colors.TorsoColor3,
-			LeftArmColor3 = colors.LeftArmColor3,
-			RightArmColor3 = colors.RightArmColor3,
-			LeftLegColor3 = colors.LeftLegColor3,
-			RightLegColor3 = colors.RightLegColor3,
-		}
-		colors.TorsoColor3 = C.Shirt
-		colors.LeftArmColor3 = C.Shirt
-		colors.RightArmColor3 = C.Shirt
-		colors.LeftLegColor3 = C.Pants
-		colors.RightLegColor3 = C.Pants
-	end
-
 	local outfit = Instance.new("Model")
 	outfit.Name = "GyroOutfit"
 	outfit.Parent = character
-
 	hat(head, outfit)
 	hair(head, outfit)
-
-	-- Black stripes on arms, legs and torso.
-	for _, name in ipairs(parts.Arms) do
-		local limb = character:FindFirstChild(name)
-		if limb then
-			band(limb, outfit, limb.Size.Y * 0.2, 0.12, C.Stripe)
-			band(limb, outfit, -limb.Size.Y * 0.2, 0.12, C.Stripe)
-		end
-	end
-	for _, name in ipairs(parts.Legs) do
-		local limb = character:FindFirstChild(name)
-		if limb then
-			band(limb, outfit, limb.Size.Y * 0.25, 0.12, C.Stripe)
-			band(limb, outfit, -limb.Size.Y * 0.1, 0.12, C.Stripe)
-		end
-	end
-	local torso = character:FindFirstChild(parts.Torso)
-	if torso then
-		for i = -1, 1 do
-			piece(torso, outfit, { Name = "TorsoStripe", Size = Vector3.new(torso.Size.X * 1.02, 0.1, torso.Size.Z * 1.04), Color = C.Stripe }, CFrame.new(0, i * torso.Size.Y * 0.25, 0))
-		end
-		-- Collar.
-		piece(torso, outfit, { Name = "Collar", Size = Vector3.new(torso.Size.X * 0.7, 0.25, torso.Size.Z * 1.1), Color = C.HatBand }, CFrame.new(0, torso.Size.Y * 0.47, 0), true)
-	end
-	-- Belt with a gold buckle.
-	local waist = character:FindFirstChild(parts.Waist)
-	if waist then
-		local y = rig == "R6" and -waist.Size.Y * 0.42 or 0
-		piece(waist, outfit, { Name = "Belt", Size = Vector3.new(waist.Size.X * 1.04, 0.22, waist.Size.Z * 1.06), Color = C.Belt, Material = Enum.Material.Leather }, CFrame.new(0, y, 0))
-		piece(waist, outfit, { Name = "Buckle", Size = Vector3.new(0.35, 0.28, 0.06), Color = C.Gold, Material = Enum.Material.Metal }, CFrame.new(0, y, -waist.Size.Z * 0.54))
-	end
-	-- Gloves and boots.
-	if rig == "R15" then
-		for _, name in ipairs(parts.Hands) do
-			local hand = character:FindFirstChild(name)
-			if hand then
-				piece(hand, outfit, { Name = "Glove", Size = hand.Size * Vector3.new(1.25, 2.2, 1.25), Color = C.Glove }, CFrame.new(0, 0.05, 0), true)
-			end
-		end
-		for _, name in ipairs(parts.Feet) do
-			local foot = character:FindFirstChild(name)
-			if foot then
-				piece(foot, outfit, { Name = "Boot", Size = foot.Size * Vector3.new(1.12, 1.6, 1.15), Color = C.Boot }, CFrame.new(0, 0.05, -0.05), true)
-			end
-		end
-	else
-		for _, name in ipairs({ "Left Arm", "Right Arm" }) do
-			local arm = character:FindFirstChild(name)
-			if arm then
-				piece(arm, outfit, { Name = "Glove", Size = Vector3.new(1.1, 0.5, 1.1), Color = C.Glove }, CFrame.new(0, -arm.Size.Y * 0.4, 0))
-			end
-		end
-		for _, name in ipairs({ "Left Leg", "Right Leg" }) do
-			local leg = character:FindFirstChild(name)
-			if leg then
-				piece(leg, outfit, { Name = "Boot", Size = Vector3.new(1.1, 0.7, 1.15), Color = C.Boot }, CFrame.new(0, -leg.Size.Y * 0.36, -0.03))
-			end
-		end
-	end
 end
 
 function GyroOutfit.remove(character)
@@ -557,15 +459,6 @@ function GyroOutfit.remove(character)
 	for handle, transparency in pairs(store.Hidden) do
 		if handle.Parent then
 			handle.Transparency = transparency
-		end
-	end
-	for _, clothing in ipairs(store.Clothes) do
-		clothing.Parent = character
-	end
-	local colors = character:FindFirstChildOfClass("BodyColors")
-	if colors and store.Colors then
-		for k, v in pairs(store.Colors) do
-			colors[k] = v
 		end
 	end
 end
