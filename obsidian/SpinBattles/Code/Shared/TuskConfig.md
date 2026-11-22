@@ -304,7 +304,11 @@ TuskConfig.Gyro = {
 			{ Damage = 7, Stun = 0.5, Knockback = 45, Launch = 12, ShockwaveRadius = 8, AoeRadius = 7 },
 		},
 	},
-	SteelBallThrow = { Cooldown = 5, Startup = 0.22, Damage = 10, ReturnDamage = 5, Speed = 140, ReturnSpeed = 120, Radius = 1.1, Range = 120, Stun = 0.4, Knockback = 18 },
+	SteelBallThrow = {
+		Cooldown = 5, Startup = 0.22, Damage = 10, ReturnDamage = 5, Speed = 140, ReturnSpeed = 120, Radius = 1.1, Range = 120, Stun = 0.4, Knockback = 18,
+		MaxBounces = 3, -- bounces off walls this many times before returning (0 = no bounces)
+		BounceBonusDamage = 2, -- extra damage per bounce (bank shots hit harder)
+	},
 	SpinTornado = {
 		Cooldown = 11, Startup = 0.28,
 		Speed = 22, -- studs per second along the ground

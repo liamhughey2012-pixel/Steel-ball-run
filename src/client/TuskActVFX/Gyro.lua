@@ -192,7 +192,8 @@ local function spawnBall(data)
 	-- Steel Ball Throw / return: green glow, spiral Spin trails, afterimages.
 	local glow, helix
 	if style == "Throw" or style == "Return" then
-		glow = VFXLib.part({ Shape = Enum.PartType.Ball, Material = Enum.Material.ForceField, Color = pal.Main, Transparency = 0.1, Size = Vector3.new(1.9, 1.9, 1.9) })
+		local bounce = data.Visual and data.Visual.Bounce or 0
+		glow = VFXLib.part({ Shape = Enum.PartType.Ball, Material = Enum.Material.ForceField, Color = pal.Main:Lerp(pal.Light, math.min(bounce * 0.3, 0.8)), Transparency = 0.1, Size = Vector3.new(1.9, 1.9, 1.9) })
 		helix = VFXLib.anchor(CFrame.new(data.Origin))
 		local strands = VFXQuality.get().RingSegments > 12 and 3 or 2
 		for i = 1, strands do
@@ -371,6 +372,46 @@ end
 ---------------------------------------------------------------------------
 local vibrationStartup, vibrationHit -- defined below (they use the spiral helpers)
 
+-- STEEL BALL THROW bounce: the ball ricochets off a wall.
+local function ricochet(data)
+	local pos, n = data.Position, data.Normal or Vector3.new(0, 1, 0)
+	local bounce = data.Bounce or 1
+	local hot = pal.Main:Lerp(Color3.new(1, 1, 1), math.min(bounce * 0.2, 0.6))
+	-- Ring flat against the wall + sparks spraying along the new direction.
+	local wallAxis = CFrame.lookAt(pos, pos + n) * CFrame.Angles(-math.pi / 2, 0, 0)
+	TuskVFX.CreateRotationalShockwave(wallAxis, { Radius = 3 + bounce, Layers = 2, Color = hot, Color2 = pal.Main, Particles = 0, Width = 0.3, Duration = 0.3, Spin = 9 })
+	TuskVFX.CreateImpactStar(pos, { Size = 4 + bounce, Rays = 7, Color = pal.Main, Color2 = Color3.new(1, 1, 1), Duration = 0.22 })
+	VFXLib.burst(pos, { Count = 14 + bounce * 4, Color = hot, Speed = 38, Spread = 35, Direction = data.Direction or n, Lifetime = 0.3, Acceleration = Vector3.new(0, -30, 0) })
+	VFXLib.burst(pos, { Count = 6, Texture = VFXLib.Textures.Smoke, Color = Color3.fromRGB(190, 170, 140), LightEmission = 0, Speed = 6, Lifetime = 0.7, Direction = n, Spread = 50 })
+	VFXLib.flash(pos, hot, 5 + bounce, 18, 0.2)
+	VFXLib.sound(sounds.NailImpact, pos, 0.55, 1.1 + bounce * 0.12)
+	CameraFX.shakeAt(pos, 0.25 + bounce * 0.05, 45)
+	-- Little "x2" popup so bank shots read clearly.
+	local carrier = VFXLib.anchor(CFrame.new(pos + n * 1.5), 0.8)
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromOffset(90, 40)
+	billboard.AlwaysOnTop = true
+	billboard.LightInfluence = 0
+	billboard.Parent = carrier
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.Bangers
+	label.TextScaled = true
+	label.Text = "BOUNCE x" .. bounce
+	label.TextColor3 = hot
+	label.TextStrokeTransparency = 0
+	label.Parent = billboard
+	local start = carrier.Position
+	VFXLib.animate(0.75, function(a)
+		carrier.Position = start + Vector3.new(0, a * 2.5, 0)
+		label.TextTransparency = math.max(0, (a - 0.55) / 0.45)
+		label.TextStrokeTransparency = label.TextTransparency
+		local pop = a < 0.12 and (1 + (0.12 - a) * 5) or 1
+		billboard.Size = UDim2.fromOffset(90 * pop, 40 * pop)
+	end)
+end
+
 local function onAbility(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
@@ -400,6 +441,8 @@ local function onAbility(data)
 					entry.Spin = 8
 				end)
 			end
+		elseif data.Phase == "Bounce" then
+			ricochet(data)
 		elseif data.Phase == "Caught" and entry then
 			entry.HiddenUntil = 0
 			if root then

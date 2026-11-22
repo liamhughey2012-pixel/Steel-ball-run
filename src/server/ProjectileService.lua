@@ -49,6 +49,8 @@ local function finish(p, position, normal, hitCharacter)
 	if p.Owner then
 		countByPlayer[p.Owner] = math.max(0, (countByPlayer[p.Owner] or 1) - 1)
 	end
+	-- Tell OnEnd why it stopped: hit a character, hit a wall/ground, or ran out of range.
+	p.HitWall = hitCharacter == nil and normal ~= nil
 	if hitCharacter and p.OnHit then
 		local ok, err = pcall(p.OnHit, hitCharacter, position, p)
 		if not ok then
@@ -125,6 +127,7 @@ function ProjectileService.fire(owner, spec)
 		Params = params,
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd, -- function(position, normal, hitCharacter, projectile): always called once
+		-- (projectile.HitWall is true when it stopped on a wall / the ground)
 		Visual = spec.Visual or {},
 	}
 	active[p.Id] = p

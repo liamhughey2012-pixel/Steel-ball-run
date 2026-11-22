@@ -4,8 +4,9 @@
 	Gyro Zeppeli: Steel Ball moveset (registered as "Act" 5 so it reuses the
 	Tusk ability system: cooldowns, HUD, ultimate meter, input).
 	  M1        STEEL BALL COMBO: jab, hook, kick, spinning-ball smash (area)
-	  Ability 1 STEEL BALL THROW: the ball flies out, then returns to Gyro's hand
-	            (it can hit on the way back)
+	  Ability 1 STEEL BALL THROW: the ball flies out and BOUNCES off walls (up
+	            to MaxBounces times, each bank shot hits harder), then returns
+	            to Gyro's hand (it can hit on the way back)
 	  Ability 2 SPIN TORNADO: bowl the spinning ball along the ground; it
 	            becomes a travelling tornado that pulls enemies in, juggles
 	            them and bursts (stops at walls)
@@ -72,47 +73,85 @@ local function steelBallThrow(S, player, state, aim)
 		end
 		local char, _, r = alive(S, player)
 		local hitOut = {}
-		S.fireBall(player, state, {
-			Origin = S.origin(char, r, HAND),
-			Direction = direction,
-			Speed = c.Speed,
-			Radius = c.Radius,
-			Range = c.Range,
-			Style = "Throw",
-			OnHit = function(target, position)
-				hitOut[target] = true
-				S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = direction, Position = position, Source = "GyroSteelBall" })
-			end,
-			OnEnd = function(position)
-				-- The ball spins its way back to Gyro's hand.
-				local _, _, rr = alive(S, player)
-				if not rr or state.Life ~= life then
+		local maxBounces = c.MaxBounces or 3
+
+		-- The ball spins its way back to Gyro's hand from wherever it stopped.
+		local function returnToHand(position)
+			local _, _, rr = alive(S, player)
+			if not rr or state.Life ~= life then
+				S.fx("Ability", { Character = char, Act = 5, Move = "SteelBallThrow", Phase = "Caught" })
+				return
+			end
+			local back = rr.Position + Vector3.new(0, 1, 0) - position
+			if back.Magnitude < 2 then
+				S.fx("Ability", { Character = char, Act = 5, Move = "SteelBallThrow", Phase = "Caught" })
+				return
+			end
+			S.fireBall(player, state, {
+				Origin = position,
+				Direction = back.Unit,
+				Speed = c.ReturnSpeed,
+				Radius = c.Radius,
+				Range = back.Magnitude,
+				Style = "Return",
+				OnHit = function(target, pos)
+					if not hitOut[target] then
+						hitOut[target] = true
+						S.hit(player, target, { Damage = c.ReturnDamage, Stun = 0.3, Knockback = 8, Direction = back.Unit, Position = pos, Source = "GyroSteelBall" })
+					end
+				end,
+				OnEnd = function()
 					S.fx("Ability", { Character = char, Act = 5, Move = "SteelBallThrow", Phase = "Caught" })
-					return
-				end
-				local back = rr.Position + Vector3.new(0, 1, 0) - position
-				if back.Magnitude < 2 then
-					S.fx("Ability", { Character = char, Act = 5, Move = "SteelBallThrow", Phase = "Caught" })
-					return
-				end
-				S.fireBall(player, state, {
-					Origin = position,
-					Direction = back.Unit,
-					Speed = c.ReturnSpeed,
-					Radius = c.Radius,
-					Range = back.Magnitude,
-					Style = "Return",
-					OnHit = function(target, pos)
-						if not hitOut[target] then
-							S.hit(player, target, { Damage = c.ReturnDamage, Stun = 0.3, Knockback = 8, Direction = back.Unit, Position = pos, Source = "GyroSteelBall" })
-						end
-					end,
-					OnEnd = function()
+				end,
+			})
+		end
+
+		-- One straight flight. When it hits a wall it bounces off (reflects
+		-- around the surface normal) and keeps flying with the range it has left.
+		local function launch(origin, dir, rangeLeft, bounce)
+			S.fireBall(player, state, {
+				Origin = origin,
+				Direction = dir,
+				Speed = c.Speed * (1 + bounce * 0.08), -- each bounce comes off a little faster
+				Radius = c.Radius,
+				Range = rangeLeft,
+				Style = "Throw",
+				Bounce = bounce,
+				OnHit = function(target, position)
+					if hitOut[target] then
+						return
+					end
+					hitOut[target] = true
+					-- Bank shots hit harder.
+					local damage = c.Damage + bounce * (c.BounceBonusDamage or 2)
+					S.hit(player, target, { Damage = damage, Stun = c.Stun, Knockback = c.Knockback, Direction = dir, Position = position, Source = "GyroSteelBall" })
+				end,
+				OnEnd = function(position, normal, hitCharacter, projectile)
+					if state.Life ~= life then
 						S.fx("Ability", { Character = char, Act = 5, Move = "SteelBallThrow", Phase = "Caught" })
-					end,
-				})
-			end,
-		})
+						return
+					end
+					local traveled = projectile and projectile.Traveled or rangeLeft
+					local remaining = rangeLeft - traveled
+					if not hitCharacter and projectile and projectile.HitWall and bounce < maxBounces and remaining > 6 then
+						local n = normal.Unit
+						local reflected = dir - 2 * dir:Dot(n) * n
+						if reflected.Magnitude < 0.1 then
+							reflected = -dir
+						end
+						reflected = reflected.Unit
+						-- Start just off the surface so it doesn't hit the same wall again.
+						local from = position + n * (c.Radius + 0.3)
+						S.fx("Ability", { Character = char, Act = 5, Move = "SteelBallThrow", Phase = "Bounce", Position = position, Normal = n, Direction = reflected, Bounce = bounce + 1 })
+						launch(from, reflected, remaining, bounce + 1)
+						return
+					end
+					returnToHand(position)
+				end,
+			})
+		end
+
+		launch(S.origin(char, r, HAND), direction, c.Range, 0)
 	end)
 end
 

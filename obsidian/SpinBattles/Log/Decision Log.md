@@ -43,3 +43,5 @@ updated: 2026-11-22
 | 2026-11-22 | Spin Vibration visuals rebuilt (charge, spiral, zigzag vibration lines, ripples, cracks) |
 | 2026-11-22 | Move HUD rebuilt as a battlegrounds hotbar: drawn move icons, cooldown drain + ready flash, charge bars, ULT card with glow/shine, combo counter, toast pills, ゴゴゴ banner |
 | 2026-11-22 | Fixed glowing charge orbs that never disappeared (Act 3 ultimate, Ball Breaker windup and vortex) |
+| 2026-11-22 | Steel Ball Throw bounces off walls (3 bounces, +2 damage per bounce, faster each time) |
+| 2026-11-22 | Animation engine upgrade: eases (In/Snap/Back/Sine), impact shake, elbows + legs + forward lunge, mirrored poses, breathing idle, smooth settle; every move re-keyed |

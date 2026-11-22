@@ -20,7 +20,7 @@ for s,side in ((-1,"Left"),(1,"Right")):
 # joints: name(in pose), part0, part1, pivot
 J=[("Root","HumanoidRootPart","LowerTorso",(0,2.95,0)),("Waist","LowerTorso","UpperTorso",(0,3.15,0)),("Neck","UpperTorso","Head",(0,4.75,0))]
 for s,side in ((-1,"Left"),(1,"Right")):
-    J+=[(side+"Arm","UpperTorso",side+"UpperArm",(s*1.5,4.65,0)),(None,side+"UpperArm",side+"LowerArm",(s*1.5,3.55,0)),(None,side+"LowerArm",side+"Hand",(s*1.5,2.45,0)),
+    J+=[(side+"Arm","UpperTorso",side+"UpperArm",(s*1.5,4.65,0)),(side+"Elbow",side+"UpperArm",side+"LowerArm",(s*1.5,3.55,0)),(None,side+"LowerArm",side+"Hand",(s*1.5,2.45,0)),
         (side+"Hip","LowerTorso",side+"UpperLeg",(s*0.5,2.75,0)),(side+"Knee",side+"UpperLeg",side+"LowerLeg",(s*0.5,1.55,0)),(None,side+"LowerLeg",side+"Foot",(s*0.5,0.35,0))]
 rest={n:T(*p[1]) for n,p in parts.items()}
 def posed(pose):
@@ -29,9 +29,9 @@ def posed(pose):
         C0=inv(rest[p0])@T(*piv); C1=inv(rest[p1])@T(*piv)
         v=pose.get(jn) if jn else None
         if v:
-            rot=ang(*np.radians(v[:3])); ty=v[3] if len(v)>3 else 0
+            rot=ang(*np.radians(v[:3])); ty=v[3] if len(v)>3 else 0; tz=-v[4] if len(v)>4 else 0
             base_rot=C0.copy(); base_rot[:3,3]=0
-            C0=T(*(C0[:3,3]+[0,ty,0]))@rot@base_rot
+            C0=T(*(C0[:3,3]+[0,ty,tz]))@rot@base_rot
         world[p1]=world[p0]@C0@inv(C1)
     return world
 def dump(world,path):

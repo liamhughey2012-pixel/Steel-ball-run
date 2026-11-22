@@ -27,3 +27,6 @@ Idle: ball held up at the chest, spinning. M1: jab → hook → front kick → o
 
 ## Spin Vibration visuals
 Wind-up: three tight green rings and a charge gathering on the ball in his hand. Hit: flash, starburst, a golden spiral pressed into the air (plus a Golden Rectangle on a hit), jittering zigzag "vibration" lines, four ripples pushed forward, heat haze; on a hit the ground cracks and sparks fly. Camera shake and a small FOV punch for Gyro.
+
+## Steel Ball Throw bounces
+The ball bounces off walls up to **3** times (`TuskConfig.Gyro.SteelBallThrow.MaxBounces`), keeping the range it has left and coming off each bounce 8% faster. Bank shots hit harder: +2 damage per bounce (`BounceBonusDamage`). Each enemy is hit once per throw. After the last bounce (or when it hits someone or runs out of range) it spins back to Gyro's hand. Bounce visuals: a ring flat on the wall, starburst, sparks along the new direction and a "BOUNCE x2" popup.

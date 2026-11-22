@@ -669,7 +669,7 @@ end
 return TuskActRegistry
 </pre></details></section><section class="card" id="s8">
 <div class="head"><span class="num">8</span><div><h2>TuskConfig <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="8">Copy code</button><details><summary>Show code (355 lines)</summary><pre id="c8">--[[
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="8">Copy code</button><details><summary>Show code (359 lines)</summary><pre id="c8">--[[
 	TuskConfig  (ReplicatedStorage.SpinShared.TuskConfig)
 
 	Every tunable number for Tusk. The server uses it for damage, timing,
@@ -949,7 +949,11 @@ TuskConfig.Gyro = {
 			{ Damage = 7, Stun = 0.5, Knockback = 45, Launch = 12, ShockwaveRadius = 8, AoeRadius = 7 },
 		},
 	},
-	SteelBallThrow = { Cooldown = 5, Startup = 0.22, Damage = 10, ReturnDamage = 5, Speed = 140, ReturnSpeed = 120, Radius = 1.1, Range = 120, Stun = 0.4, Knockback = 18 },
+	SteelBallThrow = {
+		Cooldown = 5, Startup = 0.22, Damage = 10, ReturnDamage = 5, Speed = 140, ReturnSpeed = 120, Radius = 1.1, Range = 120, Stun = 0.4, Knockback = 18,
+		MaxBounces = 3, -- bounces off walls this many times before returning (0 = no bounces)
+		BounceBonusDamage = 2, -- extra damage per bounce (bank shots hit harder)
+	},
 	SpinTornado = {
 		Cooldown = 11, Startup = 0.28,
 		Speed = 22, -- studs per second along the ground
@@ -2974,7 +2978,7 @@ end
 return NPCService
 </pre></details></section><section class="card" id="s17">
 <div class="head"><span class="num">17</span><div><h2>ProjectileService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="17">Copy code</button><details><summary>Show code (193 lines)</summary><pre id="c17">--[[
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="17">Copy code</button><details><summary>Show code (196 lines)</summary><pre id="c17">--[[
 	ProjectileService  (ServerScriptService.SpinServer.ProjectileService)
 
 	Server-simulated projectiles. The server owns position, collision and
@@ -3025,6 +3029,8 @@ local function finish(p, position, normal, hitCharacter)
 	if p.Owner then
 		countByPlayer[p.Owner] = math.max(0, (countByPlayer[p.Owner] or 1) - 1)
 	end
+	-- Tell OnEnd why it stopped: hit a character, hit a wall/ground, or ran out of range.
+	p.HitWall = hitCharacter == nil and normal ~= nil
 	if hitCharacter and p.OnHit then
 		local ok, err = pcall(p.OnHit, hitCharacter, position, p)
 		if not ok then
@@ -3101,6 +3107,7 @@ function ProjectileService.fire(owner, spec)
 		Params = params,
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd, -- function(position, normal, hitCharacter, projectile): always called once
+		-- (projectile.HitWall is true when it stopped on a wall / the ground)
 		Visual = spec.Visual or {},
 	}
 	active[p.Id] = p
@@ -3317,14 +3324,15 @@ return TestDummies
 <div class="head"><span class="num">20</span><div><h2>TuskActs <span class="badge folder">Folder</span></h2>
 <p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s21">
 <div class="head"><span class="num">21</span><div><h2>GyroZeppeli <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="21">Copy code</button><details><summary>Show code (280 lines)</summary><pre id="c21">--[[
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="21">Copy code</button><details><summary>Show code (319 lines)</summary><pre id="c21">--[[
 	GyroZeppeli  (ServerScriptService.SpinServer.TuskActs.GyroZeppeli)
 
 	Gyro Zeppeli: Steel Ball moveset (registered as &quot;Act&quot; 5 so it reuses the
 	Tusk ability system: cooldowns, HUD, ultimate meter, input).
 	  M1        STEEL BALL COMBO: jab, hook, kick, spinning-ball smash (area)
-	  Ability 1 STEEL BALL THROW: the ball flies out, then returns to Gyro&#x27;s hand
-	            (it can hit on the way back)
+	  Ability 1 STEEL BALL THROW: the ball flies out and BOUNCES off walls (up
+	            to MaxBounces times, each bank shot hits harder), then returns
+	            to Gyro&#x27;s hand (it can hit on the way back)
 	  Ability 2 SPIN TORNADO: bowl the spinning ball along the ground; it
 	            becomes a travelling tornado that pulls enemies in, juggles
 	            them and bursts (stops at walls)
@@ -3391,47 +3399,85 @@ local function steelBallThrow(S, player, state, aim)
 		end
 		local char, _, r = alive(S, player)
 		local hitOut = {}
-		S.fireBall(player, state, {
-			Origin = S.origin(char, r, HAND),
-			Direction = direction,
-			Speed = c.Speed,
-			Radius = c.Radius,
-			Range = c.Range,
-			Style = &quot;Throw&quot;,
-			OnHit = function(target, position)
-				hitOut[target] = true
-				S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = direction, Position = position, Source = &quot;GyroSteelBall&quot; })
-			end,
-			OnEnd = function(position)
-				-- The ball spins its way back to Gyro&#x27;s hand.
-				local _, _, rr = alive(S, player)
-				if not rr or state.Life ~= life then
+		local maxBounces = c.MaxBounces or 3
+
+		-- The ball spins its way back to Gyro&#x27;s hand from wherever it stopped.
+		local function returnToHand(position)
+			local _, _, rr = alive(S, player)
+			if not rr or state.Life ~= life then
+				S.fx(&quot;Ability&quot;, { Character = char, Act = 5, Move = &quot;SteelBallThrow&quot;, Phase = &quot;Caught&quot; })
+				return
+			end
+			local back = rr.Position + Vector3.new(0, 1, 0) - position
+			if back.Magnitude &lt; 2 then
+				S.fx(&quot;Ability&quot;, { Character = char, Act = 5, Move = &quot;SteelBallThrow&quot;, Phase = &quot;Caught&quot; })
+				return
+			end
+			S.fireBall(player, state, {
+				Origin = position,
+				Direction = back.Unit,
+				Speed = c.ReturnSpeed,
+				Radius = c.Radius,
+				Range = back.Magnitude,
+				Style = &quot;Return&quot;,
+				OnHit = function(target, pos)
+					if not hitOut[target] then
+						hitOut[target] = true
+						S.hit(player, target, { Damage = c.ReturnDamage, Stun = 0.3, Knockback = 8, Direction = back.Unit, Position = pos, Source = &quot;GyroSteelBall&quot; })
+					end
+				end,
+				OnEnd = function()
 					S.fx(&quot;Ability&quot;, { Character = char, Act = 5, Move = &quot;SteelBallThrow&quot;, Phase = &quot;Caught&quot; })
-					return
-				end
-				local back = rr.Position + Vector3.new(0, 1, 0) - position
-				if back.Magnitude &lt; 2 then
-					S.fx(&quot;Ability&quot;, { Character = char, Act = 5, Move = &quot;SteelBallThrow&quot;, Phase = &quot;Caught&quot; })
-					return
-				end
-				S.fireBall(player, state, {
-					Origin = position,
-					Direction = back.Unit,
-					Speed = c.ReturnSpeed,
-					Radius = c.Radius,
-					Range = back.Magnitude,
-					Style = &quot;Return&quot;,
-					OnHit = function(target, pos)
-						if not hitOut[target] then
-							S.hit(player, target, { Damage = c.ReturnDamage, Stun = 0.3, Knockback = 8, Direction = back.Unit, Position = pos, Source = &quot;GyroSteelBall&quot; })
-						end
-					end,
-					OnEnd = function()
+				end,
+			})
+		end
+
+		-- One straight flight. When it hits a wall it bounces off (reflects
+		-- around the surface normal) and keeps flying with the range it has left.
+		local function launch(origin, dir, rangeLeft, bounce)
+			S.fireBall(player, state, {
+				Origin = origin,
+				Direction = dir,
+				Speed = c.Speed * (1 + bounce * 0.08), -- each bounce comes off a little faster
+				Radius = c.Radius,
+				Range = rangeLeft,
+				Style = &quot;Throw&quot;,
+				Bounce = bounce,
+				OnHit = function(target, position)
+					if hitOut[target] then
+						return
+					end
+					hitOut[target] = true
+					-- Bank shots hit harder.
+					local damage = c.Damage + bounce * (c.BounceBonusDamage or 2)
+					S.hit(player, target, { Damage = damage, Stun = c.Stun, Knockback = c.Knockback, Direction = dir, Position = position, Source = &quot;GyroSteelBall&quot; })
+				end,
+				OnEnd = function(position, normal, hitCharacter, projectile)
+					if state.Life ~= life then
 						S.fx(&quot;Ability&quot;, { Character = char, Act = 5, Move = &quot;SteelBallThrow&quot;, Phase = &quot;Caught&quot; })
-					end,
-				})
-			end,
-		})
+						return
+					end
+					local traveled = projectile and projectile.Traveled or rangeLeft
+					local remaining = rangeLeft - traveled
+					if not hitCharacter and projectile and projectile.HitWall and bounce &lt; maxBounces and remaining &gt; 6 then
+						local n = normal.Unit
+						local reflected = dir - 2 * dir:Dot(n) * n
+						if reflected.Magnitude &lt; 0.1 then
+							reflected = -dir
+						end
+						reflected = reflected.Unit
+						-- Start just off the surface so it doesn&#x27;t hit the same wall again.
+						local from = position + n * (c.Radius + 0.3)
+						S.fx(&quot;Ability&quot;, { Character = char, Act = 5, Move = &quot;SteelBallThrow&quot;, Phase = &quot;Bounce&quot;, Position = position, Normal = n, Direction = reflected, Bounce = bounce + 1 })
+						launch(from, reflected, remaining, bounce + 1)
+						return
+					end
+					returnToHand(position)
+				end,
+			})
+		end
+
+		launch(S.origin(char, r, HAND), direction, c.Range, 0)
 	end)
 end
 
@@ -5212,7 +5258,7 @@ function TuskService.fireBall(player, state, spec)
 		Speed = spec.Speed,
 		Radius = spec.Radius,
 		Range = spec.Range,
-		Visual = { Style = spec.Style or &quot;Throw&quot;, Scale = spec.Scale },
+		Visual = { Style = spec.Style or &quot;Throw&quot;, Scale = spec.Scale, Bounce = spec.Bounce },
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd,
 	})
@@ -7335,7 +7381,7 @@ end
 return Act4
 </pre></details></section><section class="card" id="s40">
 <div class="head"><span class="num">40</span><div><h2>Gyro <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="40">Copy code</button><details><summary>Show code (1099 lines)</summary><pre id="c40">--[[
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="40">Copy code</button><details><summary>Show code (1142 lines)</summary><pre id="c40">--[[
 	TuskActVFX.Gyro  (StarterPlayerScripts.SpinClient.TuskActVFX.Gyro)
 
 	Client visuals for Gyro Zeppeli (Steel Ball moveset):
@@ -7529,7 +7575,8 @@ local function spawnBall(data)
 	-- Steel Ball Throw / return: green glow, spiral Spin trails, afterimages.
 	local glow, helix
 	if style == &quot;Throw&quot; or style == &quot;Return&quot; then
-		glow = VFXLib.part({ Shape = Enum.PartType.Ball, Material = Enum.Material.ForceField, Color = pal.Main, Transparency = 0.1, Size = Vector3.new(1.9, 1.9, 1.9) })
+		local bounce = data.Visual and data.Visual.Bounce or 0
+		glow = VFXLib.part({ Shape = Enum.PartType.Ball, Material = Enum.Material.ForceField, Color = pal.Main:Lerp(pal.Light, math.min(bounce * 0.3, 0.8)), Transparency = 0.1, Size = Vector3.new(1.9, 1.9, 1.9) })
 		helix = VFXLib.anchor(CFrame.new(data.Origin))
 		local strands = VFXQuality.get().RingSegments &gt; 12 and 3 or 2
 		for i = 1, strands do
@@ -7708,6 +7755,46 @@ end
 ---------------------------------------------------------------------------
 local vibrationStartup, vibrationHit -- defined below (they use the spiral helpers)
 
+-- STEEL BALL THROW bounce: the ball ricochets off a wall.
+local function ricochet(data)
+	local pos, n = data.Position, data.Normal or Vector3.new(0, 1, 0)
+	local bounce = data.Bounce or 1
+	local hot = pal.Main:Lerp(Color3.new(1, 1, 1), math.min(bounce * 0.2, 0.6))
+	-- Ring flat against the wall + sparks spraying along the new direction.
+	local wallAxis = CFrame.lookAt(pos, pos + n) * CFrame.Angles(-math.pi / 2, 0, 0)
+	TuskVFX.CreateRotationalShockwave(wallAxis, { Radius = 3 + bounce, Layers = 2, Color = hot, Color2 = pal.Main, Particles = 0, Width = 0.3, Duration = 0.3, Spin = 9 })
+	TuskVFX.CreateImpactStar(pos, { Size = 4 + bounce, Rays = 7, Color = pal.Main, Color2 = Color3.new(1, 1, 1), Duration = 0.22 })
+	VFXLib.burst(pos, { Count = 14 + bounce * 4, Color = hot, Speed = 38, Spread = 35, Direction = data.Direction or n, Lifetime = 0.3, Acceleration = Vector3.new(0, -30, 0) })
+	VFXLib.burst(pos, { Count = 6, Texture = VFXLib.Textures.Smoke, Color = Color3.fromRGB(190, 170, 140), LightEmission = 0, Speed = 6, Lifetime = 0.7, Direction = n, Spread = 50 })
+	VFXLib.flash(pos, hot, 5 + bounce, 18, 0.2)
+	VFXLib.sound(sounds.NailImpact, pos, 0.55, 1.1 + bounce * 0.12)
+	CameraFX.shakeAt(pos, 0.25 + bounce * 0.05, 45)
+	-- Little &quot;x2&quot; popup so bank shots read clearly.
+	local carrier = VFXLib.anchor(CFrame.new(pos + n * 1.5), 0.8)
+	local billboard = Instance.new(&quot;BillboardGui&quot;)
+	billboard.Size = UDim2.fromOffset(90, 40)
+	billboard.AlwaysOnTop = true
+	billboard.LightInfluence = 0
+	billboard.Parent = carrier
+	local label = Instance.new(&quot;TextLabel&quot;)
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.Bangers
+	label.TextScaled = true
+	label.Text = &quot;BOUNCE x&quot; .. bounce
+	label.TextColor3 = hot
+	label.TextStrokeTransparency = 0
+	label.Parent = billboard
+	local start = carrier.Position
+	VFXLib.animate(0.75, function(a)
+		carrier.Position = start + Vector3.new(0, a * 2.5, 0)
+		label.TextTransparency = math.max(0, (a - 0.55) / 0.45)
+		label.TextStrokeTransparency = label.TextTransparency
+		local pop = a &lt; 0.12 and (1 + (0.12 - a) * 5) or 1
+		billboard.Size = UDim2.fromOffset(90 * pop, 40 * pop)
+	end)
+end
+
 local function onAbility(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
@@ -7737,6 +7824,8 @@ local function onAbility(data)
 					entry.Spin = 8
 				end)
 			end
+		elseif data.Phase == &quot;Bounce&quot; then
+			ricochet(data)
 		elseif data.Phase == &quot;Caught&quot; and entry then
 			entry.HiddenUntil = 0
 			if root then
@@ -8435,24 +8524,35 @@ end)
 return Gyro
 </pre></details></section><section class="card" id="s41">
 <div class="head"><span class="num">41</span><div><h2>TuskAnimation <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="41">Copy code</button><details><summary>Show code (395 lines)</summary><pre id="c41">--[[
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="41">Copy code</button><details><summary>Show code (532 lines)</summary><pre id="c41">--[[
 	TuskAnimation  (StarterPlayerScripts.SpinClient.TuskAnimation)
 	(&quot;TuskAnimationController&quot; in the design doc)
 
-	Plays Tusk character animations on ANY character, on every client.
+	Plays Johnny / Gyro move animations on ANY character, on every client.
 	Two layers per character:
-	  * Hold   : a sustained pose (Sneak, Charge) until stopped
-	  * Action : a short keyframed move (M1 hits, Nail Shot...) that plays
-	             on top, then blends back to the Hold pose or rest
+	  * Hold   : a sustained pose (Sneak, Charge, Gyro&#x27;s ball stance) with a
+	             breathing idle on top, until stopped
+	  * Action : a keyframed move (M1 hits, throws...) that plays on top,
+	             then settles back to the Hold pose or rest
 
 	Default = procedural poses built from Motor6D C0 offsets (no uploads
 	needed, works on R15 and R6). If TuskConfig.AnimationIds[name] holds
 	an uploaded animation id, that real animation plays instead.
 
 	Pose values: degrees {X, Y, Z} rotation in the parent part&#x27;s space,
-	optional 4th value = vertical offset in studs.
-	  Arms:  +X raises the arm forward.   Waist: -X bends forward.
+	optional 4th value = vertical offset (studs), optional 5th (Root only)
+	= forward lunge (studs).
+	  Arms:  +X raises the arm forward, +Z (right) / -Z (left) lifts it out.
+	  Waist / Root: -X bends forward, -Y turns the right shoulder forward.
 	  Hips:  +X lifts the thigh forward.   Knees: -X bends the knee.
+	Mirror(&quot;Pose&quot;) makes the left-handed version of a pose.
+
+	Keyframes: { Time, Pose, Ease, Shake }
+	  Ease : &quot;Out&quot; (default), &quot;Snap&quot; (fast strike), &quot;Back&quot; (overshoot and
+	         settle), &quot;In&quot; (slow then fast: anticipation), &quot;Sine&quot;, &quot;Linear&quot;
+	  Shake: impact jitter in degrees, fading over 0.16 s from that key
+	Every move follows: anticipation -&gt; strike (snap/overshoot + impact
+	shake) -&gt; follow-through -&gt; settle.
 ]]
 
 local Players = game:GetService(&quot;Players&quot;)
@@ -8475,6 +8575,8 @@ local JOINTS = {
 		LeftHip = { &quot;LeftUpperLeg&quot;, &quot;LeftHip&quot; },
 		RightKnee = { &quot;RightLowerLeg&quot;, &quot;RightKnee&quot; },
 		LeftKnee = { &quot;LeftLowerLeg&quot;, &quot;LeftKnee&quot; },
+		RightElbow = { &quot;RightLowerArm&quot;, &quot;RightElbow&quot; },
+		LeftElbow = { &quot;LeftLowerArm&quot;, &quot;LeftElbow&quot; },
 	},
 	R6 = {
 		RightArm = { &quot;Torso&quot;, &quot;Right Shoulder&quot; },
@@ -8488,109 +8590,159 @@ local JOINTS = {
 
 TuskAnimation.Poses = {
 	Rest = {},
-	Point = { Root = { 0, -12, 0 }, RightArm = { 92, 0, 0 }, LeftArm = { 15, 0, -10 }, Waist = { 0, -18, 0 } },
-	PointRecoil = { Root = { 6, -8, 0 }, RightArm = { 110, 0, 0 }, Waist = { 6, -14, 0 } },
-	Jab = { Root = { 0, -18, 0 }, RightArm = { 88, 0, 12 }, Waist = { 0, -28, 0 }, LeftArm = { 30, 0, -20 } },
-	JabLeft = { Root = { 0, 18, 0 }, LeftArm = { 88, 0, -12 }, Waist = { 0, 28, 0 }, RightArm = { 30, 0, 20 } },
-	SpinPoke = { Root = { -6, -20, 0 }, RightArm = { 100, 25, 0 }, Waist = { -10, -24, 0 }, LeftArm = { 20, 0, -30 } },
-	SlamWindup = { Root = { 10, 14, 0 }, RightArm = { 165, 0, 10 }, LeftArm = { 40, 0, -30 }, Waist = { 12, 15, 0 } },
-	Slam = { Root = { -14, -10, 0, -0.3 }, RightArm = { 55, 0, 0 }, LeftArm = { 20, 0, -20 }, Waist = { -22, -10, 0 } },
-	ChargeNail = { RightArm = { 75, 0, 28 }, LeftArm = { 75, 0, -28 }, Waist = { -8, 0, 0 } },
-	BarrageA = { Root = { 0, -14, 0 }, RightArm = { 95, 4, 0 }, LeftArm = { 60, 0, -20 }, Waist = { 0, -14, 0 } },
-	BarrageB = { Root = { 0, -20, 0 }, RightArm = { 88, -4, 0 }, LeftArm = { 60, 0, -20 }, Waist = { 0, -18, 0 } },
-	AwakenCrouch = { Root = { -6, 0, 0, -0.3 }, RightArm = { 30, 0, 40 }, LeftArm = { 30, 0, -40 }, Waist = { -25, 0, 0 }, Neck = { -15, 0, 0 } },
-	AwakenRise = { Root = { 6, 0, 0 }, RightArm = { 130, 0, 35 }, LeftArm = { 130, 0, -35 }, Waist = { 14, 0, 0 }, Neck = { 22, 0, 0 } },
-	Sneak = {
-		Root = { 0, 0, 0, -0.65 },
-		Waist = { -26, 0, 0 },
-		Neck = { 22, 0, 0 },
-		RightHip = { 50, 0, 0 },
-		LeftHip = { 50, 0, 0 },
-		RightKnee = { -85, 0, 0 },
-		LeftKnee = { -85, 0, 0 },
-		RightArm = { 25, 0, 8 },
-		LeftArm = { 25, 0, -8 },
-	},
-	Emerge = { RightArm = { 150, 0, 15 }, LeftArm = { 40, 0, -40 }, Waist = { 15, 0, 0 } },
+	Point = { Root = { 0, -12, 0 }, RightArm = { 92, 0, 0 }, LeftArm = { 15, 0, -10 }, Waist = { 0, -18, 0 }, Neck = { 0, 12, 0 } },
+	PointRecoil = { Root = { 6, -8, 0 }, RightArm = { 112, 0, 0 }, RightElbow = { 10, 0, 0 }, Waist = { 8, -14, 0 }, Neck = { 4, 10, 0 } },
+	ChargeNail = { RightArm = { 75, 0, 28 }, LeftArm = { 75, 0, -28 }, RightElbow = { 30, 0, 0 }, LeftElbow = { 30, 0, 0 }, Waist = { -8, 0, 0 }, Root = { 0, 0, 0, -0.15 }, RightKnee = { -12, 0, 0 }, LeftKnee = { -12, 0, 0 }, RightHip = { 8, 0, 0 }, LeftHip = { 8, 0, 0 } },
+	AwakenCrouch = { Root = { -8, 0, 0, -0.45 }, RightArm = { 30, 0, 40 }, LeftArm = { 30, 0, -40 }, RightElbow = { 60, 0, 0 }, LeftElbow = { 60, 0, 0 }, Waist = { -28, 0, 0 }, Neck = { -18, 0, 0 }, RightHip = { 40, 0, 0 }, LeftHip = { 40, 0, 0 }, RightKnee = { -60, 0, 0 }, LeftKnee = { -60, 0, 0 } },
+	AwakenRise = { Root = { 8, 0, 0, 0.15 }, RightArm = { 135, 0, 38 }, LeftArm = { 135, 0, -38 }, Waist = { 16, 0, 0 }, Neck = { 24, 0, 0 } },
+	Sneak = { Root = { 0, 0, 0, -0.65 }, Waist = { -26, 0, 0 }, Neck = { 22, 0, 0 }, RightHip = { 50, 0, 0 }, LeftHip = { 50, 0, 0 }, RightKnee = { -85, 0, 0 }, LeftKnee = { -85, 0, 0 }, RightArm = { 25, 0, 8 }, LeftArm = { 25, 0, -8 } },
+	Emerge = { Root = { 6, 0, 0, 0.2 }, RightArm = { 150, 0, 15 }, LeftArm = { 40, 0, -40 }, Waist = { 15, 0, 0 }, Neck = { 12, 0, 0 } },
 
-	-- JOHNNY: fights with finger-gun nail shots.
-	FingerGun = { Root = { 0, -14, 0 }, RightArm = { 95, 0, 5 }, LeftArm = { 62, 0, -38 }, Waist = { 0, -22, 0 }, Neck = { 0, 16, 0 } },
-	FingerGunRecoil = { Root = { 6, -10, 0 }, RightArm = { 118, 0, 6 }, LeftArm = { 56, 0, -36 }, Waist = { 6, -16, 0 }, Neck = { 0, 12, 0 } },
-	FlickR = { Root = { 0, -16, 0 }, RightArm = { 96, -8, 6 }, LeftArm = { 38, 0, -22 }, Waist = { 0, -20, 0 } },
-	FlickL = { Root = { 0, 16, 0 }, LeftArm = { 96, 8, -6 }, RightArm = { 38, 0, 22 }, Waist = { 0, 20, 0 } },
-	SpinChargeA = { RightArm = { 104, 10, 30 }, LeftArm = { 72, 0, -42 }, Waist = { -6, -10, 0 } },
-	SpinChargeB = { RightArm = { 96, -10, 22 }, LeftArm = { 72, 0, -42 }, Waist = { -6, -10, 0 } },
-	Spread = { Root = { 8, 0, 0 }, RightArm = { 92, 0, 70 }, LeftArm = { 92, 0, -70 }, Waist = { 10, 0, 0 }, Neck = { 15, 0, 0 } },
-	Dive = { Root = { 0, 0, 0, -0.45 }, Waist = { -38, 0, 0 }, RightArm = { 155, 0, 12 }, LeftArm = { 155, 0, -12 }, RightHip = { 40, 0, 0 }, LeftHip = { 20, 0, 0 }, RightKnee = { -45, 0, 0 }, LeftKnee = { -30, 0, 0 } },
-	LungeStep = { Root = { -10, -10, 0, -0.2 }, Waist = { -16, -12, 0 }, RightArm = { 86, 0, 0 }, LeftArm = { -22, 0, -12 }, RightHip = { 38, 0, 0 }, LeftHip = { -26, 0, 0 }, RightKnee = { -32, 0, 0 } },
-	PushTwo = { Root = { -10, 0, 0 }, RightArm = { 92, 0, 14 }, LeftArm = { 92, 0, -14 }, Waist = { -12, 0, 0 }, RightHip = { 22, 0, 0 }, LeftHip = { -16, 0, 0 } },
-	WindSpin = { Root = { 0, -45, 0 }, Waist = { 0, -60, 0 }, RightArm = { 62, 0, 82 }, LeftArm = { 40, 0, -30 } },
-	DashPunch = { Root = { -16, -16, 0, -0.25 }, Waist = { -20, -26, 0 }, RightArm = { 92, 0, 0 }, LeftArm = { -30, 0, -22 }, RightHip = { 42, 0, 0 }, RightKnee = { -60, 0, 0 }, LeftHip = { -30, 0, 0 } },
+	-- JOHNNY: finger-gun nail shots, fired from a low, steady stance.
+	FlickRWind = { Root = { 0, 12, 0 }, Waist = { 2, 16, 0 }, RightArm = { 62, 0, -28 }, RightElbow = { 55, 0, 0 }, LeftArm = { 28, 0, -20 }, Neck = { 0, -10, 0 }, LeftHip = { 10, 0, 0 }, LeftKnee = { -10, 0, 0 } },
+	FlickR = { Root = { 0, -18, 0, -0.05, 0.2 }, RightArm = { 96, -8, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 38, 0, -22 }, LeftElbow = { 40, 0, 0 }, Waist = { 0, -22, 0 }, Neck = { 0, 16, 0 }, RightHip = { 18, 0, 0 }, RightKnee = { -16, 0, 0 }, LeftHip = { -10, 0, 0 } },
+	FlickRFollow = { Root = { -2, -22, 0, -0.08, 0.15 }, RightArm = { 84, -14, 2 }, RightElbow = { 12, 0, 0 }, LeftArm = { 34, 0, -24 }, LeftElbow = { 40, 0, 0 }, Waist = { -4, -26, 0 }, Neck = { 0, 18, 0 }, RightHip = { 14, 0, 0 }, RightKnee = { -14, 0, 0 } },
+	FingerGun = { Root = { 0, -14, 0, -0.08 }, RightArm = { 95, 0, 5 }, LeftArm = { 62, 0, -38 }, LeftElbow = { 50, 0, 0 }, Waist = { 0, -22, 0 }, Neck = { 0, 16, 0 }, RightHip = { 12, 0, 0 }, RightKnee = { -14, 0, 0 }, LeftHip = { -10, 0, 0 }, LeftKnee = { -6, 0, 0 } },
+	FingerGunRecoil = { Root = { 8, -10, 0, -0.04, -0.15 }, RightArm = { 120, 0, 6 }, RightElbow = { 14, 0, 0 }, LeftArm = { 56, 0, -36 }, LeftElbow = { 50, 0, 0 }, Waist = { 8, -16, 0 }, Neck = { 6, 12, 0 }, RightHip = { 8, 0, 0 }, RightKnee = { -10, 0, 0 } },
+	SlamWindup = { Root = { 10, 16, 0, -0.1 }, RightArm = { 168, 0, 12 }, RightElbow = { 30, 0, 0 }, LeftArm = { 42, 0, -32 }, Waist = { 14, 18, 0 }, Neck = { 8, -8, 0 }, LeftHip = { 24, 0, 0 }, LeftKnee = { -28, 0, 0 } },
+	Slam = { Root = { -16, -12, 0, -0.4, 0.4 }, RightArm = { 52, 0, 0 }, RightElbow = { 0, 0, 0 }, LeftArm = { 18, 0, -24 }, Waist = { -24, -12, 0 }, Neck = { -6, 10, 0 }, RightHip = { 36, 0, 0 }, RightKnee = { -46, 0, 0 }, LeftHip = { -14, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	SlamFollow = { Root = { -10, -10, 0, -0.3, 0.3 }, RightArm = { 40, 0, 6 }, LeftArm = { 20, 0, -24 }, Waist = { -16, -10, 0 }, RightHip = { 28, 0, 0 }, RightKnee = { -36, 0, 0 }, LeftKnee = { -14, 0, 0 } },
+	SpinChargeA = { RightArm = { 104, 10, 30 }, RightElbow = { 20, 0, 0 }, LeftArm = { 72, 0, -42 }, LeftElbow = { 40, 0, 0 }, Waist = { -6, -10, 0 }, Root = { 0, -6, 0, -0.18 }, RightKnee = { -16, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { 10, 0, 0 } },
+	SpinChargeB = { RightArm = { 96, -10, 22 }, RightElbow = { 26, 0, 0 }, LeftArm = { 72, 0, -42 }, LeftElbow = { 40, 0, 0 }, Waist = { -6, -10, 0 }, Root = { 0, -6, 0, -0.2 }, RightKnee = { -18, 0, 0 }, LeftKnee = { -18, 0, 0 }, RightHip = { 12, 0, 0 }, LeftHip = { 12, 0, 0 } },
+	SpreadWind = { Root = { -6, 0, 0, -0.2 }, RightArm = { 40, 0, 20 }, LeftArm = { 40, 0, -20 }, RightElbow = { 70, 0, 0 }, LeftElbow = { 70, 0, 0 }, Waist = { -14, 0, 0 }, Neck = { -10, 0, 0 }, RightKnee = { -20, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	Spread = { Root = { 8, 0, 0, 0.05 }, RightArm = { 92, 0, 72 }, LeftArm = { 92, 0, -72 }, Waist = { 12, 0, 0 }, Neck = { 16, 0, 0 } },
+	Dive = { Root = { 0, 0, 0, -0.45, 0.4 }, Waist = { -40, 0, 0 }, Neck = { 20, 0, 0 }, RightArm = { 158, 0, 12 }, LeftArm = { 158, 0, -12 }, RightHip = { 40, 0, 0 }, LeftHip = { 20, 0, 0 }, RightKnee = { -45, 0, 0 }, LeftKnee = { -30, 0, 0 } },
+	LungeStep = { Root = { -12, -10, 0, -0.25, 0.6 }, Waist = { -18, -12, 0 }, Neck = { 10, 8, 0 }, RightArm = { 88, 0, 0 }, LeftArm = { -24, 0, -12 }, RightHip = { 40, 0, 0 }, LeftHip = { -28, 0, 0 }, RightKnee = { -34, 0, 0 }, LeftKnee = { -10, 0, 0 } },
+	PushTwo = { Root = { -12, 0, 0, -0.1, 0.4 }, RightArm = { 94, 0, 14 }, LeftArm = { 94, 0, -14 }, Waist = { -14, 0, 0 }, Neck = { 8, 0, 0 }, RightHip = { 24, 0, 0 }, LeftHip = { -18, 0, 0 }, RightKnee = { -20, 0, 0 } },
+	WindSpin = { Root = { 0, -48, 0, -0.1 }, Waist = { 0, -62, 0 }, Neck = { 0, 40, 0 }, RightArm = { 62, 0, 84 }, LeftArm = { 40, 0, -30 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -24, 0, 0 } },
+	DashPunch = { Root = { -18, -16, 0, -0.3, 0.8 }, Waist = { -22, -28, 0 }, Neck = { 12, 14, 0 }, RightArm = { 92, 0, 0 }, LeftArm = { -32, 0, -22 }, RightHip = { 44, 0, 0 }, RightKnee = { -62, 0, 0 }, LeftHip = { -32, 0, 0 }, LeftKnee = { -8, 0, 0 } },
 
-	-- GYRO: fights like a ball thrower.
-	GyroIdle = { RightArm = { 55, 0, 14 }, LeftArm = { 12, 0, -10 } },
-	GHookWind = { Root = { 0, 22, 0 }, RightArm = { 82, 0, 80 }, Waist = { 0, 25, 0 } },
-	GHook = { Root = { 0, -38, 0 }, RightArm = { 86, -32, 12 }, Waist = { 0, -42, 0 }, LeftArm = { 30, 0, -20 } },
-	KickChamber = { Root = { 8, 0, 0 }, RightHip = { 72, 0, 0 }, RightKnee = { -92, 0, 0 }, Waist = { 8, 0, 0 }, RightArm = { 30, 0, 30 }, LeftArm = { 30, 0, -30 } },
-	FrontKick = { Root = { 15, 0, 0 }, RightHip = { 88, 0, 0 }, RightKnee = { -8, 0, 0 }, LeftKnee = { -15, 0, 0 }, Waist = { 12, 0, 0 }, RightArm = { 30, 0, 34 }, LeftArm = { 30, 0, -34 } },
-	OverheadWind = { Root = { 10, 16, 0 }, RightArm = { 172, 0, 15 }, Waist = { 15, 20, 0 }, LeftHip = { 18, 0, 0 }, LeftKnee = { -22, 0, 0 } },
-	OverheadSmash = { Root = { -16, -10, 0, -0.35 }, RightArm = { 58, 0, 0 }, Waist = { -26, -15, 0 }, LeftHip = { 36, 0, 0 }, LeftKnee = { -30, 0, 0 }, RightHip = { -15, 0, 0 } },
-	PitchBack = { Root = { 4, 32, 0 }, RightArm = { 200, 0, 40 }, Waist = { 5, 36, 0 }, LeftArm = { 80, 0, -30 }, LeftHip = { 48, 0, 0 }, LeftKnee = { -52, 0, 0 } },
-	PitchRelease = { Root = { -14, -32, 0, -0.15 }, RightArm = { 74, 0, -10 }, Waist = { -22, -36, 0 }, LeftArm = { -12, 0, -30 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -20, 0, 0 }, RightHip = { -30, 0, 0 } },
-	BowlWind = { Root = { 0, 0, 0, -0.4 }, RightArm = { -55, 0, 10 }, Waist = { -16, 0, 0 }, LeftHip = { 50, 0, 0 }, LeftKnee = { -62, 0, 0 }, RightKnee = { -42, 0, 0 } },
-	BowlRelease = { Root = { 0, 0, 0, -0.45 }, RightArm = { 62, 0, 0 }, Waist = { -28, 0, 0 }, LeftHip = { 55, 0, 0 }, LeftKnee = { -65, 0, 0 }, RightHip = { -20, 0, 0 } },
-	PalmWind = { Root = { 0, 20, 0 }, RightArm = { 40, 0, 20 }, Waist = { 0, 25, 0 } },
-	PalmPress = { Root = { -12, -12, 0, -0.1 }, RightArm = { 92, 0, 0 }, LeftArm = { 70, 0, -22 }, Waist = { -16, -12, 0 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -30, 0, 0 } },
-	BreakerWindA = { Root = { 0, 0, 0, -0.3 }, RightArm = { 122, 0, 62 }, Waist = { 0, 46, 0 }, LeftArm = { 60, 0, -40 }, LeftKnee = { -25, 0, 0 }, RightKnee = { -25, 0, 0 } },
-	BreakerWindB = { Root = { 0, 0, 0, -0.3 }, RightArm = { 132, 10, 70 }, Waist = { 0, 52, 0 }, LeftArm = { 64, 0, -44 }, LeftKnee = { -25, 0, 0 }, RightKnee = { -25, 0, 0 } },
+	-- GYRO: a ball thrower: weight shifts, leg lifts, full follow-through.
+	GyroIdle = { RightArm = { 55, 0, 14 }, RightElbow = { 45, 0, 0 }, LeftArm = { 12, 0, -10 }, Waist = { 0, -6, 0 }, Neck = { 0, 4, 0 } },
+	JabWind = { Root = { 0, 12, 0 }, Waist = { 0, 14, 0 }, RightArm = { 38, 0, 18 }, RightElbow = { 80, 0, 0 }, LeftArm = { 48, 0, -24 }, LeftElbow = { 60, 0, 0 }, Neck = { 0, -8, 0 }, RightKnee = { -10, 0, 0 } },
+	Jab = { Root = { 0, -20, 0, -0.05, 0.35 }, RightArm = { 90, 0, 12 }, RightElbow = { 0, 0, 0 }, Waist = { 0, -30, 0 }, Neck = { 0, 22, 0 }, LeftArm = { 32, 0, -20 }, LeftElbow = { 70, 0, 0 }, LeftHip = { 22, 0, 0 }, LeftKnee = { -18, 0, 0 }, RightHip = { -12, 0, 0 } },
+	JabRecover = { Root = { 0, -8, 0, 0, 0.15 }, RightArm = { 66, 0, 14 }, RightElbow = { 40, 0, 0 }, Waist = { 0, -12, 0 }, LeftArm = { 36, 0, -20 }, LeftElbow = { 60, 0, 0 } },
+	GHookWind = { Root = { 0, 26, 0, -0.05 }, RightArm = { 80, 0, 82 }, RightElbow = { 70, 0, 0 }, Waist = { 0, 28, 0 }, Neck = { 0, -14, 0 }, LeftArm = { 40, 0, -20 }, RightKnee = { -14, 0, 0 } },
+	GHook = { Root = { 0, -40, 0, -0.1, 0.3 }, RightArm = { 86, -32, 12 }, RightElbow = { 60, 0, 0 }, Waist = { 0, -44, 0 }, Neck = { 0, 30, 0 }, LeftArm = { 30, 0, -20 }, LeftElbow = { 70, 0, 0 }, LeftHip = { 18, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	GHookFollow = { Root = { 0, -50, 0, -0.1, 0.25 }, RightArm = { 76, -50, 20 }, RightElbow = { 70, 0, 0 }, Waist = { 0, -52, 0 }, Neck = { 0, 34, 0 }, LeftArm = { 26, 0, -24 } },
+	KickChamber = { Root = { 10, 0, 0, 0.05 }, RightHip = { 74, 0, 0 }, RightKnee = { -95, 0, 0 }, LeftKnee = { -12, 0, 0 }, Waist = { 10, 0, 0 }, Neck = { 6, 0, 0 }, RightArm = { 30, 0, 34 }, LeftArm = { 34, 0, -34 } },
+	FrontKick = { Root = { 18, 0, 0, 0, 0.3 }, RightHip = { 92, 0, 0 }, RightKnee = { -6, 0, 0 }, LeftKnee = { -16, 0, 0 }, Waist = { 14, 0, 0 }, Neck = { -6, 0, 0 }, RightArm = { 26, 0, 40 }, LeftArm = { 28, 0, -40 } },
+	KickRechamber = { Root = { 8, 0, 0, 0, 0.2 }, RightHip = { 60, 0, 0 }, RightKnee = { -80, 0, 0 }, LeftKnee = { -10, 0, 0 }, Waist = { 8, 0, 0 }, RightArm = { 30, 0, 30 }, LeftArm = { 30, 0, -30 } },
+	OverheadWind = { Root = { 12, 18, 0, 0.1 }, RightArm = { 175, 0, 15 }, RightElbow = { 40, 0, 0 }, Waist = { 16, 22, 0 }, Neck = { 10, -10, 0 }, LeftArm = { 60, 0, -30 }, LeftHip = { 22, 0, 0 }, LeftKnee = { -26, 0, 0 } },
+	OverheadSmash = { Root = { -18, -10, 0, -0.45, 0.45 }, RightArm = { 56, 0, 0 }, RightElbow = { 0, 0, 0 }, Waist = { -28, -15, 0 }, Neck = { -10, 10, 0 }, LeftArm = { 10, 0, -30 }, LeftHip = { 40, 0, 0 }, LeftKnee = { -38, 0, 0 }, RightHip = { -18, 0, 0 }, RightKnee = { -24, 0, 0 } },
+	SmashFollow = { Root = { -12, -8, 0, -0.35, 0.35 }, RightArm = { 36, 0, 4 }, Waist = { -20, -12, 0 }, Neck = { -4, 8, 0 }, LeftArm = { 14, 0, -28 }, LeftHip = { 34, 0, 0 }, LeftKnee = { -32, 0, 0 }, RightKnee = { -18, 0, 0 } },
+	PitchSet = { Root = { 0, 24, 0 }, Waist = { 0, 22, 0 }, Neck = { 0, -24, 0 }, RightArm = { 58, 0, 12 }, RightElbow = { 70, 0, 0 }, LeftArm = { 58, 0, -12 }, LeftElbow = { 70, 0, 0 } },
+	PitchBack = { Root = { 6, 34, 0, 0.1 }, RightArm = { 200, 0, 40 }, RightElbow = { 50, 0, 0 }, Waist = { 6, 38, 0 }, Neck = { 0, -30, 0 }, LeftArm = { 82, 0, -30 }, LeftHip = { 62, 0, 0 }, LeftKnee = { -70, 0, 0 }, RightKnee = { -12, 0, 0 } },
+	PitchRelease = { Root = { -16, -34, 0, -0.2, 0.6 }, RightArm = { 76, 0, -10 }, RightElbow = { 0, 0, 0 }, Waist = { -24, -38, 0 }, Neck = { 0, 30, 0 }, LeftArm = { -14, 0, -32 }, LeftHip = { 32, 0, 0 }, LeftKnee = { -24, 0, 0 }, RightHip = { -32, 0, 0 }, RightKnee = { -20, 0, 0 } },
+	PitchFollow = { Root = { -20, -46, 0, -0.25, 0.5 }, RightArm = { 38, 0, -42 }, RightElbow = { 30, 0, 0 }, Waist = { -30, -46, 0 }, Neck = { 0, 34, 0 }, LeftArm = { -22, 0, -26 }, LeftHip = { 36, 0, 0 }, LeftKnee = { -32, 0, 0 }, RightHip = { -40, 0, 0 }, RightKnee = { -40, 0, 0 } },
+	BowlWind = { Root = { 0, 6, 0, -0.45 }, RightArm = { -58, 0, 12 }, Waist = { -18, 8, 0 }, Neck = { 12, 0, 0 }, LeftArm = { 40, 0, -30 }, LeftHip = { 52, 0, 0 }, LeftKnee = { -66, 0, 0 }, RightKnee = { -46, 0, 0 } },
+	BowlRelease = { Root = { 0, -4, 0, -0.5, 0.5 }, RightArm = { 64, 0, 0 }, Waist = { -30, -4, 0 }, Neck = { 18, 0, 0 }, LeftArm = { 20, 0, -40 }, LeftHip = { 58, 0, 0 }, LeftKnee = { -68, 0, 0 }, RightHip = { -22, 0, 0 }, RightKnee = { -30, 0, 0 } },
+	BowlFollow = { Root = { 0, -6, 0, -0.35, 0.4 }, RightArm = { 112, 0, 0 }, Waist = { -18, -6, 0 }, Neck = { 12, 0, 0 }, LeftArm = { 16, 0, -40 }, LeftHip = { 50, 0, 0 }, LeftKnee = { -60, 0, 0 }, RightHip = { -26, 0, 0 }, RightKnee = { -24, 0, 0 } },
+	PalmWind = { Root = { 0, 22, 0, -0.1 }, RightArm = { 40, 0, 22 }, RightElbow = { 90, 0, 0 }, Waist = { 0, 28, 0 }, Neck = { 0, -14, 0 }, LeftArm = { 50, 0, -20 }, LeftElbow = { 50, 0, 0 }, RightKnee = { -18, 0, 0 } },
+	PalmPress = { Root = { -12, -12, 0, -0.15, 0.45 }, RightArm = { 92, 0, 0 }, RightElbow = { 0, 0, 0 }, LeftArm = { 72, 0, -22 }, LeftElbow = { 40, 0, 0 }, Waist = { -16, -12, 0 }, Neck = { 6, 8, 0 }, LeftHip = { 32, 0, 0 }, LeftKnee = { -32, 0, 0 }, RightHip = { -16, 0, 0 } },
+	PalmPush = { Root = { -16, -14, 0, -0.2, 0.6 }, RightArm = { 98, 0, 0 }, LeftArm = { 76, 0, -18 }, LeftElbow = { 30, 0, 0 }, Waist = { -20, -14, 0 }, Neck = { 6, 8, 0 }, LeftHip = { 38, 0, 0 }, LeftKnee = { -38, 0, 0 }, RightHip = { -20, 0, 0 }, RightKnee = { -10, 0, 0 } },
+	BreakerWindA = { Root = { 0, 0, 0, -0.3 }, RightArm = { 122, 0, 62 }, RightElbow = { 30, 0, 0 }, Waist = { 0, 46, 0 }, Neck = { 0, -30, 0 }, LeftArm = { 60, 0, -40 }, LeftKnee = { -25, 0, 0 }, RightKnee = { -25, 0, 0 } },
+	BreakerWindB = { Root = { 0, 0, 0, -0.35 }, RightArm = { 132, 10, 70 }, RightElbow = { 40, 0, 0 }, Waist = { 0, 52, 0 }, Neck = { 0, -34, 0 }, LeftArm = { 64, 0, -44 }, LeftKnee = { -30, 0, 0 }, RightKnee = { -30, 0, 0 } },
 }
 
+-- Left-handed version of a pose: swap Right/Left joints and flip Y/Z.
+local function mirror(pose)
+	local out = {}
+	for joint, v in pairs(pose) do
+		local target = joint
+		if joint:sub(1, 5) == &quot;Right&quot; then
+			target = &quot;Left&quot; .. joint:sub(6)
+		elseif joint:sub(1, 4) == &quot;Left&quot; then
+			target = &quot;Right&quot; .. joint:sub(5)
+		end
+		out[target] = { v[1], -v[2], -v[3], v[4], v[5] }
+	end
+	return out
+end
+TuskAnimation.Mirror = mirror
+do
+	local P = TuskAnimation.Poses
+	P.FlickLWind = mirror(P.FlickRWind)
+	P.FlickL = mirror(P.FlickR)
+	P.FlickLFollow = mirror(P.FlickRFollow)
+	P.JabLeft = mirror(P.Jab)
+	-- Older names kept so nothing else breaks.
+	P.BarrageA = P.FlickR
+	P.BarrageB = P.FlickL
+	P.SpinPoke = P.FlickR
+end
+
 --[[
-	Action sequences: list of keyframes { Time, Pose, (optional) Ease }.
-	The last keyframe&#x27;s Time is the length; after it the joints blend back.
+	Action sequences: { Time, Pose, Ease, Shake }. The last key&#x27;s Time is the
+	length; the move then holds briefly (HoldExtra) and settles back.
 ]]
 TuskAnimation.Actions = {
 	-- JOHNNY
-	M1_1 = { { 0, &quot;Rest&quot; }, { 0.06, &quot;FlickR&quot; }, { 0.22, &quot;FlickR&quot; } },
-	M1_2 = { { 0, &quot;Rest&quot; }, { 0.06, &quot;FlickL&quot; }, { 0.22, &quot;FlickL&quot; } },
-	M1_3 = { { 0, &quot;Rest&quot; }, { 0.08, &quot;FingerGun&quot; }, { 0.14, &quot;FingerGunRecoil&quot; }, { 0.27, &quot;FingerGun&quot; } },
-	M1_4 = { { 0, &quot;Rest&quot; }, { 0.12, &quot;SlamWindup&quot; }, { 0.2, &quot;Slam&quot; }, { 0.5, &quot;Slam&quot; } },
-	NailShot = { { 0, &quot;Rest&quot; }, { 0.12, &quot;FingerGun&quot; }, { 0.2, &quot;FingerGunRecoil&quot; }, { 0.45, &quot;FingerGun&quot; } },
+	M1_1 = { { 0, &quot;Rest&quot; }, { 0.05, &quot;FlickRWind&quot;, &quot;In&quot; }, { 0.11, &quot;FlickR&quot;, &quot;Back&quot;, 3 }, { 0.26, &quot;FlickRFollow&quot;, &quot;Sine&quot; } },
+	M1_2 = { { 0, &quot;Rest&quot; }, { 0.05, &quot;FlickLWind&quot;, &quot;In&quot; }, { 0.11, &quot;FlickL&quot;, &quot;Back&quot;, 3 }, { 0.26, &quot;FlickLFollow&quot;, &quot;Sine&quot; } },
+	M1_3 = { { 0, &quot;Rest&quot; }, { 0.06, &quot;FlickRWind&quot;, &quot;In&quot; }, { 0.11, &quot;FingerGun&quot;, &quot;Snap&quot; }, { 0.16, &quot;FingerGunRecoil&quot;, &quot;Snap&quot;, 4 }, { 0.3, &quot;FingerGun&quot;, &quot;Sine&quot; } },
+	M1_4 = { { 0, &quot;Rest&quot; }, { 0.14, &quot;SlamWindup&quot;, &quot;In&quot; }, { 0.22, &quot;Slam&quot;, &quot;Snap&quot;, 6 }, { 0.42, &quot;SlamFollow&quot;, &quot;Sine&quot; }, { 0.55, &quot;SlamFollow&quot; } },
+	NailShot = { { 0, &quot;Rest&quot; }, { 0.12, &quot;FingerGun&quot;, &quot;Sine&quot; }, { 0.2, &quot;FingerGunRecoil&quot;, &quot;Snap&quot;, 5 }, { 0.45, &quot;FingerGun&quot;, &quot;Back&quot; } },
 	NailBarrage = {
-		{ 0, &quot;Rest&quot; }, { 0.1, &quot;FlickR&quot; }, { 0.19, &quot;FlickL&quot; }, { 0.28, &quot;FlickR&quot; },
-		{ 0.37, &quot;FlickL&quot; }, { 0.46, &quot;FlickR&quot; }, { 0.55, &quot;FlickL&quot; }, { 0.8, &quot;FingerGun&quot; },
+		{ 0, &quot;Rest&quot; }, { 0.08, &quot;FlickRWind&quot;, &quot;In&quot; }, { 0.12, &quot;FlickR&quot;, &quot;Snap&quot;, 2 }, { 0.2, &quot;FlickL&quot;, &quot;Snap&quot;, 2 }, { 0.28, &quot;FlickR&quot;, &quot;Snap&quot;, 2 },
+		{ 0.36, &quot;FlickL&quot;, &quot;Snap&quot;, 2 }, { 0.44, &quot;FlickR&quot;, &quot;Snap&quot;, 2 }, { 0.52, &quot;FlickL&quot;, &quot;Snap&quot;, 2 }, { 0.62, &quot;FingerGunRecoil&quot;, &quot;Snap&quot;, 4 }, { 0.82, &quot;FingerGun&quot;, &quot;Sine&quot; },
 	},
-	SpinChargeLoop = { { 0, &quot;SpinChargeA&quot; }, { 0.12, &quot;SpinChargeB&quot; }, { 0.24, &quot;SpinChargeA&quot; } },
-	UndergroundDive = { { 0, &quot;Rest&quot; }, { 0.15, &quot;Dive&quot; }, { 0.55, &quot;Dive&quot; } },
-	NailDimension = { { 0, &quot;Rest&quot; }, { 0.2, &quot;Spread&quot; }, { 0.8, &quot;Spread&quot; } },
-	DimensionalStep = { { 0, &quot;Rest&quot; }, { 0.08, &quot;LungeStep&quot; }, { 0.35, &quot;LungeStep&quot; } },
-	SpatialPursuit = { { 0, &quot;Rest&quot; }, { 0.1, &quot;FlickR&quot; }, { 0.25, &quot;Spread&quot; }, { 0.6, &quot;Spread&quot; } },
-	DimensionalBreak = { { 0, &quot;Rest&quot; }, { 0.25, &quot;AwakenCrouch&quot; }, { 0.72, &quot;AwakenCrouch&quot; }, { 0.82, &quot;PushTwo&quot; }, { 1.2, &quot;PushTwo&quot; } },
-	GoldenSpinNail = { { 0, &quot;Rest&quot; }, { 0.15, &quot;WindSpin&quot; }, { 0.3, &quot;FingerGunRecoil&quot; }, { 0.6, &quot;FingerGun&quot; } },
-	GoldenPursuit = { { 0, &quot;Rest&quot; }, { 0.12, &quot;SlamWindup&quot; }, { 0.25, &quot;DashPunch&quot; }, { 0.7, &quot;DashPunch&quot; } },
+	SpinChargeLoop = { { 0, &quot;SpinChargeA&quot; }, { 0.12, &quot;SpinChargeB&quot;, &quot;Sine&quot; }, { 0.24, &quot;SpinChargeA&quot;, &quot;Sine&quot; } },
+	UndergroundDive = { { 0, &quot;Rest&quot; }, { 0.1, &quot;SpreadWind&quot;, &quot;In&quot; }, { 0.22, &quot;Dive&quot;, &quot;Snap&quot; }, { 0.55, &quot;Dive&quot; } },
+	NailDimension = { { 0, &quot;Rest&quot; }, { 0.16, &quot;SpreadWind&quot;, &quot;In&quot; }, { 0.28, &quot;Spread&quot;, &quot;Back&quot;, 3 }, { 0.8, &quot;Spread&quot; } },
+	DimensionalStep = { { 0, &quot;Rest&quot; }, { 0.06, &quot;FlickRWind&quot;, &quot;In&quot; }, { 0.12, &quot;LungeStep&quot;, &quot;Snap&quot;, 2 }, { 0.38, &quot;LungeStep&quot;, &quot;Sine&quot; } },
+	SpatialPursuit = { { 0, &quot;Rest&quot; }, { 0.08, &quot;FlickR&quot;, &quot;Snap&quot;, 2 }, { 0.22, &quot;SpreadWind&quot;, &quot;In&quot; }, { 0.32, &quot;Spread&quot;, &quot;Back&quot;, 3 }, { 0.6, &quot;Spread&quot; } },
+	DimensionalBreak = { { 0, &quot;Rest&quot; }, { 0.25, &quot;AwakenCrouch&quot;, &quot;In&quot; }, { 0.72, &quot;AwakenCrouch&quot;, &quot;Linear&quot;, 2 }, { 0.82, &quot;PushTwo&quot;, &quot;Snap&quot;, 6 }, { 1.2, &quot;PushTwo&quot;, &quot;Sine&quot; } },
+	GoldenSpinNail = { { 0, &quot;Rest&quot; }, { 0.16, &quot;WindSpin&quot;, &quot;In&quot; }, { 0.28, &quot;FingerGunRecoil&quot;, &quot;Snap&quot;, 6 }, { 0.6, &quot;FingerGun&quot;, &quot;Back&quot; } },
+	GoldenPursuit = { { 0, &quot;Rest&quot; }, { 0.12, &quot;SlamWindup&quot;, &quot;In&quot; }, { 0.24, &quot;DashPunch&quot;, &quot;Snap&quot;, 5 }, { 0.7, &quot;DashPunch&quot;, &quot;Sine&quot; } },
 
 	-- GYRO
-	G_M1_1 = { { 0, &quot;Rest&quot; }, { 0.06, &quot;Jab&quot; }, { 0.22, &quot;Jab&quot; } },
-	G_M1_2 = { { 0, &quot;Rest&quot; }, { 0.05, &quot;GHookWind&quot; }, { 0.12, &quot;GHook&quot; }, { 0.26, &quot;GHook&quot; } },
-	G_M1_3 = { { 0, &quot;Rest&quot; }, { 0.06, &quot;KickChamber&quot; }, { 0.12, &quot;FrontKick&quot; }, { 0.3, &quot;FrontKick&quot; } },
-	G_M1_4 = { { 0, &quot;Rest&quot; }, { 0.12, &quot;OverheadWind&quot; }, { 0.22, &quot;OverheadSmash&quot; }, { 0.5, &quot;OverheadSmash&quot; } },
-	GyroThrow = { { 0, &quot;Rest&quot; }, { 0.14, &quot;PitchBack&quot; }, { 0.24, &quot;PitchRelease&quot; }, { 0.55, &quot;PitchRelease&quot; } },
-	GyroBowl = { { 0, &quot;Rest&quot; }, { 0.14, &quot;BowlWind&quot; }, { 0.28, &quot;BowlRelease&quot; }, { 0.6, &quot;BowlRelease&quot; } },
-	GyroPalm = { { 0, &quot;Rest&quot; }, { 0.12, &quot;PalmWind&quot; }, { 0.2, &quot;PalmPress&quot; }, { 0.6, &quot;PalmPress&quot; } },
+	G_M1_1 = { { 0, &quot;Rest&quot; }, { 0.05, &quot;JabWind&quot;, &quot;In&quot; }, { 0.1, &quot;Jab&quot;, &quot;Back&quot;, 3 }, { 0.24, &quot;JabRecover&quot;, &quot;Sine&quot; } },
+	G_M1_2 = { { 0, &quot;Rest&quot; }, { 0.06, &quot;GHookWind&quot;, &quot;In&quot; }, { 0.12, &quot;GHook&quot;, &quot;Snap&quot;, 4 }, { 0.28, &quot;GHookFollow&quot;, &quot;Sine&quot; } },
+	G_M1_3 = { { 0, &quot;Rest&quot; }, { 0.07, &quot;KickChamber&quot;, &quot;In&quot; }, { 0.13, &quot;FrontKick&quot;, &quot;Back&quot;, 4 }, { 0.24, &quot;KickRechamber&quot;, &quot;Sine&quot; }, { 0.34, &quot;Rest&quot;, &quot;Sine&quot; } },
+	G_M1_4 = { { 0, &quot;Rest&quot; }, { 0.14, &quot;OverheadWind&quot;, &quot;In&quot; }, { 0.23, &quot;OverheadSmash&quot;, &quot;Snap&quot;, 7 }, { 0.42, &quot;SmashFollow&quot;, &quot;Sine&quot; }, { 0.55, &quot;SmashFollow&quot; } },
+	GyroThrow = { { 0, &quot;Rest&quot; }, { 0.06, &quot;PitchSet&quot;, &quot;Sine&quot; }, { 0.16, &quot;PitchBack&quot;, &quot;In&quot; }, { 0.24, &quot;PitchRelease&quot;, &quot;Snap&quot;, 5 }, { 0.42, &quot;PitchFollow&quot;, &quot;Sine&quot; }, { 0.58, &quot;PitchFollow&quot; } },
+	GyroBowl = { { 0, &quot;Rest&quot; }, { 0.14, &quot;BowlWind&quot;, &quot;In&quot; }, { 0.27, &quot;BowlRelease&quot;, &quot;Snap&quot;, 4 }, { 0.45, &quot;BowlFollow&quot;, &quot;Sine&quot; }, { 0.6, &quot;BowlFollow&quot; } },
+	GyroPalm = { { 0, &quot;Rest&quot; }, { 0.12, &quot;PalmWind&quot;, &quot;In&quot; }, { 0.2, &quot;PalmPress&quot;, &quot;Snap&quot;, 4 }, { 0.32, &quot;PalmPush&quot;, &quot;Linear&quot;, 7 }, { 0.6, &quot;PalmPush&quot;, &quot;Sine&quot;, 3 } },
 	GyroBreakerCharge = {
-		{ 0, &quot;Rest&quot; }, { 0.3, &quot;BreakerWindA&quot; }, { 0.55, &quot;BreakerWindB&quot; }, { 0.8, &quot;BreakerWindA&quot; },
-		{ 1.05, &quot;BreakerWindB&quot; }, { 1.3, &quot;BreakerWindA&quot; }, { 1.55, &quot;BreakerWindB&quot; }, { 1.75, &quot;PitchBack&quot; },
+		{ 0, &quot;Rest&quot; }, { 0.3, &quot;BreakerWindA&quot;, &quot;Sine&quot; }, { 0.55, &quot;BreakerWindB&quot;, &quot;Sine&quot;, 1 }, { 0.8, &quot;BreakerWindA&quot;, &quot;Sine&quot; },
+		{ 1.05, &quot;BreakerWindB&quot;, &quot;Sine&quot;, 2 }, { 1.3, &quot;BreakerWindA&quot;, &quot;Sine&quot; }, { 1.55, &quot;BreakerWindB&quot;, &quot;Sine&quot;, 3 }, { 1.75, &quot;PitchBack&quot;, &quot;In&quot; },
 	},
-	SpinningNailRelease = { { 0, &quot;ChargeNail&quot; }, { 0.06, &quot;PointRecoil&quot; }, { 0.4, &quot;Point&quot; } },
-	Awakening = { { 0, &quot;Rest&quot; }, { 0.35, &quot;AwakenCrouch&quot; }, { 1.2, &quot;AwakenCrouch&quot; }, { 1.45, &quot;AwakenRise&quot; }, { 2.2, &quot;AwakenRise&quot; } },
-	Emerge = { { 0, &quot;Sneak&quot; }, { 0.12, &quot;Emerge&quot; }, { 0.5, &quot;Emerge&quot; } },
-	Throw = { { 0, &quot;Rest&quot; }, { 0.14, &quot;SlamWindup&quot; }, { 0.24, &quot;Point&quot; }, { 0.5, &quot;Point&quot; } },
+	SpinningNailRelease = { { 0, &quot;ChargeNail&quot; }, { 0.06, &quot;PointRecoil&quot;, &quot;Snap&quot;, 6 }, { 0.4, &quot;Point&quot;, &quot;Back&quot; } },
+	Awakening = {
+		{ 0, &quot;Rest&quot; }, { 0.35, &quot;AwakenCrouch&quot;, &quot;In&quot; }, { 0.7, &quot;AwakenCrouch&quot;, &quot;Linear&quot;, 1 }, { 1.0, &quot;AwakenCrouch&quot;, &quot;Linear&quot;, 2 },
+		{ 1.2, &quot;AwakenCrouch&quot;, &quot;Linear&quot;, 3 }, { 1.45, &quot;AwakenRise&quot;, &quot;Back&quot;, 6 }, { 2.2, &quot;AwakenRise&quot;, &quot;Sine&quot; },
+	},
+	Emerge = { { 0, &quot;Sneak&quot; }, { 0.12, &quot;Emerge&quot;, &quot;Back&quot;, 3 }, { 0.5, &quot;Emerge&quot;, &quot;Sine&quot; } },
+	Throw = { { 0, &quot;Rest&quot; }, { 0.14, &quot;SlamWindup&quot;, &quot;In&quot; }, { 0.24, &quot;Point&quot;, &quot;Snap&quot;, 3 }, { 0.5, &quot;Point&quot;, &quot;Sine&quot; } },
 }
 
-local states = setmetatable({}, { __mode = &quot;k&quot; }) -- character -&gt; { Hold, ActionJob, Tracks }
+local states = setmetatable({}, { __mode = &quot;k&quot; }) -- character -&gt; { Hold, Action, Idle, Tracks }
 local warned = setmetatable({}, { __mode = &quot;k&quot; })
--- Extra time each move holds its last pose before relaxing (makes moves read clearly).
-TuskAnimation.HoldExtra = 0.12
+-- Extra time each move holds its last pose before settling (makes moves read clearly).
+TuskAnimation.HoldExtra = 0.1
+TuskAnimation.SettleTime = 0.3
+local OVERSHOOT = 1.14 -- &quot;Back&quot; eases swing this far past the pose, then settle
+local SHAKE_TIME = 0.16
+local SHAKE_JOINTS = { &quot;Root&quot;, &quot;Waist&quot;, &quot;RightArm&quot;, &quot;LeftArm&quot;, &quot;Neck&quot; }
+
+local EASES = {
+	Linear = function(a)
+		return a
+	end,
+	Out = function(a)
+		return 1 - (1 - a) ^ 3
+	end,
+	Snap = function(a)
+		return 1 - (1 - a) ^ 5
+	end,
+	In = function(a)
+		return a * a * a
+	end,
+	Sine = function(a)
+		return 0.5 - 0.5 * math.cos(a * math.pi)
+	end,
+}
 
 local function rigOf(character)
 	if character:FindFirstChild(&quot;UpperTorso&quot;) then
@@ -8624,13 +8776,14 @@ local function motorsOf(character)
 end
 
 -- C0 for a pose value (rotation applied in the parent part&#x27;s space, about the joint).
-local function poseC0(motor, value)
+local function poseC0(motor, value, scale)
 	local base = JointCache.original(motor)
 	if not value then
 		return base
 	end
-	local rotation = CFrame.Angles(math.rad(value[1]), math.rad(value[2]), math.rad(value[3]))
-	local position = base.Position + Vector3.new(0, value[4] or 0, 0)
+	scale = scale or 1
+	local rotation = CFrame.Angles(math.rad(value[1] * scale), math.rad(value[2] * scale), math.rad(value[3] * scale))
+	local position = base.Position + Vector3.new(0, (value[4] or 0) * scale, -(value[5] or 0) * scale)
 	return CFrame.new(position) * rotation * (base - base.Position)
 end
 
@@ -8644,7 +8797,7 @@ end
 local function getState(character)
 	local s = states[character]
 	if not s then
-		s = { Hold = nil, Action = nil, Tracks = {} }
+		s = { Hold = nil, Action = nil, Tracks = {}, SettleUntil = 0 }
 		states[character] = s
 	end
 	return s
@@ -8685,22 +8838,57 @@ local function playTrack(character, name, looped)
 	return track
 end
 
--- Blend every joint toward a target pose over `duration`.
+-- Smoothly settle every joint toward a target pose.
 local function blendTo(character, pose, duration)
+	local s = getState(character)
 	local motors = motorsOf(character)
 	local from, to = {}, {}
 	for name, motor in pairs(motors) do
 		from[name] = JointCache.read(motor)
 		to[name] = poseC0(motor, pose[name])
 	end
+	s.SettleUntil = os.clock() + duration
 	return VFXLib.animate(duration, function(a)
-		local e = VFXLib.easeOut(a)
+		local e = EASES.Sine(a)
 		for name, motor in pairs(motors) do
 			if motor.Parent then
 				JointCache.write(motor, from[name]:Lerp(to[name], e))
 			end
 		end
 	end)
+end
+
+-- Breathing idle layered on a Hold pose (chest rise, head and arm sway).
+local function startIdle(character, s)
+	VFXLib.cancel(s.Idle)
+	local motors = motorsOf(character)
+	local seed = math.random() * 10
+	s.Idle = VFXLib.animate(1e6, function()
+		if s.Action or not s.Hold or os.clock() &lt; s.SettleUntil then
+			return
+		end
+		local pose = resolvePose(s.Hold)
+		local t = os.clock() + seed
+		local breath = math.sin(t * 2.2)
+		local sway = math.sin(t * 1.1)
+		local extra = {
+			Waist = CFrame.Angles(math.rad(breath * 1.6), math.rad(sway * 1.2), 0),
+			Neck = CFrame.Angles(math.rad(-breath * 1.2), math.rad(math.sin(t * 0.7) * 3), 0),
+			RightArm = CFrame.Angles(math.rad(breath * 2.2), 0, math.rad(sway * 1.5)),
+			LeftArm = CFrame.Angles(math.rad(breath * 2.2), 0, math.rad(-sway * 1.5)),
+		}
+		for name, offset in pairs(extra) do
+			local motor = motors[name]
+			if motor and motor.Parent then
+				JointCache.write(motor, poseC0(motor, pose[name]) * offset)
+			end
+		end
+	end)
+end
+
+local function stopIdle(s)
+	VFXLib.cancel(s.Idle)
+	s.Idle = nil
 end
 
 function TuskAnimation.play(character, name)
@@ -8723,15 +8911,23 @@ function TuskAnimation.play(character, name)
 	local keys = {}
 	for i, frame in ipairs(frames) do
 		local pose = resolvePose(frame[2])
-		local c0s = {}
+		local ease = frame[3] or &quot;Out&quot;
+		local c0s, over = {}, nil
+		if ease == &quot;Back&quot; then
+			over = {}
+		end
 		for jointName, motor in pairs(motors) do
+			local value = pose[jointName] or holdPose[jointName]
 			if i == 1 then
 				c0s[jointName] = JointCache.read(motor)
 			else
-				c0s[jointName] = poseC0(motor, pose[jointName] or holdPose[jointName])
+				c0s[jointName] = poseC0(motor, value)
+				if over then
+					over[jointName] = poseC0(motor, value, OVERSHOOT)
+				end
 			end
 		end
-		keys[i] = { Time = frame[1], C0 = c0s }
+		keys[i] = { Time = frame[1], C0 = c0s, Over = over, Ease = ease, Shake = frame[4] }
 	end
 	local total = length + TuskAnimation.HoldExtra
 	local job
@@ -8745,16 +8941,40 @@ function TuskAnimation.play(character, name)
 		local nextKey = keys[math.min(k + 1, #keys)]
 		local span = math.max(nextKey.Time - current.Time, 1e-3)
 		local local01 = math.clamp((t - current.Time) / span, 0, 1)
-		local e = VFXLib.easeOut(local01)
+		-- Impact shake from the most recent key that has one.
+		local shake = 0
+		for i = 1, #keys do
+			local key = keys[i]
+			if key.Shake and key.Time &lt;= t and t &lt; key.Time + SHAKE_TIME then
+				shake = math.max(shake, key.Shake * (1 - (t - key.Time) / SHAKE_TIME))
+			end
+		end
 		for jointName, motor in pairs(motors) do
 			if motor.Parent then
-				JointCache.write(motor, current.C0[jointName]:Lerp(nextKey.C0[jointName], e))
+				local fromC0, toC0 = current.C0[jointName], nextKey.C0[jointName]
+				local c0
+				if nextKey.Over and nextKey ~= current then
+					-- Overshoot: snap past the pose, then settle back onto it.
+					if local01 &lt; 0.6 then
+						c0 = fromC0:Lerp(nextKey.Over[jointName], EASES.Snap(local01 / 0.6))
+					else
+						c0 = nextKey.Over[jointName]:Lerp(toC0, EASES.Sine((local01 - 0.6) / 0.4))
+					end
+				else
+					local ease = EASES[nextKey.Ease] or EASES.Out
+					c0 = fromC0:Lerp(toC0, ease(local01))
+				end
+				if shake &gt; 0 and table.find(SHAKE_JOINTS, jointName) then
+					local r = math.rad(shake)
+					c0 = c0 * CFrame.Angles((math.random() - 0.5) * r, (math.random() - 0.5) * r, (math.random() - 0.5) * r)
+				end
+				JointCache.write(motor, c0)
 			end
 		end
 	end, function()
 		if s.Action == job then
 			s.Action = nil
-			blendTo(character, resolvePose(s.Hold), 0.2)
+			blendTo(character, resolvePose(s.Hold), TuskAnimation.SettleTime)
 		end
 	end)
 	s.Action = job
@@ -8775,8 +8995,9 @@ function TuskAnimation.hold(character, poseName)
 		return
 	end
 	if not s.Action then
-		blendTo(character, resolvePose(poseName), 0.2)
+		blendTo(character, resolvePose(poseName), 0.25)
 	end
+	startIdle(character, s)
 end
 
 function TuskAnimation.stopHold(character, poseName)
@@ -8792,8 +9013,9 @@ function TuskAnimation.stopHold(character, poseName)
 		track:Stop(0.15)
 	end
 	s.Hold = nil
+	stopIdle(s)
 	if not s.Action then
-		blendTo(character, {}, 0.25)
+		blendTo(character, {}, TuskAnimation.SettleTime)
 	end
 end
 
@@ -8825,6 +9047,10 @@ function TuskAnimation.applyLocomotion(character, enabled)
 end
 
 Players.LocalPlayer.CharacterRemoving:Connect(function(character)
+	local s = states[character]
+	if s then
+		stopIdle(s)
+	end
 	states[character] = nil
 end)
 

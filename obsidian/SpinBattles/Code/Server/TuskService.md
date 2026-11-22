@@ -222,7 +222,7 @@ function TuskService.fireBall(player, state, spec)
 		Speed = spec.Speed,
 		Radius = spec.Radius,
 		Range = spec.Range,
-		Visual = { Style = spec.Style or "Throw", Scale = spec.Scale },
+		Visual = { Style = spec.Style or "Throw", Scale = spec.Scale, Bounce = spec.Bounce },
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd,
 	})
