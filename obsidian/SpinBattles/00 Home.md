@@ -8,6 +8,7 @@ A Steel Ball Run-inspired Roblox Battlegrounds game. This vault is the project's
 
 ## Start here
 - [[Vision]] · [[Ground Rules]] · [[Roadmap]]
+- **[[Where To Put Code]]** (every script, its location and its code)
 - [[Where Every File Goes]] · [[Install Steps]]
 - [[Test Checklist]] · [[Known Issues]] · [[Decision Log]]
 
