@@ -6,7 +6,7 @@ updated: 2026-11-22
 # Tusk Act 2: Wormhole combat
 Reached by using the previous Act's ultimate. Numbers are in `TuskConfig.Act2`.
 
-**Stand:** Magenta, bigger Act 1 with a crest of spikes, a glowing chest star and two small arms (built in code; send a reference image to refine it).
+**Stand:** rebuilt from the owner's reference images: pink mechanical body with a ribbed chest, a round head with a ribbed visor face and a blue star, two gold rods ending in purple drums, a pincer claw, and a big dotted pod with a yellow-and-blue star (built in code; send a reference image to refine it).
 
 | Input | Move |
 |---|---|

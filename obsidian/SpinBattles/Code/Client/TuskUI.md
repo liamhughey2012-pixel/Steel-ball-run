@@ -469,7 +469,14 @@ function TuskUI.step(act)
 	ultFill.Size = UDim2.fromScale(math.clamp(meter / max, 0, 1), 1)
 	local info = Registry.get(act)
 	local key = keyName("Ultimate")
-	if ready then
+	-- Locked for a while after each awakening.
+	local since = player:GetAttribute("TuskActSince")
+	local wait = TuskConfig.Ultimate.MinSecondsPerAct or 0
+	local lockLeft = since and math.max(0, wait - (workspace:GetServerTimeNow() - since)) or 0
+	if ready and lockLeft > 0 then
+		ultFill.BackgroundColor3 = Color3.fromRGB(90, 90, 120)
+		ultLabel.Text = info.Ultimate .. "  LOCKED " .. math.ceil(lockLeft) .. "s"
+	elseif ready then
 		local pulse = (math.sin(os.clock() * 6) + 1) / 2
 		ultFill.BackgroundColor3 = colors.Blue:Lerp(colors.Cyan, pulse)
 		ultLabel.Text = (key ~= "" and ("[" .. key .. "] ") or "") .. info.Ultimate .. " READY"
@@ -513,6 +520,7 @@ local DENY_TEXT = {
 	SneakAttackCooldown = "SNEAK ATTACK ON COOLDOWN",
 	NoTarget = "NO TARGET IN FRONT",
 	Blocked = "NO ROOM TO MOVE THERE",
+	TooSoon = "TUSK ISN'T READY TO AWAKEN YET",
 }
 
 function TuskUI.onState(data)

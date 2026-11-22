@@ -131,6 +131,11 @@ end
 
 function TuskService.addUlt(player, amount)
 	local max = TuskConfig.Ultimate.MaxMeter
+	local state = states[player]
+	local byAct = TuskConfig.Ultimate.GainByAct
+	if state and state.Act and byAct and byAct[state.Act] then
+		amount = amount * byAct[state.Act]
+	end
 	local current = player:GetAttribute("TuskUlt") or 0
 	player:SetAttribute("TuskUlt", math.clamp(current + amount, 0, max))
 end
@@ -139,6 +144,13 @@ function TuskService.spendUlt(player)
 	local max = TuskConfig.Ultimate.MaxMeter
 	if (player:GetAttribute("TuskUlt") or 0) < max then
 		TuskService.tell(player, "Denied", { Reason = "UltNotReady" })
+		return false
+	end
+	-- Each Act must be played for a while before the next awakening.
+	local state = states[player]
+	local wait = TuskConfig.Ultimate.MinSecondsPerAct or 0
+	if state and state.ActSince and os.clock() - state.ActSince < wait then
+		TuskService.tell(player, "Denied", { Reason = "TooSoon", Remaining = wait - (os.clock() - state.ActSince) })
 		return false
 	end
 	player:SetAttribute("TuskUlt", 0)
@@ -269,11 +281,18 @@ function TuskService.select(player, act, internal)
 	cleanupAct(player, state)
 	state.Act = act
 	state.LastSwitch = os.clock()
+	TuskService.markActStart(player, state)
 	player:SetAttribute("TuskSelectedAct", act)
 	if state.Character then
 		state.Character:SetAttribute("TuskAct", act)
 	end
 	TuskService.tell(player, "Equipped", { Act = act })
+end
+
+-- Remember when the current Act began (the HUD shows the lock timer).
+function TuskService.markActStart(player, state)
+	state.ActSince = os.clock()
+	player:SetAttribute("TuskActSince", workspace:GetServerTimeNow())
 end
 
 -- Awakening: move straight to another Act (no menu rules, no switch cooldown).
@@ -284,6 +303,7 @@ function TuskService.evolve(player, state, toAct)
 	local from = state.Act
 	cleanupAct(player, state)
 	state.Act = toAct
+	TuskService.markActStart(player, state)
 	player:SetAttribute("TuskSelectedAct", toAct)
 	if state.Character then
 		state.Character:SetAttribute("TuskAct", toAct)
@@ -398,6 +418,7 @@ local function onCharacter(player, character)
 	local progression = TuskConfig.Progression
 	if state.Act and progression.Mode == "Awaken" and progression.ResetOnDeath then
 		state.Act = progression.DefaultAct -- back to Act 1 after dying
+		TuskService.markActStart(player, state)
 	end
 	if state.Act then
 		character:SetAttribute("TuskAct", state.Act)

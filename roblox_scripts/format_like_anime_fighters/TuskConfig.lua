@@ -46,9 +46,16 @@ TuskConfig.Progression = {
 ---------------------------------------------------------------------------
 TuskConfig.Ultimate = {
 	MaxMeter = 100,
-	GainPerDamage = 1.6, -- meter gained per point of damage dealt with Tusk
-	StudioStartFull = true, -- Studio only: start full so ultimates can be tested
-	StudioRefill = true, -- Studio only: refill after each ultimate (test every Act quickly)
+	GainPerDamage = 0.9, -- meter gained per point of damage dealt with Tusk
+	-- Higher Acts fill the meter slower, so Act 4 takes real effort:
+	-- Act 1 ~110 damage, Act 2 ~160, Act 3 ~220 to awaken the next Act.
+	GainByAct = { 1, 0.7, 0.5, 0.45 },
+	-- After awakening, the ultimate stays locked this long (seconds),
+	-- so you can't chain straight from Act 1 to Act 4.
+	MinSecondsPerAct = 45,
+	-- Studio testing helpers (OFF by default; turn on to test every Act quickly):
+	StudioStartFull = false, -- start with a full meter
+	StudioRefill = false, -- refill after each ultimate
 }
 
 ---------------------------------------------------------------------------
@@ -59,7 +66,7 @@ TuskConfig.Ultimate = {
 -- Any Scripts inside a loaded model are removed for safety.
 ---------------------------------------------------------------------------
 TuskConfig.StandModels = {
-	[1] = { AssetId = 8768080824, Height = 3.2, Rotation = Vector3.new(0, 0, 0) }, -- "Tusk1" (owner's pick)
+	[1] = { AssetId = 0, Height = 3.2, Rotation = Vector3.new(0, 0, 0) }, -- 0 = new built-in Act 1 (set 8768080824 to use the "Tusk1" store model)
 	[2] = { AssetId = 0, Height = 3.6, Rotation = Vector3.new(0, 0, 0) },
 	[3] = { AssetId = 0, Height = 4.6, Rotation = Vector3.new(0, 0, 0) },
 	[4] = { AssetId = 0, Height = 6, Rotation = Vector3.new(0, 0, 0) },

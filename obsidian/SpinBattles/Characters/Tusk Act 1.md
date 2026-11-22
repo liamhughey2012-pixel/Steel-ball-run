@@ -4,7 +4,7 @@ status: built
 updated: 2026-11-22
 ---
 # Tusk Act 1: the beginning of Spin
-Stand: small pink, star-covered Tusk with floppy ears, a gold pin from the forehead star to the beak, and heart feet (built in code from the owner's image).
+Stand: rebuilt from the owner's two reference drawings: tilted pink egg, big five-point forehead star with dark fur, gold pin to a gold cone beak, heavy-lidded eyes with lashes and wavy tendrils, one big sweeping ear and one drooping ear, long chin with gold spikes, a side appendage with a horn, orange stars everywhere, five legs with heart feet.
 
 | Input | Move | What it does | Numbers (TuskConfig.Act1) |
 |---|---|---|---|
@@ -17,3 +17,6 @@ Stand: small pink, star-covered Tusk with floppy ears, a gold pin from the foreh
 Counterplay: M1 wind-up is cancelled by a stun; Spinning Nail is interrupted by a hit; the ultimate has a visible 1.7 s buildup; nails are dodgeable projectiles; there are stun caps and stun immunity.
 
 Status: 🧪 code complete, waiting for the owner's Studio test. See [[Test Checklist]].
+
+## Ultimate pacing
+The meter fills slower each Act (`GainByAct`), and the ultimate stays locked for 45 s after each awakening (`MinSecondsPerAct`). Studio test helpers (`StudioStartFull`, `StudioRefill`) are now OFF by default.
