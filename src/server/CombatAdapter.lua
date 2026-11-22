@@ -30,6 +30,9 @@ Adapter.Settings = {
 	BlockDamageMultiplier = 0.35,
 	BlockKnockbackMultiplier = 0.3,
 	IFrameAttribute = "IFrames", -- character attribute = invulnerable (dashes etc.)
+	ArmorAttribute = "Armored", -- character attribute = takes damage but no stun/knockback (ult wind-ups)
+	MaxKnockback = 90, -- hard cap so no move can fling players across the map
+	MaxStun = 1.0, -- hard cap on any single stun
 	StunAttribute = "Stunned",
 	StunWalkSpeedMultiplier = 0.15,
 	StunImmunityAfter = 0.5, -- seconds after a stun ends where no new stun applies
@@ -130,7 +133,11 @@ function Adapter.isBlocking(character)
 end
 
 function Adapter.applyStun(humanoid, duration)
+	duration = math.min(duration, Adapter.Settings.MaxStun)
 	if duration <= 0 then
+		return false
+	end
+	if humanoid.Parent and humanoid.Parent:GetAttribute(Adapter.Settings.ArmorAttribute) == true then
 		return false
 	end
 	if Adapter.Hooks.ApplyStun then
@@ -158,9 +165,14 @@ function Adapter.applyStun(humanoid, duration)
 	return true
 end
 
-function Adapter.applyKnockback(character, direction, strength)
+function Adapter.applyKnockback(character, direction, strength, upward)
 	local root = character:FindFirstChild("HumanoidRootPart")
-	if not root or strength <= 0 then
+	strength = math.min(strength or 0, Adapter.Settings.MaxKnockback)
+	upward = upward or strength * 0.3
+	if not root or (strength <= 0 and upward <= 0) then
+		return
+	end
+	if character:GetAttribute(Adapter.Settings.ArmorAttribute) == true then
 		return
 	end
 	local flat = Vector3.new(direction.X, 0, direction.Z)
@@ -174,14 +186,15 @@ function Adapter.applyKnockback(character, direction, strength)
 	velocity.Attachment0 = attachment
 	velocity.RelativeTo = Enum.ActuatorRelativeTo.World
 	velocity.MaxForce = math.huge
-	velocity.VectorVelocity = flat.Unit * strength + Vector3.new(0, strength * 0.3, 0)
+	velocity.VectorVelocity = flat.Unit * strength + Vector3.new(0, math.min(upward, Adapter.Settings.MaxKnockback), 0)
 	velocity.Parent = attachment
 	Debris:AddItem(attachment, Adapter.Settings.KnockbackDuration)
 end
 
 --[[
 	dealHit: the only entry point for Spin damage. Server only.
-	info = { Damage, Stun, Knockback, Direction, Position, Level, Perfect, Source }
+	info = { Damage, Stun, Knockback, Launch?, Direction, Position, Level, Perfect, Source }
+	Returns: hit:boolean, damageDealt:number
 ]]
 function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	if not Adapter.canBeHit(attackerPlayer, targetCharacter) then
@@ -202,7 +215,8 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	if not blocked then
 		Adapter.applyStun(humanoid, info.Stun or 0)
 	end
-	Adapter.applyKnockback(targetCharacter, info.Direction, knockback)
+	local launch = info.Launch and info.Launch * (blocked and s.BlockKnockbackMultiplier or 1) or nil
+	Adapter.applyKnockback(targetCharacter, info.Direction, knockback, launch)
 
 	FX:FireAllClients("Hit", {
 		Position = info.Position,
@@ -210,6 +224,7 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 		Perfect = info.Perfect,
 		Blocked = blocked,
 		Victim = targetCharacter,
+		Source = info.Source,
 		AttackerId = attackerPlayer and attackerPlayer.UserId or 0,
 	})
 	if attackerPlayer then
@@ -220,7 +235,7 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 			Perfect = info.Perfect,
 		})
 	end
-	return true
+	return true, damage
 end
 
 return Adapter

@@ -6,12 +6,16 @@
 
 	SpinRequest : client -> server  ("Start" | "Release", aimDirection | "Cancel")
 	SpinFX      : server -> client  (eventName, payloadTable)
+	              Also carries shared events: ProjectileSpawn/End, Hit, Damage.
+	TuskRequest : client -> server  (action, ...)  see TuskService
+	TuskFX      : server -> client  (eventName, payloadTable)
+	WorldFX     : server -> client  map / NPC events (NPCSay)
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local REMOTES = { "SpinRequest", "SpinFX" }
+local REMOTES = { "SpinRequest", "SpinFX", "TuskRequest", "TuskFX", "WorldFX" }
 
 local Net = {}
 local folder

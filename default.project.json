@@ -3,14 +3,25 @@
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
-      "SpinShared": { "$path": "src/shared" }
+      "SpinShared": {
+        "$path": "src/shared"
+      }
     },
     "ServerScriptService": {
-      "SpinServer": { "$path": "src/server" }
+      "SpinServer": {
+        "$path": "src/server"
+      }
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "SpinClient": { "$path": "src/client" }
+        "SpinClient": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "ServerStorage": {
+      "SpinTools": {
+        "$path": "src/tools"
       }
     }
   }

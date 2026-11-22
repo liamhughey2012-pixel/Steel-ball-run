@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Folder" referent="RBX7"><Properties><string name="Name">SpinShared</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">Maid</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Folder" referent="RBX11"><Properties><string name="Name">SpinShared</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">Maid</string><ProtectedString name="Source"><![CDATA[--[[
 	Maid  (ReplicatedStorage.SpinShared.Maid)
 	Tracks connections, instances and cleanup functions so effects always end.
 ]]
@@ -39,7 +39,106 @@ end
 Maid.Destroy = Maid.Clean
 
 return Maid
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX2"><Properties><string name="Name">Net</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX2"><Properties><string name="Name">NailModel</string><ProtectedString name="Source"><![CDATA[--[[
+	NailModel  (ReplicatedStorage.SpinShared.NailModel)
+
+	Procedural fingernail-bullet used by every Tusk nail attack: a metal
+	shaft, a flat head at the back and a tapered tip at the front.
+	The nail points down its Core's LookVector (-Z).
+
+	NailModel.build(length) -> Model (PrimaryPart = "Core")
+	  Core attachments: "Tip" (front), "Tail" (back), "Center".
+]]
+
+local TuskConfig = require(script.Parent.TuskConfig)
+
+local NailModel = {}
+
+local function part(model, props)
+	local p = Instance.new("Part")
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Massless = true
+	p.Material = Enum.Material.Metal
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for k, v in pairs(props) do
+		p[k] = v
+	end
+	p.Parent = model
+	return p
+end
+
+local function weld(a, b)
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = a
+	w.Part1 = b
+	w.Parent = b
+end
+
+function NailModel.build(length)
+	length = length or 1.3
+	local metal = TuskConfig.Colors.Metal
+	local model = Instance.new("Model")
+	model.Name = "TuskNail"
+
+	-- Shaft: Cylinder axis is X, so turn it to run along Z.
+	local core = part(model, {
+		Name = "Core",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(length * 0.7, length * 0.085, length * 0.085),
+		Color = metal,
+		Reflectance = 0.25,
+		Massless = false,
+	})
+	core.CFrame = CFrame.Angles(0, math.pi / 2, 0)
+	-- Pivot frame faces -Z, so Model:PivotTo(cf) points the tip down cf.LookVector.
+	core.PivotOffset = CFrame.Angles(0, -math.pi / 2, 0)
+	model.PrimaryPart = core
+
+	local head = part(model, {
+		Name = "Head",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(length * 0.05, length * 0.24, length * 0.24),
+		Color = metal:Lerp(Color3.new(1, 1, 1), 0.2),
+		Reflectance = 0.3,
+	})
+	head.CFrame = CFrame.new(0, 0, length * 0.36) * CFrame.Angles(0, math.pi / 2, 0)
+	weld(core, head)
+
+	local tip = part(model, {
+		Name = "Tip",
+		Size = Vector3.new(length * 0.085, length * 0.085, length * 0.36),
+		Color = metal:Lerp(Color3.new(1, 1, 1), 0.35),
+		Reflectance = 0.35,
+	})
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = tip
+	tip.CFrame = CFrame.new(0, 0, -length * 0.35)
+	weld(core, tip)
+
+	-- Attachments are placed in the core's (rotated) local space:
+	-- the core's local X axis runs along world Z here.
+	local function att(name, z)
+		local a = Instance.new("Attachment")
+		a.Name = name
+		a.Position = Vector3.new(-z, 0, 0)
+		a.Parent = core
+		return a
+	end
+	att("Tip", -length * 0.5)
+	att("Tail", length * 0.4)
+	att("Center", 0)
+
+	return model
+end
+
+return NailModel
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX3"><Properties><string name="Name">Net</string><ProtectedString name="Source"><![CDATA[--[[
 	Net  (ReplicatedStorage.SpinShared.Net)
 
 	Creates (server) or waits for (client) the RemoteEvents used by the
@@ -47,12 +146,16 @@ return Maid
 
 	SpinRequest : client -> server  ("Start" | "Release", aimDirection | "Cancel")
 	SpinFX      : server -> client  (eventName, payloadTable)
+	              Also carries shared events: ProjectileSpawn/End, Hit, Damage.
+	TuskRequest : client -> server  (action, ...)  see TuskService
+	TuskFX      : server -> client  (eventName, payloadTable)
+	WorldFX     : server -> client  map / NPC events (NPCSay)
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local REMOTES = { "SpinRequest", "SpinFX" }
+local REMOTES = { "SpinRequest", "SpinFX", "TuskRequest", "TuskFX", "WorldFX" }
 
 local Net = {}
 local folder
@@ -86,7 +189,7 @@ function Net.get(name)
 end
 
 return Net
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX3"><Properties><string name="Name">SpinConfig</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX4"><Properties><string name="Name">SpinConfig</string><ProtectedString name="Source"><![CDATA[--[[
 	SpinConfig  (ReplicatedStorage.SpinShared.SpinConfig)
 
 	Every tunable value for the Golden Spin / Steel Ball system.
@@ -234,7 +337,7 @@ function SpinConfig.getLevel(chargeTime, tolerance)
 end
 
 return SpinConfig
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX4"><Properties><string name="Name">SteelBallModel</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX5"><Properties><string name="Name">SteelBallModel</string><ProtectedString name="Source"><![CDATA[--[[
 	SteelBallModel  (ReplicatedStorage.SpinShared.SteelBallModel)
 
 	Procedurally builds the Steel Ball from the owner's reference images:
@@ -432,7 +535,527 @@ function SteelBallModel.build(diameter, detailed)
 end
 
 return SteelBallModel
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX5"><Properties><string name="Name">VFXQuality</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX6"><Properties><string name="Name">TuskActRegistry</string><ProtectedString name="Source"><![CDATA[--[[
+	TuskActRegistry  (ReplicatedStorage.SpinShared.TuskActRegistry)
+
+	The list of Tusk Acts: names, slot labels, themes and whether each
+	Act is implemented. The server refuses to equip an Act whose
+	Implemented flag is false, and the menu shows it as IN DEVELOPMENT
+	(locked, not a fake button).
+
+	To add an Act: create ServerScriptService.SpinServer.TuskActs.TuskActN,
+	add its client choreography in SpinClient.TuskActVFX.ActN, then set
+	Implemented = true here.
+]]
+
+local TuskActRegistry = {}
+
+TuskActRegistry.Acts = {
+	[1] = {
+		Name = "TUSK ACT 1",
+		Tagline = "The beginning of Spin",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(90, 230, 255), Secondary = Color3.fromRGB(40, 120, 255) },
+		M1 = "NAIL COMBO",
+		Abilities = { "NAIL SHOT", "NAIL BARRAGE", "SPINNING NAIL" },
+		AbilityKinds = { "Press", "Press", "Hold" }, -- Hold = charge on press, fire on release
+		Ultimate = "TUSK AWAKENING",
+	},
+	[2] = {
+		Name = "TUSK ACT 2",
+		Tagline = "Wormhole combat",
+		Implemented = false,
+		Theme = { Primary = Color3.fromRGB(70, 200, 255), Secondary = Color3.fromRGB(30, 80, 220) },
+		M1 = "DIMENSIONAL COMBO",
+		Abilities = { "WORMHOLE NAIL", "UNDERGROUND PURSUIT", "NAIL DIMENSION" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "DIMENSIONAL STORM",
+	},
+	[3] = {
+		Name = "TUSK ACT 3",
+		Tagline = "Master of spatial movement",
+		Implemented = false,
+		Theme = { Primary = Color3.fromRGB(60, 140, 255), Secondary = Color3.fromRGB(20, 40, 160) },
+		M1 = "WORMHOLE STRIKES",
+		Abilities = { "DIMENSIONAL STEP", "SPATIAL PURSUIT", "DIMENSIONAL BREAK" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "INFINITE DIMENSION",
+	},
+	[4] = {
+		Name = "TUSK ACT 4",
+		Tagline = "Infinite Rotation",
+		Implemented = false,
+		Theme = { Primary = Color3.fromRGB(255, 200, 70), Secondary = Color3.fromRGB(20, 40, 160) },
+		M1 = "INFINITE BARRAGE",
+		Abilities = { "GOLDEN SPIN NAIL", "INFINITE ROTATION", "GOLDEN PURSUIT" },
+		AbilityKinds = { "Press", "Hold", "Press" },
+		Ultimate = "INFINITE ROTATION",
+	},
+}
+
+function TuskActRegistry.get(act)
+	return TuskActRegistry.Acts[act]
+end
+
+function TuskActRegistry.isImplemented(act)
+	local info = TuskActRegistry.Acts[act]
+	return info ~= nil and info.Implemented == true
+end
+
+return TuskActRegistry
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX7"><Properties><string name="Name">TuskConfig</string><ProtectedString name="Source"><![CDATA[--[[
+	TuskConfig  (ReplicatedStorage.SpinShared.TuskConfig)
+
+	Every tunable number for Tusk. The server uses it for damage, timing,
+	ranges and validation; the client uses it for UI and visuals.
+	Balance changes go here, never in ability code.
+]]
+
+local TuskConfig = {}
+
+---------------------------------------------------------------------------
+-- Controls (PC / controller). Mobile uses the on-screen HUD buttons.
+---------------------------------------------------------------------------
+TuskConfig.Keys = {
+	M1 = { Keyboard = Enum.UserInputType.MouseButton1, Gamepad = Enum.KeyCode.ButtonR1 },
+	Ability1 = { Keyboard = Enum.KeyCode.One, Gamepad = Enum.KeyCode.ButtonX },
+	Ability2 = { Keyboard = Enum.KeyCode.Two, Gamepad = Enum.KeyCode.ButtonY },
+	Ability3 = { Keyboard = Enum.KeyCode.Three, Gamepad = Enum.KeyCode.ButtonB },
+	Ultimate = { Keyboard = Enum.KeyCode.G, Gamepad = Enum.KeyCode.DPadUp },
+	Sneak = { Keyboard = Enum.KeyCode.C, Gamepad = Enum.KeyCode.ButtonL1 },
+	ActMenu = { Keyboard = Enum.KeyCode.T, Gamepad = Enum.KeyCode.DPadDown },
+}
+
+---------------------------------------------------------------------------
+-- Act selection / progression
+---------------------------------------------------------------------------
+TuskConfig.Progression = {
+	-- "Menu":   any implemented Act can be picked from the Act menu (T).
+	-- "Unlock": only Acts that IsUnlocked(player, act) approves.
+	--           Point IsUnlocked at your existing unlock / quest system.
+	Mode = "Menu",
+	DefaultAct = 1,
+	AutoEquip = true, -- players spawn as Tusk (set false if your game picks movesets elsewhere)
+	ShowSelectionMenu = true,
+	IsUnlocked = nil, -- function(player, actNumber) -> boolean
+	SwitchCooldown = 3, -- seconds between Act switches
+}
+
+---------------------------------------------------------------------------
+-- Ultimate meter (shared by every Act)
+---------------------------------------------------------------------------
+TuskConfig.Ultimate = {
+	MaxMeter = 100,
+	GainPerDamage = 1.6, -- meter gained per point of damage dealt with Tusk
+	StudioStartFull = true, -- Studio only: start full so ultimates can be tested
+}
+
+---------------------------------------------------------------------------
+-- Tusk Sneak (shared by every Act)
+---------------------------------------------------------------------------
+TuskConfig.Sneak = {
+	WalkSpeedMultiplier = 0.45,
+	MaxDuration = 8, -- auto-exit after this long
+	Cooldown = 4, -- after leaving sneak
+	CameraDrop = 1.4, -- studs the camera lowers
+	Attack = { -- press M1 while sneaking
+		Cooldown = 12,
+		FailCooldown = 2, -- no valid target found
+		Range = 35,
+		ConeDegrees = 75, -- target must be within this cone in front
+		BurrowTime = 0.7, -- time underground before emerging
+		WarningTime = 0.45, -- the target sees a warning this long before emergence
+		EmergeDistance = 3.5, -- studs behind the target
+		MaxTargetDrift = 14, -- if the target ran further than this, the attack whiffs
+		HitRadius = 7,
+		Damage = 12,
+		Stun = 0.6,
+		Knockback = 18,
+		Launch = 38, -- upward velocity
+	},
+}
+
+---------------------------------------------------------------------------
+-- ACT 1 — the beginning of Spin
+---------------------------------------------------------------------------
+TuskConfig.Act1 = {
+	M1 = {
+		Interval = 0.3, -- min time between hits
+		ResetAfter = 1.1, -- combo resets after this long without hitting
+		EndLag = 0.9, -- recovery after the 4th hit
+		Windup = 0.11, -- hitbox delay after the swing starts
+		HitboxSize = Vector3.new(5, 5, 5.5),
+		HitboxForward = 3.2,
+		MaxTargets = 3,
+		Hits = {
+			{ Name = "Tusk Jab", Damage = 3, Stun = 0.45, Knockback = 3 },
+			{ Name = "Nail Strike", Damage = 3.5, Stun = 0.45, Knockback = 4 },
+			{ Name = "Spinning Assist", Damage = 3, Stun = 0.45, Knockback = 5, Projectile = { Speed = 160, Radius = 0.9, Range = 22 } },
+			{ Name = "Shock Finisher", Damage = 6, Stun = 0.5, Knockback = 42, Launch = 10, ShockwaveRadius = 7 },
+		},
+	},
+	NailShot = {
+		Cooldown = 4,
+		Startup = 0.18,
+		Damage = 8,
+		Speed = 150,
+		Radius = 0.7,
+		Range = 160,
+		Stun = 0.35,
+		Knockback = 10,
+	},
+	NailBarrage = {
+		Cooldown = 9,
+		Startup = 0.15,
+		Count = 5,
+		Interval = 0.09,
+		SpreadDegrees = 7,
+		Damage = 3,
+		Speed = 170,
+		Radius = 0.6,
+		Range = 140,
+		Stun = 0.25,
+		Knockback = 4,
+	},
+	SpinningNail = {
+		Cooldown = 10,
+		FullChargeAt = 1.2, -- seconds to full charge (golden-blue trail)
+		MaxHold = 3, -- auto-release
+		WalkSpeedMultiplier = 0.6,
+		MinDamage = 8,
+		MaxDamage = 19,
+		MinSpeed = 120,
+		MaxSpeed = 190,
+		MinRadius = 0.8,
+		MaxRadius = 1.6,
+		Range = 200,
+		Stun = 0.55,
+		Knockback = 38,
+	},
+	Ultimate = { -- TUSK AWAKENING
+		Windup = 1.7, -- cinematic buildup (armored, can't be stunned)
+		Radius = 18,
+		Damage = 15,
+		Stun = 0.6,
+		Knockback = 55,
+		Launch = 25,
+		Duration = 20, -- Awakened state length
+		CooldownMultiplier = 0.6, -- ability cooldowns while Awakened
+		DamageMultiplier = 1.25, -- nail damage while Awakened
+	},
+}
+
+---------------------------------------------------------------------------
+-- Sound ids. Upload assets/audio/tusk_*.ogg (Creator Hub > Asset Manager)
+-- and paste "rbxassetid://..." here. Empty string = silent.
+---------------------------------------------------------------------------
+TuskConfig.Sounds = {
+	Swing = "", -- tusk_swing.ogg
+	Hit = "", -- tusk_hit.ogg
+	Finisher = "", -- tusk_finisher.ogg
+	NailFire = "", -- tusk_nail_fire.ogg
+	NailImpact = "", -- tusk_nail_impact.ogg
+	ChargeLoop = "", -- tusk_charge_loop.ogg
+	ChargeFull = "", -- tusk_charge_full.ogg
+	AwakeningBuild = "", -- tusk_awakening_build.ogg
+	AwakeningBurst = "", -- tusk_awakening_burst.ogg
+	SneakIn = "", -- tusk_sneak_in.ogg
+	Burrow = "", -- tusk_burrow.ogg
+	Warning = "", -- tusk_warning.ogg
+	Emerge = "", -- tusk_emerge.ogg
+}
+
+---------------------------------------------------------------------------
+-- Optional uploaded animations. Leave "" to use the built-in procedural
+-- poses. Paste an id to have that move play your real animation instead.
+---------------------------------------------------------------------------
+TuskConfig.AnimationIds = {
+	Idle = "", -- replaces the character's idle while Tusk is equipped
+	Walk = "",
+	Run = "",
+	Sneak = "",
+	M1_1 = "",
+	M1_2 = "",
+	M1_3 = "",
+	M1_4 = "",
+	NailShot = "",
+	NailBarrage = "",
+	SpinningNailCharge = "",
+	SpinningNailRelease = "",
+	Awakening = "",
+	Burrow = "",
+	Emerge = "",
+}
+
+TuskConfig.Colors = {
+	Cyan = Color3.fromRGB(90, 230, 255),
+	Blue = Color3.fromRGB(40, 120, 255),
+	DeepBlue = Color3.fromRGB(20, 40, 160),
+	Ice = Color3.fromRGB(210, 250, 255),
+	Gold = Color3.fromRGB(255, 200, 70),
+	GoldLight = Color3.fromRGB(255, 240, 170),
+	Pink = Color3.fromRGB(236, 110, 196),
+	PinkDark = Color3.fromRGB(170, 52, 132),
+	Star = Color3.fromRGB(255, 196, 60),
+	Heart = Color3.fromRGB(196, 40, 98),
+	Metal = Color3.fromRGB(170, 175, 185),
+}
+
+return TuskConfig
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX8"><Properties><string name="Name">TuskStandModels</string><ProtectedString name="Source"><![CDATA[--[[
+	TuskStandModels  (ReplicatedStorage.SpinShared.TuskStandModels)
+
+	Builds the Tusk Stand for each Act. Built on each client (visual only),
+	so Stands never cost server physics or replication.
+
+	TuskStandModels.build(act, scale) -> model, rig
+	  rig.Body           root part of the Stand (anchored by the caller)
+	  rig.Joints[name]   = { Weld = Weld, Base = CFrame } for animated pieces
+	                       (EarL, EarR, Leg1..Leg4). Animate with
+	                       Weld.C0 = Base * rotation.
+	  rig.NailPoint      Attachment where Tusk's nail energy gathers
+
+	Act 1 (from the owner's reference): small pink egg-shaped body covered
+	in gold stars, floppy ears, a big forehead star with a gold pin running
+	to a yellow beak, heavy-lidded eyes and four thin legs ending in hearts.
+
+	Using your own model instead: put a Model named "TuskAct1" (PrimaryPart
+	set) in ReplicatedStorage.SpinShared.Assets. It is cloned and resized,
+	and gets the same idle motion (ears and legs only animate on the
+	built-in model).
+]]
+
+local TuskConfig = require(script.Parent.TuskConfig)
+
+local TuskStandModels = {}
+
+local colors = TuskConfig.Colors
+
+local function part(model, props)
+	local p = Instance.new("Part")
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Massless = true
+	p.Material = Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for k, v in pairs(props) do
+		if k ~= "Ellipsoid" then
+			p[k] = v
+		end
+	end
+	if props.Ellipsoid then
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere -- fits the part size, so any Size = ellipsoid
+		mesh.Parent = p
+	end
+	p.Parent = model
+	return p
+end
+
+-- Weld `p` to `body` at local CFrame `cf` (C0 can be animated later).
+local function attach(body, p, cf)
+	local w = Instance.new("Weld")
+	w.Part0 = body
+	w.Part1 = p
+	w.C0 = cf
+	w.Parent = p
+	p.CFrame = body.CFrame * cf
+	return w
+end
+
+local function override(act, scale)
+	local assets = script.Parent:FindFirstChild("Assets")
+	local custom = assets and assets:FindFirstChild("TuskAct" .. act)
+	if custom and custom:IsA("Model") and custom.PrimaryPart then
+		local clone = custom:Clone()
+		local size = clone:GetExtentsSize()
+		local largest = math.max(size.X, size.Y, size.Z)
+		if largest > 0 then
+			clone:ScaleTo(clone:GetScale() * (2.4 * scale) / largest)
+		end
+		for _, d in ipairs(clone:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.CanCollide = false
+				d.CanQuery = false
+				d.CanTouch = false
+				d.Massless = true
+				d.Anchored = d == clone.PrimaryPart
+			end
+		end
+		local point = Instance.new("Attachment")
+		point.Name = "NailPoint"
+		point.Position = Vector3.new(0, 0, -size.Z * 0.5)
+		point.Parent = clone.PrimaryPart
+		return clone, { Body = clone.PrimaryPart, Joints = {}, NailPoint = point }
+	end
+	return nil
+end
+
+-- Five-point star made of five thin spikes, laid on the surface facing `normal`.
+local function star(model, body, center, normal, size, color)
+	local up = math.abs(normal.Y) > 0.9 and Vector3.new(1, 0, 0) or Vector3.new(0, 1, 0)
+	local base = CFrame.lookAt(center, center + normal, up)
+	for i = 0, 4 do
+		local spike = part(model, {
+			Name = "StarSpike",
+			Size = Vector3.new(size * 0.28, size * 0.55, size * 0.04),
+			Color = color,
+			Ellipsoid = true,
+		})
+		local cf = base * CFrame.Angles(0, 0, i * math.pi * 2 / 5) * CFrame.new(0, size * 0.22, 0)
+		attach(body, spike, cf)
+	end
+end
+
+local function buildAct1(scale)
+	local s = scale
+	local model = Instance.new("Model")
+	model.Name = "TuskAct1"
+
+	local body = part(model, {
+		Name = "Body",
+		Size = Vector3.new(1.35, 1.8, 1.25) * s,
+		Color = colors.Pink,
+		Ellipsoid = true,
+		Massless = false,
+	})
+	body.CFrame = CFrame.new()
+	body.Anchored = true
+	model.PrimaryPart = body
+
+	local rig = { Body = body, Joints = {} }
+
+	-- Shading belly (darker lower half reads as volume from a distance).
+	local belly = part(model, { Name = "Belly", Size = Vector3.new(1.2, 1.1, 1.15) * s, Color = colors.PinkDark, Ellipsoid = true })
+	attach(body, belly, CFrame.new(0, -0.35 * s, 0.04 * s))
+
+	-- Eyes: white balls, black pupils, heavy tilted brows (grumpy look).
+	for _, side in ipairs({ -1, 1 }) do
+		local eye = part(model, { Name = "Eye", Size = Vector3.new(0.32, 0.32, 0.22) * s, Color = Color3.new(1, 1, 1), Ellipsoid = true })
+		attach(body, eye, CFrame.new(side * 0.26 * s, 0.12 * s, -0.55 * s))
+		local pupil = part(model, { Name = "Pupil", Size = Vector3.new(0.13, 0.13, 0.06) * s, Color = Color3.fromRGB(20, 10, 20), Ellipsoid = true })
+		attach(body, pupil, CFrame.new(side * 0.25 * s, 0.1 * s, -0.66 * s))
+		local brow = part(model, { Name = "Brow", Size = Vector3.new(0.4, 0.1, 0.12) * s, Color = colors.PinkDark })
+		attach(body, brow, CFrame.new(side * 0.26 * s, 0.3 * s, -0.58 * s) * CFrame.Angles(0, 0, side * -0.35))
+	end
+
+	-- Beak: elongated yellow ellipsoid pointing forward and down.
+	local beak = part(model, { Name = "Beak", Size = Vector3.new(0.2, 0.2, 0.55) * s, Color = colors.Star, Ellipsoid = true })
+	attach(body, beak, CFrame.new(0.05 * s, -0.12 * s, -0.75 * s) * CFrame.Angles(-0.55, 0.15, 0))
+
+	-- Forehead star and the gold pin running from it to the beak.
+	local starCenter = Vector3.new(-0.18 * s, 0.62 * s, -0.42 * s)
+	star(model, body, starCenter, Vector3.new(-0.2, 0.55, -0.8).Unit, 0.5 * s, colors.Star)
+	local beakTip = Vector3.new(0.12 * s, -0.32 * s, -0.95 * s)
+	local pinLength = (beakTip - starCenter).Magnitude
+	local pin = part(model, {
+		Name = "Pin",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(pinLength, 0.035 * s, 0.035 * s),
+		Color = colors.Gold,
+		Material = Enum.Material.Metal,
+		Reflectance = 0.3,
+	})
+	-- Cylinder axis is X: build a frame whose RightVector runs star -> beak.
+	local mid = (starCenter + beakTip) / 2
+	attach(body, pin, CFrame.lookAt(mid, beakTip) * CFrame.Angles(0, math.pi / 2, 0))
+
+	-- Small gold stars scattered over the body.
+	local starSpots = {
+		Vector3.new(0.55, 0.45, -0.2), Vector3.new(0.6, -0.1, 0.1), Vector3.new(-0.6, 0.0, 0.15),
+		Vector3.new(-0.45, -0.55, -0.3), Vector3.new(0.35, -0.6, -0.4), Vector3.new(0.1, 0.75, 0.35),
+		Vector3.new(-0.3, 0.4, 0.55), Vector3.new(0.4, 0.1, 0.55), Vector3.new(0.0, -0.75, 0.3),
+	}
+	for _, spot in ipairs(starSpots) do
+		local n = Vector3.new(spot.X / 0.675, spot.Y / 0.9, spot.Z / 0.625).Unit
+		local surface = Vector3.new(n.X * 0.675, n.Y * 0.9, n.Z * 0.625) * s * 1.01
+		star(model, body, surface, n, 0.22 * s, colors.Star)
+	end
+
+	-- Floppy ears (animated).
+	local ears = {
+		{ Name = "EarL", Base = CFrame.new(-0.45 * s, 0.75 * s, 0) * CFrame.Angles(0, 0, 0.9), Size = Vector3.new(0.38, 1.25, 0.12) },
+		{ Name = "EarR", Base = CFrame.new(0.5 * s, 0.65 * s, 0.05 * s) * CFrame.Angles(0.2, 0, -1.35), Size = Vector3.new(0.34, 1.1, 0.12) },
+	}
+	for _, e in ipairs(ears) do
+		local ear = part(model, { Name = e.Name, Size = e.Size * s, Color = colors.Pink, Ellipsoid = true })
+		local inner = part(model, { Name = e.Name .. "Inner", Size = e.Size * s * Vector3.new(0.55, 0.75, 0.5), Color = colors.PinkDark, Ellipsoid = true })
+		local offset = CFrame.new(0, e.Size.Y * s * 0.45, 0)
+		local w = attach(body, ear, e.Base * offset)
+		attach(ear, inner, CFrame.new(0, 0, -0.03 * s))
+		rig.Joints[e.Name] = { Weld = w, Base = e.Base, Offset = offset }
+	end
+
+	-- Little fin spikes around the silhouette.
+	local fins = {
+		CFrame.new(-0.62 * s, 0.25 * s, 0) * CFrame.Angles(0, 0, 1.2),
+		CFrame.new(0.66 * s, 0.2 * s, -0.1 * s) * CFrame.Angles(0, 0, -1.3),
+		CFrame.new(-0.55 * s, -0.4 * s, 0) * CFrame.Angles(0, 0, 2.0),
+		CFrame.new(0.58 * s, -0.45 * s, 0) * CFrame.Angles(0, 0, -2.1),
+	}
+	for _, cf in ipairs(fins) do
+		local fin = part(model, { Name = "Fin", Size = Vector3.new(0.16, 0.42, 0.08) * s, Color = colors.Pink, Ellipsoid = true })
+		attach(body, fin, cf * CFrame.new(0, 0.18 * s, 0))
+	end
+
+	-- Four thin legs ending in hearts (animated swing).
+	for i = 1, 4 do
+		local x = (-1.5 + (i - 1)) * 0.22 * s
+		local base = CFrame.new(x, -0.78 * s, (i % 2 == 0 and 0.12 or -0.1) * s)
+		local legLength = (0.55 + (i % 2) * 0.12) * s
+		local leg = part(model, {
+			Name = "Leg" .. i,
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(legLength, 0.05 * s, 0.05 * s),
+			Color = colors.Pink,
+		})
+		-- Cylinder axis is X; rotate so it hangs down from the joint.
+		local offset = CFrame.new(0, -legLength / 2, 0) * CFrame.Angles(0, 0, math.pi / 2)
+		local w = attach(body, leg, base * offset)
+		rig.Joints["Leg" .. i] = { Weld = w, Base = base, Offset = offset }
+
+		-- Heart foot: two lobes and a point, attached to the leg's bottom end.
+		local footCF = CFrame.new(-legLength / 2 - 0.12 * s, 0, 0) * CFrame.Angles(0, 0, -math.pi / 2)
+		for _, side in ipairs({ -1, 1 }) do
+			local lobe = part(model, { Name = "HeartLobe", Size = Vector3.new(0.2, 0.2, 0.1) * s, Color = colors.Heart, Ellipsoid = true })
+			attach(leg, lobe, footCF * CFrame.new(side * 0.075 * s, 0.03 * s, 0))
+		end
+		local point = part(model, { Name = "HeartPoint", Size = Vector3.new(0.2, 0.2, 0.1) * s, Color = colors.Heart, Ellipsoid = true })
+		attach(leg, point, footCF * CFrame.new(0, -0.08 * s, 0) * CFrame.Angles(0, 0, math.pi / 4))
+	end
+
+	local nailPoint = Instance.new("Attachment")
+	nailPoint.Name = "NailPoint"
+	nailPoint.Position = Vector3.new(0, -0.1 * s, -0.9 * s)
+	nailPoint.Parent = body
+	rig.NailPoint = nailPoint
+
+	return model, rig
+end
+
+local builders = {
+	[1] = buildAct1,
+}
+
+function TuskStandModels.build(act, scale)
+	scale = scale or 1
+	local model, rig = override(act, scale)
+	if model then
+		return model, rig
+	end
+	local builder = builders[act]
+	if not builder then
+		return nil
+	end
+	return builder(scale)
+end
+
+return TuskStandModels
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX9"><Properties><string name="Name">VFXQuality</string><ProtectedString name="Source"><![CDATA[--[[
 	VFXQuality  (ReplicatedStorage.SpinShared.VFXQuality)
 
 	Per-player visual quality. Purely client-side: it never changes gameplay.
@@ -505,7 +1128,7 @@ function VFXQuality.cycle()
 end
 
 return VFXQuality
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX6"><Properties><string name="Name">WreckingBallModel</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX10"><Properties><string name="Name">WreckingBallModel</string><ProtectedString name="Source"><![CDATA[--[[
 	WreckingBallModel  (ReplicatedStorage.SpinShared.WreckingBallModel)
 
 	Procedurally builds a Wrecking Ball from the owner's reference image:

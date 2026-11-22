@@ -1,13 +1,18 @@
 --[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
-	Boots the server half of the Golden Spin / Steel Ball system.
+	Boots every server system: Golden Spin, Tusk, NPCs and Studio test dummies.
 ]]
 
-local SpinService = require(script.SpinService)
-local TestDummies = require(script.TestDummies)
 local ProjectileService = require(script.ProjectileService)
-local SpinConfig = require(game:GetService("ReplicatedStorage").SpinShared.SpinConfig)
+local SpinService = require(script.SpinService)
+local TuskService = require(script.TuskService)
+local NPCService = require(script.NPCService)
+local TestDummies = require(script.TestDummies)
 
-ProjectileService.MaxActivePerPlayer = SpinConfig.Projectile.MaxActivePerPlayer
+-- Shared projectile budget (Tusk's barrage fires several nails at once).
+ProjectileService.MaxActivePerPlayer = 12
+
 SpinService.init()
+TuskService.init()
+NPCService.init()
 TestDummies.init()

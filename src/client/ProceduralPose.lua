@@ -22,10 +22,10 @@ ProceduralPose.Poses = {
 	Throw = { Pitch = 80, Roll = 0 }, -- whipped forward at release
 }
 
-local originals = setmetatable({}, { __mode = "k" }) -- Motor6D -> original C0
 local jobs = setmetatable({}, { __mode = "k" })
 
 local VFXLib = require(script.Parent.VFXLib)
+local JointCache = require(script.Parent.JointCache)
 
 local function getShoulder(character)
 	local upper = character:FindFirstChild("RightUpperArm")
@@ -68,10 +68,7 @@ function ProceduralPose.play(character, poseName, duration)
 	if not motor or not pose then
 		return
 	end
-	if not originals[motor] then
-		originals[motor] = motor.C0
-	end
-	tweenC0(motor, originals[motor] * poseOffset(rig, pose), duration or 0.15)
+	tweenC0(motor, JointCache.original(motor) * poseOffset(rig, pose), duration or 0.15)
 end
 
 function ProceduralPose.reset(character, duration)
@@ -79,8 +76,8 @@ function ProceduralPose.reset(character, duration)
 		return
 	end
 	local motor = getShoulder(character)
-	if motor and originals[motor] then
-		tweenC0(motor, originals[motor], duration or 0.25)
+	if motor then
+		tweenC0(motor, JointCache.original(motor), duration or 0.25)
 	end
 end
 

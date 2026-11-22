@@ -45,7 +45,7 @@ HEADER = ('<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" '
           'xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">')
 
 os.makedirs("install", exist_ok=True)
-for src, name in (("src/shared", "SpinShared"), ("src/server", "SpinServer"), ("src/client", "SpinClient")):
+for src, name in (("src/shared", "SpinShared"), ("src/server", "SpinServer"), ("src/client", "SpinClient"), ("src/tools", "SpinTools")):
     with open(f"install/{name}.rbxmx", "w", encoding="utf-8") as f:
         f.write(HEADER + root(src, name) + "</roblox>")
     print("wrote", f"install/{name}.rbxmx")

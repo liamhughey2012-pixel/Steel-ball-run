@@ -1,17 +1,22 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Script" referent="RBX13"><Properties><string name="Name">SpinServer</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Script" referent="RBX23"><Properties><string name="Name">SpinServer</string><ProtectedString name="Source"><![CDATA[--[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
-	Boots the server half of the Golden Spin / Steel Ball system.
+	Boots every server system: Golden Spin, Tusk, NPCs and Studio test dummies.
 ]]
 
-local SpinService = require(script.SpinService)
-local TestDummies = require(script.TestDummies)
 local ProjectileService = require(script.ProjectileService)
-local SpinConfig = require(game:GetService("ReplicatedStorage").SpinShared.SpinConfig)
+local SpinService = require(script.SpinService)
+local TuskService = require(script.TuskService)
+local NPCService = require(script.NPCService)
+local TestDummies = require(script.TestDummies)
 
-ProjectileService.MaxActivePerPlayer = SpinConfig.Projectile.MaxActivePerPlayer
+-- Shared projectile budget (Tusk's barrage fires several nails at once).
+ProjectileService.MaxActivePerPlayer = 12
+
 SpinService.init()
+TuskService.init()
+NPCService.init()
 TestDummies.init()
-]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX8"><Properties><string name="Name">CombatAdapter</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX12"><Properties><string name="Name">CombatAdapter</string><ProtectedString name="Source"><![CDATA[--[[
 	CombatAdapter  (ServerScriptService.SpinServer.CombatAdapter)
 
 	THE ONE PLACE the Spin system touches combat. If SPIN BATTLEGROUNDS
@@ -43,6 +48,9 @@ Adapter.Settings = {
 	BlockDamageMultiplier = 0.35,
 	BlockKnockbackMultiplier = 0.3,
 	IFrameAttribute = "IFrames", -- character attribute = invulnerable (dashes etc.)
+	ArmorAttribute = "Armored", -- character attribute = takes damage but no stun/knockback (ult wind-ups)
+	MaxKnockback = 90, -- hard cap so no move can fling players across the map
+	MaxStun = 1.0, -- hard cap on any single stun
 	StunAttribute = "Stunned",
 	StunWalkSpeedMultiplier = 0.15,
 	StunImmunityAfter = 0.5, -- seconds after a stun ends where no new stun applies
@@ -143,7 +151,11 @@ function Adapter.isBlocking(character)
 end
 
 function Adapter.applyStun(humanoid, duration)
+	duration = math.min(duration, Adapter.Settings.MaxStun)
 	if duration <= 0 then
+		return false
+	end
+	if humanoid.Parent and humanoid.Parent:GetAttribute(Adapter.Settings.ArmorAttribute) == true then
 		return false
 	end
 	if Adapter.Hooks.ApplyStun then
@@ -171,9 +183,14 @@ function Adapter.applyStun(humanoid, duration)
 	return true
 end
 
-function Adapter.applyKnockback(character, direction, strength)
+function Adapter.applyKnockback(character, direction, strength, upward)
 	local root = character:FindFirstChild("HumanoidRootPart")
-	if not root or strength <= 0 then
+	strength = math.min(strength or 0, Adapter.Settings.MaxKnockback)
+	upward = upward or strength * 0.3
+	if not root or (strength <= 0 and upward <= 0) then
+		return
+	end
+	if character:GetAttribute(Adapter.Settings.ArmorAttribute) == true then
 		return
 	end
 	local flat = Vector3.new(direction.X, 0, direction.Z)
@@ -187,14 +204,15 @@ function Adapter.applyKnockback(character, direction, strength)
 	velocity.Attachment0 = attachment
 	velocity.RelativeTo = Enum.ActuatorRelativeTo.World
 	velocity.MaxForce = math.huge
-	velocity.VectorVelocity = flat.Unit * strength + Vector3.new(0, strength * 0.3, 0)
+	velocity.VectorVelocity = flat.Unit * strength + Vector3.new(0, math.min(upward, Adapter.Settings.MaxKnockback), 0)
 	velocity.Parent = attachment
 	Debris:AddItem(attachment, Adapter.Settings.KnockbackDuration)
 end
 
 --[[
 	dealHit: the only entry point for Spin damage. Server only.
-	info = { Damage, Stun, Knockback, Direction, Position, Level, Perfect, Source }
+	info = { Damage, Stun, Knockback, Launch?, Direction, Position, Level, Perfect, Source }
+	Returns: hit:boolean, damageDealt:number
 ]]
 function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	if not Adapter.canBeHit(attackerPlayer, targetCharacter) then
@@ -215,7 +233,8 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	if not blocked then
 		Adapter.applyStun(humanoid, info.Stun or 0)
 	end
-	Adapter.applyKnockback(targetCharacter, info.Direction, knockback)
+	local launch = info.Launch and info.Launch * (blocked and s.BlockKnockbackMultiplier or 1) or nil
+	Adapter.applyKnockback(targetCharacter, info.Direction, knockback, launch)
 
 	FX:FireAllClients("Hit", {
 		Position = info.Position,
@@ -223,6 +242,7 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 		Perfect = info.Perfect,
 		Blocked = blocked,
 		Victim = targetCharacter,
+		Source = info.Source,
 		AttackerId = attackerPlayer and attackerPlayer.UserId or 0,
 	})
 	if attackerPlayer then
@@ -233,11 +253,11 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 			Perfect = info.Perfect,
 		})
 	end
-	return true
+	return true, damage
 end
 
 return Adapter
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX9"><Properties><string name="Name">CooldownService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX13"><Properties><string name="Name">CooldownService</string><ProtectedString name="Source"><![CDATA[--[[
 	CooldownService  (ServerScriptService.SpinServer.CooldownService)
 	Server-owned cooldowns. Clients only ever display what the server says.
 	Reusable by any ability: CooldownService.start(player, "AbilityKey", seconds)
@@ -281,7 +301,221 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return CooldownService
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX10"><Properties><string name="Name">ProjectileService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX14"><Properties><string name="Name">NPCService</string><ProtectedString name="Source"><![CDATA[--[[
+	NPCService  (ServerScriptService.SpinServer.NPCService)
+
+	Turns the markers in workspace.SBRMap.NPCSpawns (made by SBRMapBuilder)
+	into living NPCs:
+	  * R15 characters with role-based outfits colours and a name tag
+	  * "Talk" ProximityPrompt: cycles through that NPC's lines
+	  * Racers jog the track waypoints; others wander near home
+	  * occasional ambient lines to nearby players
+	  * respawn if they fall out of the world
+	NPCs carry the IFrames attribute, so no attack can hurt them, and an
+	"NPC" attribute so other systems can recognise them.
+	Does nothing if the map isn't in the place.
+]]
+
+local Players = game:GetService("Players")
+
+local Net = require(game:GetService("ReplicatedStorage").SpinShared.Net)
+
+local NPCService = {}
+
+local ROLE_STYLE = {
+	Announcer = { Torso = Color3.fromRGB(150, 30, 40), Legs = Color3.fromRGB(40, 35, 30), Speed = 0 },
+	Official = { Torso = Color3.fromRGB(40, 50, 80), Legs = Color3.fromRGB(30, 30, 35), Speed = 8 },
+	Racer = { Torso = Color3.fromRGB(70, 120, 170), Legs = Color3.fromRGB(110, 80, 50), Speed = 16 },
+	Guard = { Torso = Color3.fromRGB(110, 80, 50), Legs = Color3.fromRGB(50, 40, 30), Speed = 9 },
+	Spectator = { Torso = Color3.fromRGB(160, 140, 100), Legs = Color3.fromRGB(80, 60, 45), Speed = 7 },
+}
+local SKIN = { Color3.fromRGB(234, 184, 146), Color3.fromRGB(204, 142, 105), Color3.fromRGB(160, 105, 75), Color3.fromRGB(110, 70, 50) }
+
+local npcs = {}
+local WorldFX
+
+local function splitLines(s)
+	local lines = {}
+	for line in string.gmatch(s or "", "[^|]+") do
+		table.insert(lines, line)
+	end
+	return lines
+end
+
+local function say(npc, line, toPlayer)
+	local payload = { NPC = npc.Model, Text = line }
+	if toPlayer then
+		WorldFX:FireClient(toPlayer, "NPCSay", payload)
+	else
+		WorldFX:FireAllClients("NPCSay", payload)
+	end
+end
+
+local function spawnNPC(marker, waypoints, index)
+	local role = marker:GetAttribute("Role") or "Spectator"
+	local style = ROLE_STYLE[role] or ROLE_STYLE.Spectator
+	local description = Instance.new("HumanoidDescription")
+	local skin = SKIN[(index % #SKIN) + 1]
+	description.HeadColor = skin
+	description.LeftArmColor = style.Torso
+	description.RightArmColor = style.Torso
+	description.TorsoColor = style.Torso
+	description.LeftLegColor = style.Legs
+	description.RightLegColor = style.Legs
+	local ok, model = pcall(function()
+		return Players:CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not model then
+		warn("[NPCService] could not create NPC:", model)
+		return nil
+	end
+	local displayName = marker:GetAttribute("DisplayName") or marker.Name
+	model.Name = displayName
+	model:SetAttribute("NPC", true)
+	model:SetAttribute("IFrames", true)
+	model:SetAttribute("Role", role)
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	humanoid.DisplayName = displayName
+	humanoid.NameDisplayDistance = 40
+	humanoid.WalkSpeed = style.Speed
+	humanoid.BreakJointsOnDeath = false
+	local home = marker.Position + Vector3.new(0, 3, 0)
+	model:PivotTo(CFrame.new(home) * CFrame.Angles(0, math.rad(index * 47), 0))
+	model.Parent = marker.Parent.Parent:FindFirstChild("NPCs") or marker.Parent.Parent
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Talk"
+	prompt.ObjectText = displayName
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = model:WaitForChild("HumanoidRootPart")
+
+	local npc = {
+		Model = model,
+		Humanoid = humanoid,
+		Marker = marker,
+		Home = home,
+		Role = role,
+		Wander = marker:GetAttribute("WanderRadius") or 0,
+		Lines = splitLines(marker:GetAttribute("Lines")),
+		LineIndex = 0,
+		NextMove = os.clock() + math.random() * 4,
+		Waypoint = 1,
+		Waypoints = waypoints,
+		Index = index,
+		Talking = 0,
+	}
+	prompt.Triggered:Connect(function(player)
+		if #npc.Lines == 0 then
+			return
+		end
+		npc.LineIndex = npc.LineIndex % #npc.Lines + 1
+		npc.Talking = os.clock() + 4
+		humanoid:MoveTo(model.HumanoidRootPart.Position) -- stop and chat
+		local playerRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if playerRoot then
+			local pos = model.HumanoidRootPart.Position
+			model:PivotTo(CFrame.lookAt(pos, Vector3.new(playerRoot.Position.X, pos.Y, playerRoot.Position.Z)))
+		end
+		say(npc, npc.Lines[npc.LineIndex], nil)
+	end)
+	return npc
+end
+
+local function think(npc, now)
+	local model = npc.Model
+	local root = model.Parent and model:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	if root.Position.Y < -60 then
+		model:PivotTo(CFrame.new(npc.Home)) -- fell out of the world
+		return
+	end
+	if now < npc.Talking or now < npc.NextMove then
+		return
+	end
+	if npc.Role == "Racer" and #npc.Waypoints > 0 then
+		local wp = npc.Waypoints[npc.Waypoint]
+		npc.Humanoid:MoveTo(wp.Position + Vector3.new(npc.Index % 2 == 0 and 3 or -3, 0, 0))
+		if (root.Position - wp.Position).Magnitude < 8 then
+			npc.Waypoint = npc.Waypoint % #npc.Waypoints + 1
+		end
+		npc.NextMove = now + 0.5
+	elseif npc.Wander > 0 then
+		local angle = math.random() * math.pi * 2
+		local dist = math.random() * npc.Wander
+		npc.Humanoid:MoveTo(npc.Home + Vector3.new(math.cos(angle) * dist, 0, math.sin(angle) * dist))
+		npc.NextMove = now + 4 + math.random() * 5
+	else
+		npc.NextMove = now + 10
+	end
+end
+
+-- Ambient line from an NPC close to a player, every so often.
+local function ambientChatter()
+	local candidates = {}
+	for _, npc in ipairs(npcs) do
+		local root = npc.Model:FindFirstChild("HumanoidRootPart")
+		if root and #npc.Lines > 0 then
+			for _, player in ipairs(Players:GetPlayers()) do
+				local pr = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				if pr and (pr.Position - root.Position).Magnitude < 45 then
+					table.insert(candidates, npc)
+					break
+				end
+			end
+		end
+	end
+	if #candidates > 0 then
+		local npc = candidates[math.random(1, #candidates)]
+		say(npc, npc.Lines[math.random(1, #npc.Lines)], nil)
+	end
+end
+
+function NPCService.init()
+	WorldFX = Net.get("WorldFX")
+	task.spawn(function()
+		local map = workspace:FindFirstChild("SBRMap") or workspace:WaitForChild("SBRMap", 10)
+		local spawns = map and map:FindFirstChild("NPCSpawns")
+		if not spawns then
+			return -- no map in this place: nothing to do
+		end
+		local container = Instance.new("Folder")
+		container.Name = "NPCs"
+		container.Parent = map
+		local waypoints = {}
+		local wpFolder = map:FindFirstChild("RacerWaypoints")
+		if wpFolder then
+			waypoints = wpFolder:GetChildren()
+			table.sort(waypoints, function(a, b)
+				return (a:GetAttribute("Order") or 0) < (b:GetAttribute("Order") or 0)
+			end)
+		end
+		for i, marker in ipairs(spawns:GetChildren()) do
+			local npc = spawnNPC(marker, waypoints, i)
+			if npc then
+				table.insert(npcs, npc)
+			end
+		end
+		-- One shared low-frequency loop for all NPC brains (no per-NPC Heartbeat).
+		local nextChatter = os.clock() + 20
+		while true do
+			local now = os.clock()
+			for _, npc in ipairs(npcs) do
+				think(npc, now)
+			end
+			if now >= nextChatter then
+				nextChatter = now + 20 + math.random() * 20
+				ambientChatter()
+			end
+			task.wait(0.5)
+		end
+	end)
+end
+
+return NPCService
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX15"><Properties><string name="Name">ProjectileService</string><ProtectedString name="Source"><![CDATA[--[[
 	ProjectileService  (ServerScriptService.SpinServer.ProjectileService)
 
 	Server-simulated projectiles. The server owns position, collision and
@@ -465,7 +699,7 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return ProjectileService
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX11"><Properties><string name="Name">SpinService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX16"><Properties><string name="Name">SpinService</string><ProtectedString name="Source"><![CDATA[--[[
 	SpinService  (ServerScriptService.SpinServer.SpinService)
 
 	Server authority for the charge-based Golden Spin throw.
@@ -728,7 +962,7 @@ function SpinService.init()
 end
 
 return SpinService
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX12"><Properties><string name="Name">TestDummies</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX17"><Properties><string name="Name">TestDummies</string><ProtectedString name="Source"><![CDATA[--[[
 	TestDummies  (ServerScriptService.SpinServer.TestDummies)
 	Studio-only practice targets so Spin can be tested solo.
 	Never runs in a live server (guarded by RunService:IsStudio()).
@@ -787,4 +1021,1104 @@ function TestDummies.init()
 end
 
 return TestDummies
+]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX19"><Properties><string name="Name">TuskActs</string></Properties><Item class="ModuleScript" referent="RBX18"><Properties><string name="Name">TuskAct1</string><ProtectedString name="Source"><![CDATA[--[[
+	TuskAct1  (ServerScriptService.SpinServer.TuskActs.TuskAct1)
+
+	Server logic for Tusk Act 1, "the beginning of Spin".
+	  M1        NAIL COMBO: jab, nail strike, spinning nail assist, shock finisher
+	  Ability 1 NAIL SHOT: one spinning nail
+	  Ability 2 NAIL BARRAGE: five nails fanned out
+	  Ability 3 SPINNING NAIL: hold to charge, release (golden-blue at full charge)
+	  Ultimate  TUSK AWAKENING: armored cinematic burst, then 20 s Awakened
+	            (faster cooldowns, stronger nails)
+
+	Every number is in TuskConfig.Act1. All hits go through S.hit()
+	(CombatAdapter), all timing and cooldowns live here on the server.
+	Visual events are sent with S.fx(); clients choreograph them in
+	SpinClient.TuskActVFX.Act1.
+]]
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+
+local Act1 = {}
+local cfg = TuskConfig.Act1
+
+local HAND_OFFSET = CFrame.new(0.9, 0.55, -1.5) -- right-hand fingertip area
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function nailDamage(state, base)
+	return state.Awakened and base * cfg.Ultimate.DamageMultiplier or base
+end
+
+local function cooldown(state, base)
+	return state.Awakened and base * cfg.Ultimate.CooldownMultiplier or base
+end
+
+---------------------------------------------------------------------------
+-- M1: NAIL COMBO
+---------------------------------------------------------------------------
+function Act1.M1(S, player, state, aim)
+	local m = cfg.M1
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	local now = os.clock()
+	if now - state.LastM1 > m.ResetAfter then
+		state.Combo = 0
+	end
+	local index = state.Combo + 1
+	state.Combo = index >= 4 and 0 or index
+	state.LastM1 = now
+	S.lock(state, index == 4 and m.EndLag or m.Interval)
+
+	local character, _, root = alive(S, player)
+	local hit = m.Hits[index]
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("M1", { Character = character, Act = 1, Index = index })
+
+	task.delay(m.Windup, function()
+		-- Getting stunned during the wind-up cancels the hit (trades are fair).
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		if hit.Projectile then
+			local p = hit.Projectile
+			S.fireNail(player, state, {
+				Origin = S.origin(char, r, HAND_OFFSET),
+				Direction = direction,
+				Speed = p.Speed,
+				Radius = p.Radius,
+				Range = p.Range,
+				Style = "M1",
+				OnHit = function(target, position)
+					S.hit(player, target, {
+						Damage = hit.Damage,
+						Stun = hit.Stun,
+						Knockback = hit.Knockback,
+						Direction = direction,
+						Position = position,
+						Source = "TuskM1",
+					})
+				end,
+			})
+			return
+		end
+
+		local boxCF = r.CFrame * CFrame.new(0, 0, -m.HitboxForward)
+		local targets = S.Hitbox.inBox(char, boxCF, m.HitboxSize, m.MaxTargets)
+		local landed = false
+		for _, target in ipairs(targets) do
+			local targetRoot = target:FindFirstChild("HumanoidRootPart")
+			if targetRoot and S.Hitbox.lineOfSight(r.Position, targetRoot.Position, { char, target }) then
+				local ok = S.hit(player, target, {
+					Damage = hit.Damage,
+					Stun = hit.Stun,
+					Knockback = hit.Knockback,
+					Launch = hit.Launch,
+					Direction = targetRoot.Position - r.Position,
+					Position = targetRoot.Position,
+					Source = "TuskM1",
+				})
+				landed = landed or ok
+			end
+		end
+		if index == 4 then
+			S.fx("M1Finisher", { Character = char, Act = 1, Position = boxCF.Position, Radius = hit.ShockwaveRadius, Hit = landed })
+		end
+	end)
+end
+
+---------------------------------------------------------------------------
+-- Abilities
+---------------------------------------------------------------------------
+local function nailShot(S, player, state, aim)
+	local c = cfg.NailShot
+	if S.isBusy(state) or state.Charging or not S.cooldownReady(player, state, "NailShot", 1) then
+		return
+	end
+	S.startCooldown(player, state, "NailShot", cooldown(state, c.Cooldown), 1)
+	S.lock(state, c.Startup + 0.2)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = 1, Move = "NailShot", Phase = "Startup", Direction = direction, Startup = c.Startup })
+
+	task.delay(c.Startup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		S.fireNail(player, state, {
+			Origin = S.origin(char, r, HAND_OFFSET),
+			Direction = direction,
+			Speed = c.Speed,
+			Radius = c.Radius,
+			Range = c.Range,
+			Style = "Shot",
+			OnHit = function(target, position)
+				S.hit(player, target, {
+					Damage = nailDamage(state, c.Damage),
+					Stun = c.Stun,
+					Knockback = c.Knockback,
+					Direction = direction,
+					Position = position,
+					Source = "TuskNailShot",
+				})
+			end,
+		})
+	end)
+end
+
+-- Fixed fan pattern (not random) so the barrage is readable and dodgeable.
+local BARRAGE_PATTERN = { { 0, 0 }, { -1, 0.3 }, { 1, -0.2 }, { -0.5, -0.4 }, { 0.6, 0.5 }, { 0, 0.2 }, { -1, -0.3 } }
+
+local function nailBarrage(S, player, state, aim)
+	local c = cfg.NailBarrage
+	if S.isBusy(state) or state.Charging or not S.cooldownReady(player, state, "NailBarrage", 2) then
+		return
+	end
+	S.startCooldown(player, state, "NailBarrage", cooldown(state, c.Cooldown), 2)
+	S.lock(state, c.Startup + c.Count * c.Interval + 0.15)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = 1, Move = "NailBarrage", Phase = "Startup", Direction = direction, Startup = c.Startup, Count = c.Count, Interval = c.Interval })
+
+	for i = 1, c.Count do
+		task.delay(c.Startup + (i - 1) * c.Interval, function()
+			if not S.stillValid(player, state, life) then
+				return
+			end
+			local char, _, r = alive(S, player)
+			local pattern = BARRAGE_PATTERN[(i - 1) % #BARRAGE_PATTERN + 1]
+			local spread = math.rad(c.SpreadDegrees)
+			local look = CFrame.lookAt(Vector3.new(), direction)
+			local dir = (look * CFrame.Angles(pattern[2] * spread * 0.5, pattern[1] * spread, 0)).LookVector
+			S.fireNail(player, state, {
+				Origin = S.origin(char, r, HAND_OFFSET),
+				Direction = dir,
+				Speed = c.Speed,
+				Radius = c.Radius,
+				Range = c.Range,
+				Style = "Barrage",
+				OnHit = function(target, position)
+					S.hit(player, target, {
+						Damage = nailDamage(state, c.Damage),
+						Stun = c.Stun,
+						Knockback = c.Knockback,
+						Direction = dir,
+						Position = position,
+						Source = "TuskNailBarrage",
+					})
+				end,
+			})
+		end)
+	end
+end
+
+local function spinningNailRelease(S, player, state, aim)
+	local c = cfg.SpinningNail
+	local charge = S.endCharge(player, state)
+	if not charge or charge.Move ~= "SpinningNail" then
+		return
+	end
+	local character, _, root = alive(S, player)
+	if not character then
+		return
+	end
+	local t = math.clamp((os.clock() - charge.Start) / c.FullChargeAt, 0, 1)
+	local full = t >= 1
+	local direction = S.aim(aim, root)
+	local function lerp(a, b)
+		return a + (b - a) * t
+	end
+	S.startCooldown(player, state, "SpinningNail", cooldown(state, c.Cooldown), 3)
+	S.lock(state, 0.3)
+	S.fx("Ability", { Character = character, Act = 1, Move = "SpinningNail", Phase = "Release", Charge = t, Full = full, Direction = direction })
+	S.fireNail(player, state, {
+		Origin = S.origin(character, root, HAND_OFFSET),
+		Direction = direction,
+		Speed = lerp(c.MinSpeed, c.MaxSpeed),
+		Radius = lerp(c.MinRadius, c.MaxRadius),
+		Range = c.Range,
+		Style = "Spinning",
+		Charge = t,
+		OnHit = function(target, position)
+			S.hit(player, target, {
+				Damage = nailDamage(state, lerp(c.MinDamage, c.MaxDamage)),
+				Stun = c.Stun * (0.5 + t * 0.5),
+				Knockback = c.Knockback * (0.4 + t * 0.6),
+				Direction = direction,
+				Position = position,
+				Source = "TuskSpinningNail",
+			})
+		end,
+	})
+end
+
+local function spinningNailPress(S, player, state)
+	local c = cfg.SpinningNail
+	if S.isBusy(state) or state.Charging or not S.cooldownReady(player, state, "SpinningNail", 3) then
+		return
+	end
+	local charge = S.beginCharge(player, state, "SpinningNail", 3, c.WalkSpeedMultiplier)
+	local token = charge.Token
+	task.delay(c.MaxHold, function()
+		if state.Charging and state.Charging.Token == token then
+			spinningNailRelease(S, player, state, nil) -- auto-release forward
+		end
+	end)
+end
+
+function Act1.Ability(S, player, state, slot, phase, aim)
+	if slot == 1 and phase == "Press" then
+		nailShot(S, player, state, aim)
+	elseif slot == 2 and phase == "Press" then
+		nailBarrage(S, player, state, aim)
+	elseif slot == 3 then
+		if phase == "Press" then
+			spinningNailPress(S, player, state)
+		else
+			spinningNailRelease(S, player, state, aim)
+		end
+	end
+end
+
+function Act1.CancelCharge(S, player, state)
+	local charge = S.endCharge(player, state)
+	if charge then
+		S.startCooldown(player, state, charge.Move, 1.5, charge.Slot)
+		S.fx("Ability", { Character = state.Character, Act = 1, Move = charge.Move, Phase = "Cancel" })
+	end
+end
+
+---------------------------------------------------------------------------
+-- Ultimate: TUSK AWAKENING
+---------------------------------------------------------------------------
+local function endAwakening(S, player, state)
+	state.Awakened = false
+	state.AwakenToken = nil
+	if state.Character then
+		state.Character:SetAttribute("TuskAwakened", nil)
+	end
+	S.tell(player, "AwakenEnded", {})
+end
+
+function Act1.Ultimate(S, player, state, aim)
+	local u = cfg.Ultimate
+	if S.isBusy(state) or state.Charging or state.Awakened then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	local character = alive(S, player)
+	local life = state.Life
+	S.lock(state, u.Windup + 0.4)
+	character:SetAttribute("Armored", true)
+	S.fx("Ultimate", { Character = character, Act = 1, Phase = "Start", Windup = u.Windup })
+
+	task.delay(u.Windup, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+		if not S.stillValid(player, state, life, true) then
+			return
+		end
+		local char, _, root = alive(S, player)
+		for _, target in ipairs(S.Hitbox.inRadius(char, root.Position, u.Radius, 8)) do
+			local targetRoot = target:FindFirstChild("HumanoidRootPart")
+			if targetRoot and S.Hitbox.lineOfSight(root.Position, targetRoot.Position, { char, target }) then
+				S.hit(player, target, {
+					Damage = u.Damage,
+					Stun = u.Stun,
+					Knockback = u.Knockback,
+					Launch = u.Launch,
+					Direction = targetRoot.Position - root.Position,
+					Position = targetRoot.Position,
+					Source = "TuskAwakening",
+				})
+			end
+		end
+		S.fx("Ultimate", { Character = char, Act = 1, Phase = "Burst", Position = root.Position, Radius = u.Radius })
+
+		state.Awakened = true
+		local token = {}
+		state.AwakenToken = token
+		char:SetAttribute("TuskAwakened", true)
+		S.tell(player, "Awakened", { Duration = u.Duration })
+		task.delay(u.Duration, function()
+			if state.AwakenToken == token then
+				endAwakening(S, player, state)
+			end
+		end)
+	end)
+end
+
+function Act1.Cleanup(S, player, state)
+	if state.Charging then
+		S.endCharge(player, state)
+	end
+	if state.Awakened then
+		endAwakening(S, player, state)
+	end
+end
+
+return Act1
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX20"><Properties><string name="Name">TuskHitbox</string><ProtectedString name="Source"><![CDATA[--[[
+	TuskHitbox  (ServerScriptService.SpinServer.TuskHitbox)
+	Server-side spatial queries for melee and area attacks.
+	Returns unique characters (models with a Humanoid), nearest first.
+]]
+
+local TuskHitbox = {}
+
+local function characterFromPart(part)
+	local model = part:FindFirstAncestorOfClass("Model")
+	while model do
+		if model:FindFirstChildOfClass("Humanoid") then
+			return model
+		end
+		model = model:FindFirstAncestorOfClass("Model")
+	end
+	return nil
+end
+TuskHitbox.characterFromPart = characterFromPart
+
+local function collect(parts, attacker, origin, max)
+	local seen, list = {}, {}
+	for _, part in ipairs(parts) do
+		local character = characterFromPart(part)
+		if character and character ~= attacker and not seen[character] then
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			local root = character:FindFirstChild("HumanoidRootPart")
+			if humanoid and root and humanoid.Health > 0 then
+				seen[character] = true
+				table.insert(list, { Character = character, Distance = (root.Position - origin).Magnitude })
+			end
+		end
+	end
+	table.sort(list, function(a, b)
+		return a.Distance < b.Distance
+	end)
+	local out = {}
+	for i = 1, math.min(#list, max or #list) do
+		out[i] = list[i].Character
+	end
+	return out
+end
+
+local function overlapParams(attacker)
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = attacker and { attacker } or {}
+	return params
+end
+
+function TuskHitbox.inBox(attacker, cframe, size, max)
+	local parts = workspace:GetPartBoundsInBox(cframe, size, overlapParams(attacker))
+	return collect(parts, attacker, cframe.Position, max)
+end
+
+function TuskHitbox.inRadius(attacker, position, radius, max)
+	local parts = workspace:GetPartBoundsInRadius(position, radius, overlapParams(attacker))
+	return collect(parts, attacker, position, max)
+end
+
+-- True if nothing but characters blocks the line between the two points.
+function TuskHitbox.lineOfSight(fromPos, toPos, ignore)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = ignore or {}
+	params.IgnoreWater = true
+	local offset = toPos - fromPos
+	local result = workspace:Raycast(fromPos, offset, params)
+	if not result then
+		return true
+	end
+	return characterFromPart(result.Instance) ~= nil
+end
+
+return TuskHitbox
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX21"><Properties><string name="Name">TuskService</string><ProtectedString name="Source"><![CDATA[--[[
+	TuskService  (ServerScriptService.SpinServer.TuskService)
+
+	Server brain for Tusk (the "TuskController" of the design doc):
+	  * equips / switches Acts (validated against TuskActRegistry and
+	    TuskConfig.Progression)
+	  * routes every TuskRequest to the active Act module or TuskSneakService
+	  * owns per-player state, action locks, cooldowns, the ultimate meter
+	  * gives Act modules safe helpers: hit(), fireNail(), aim(), origin()...
+
+	Request protocol (client -> server, TuskRequest:FireServer):
+	  "Select", act          equip Act n (0 = unequip)
+	  "M1", aim              basic attack (sneak attack while sneaking)
+	  "Ability", slot, phase, aim   slot 1..3, phase "Press" | "Release"
+	  "Ultimate", aim
+	  "Sneak", on
+
+	Attributes it sets (replicated; clients render from them):
+	  Player.TuskUlt (0..Max)  Character.TuskAct  Character.TuskCharge
+	  Character.TuskAwakened   Character.Armored  (Sneak ones: see TuskSneakService)
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+local Registry = require(Shared.TuskActRegistry)
+local Net = require(Shared.Net)
+local Adapter = require(script.Parent.CombatAdapter)
+local Cooldowns = require(script.Parent.CooldownService)
+local Projectiles = require(script.Parent.ProjectileService)
+local Hitbox = require(script.Parent.TuskHitbox)
+
+local Request = Net.get("TuskRequest")
+local FX = Net.get("TuskFX")
+
+local TuskService = {}
+TuskService.Hitbox = Hitbox
+TuskService.Adapter = Adapter
+
+local states = {} -- [player] = state
+local rate = {}
+local actModules = {}
+local Sneak -- set in init (circular dependency)
+
+local RATE_LIMIT = 24 -- requests per second
+
+---------------------------------------------------------------------------
+-- Helpers for Act modules
+---------------------------------------------------------------------------
+function TuskService.getState(player)
+	return states[player]
+end
+
+function TuskService.fx(name, data)
+	FX:FireAllClients(name, data)
+end
+
+function TuskService.tell(player, kind, data)
+	data = data or {}
+	data.Kind = kind
+	FX:FireClient(player, "TuskState", data)
+end
+
+function TuskService.isBusy(state)
+	return os.clock() < state.LockUntil
+end
+
+function TuskService.lock(state, seconds)
+	state.LockUntil = math.max(state.LockUntil, os.clock() + seconds)
+end
+
+local function cooldownKey(state, name)
+	return "Tusk" .. state.Act .. "_" .. name
+end
+
+-- Returns true if ready; otherwise tells the client how long is left.
+function TuskService.cooldownReady(player, state, name, slot)
+	local remaining = Cooldowns.remaining(player, cooldownKey(state, name))
+	if remaining > 0 then
+		TuskService.tell(player, "Denied", { Reason = "Cooldown", Slot = slot, Remaining = remaining })
+		return false
+	end
+	return true
+end
+
+function TuskService.startCooldown(player, state, name, seconds, slot)
+	Cooldowns.start(player, cooldownKey(state, name), seconds)
+	TuskService.tell(player, "Cooldown", { Slot = slot, Duration = seconds })
+end
+
+-- A token that changes on death / Act switch, so delayed actions can
+-- check they still belong to the same "life".
+function TuskService.stillValid(player, state, life, allowStunned)
+	if states[player] ~= state or state.Life ~= life then
+		return false
+	end
+	if allowStunned then
+		return Adapter.getAlive(player) ~= nil
+	end
+	return Adapter.canAct(player)
+end
+
+function TuskService.aim(aim, root)
+	local fallback = root.CFrame.LookVector
+	if typeof(aim) ~= "Vector3" or aim ~= aim or aim.Magnitude < 1e-3 or aim.Magnitude > 1e4 then
+		return fallback
+	end
+	if aim.X ~= aim.X or aim.Y ~= aim.Y or aim.Z ~= aim.Z then
+		return fallback
+	end
+	local unit = aim.Unit
+	local y = math.clamp(unit.Y, -0.8, 0.8)
+	local flat = Vector3.new(unit.X, 0, unit.Z)
+	if flat.Magnitude < 1e-3 then
+		flat = Vector3.new(fallback.X, 0, fallback.Z)
+	end
+	flat = flat.Unit * math.sqrt(1 - y * y)
+	return Vector3.new(flat.X, y, flat.Z).Unit
+end
+
+-- Spawn point for attacks, pulled back to the root if a wall is in the way.
+function TuskService.origin(character, root, offset)
+	local desired = (root.CFrame * offset).Position
+	if Hitbox.lineOfSight(root.Position, desired, { character }) then
+		return desired
+	end
+	return root.Position
+end
+
+function TuskService.addUlt(player, amount)
+	local max = TuskConfig.Ultimate.MaxMeter
+	local current = player:GetAttribute("TuskUlt") or 0
+	player:SetAttribute("TuskUlt", math.clamp(current + amount, 0, max))
+end
+
+function TuskService.spendUlt(player)
+	local max = TuskConfig.Ultimate.MaxMeter
+	if (player:GetAttribute("TuskUlt") or 0) < max then
+		TuskService.tell(player, "Denied", { Reason = "UltNotReady" })
+		return false
+	end
+	player:SetAttribute("TuskUlt", 0)
+	return true
+end
+
+-- All Tusk damage goes through here: CombatAdapter + ultimate meter.
+function TuskService.hit(player, targetCharacter, info)
+	local ok, damage = Adapter.dealHit(player, targetCharacter, info)
+	if ok then
+		TuskService.addUlt(player, (damage or 0) * TuskConfig.Ultimate.GainPerDamage)
+	end
+	return ok
+end
+
+-- Server projectile with a Tusk nail visual.
+function TuskService.fireNail(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "TuskNail",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = {
+			Act = state.Act,
+			Style = spec.Style or "Shot",
+			Charge = spec.Charge or 0,
+			Awakened = state.Awakened == true,
+		},
+		OnHit = spec.OnHit,
+	})
+end
+
+-- Charge helpers (hold abilities): sets the replicated TuskCharge attribute.
+function TuskService.beginCharge(player, state, move, slot, multiplier)
+	local character, humanoid = Adapter.getAlive(player)
+	state.Charging = { Move = move, Slot = slot, Start = os.clock(), Token = {} }
+	Adapter.setMoveModifier(humanoid, "TuskCharge", multiplier or 1)
+	character:SetAttribute("TuskCharge", workspace:GetServerTimeNow())
+	character:SetAttribute("TuskChargeMove", move)
+	return state.Charging
+end
+
+function TuskService.endCharge(player, state)
+	local charge = state.Charging
+	state.Charging = nil
+	local character = state.Character
+	if character then
+		character:SetAttribute("TuskCharge", nil)
+		character:SetAttribute("TuskChargeMove", nil)
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			Adapter.setMoveModifier(humanoid, "TuskCharge", nil)
+		end
+	end
+	return charge
+end
+
+---------------------------------------------------------------------------
+-- Equip / switch
+---------------------------------------------------------------------------
+local function cleanupAct(player, state)
+	state.Life = state.Life + 1
+	local module = state.Act and actModules[state.Act]
+	if module and module.Cleanup then
+		pcall(module.Cleanup, TuskService, player, state)
+	end
+	TuskService.endCharge(player, state)
+	if Sneak then
+		Sneak.exit(player, state, false)
+	end
+	if state.Character then
+		state.Character:SetAttribute("Armored", nil)
+		state.Character:SetAttribute("TuskAwakened", nil)
+	end
+	state.Awakened = false
+	state.Combo = 0
+	state.LockUntil = 0
+end
+
+local function isUnlocked(player, act)
+	local p = TuskConfig.Progression
+	if p.Mode == "Unlock" then
+		return p.IsUnlocked ~= nil and p.IsUnlocked(player, act) == true
+	end
+	return true
+end
+
+function TuskService.select(player, act)
+	if typeof(act) ~= "number" or act ~= math.floor(act) then
+		return
+	end
+	local state = states[player]
+	if not state then
+		return
+	end
+	if act == 0 then
+		cleanupAct(player, state)
+		state.Act = nil
+		if state.Character then
+			state.Character:SetAttribute("TuskAct", nil)
+		end
+		TuskService.tell(player, "Equipped", { Act = 0 })
+		return
+	end
+	if not Registry.isImplemented(act) or not actModules[act] then
+		TuskService.tell(player, "Denied", { Reason = "NotAvailable" })
+		return
+	end
+	if not isUnlocked(player, act) then
+		TuskService.tell(player, "Denied", { Reason = "Locked" })
+		return
+	end
+	if state.Act == act then
+		return
+	end
+	if os.clock() - state.LastSwitch < TuskConfig.Progression.SwitchCooldown or TuskService.isBusy(state) then
+		TuskService.tell(player, "Denied", { Reason = "SwitchCooldown" })
+		return
+	end
+	cleanupAct(player, state)
+	state.Act = act
+	state.LastSwitch = os.clock()
+	player:SetAttribute("TuskSelectedAct", act)
+	if state.Character then
+		state.Character:SetAttribute("TuskAct", act)
+	end
+	TuskService.tell(player, "Equipped", { Act = act })
+end
+
+---------------------------------------------------------------------------
+-- Request routing
+---------------------------------------------------------------------------
+local function rateLimited(player)
+	local r = rate[player]
+	local now = os.clock()
+	if not r or now - r.Start >= 1 then
+		rate[player] = { Start = now, Count = 1 }
+		return false
+	end
+	r.Count = r.Count + 1
+	return r.Count > RATE_LIMIT
+end
+
+local function onRequest(player, action, a, b, c)
+	if rateLimited(player) or typeof(action) ~= "string" then
+		return
+	end
+	if action == "Select" then
+		TuskService.select(player, a)
+		return
+	end
+	local state = states[player]
+	if not state or not state.Act or not state.Character then
+		return
+	end
+	local module = actModules[state.Act]
+
+	if action == "Sneak" then
+		Sneak.toggle(player, state, a == true)
+		return
+	end
+	if state.Burrowed then
+		return
+	end
+
+	-- Releasing a held ability is allowed even mid-lock; everything else needs a free player.
+	if action == "Ability" and b == "Release" then
+		if typeof(a) == "number" and module.Ability then
+			module.Ability(TuskService, player, state, a, "Release", c)
+		end
+		return
+	end
+	if not Adapter.canAct(player) then
+		return
+	end
+
+	if action == "M1" then
+		if state.Sneaking then
+			Sneak.attack(player, state)
+		else
+			module.M1(TuskService, player, state, a)
+		end
+	elseif action == "Ability" then
+		if typeof(a) ~= "number" or (a ~= 1 and a ~= 2 and a ~= 3) then
+			return
+		end
+		if state.Sneaking then
+			Sneak.exit(player, state, true)
+		end
+		module.Ability(TuskService, player, state, a, "Press", c)
+	elseif action == "Ultimate" then
+		if state.Sneaking then
+			Sneak.exit(player, state, true)
+		end
+		module.Ultimate(TuskService, player, state, a)
+	end
+end
+
+---------------------------------------------------------------------------
+-- Lifecycle
+---------------------------------------------------------------------------
+local function onCharacter(player, character)
+	local state = states[player]
+	if not state then
+		return
+	end
+	cleanupAct(player, state)
+	state.Character = character
+	state.Burrowed = false
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	if not humanoid or states[player] ~= state or state.Character ~= character then
+		return
+	end
+	if state.Act then
+		character:SetAttribute("TuskAct", state.Act)
+	end
+	humanoid.Died:Connect(function()
+		if state.Character == character then
+			cleanupAct(player, state)
+		end
+	end)
+	-- Getting stunned interrupts charges and breaks sneak (counterplay).
+	character:GetAttributeChangedSignal(Adapter.Settings.StunAttribute):Connect(function()
+		if not Adapter.isStunned(character) or state.Character ~= character then
+			return
+		end
+		if state.Charging then
+			local module = state.Act and actModules[state.Act]
+			if module and module.CancelCharge then
+				module.CancelCharge(TuskService, player, state)
+			else
+				TuskService.endCharge(player, state)
+			end
+			TuskService.tell(player, "Interrupted", {})
+		end
+		if state.Sneaking then
+			Sneak.exit(player, state, true)
+		end
+	end)
+end
+
+local function onPlayer(player)
+	states[player] = {
+		Act = nil,
+		Character = nil,
+		Life = 0,
+		Combo = 0,
+		LastM1 = 0,
+		LockUntil = 0,
+		LastSwitch = -math.huge,
+		Charging = nil,
+		Sneaking = false,
+		Burrowed = false,
+		Awakened = false,
+	}
+	player:SetAttribute("TuskUlt", (RunService:IsStudio() and TuskConfig.Ultimate.StudioStartFull) and TuskConfig.Ultimate.MaxMeter or 0)
+	player.CharacterAdded:Connect(function(character)
+		onCharacter(player, character)
+	end)
+	if player.Character then
+		task.spawn(onCharacter, player, player.Character)
+	end
+	if TuskConfig.Progression.AutoEquip then
+		task.defer(TuskService.select, player, TuskConfig.Progression.DefaultAct)
+	end
+end
+
+function TuskService.init()
+	local actsFolder = script.Parent:WaitForChild("TuskActs")
+	for act in pairs(Registry.Acts) do
+		local moduleScript = actsFolder:FindFirstChild("TuskAct" .. act)
+		if moduleScript and Registry.isImplemented(act) then
+			actModules[act] = require(moduleScript)
+		end
+	end
+	Sneak = require(script.Parent.TuskSneakService)
+	Sneak.init(TuskService)
+
+	Request.OnServerEvent:Connect(onRequest)
+	Players.PlayerAdded:Connect(onPlayer)
+	for _, player in ipairs(Players:GetPlayers()) do
+		onPlayer(player)
+	end
+	Players.PlayerRemoving:Connect(function(player)
+		local state = states[player]
+		if state then
+			cleanupAct(player, state)
+		end
+		states[player] = nil
+		rate[player] = nil
+	end)
+end
+
+return TuskService
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX22"><Properties><string name="Name">TuskSneakService</string><ProtectedString name="Source"><![CDATA[--[[
+	TuskSneakService  (ServerScriptService.SpinServer.TuskSneakService)
+
+	Tusk Sneak (every Act): a crouched, slowed stalking state, plus the
+	Sneak Attack (M1 while sneaking):
+	  1. Tusk sinks into the ground (Burrow): invisible and briefly untargetable
+	  2. a distortion warning appears under the target (WarningTime before emergence)
+	  3. Tusk emerges behind the target at a server-validated safe spot
+	  4. surprise hit + launch, finished with a blue shockwave
+
+	Counterplay: the warning is visible and audible, a target that moves
+	MaxTargetDrift studs away is missed, getting hit breaks sneak, and both
+	sneak and the attack have cooldowns.
+
+	Character attributes: TuskSneaking, TuskBurrowed.
+]]
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+local Adapter = require(script.Parent.CombatAdapter)
+local Cooldowns = require(script.Parent.CooldownService)
+local Hitbox = require(script.Parent.TuskHitbox)
+
+local TuskSneakService = {}
+local S -- TuskService
+
+local cfg = TuskConfig.Sneak
+
+function TuskSneakService.init(service)
+	S = service
+end
+
+function TuskSneakService.exit(player, state, applyCooldown)
+	if not state.Sneaking then
+		return
+	end
+	state.Sneaking = false
+	state.SneakToken = nil
+	local character = state.Character
+	if character then
+		character:SetAttribute("TuskSneaking", nil)
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			Adapter.setMoveModifier(humanoid, "TuskSneak", nil)
+		end
+	end
+	if applyCooldown then
+		Cooldowns.start(player, "TuskSneak", cfg.Cooldown)
+		S.tell(player, "SneakCooldown", { Duration = cfg.Cooldown })
+	end
+end
+
+function TuskSneakService.toggle(player, state, on)
+	if not on then
+		TuskSneakService.exit(player, state, true)
+		return
+	end
+	if state.Sneaking or state.Charging or S.isBusy(state) or not Adapter.canAct(player) then
+		return
+	end
+	local remaining = Cooldowns.remaining(player, "TuskSneak")
+	if remaining > 0 then
+		S.tell(player, "Denied", { Reason = "SneakCooldown", Remaining = remaining })
+		return
+	end
+	local character, humanoid = Adapter.getAlive(player)
+	state.Sneaking = true
+	local token = {}
+	state.SneakToken = token
+	character:SetAttribute("TuskSneaking", true)
+	Adapter.setMoveModifier(humanoid, "TuskSneak", cfg.WalkSpeedMultiplier)
+	task.delay(cfg.MaxDuration, function()
+		if state.SneakToken == token then
+			TuskSneakService.exit(player, state, true)
+		end
+	end)
+end
+
+-- Nearest enemy in front, in range, with line of sight.
+local function findTarget(character, root)
+	local best, bestDistance
+	local cosLimit = math.cos(math.rad(cfg.Attack.ConeDegrees / 2))
+	for _, target in ipairs(Hitbox.inRadius(character, root.Position, cfg.Attack.Range)) do
+		local targetRoot = target:FindFirstChild("HumanoidRootPart")
+		if targetRoot and Adapter.canBeHit(nil, target) then
+			local offset = targetRoot.Position - root.Position
+			local flat = Vector3.new(offset.X, 0, offset.Z)
+			local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+			if flat.Magnitude > 0.1 and flat.Unit:Dot(look.Unit) >= cosLimit then
+				if Hitbox.lineOfSight(root.Position, targetRoot.Position, { character, target }) then
+					if not bestDistance or offset.Magnitude < bestDistance then
+						best, bestDistance = target, offset.Magnitude
+					end
+				end
+			end
+		end
+	end
+	return best
+end
+
+-- Safe emergence point near the target: behind first, then the sides, then in front.
+-- Must have clear line of sight from the target, solid ground below and free space.
+local function emergePoint(attacker, target)
+	local targetRoot = target.HumanoidRootPart
+	local d = cfg.Attack.EmergeDistance
+	local candidates = {
+		targetRoot.CFrame * CFrame.new(0, 0, d),
+		targetRoot.CFrame * CFrame.new(d, 0, 0),
+		targetRoot.CFrame * CFrame.new(-d, 0, 0),
+		targetRoot.CFrame * CFrame.new(0, 0, -d),
+	}
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.FilterDescendantsInstances = { attacker, target }
+	local overlap = OverlapParams.new()
+	overlap.FilterType = Enum.RaycastFilterType.Exclude
+	overlap.FilterDescendantsInstances = { attacker, target }
+	for _, cf in ipairs(candidates) do
+		local pos = cf.Position
+		if Hitbox.lineOfSight(targetRoot.Position, pos, { attacker, target }) then
+			local ground = workspace:Raycast(pos + Vector3.new(0, 4, 0), Vector3.new(0, -14, 0), rayParams)
+			if ground then
+				local standPos = ground.Position + Vector3.new(0, 3, 0)
+				local blocking = workspace:GetPartBoundsInBox(CFrame.new(standPos), Vector3.new(2, 4.5, 2), overlap)
+				local solid = false
+				for _, part in ipairs(blocking) do
+					if part.CanCollide then
+						solid = true
+						break
+					end
+				end
+				if not solid then
+					return standPos
+				end
+			end
+		end
+	end
+	return nil
+end
+
+function TuskSneakService.attack(player, state)
+	local a = cfg.Attack
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	local remaining = Cooldowns.remaining(player, "TuskSneakAttack")
+	if remaining > 0 then
+		S.tell(player, "Denied", { Reason = "SneakAttackCooldown", Remaining = remaining })
+		return
+	end
+	local character, _, root = Adapter.getAlive(player)
+	local target = findTarget(character, root)
+	if not target then
+		Cooldowns.start(player, "TuskSneakAttack", a.FailCooldown)
+		S.tell(player, "Denied", { Reason = "NoTarget" })
+		return
+	end
+
+	TuskSneakService.exit(player, state, true)
+	Cooldowns.start(player, "TuskSneakAttack", a.Cooldown)
+	S.tell(player, "SneakAttackCooldown", { Duration = a.Cooldown })
+	S.lock(state, a.BurrowTime + 0.45)
+
+	local life = state.Life
+	local startPos = root.Position
+	local targetStart = target.HumanoidRootPart.Position
+	state.Burrowed = true
+	character:SetAttribute("TuskBurrowed", true)
+	character:SetAttribute(Adapter.Settings.IFrameAttribute, true)
+	-- Anchor in place while underground so the hidden body can't wander.
+	root.Anchored = true
+
+	S.fx("SneakAttack", { Phase = "Burrow", Character = character, Position = startPos - Vector3.new(0, 2.8, 0), Target = target })
+
+	local function surface()
+		state.Burrowed = false
+		if character.Parent then
+			character:SetAttribute("TuskBurrowed", nil)
+			character:SetAttribute(Adapter.Settings.IFrameAttribute, nil)
+			if root.Parent then
+				root.Anchored = false
+			end
+		end
+	end
+
+	task.delay(a.BurrowTime - a.WarningTime, function()
+		if state.Life ~= life or not target.Parent then
+			return
+		end
+		local targetRoot = target:FindFirstChild("HumanoidRootPart")
+		if targetRoot then
+			S.fx("SneakAttack", { Phase = "Warning", Character = character, Target = target, Position = targetRoot.Position - Vector3.new(0, 2.8, 0), Duration = a.WarningTime })
+		end
+	end)
+
+	task.delay(a.BurrowTime, function()
+		if state.Life ~= life or not Adapter.getAlive(player) then
+			surface()
+			return
+		end
+		local targetRoot = target.Parent and target:FindFirstChild("HumanoidRootPart")
+		local valid = targetRoot
+			and Adapter.canBeHit(player, target)
+			and (targetRoot.Position - targetStart).Magnitude <= a.MaxTargetDrift
+			and (targetRoot.Position - startPos).Magnitude <= a.Range * 1.4
+		local pos = valid and emergePoint(character, target) or nil
+
+		surface()
+		if not pos then
+			-- Whiff: surface where we went under.
+			S.fx("SneakAttack", { Phase = "Emerge", Character = character, Position = startPos - Vector3.new(0, 2.8, 0), Hit = false })
+			return
+		end
+		local facing = Vector3.new(targetRoot.Position.X, pos.Y, targetRoot.Position.Z)
+		character:PivotTo(CFrame.lookAt(pos, facing))
+		S.fx("SneakAttack", { Phase = "Emerge", Character = character, Position = pos - Vector3.new(0, 2.8, 0), Hit = true })
+
+		local hitAny = false
+		for _, victim in ipairs(Hitbox.inRadius(character, pos, a.HitRadius, 3)) do
+			local victimRoot = victim:FindFirstChild("HumanoidRootPart")
+			if victimRoot and Hitbox.lineOfSight(pos, victimRoot.Position, { character, victim }) then
+				local hit = S.hit(player, victim, {
+					Damage = a.Damage,
+					Stun = a.Stun,
+					Knockback = a.Knockback,
+					Launch = a.Launch,
+					Direction = victimRoot.Position - pos,
+					Position = victimRoot.Position,
+					Source = "TuskSneakAttack",
+				})
+				hitAny = hitAny or hit
+			end
+		end
+		S.fx("SneakAttack", { Phase = "Shockwave", Character = character, Position = pos - Vector3.new(0, 2.8, 0), Hit = hitAny })
+	end)
+end
+
+return TuskSneakService
 ]]></ProtectedString></Properties></Item></Item></roblox>
