@@ -325,6 +325,14 @@ local function onRequest(player, action, a, b, c)
 		TuskService.select(player, a)
 		return
 	end
+	if action == "Character" then
+		-- Character dropdown: Johnny Joestar = Tusk (starts at Act 1).
+		local st = states[player]
+		if a == "Johnny" and st and not st.Act then
+			TuskService.select(player, TuskConfig.Progression.DefaultAct, true)
+		end
+		return
+	end
 	local state = states[player]
 	if not state or not state.Act or not state.Character then
 		return

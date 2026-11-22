@@ -51,6 +51,29 @@ TuskConfig.Ultimate = {
 }
 
 ---------------------------------------------------------------------------
+-- Stand models from the Roblox Creator Store / your inventory.
+-- AssetId = 0 keeps the built-in procedural Stand for that Act.
+-- Height = how tall the Stand is in studs. Rotation fixes a model that
+-- faces the wrong way (degrees, e.g. Vector3.new(0, 180, 0)).
+-- Any Scripts inside a loaded model are removed for safety.
+---------------------------------------------------------------------------
+TuskConfig.StandModels = {
+	[1] = { AssetId = 8768080824, Height = 3.2, Rotation = Vector3.new(0, 0, 0) }, -- "Tusk1" (owner's pick)
+	[2] = { AssetId = 0, Height = 3.6, Rotation = Vector3.new(0, 0, 0) },
+	[3] = { AssetId = 0, Height = 4.6, Rotation = Vector3.new(0, 0, 0) },
+	[4] = { AssetId = 0, Height = 6, Rotation = Vector3.new(0, 0, 0) },
+}
+
+---------------------------------------------------------------------------
+-- Character roster (shown in the top-left dropdown)
+-- Available = false shows the character as IN DEVELOPMENT (not selectable).
+---------------------------------------------------------------------------
+TuskConfig.Roster = {
+	{ Id = "Johnny", Name = "JOHNNY JOESTAR", Stand = "TUSK (ACT 1-4)", Available = true, Color = Color3.fromRGB(90, 230, 255) },
+	{ Id = "Gyro", Name = "GYRO ZEPPELI", Stand = "STEEL BALLS", Available = false, Color = Color3.fromRGB(110, 200, 80), Note = "Golden Spin (R) already works for everyone" },
+}
+
+---------------------------------------------------------------------------
 -- Character card (top-left)
 ---------------------------------------------------------------------------
 TuskConfig.Character = {

@@ -109,6 +109,7 @@ local SpinService = __require("SpinService")
 local TuskService = __require("TuskService")
 local NPCService = __require("NPCService")
 local TestDummies = __require("TestDummies")
+__require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 SpinService.init()

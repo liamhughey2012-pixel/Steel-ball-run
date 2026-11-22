@@ -1099,6 +1099,11 @@ __modules["CharacterCard"] = function()
 	  * four Act pips that light up as Tusk awakens
 	  * health bar with numbers
 	Pops and flashes when Tusk evolves.
+
+	DROPDOWN: tap/click the card to open the character list
+	(TuskConfig.Roster). Johnny Joestar expands into his four Tusk Acts,
+	each with its moves, showing which Act you are on now. Characters that
+	aren't finished are shown as IN DEVELOPMENT (not selectable).
 ]]
 
 local Players = game:GetService("Players")
@@ -1114,8 +1119,11 @@ local player = Players.LocalPlayer
 local DARK = Color3.fromRGB(14, 12, 20)
 local GOLD = Color3.fromRGB(255, 205, 90)
 
-local gui, card, portrait, viewport, standLabel, pips, hpFill, hpText, scale
+local gui, card, portrait, viewport, standLabel, pips, hpFill, hpText, scale, arrow
+local dropdown, dropdownList, actRows, rosterRows
 local shownAct
+local open = false
+local Net = __require("Net")
 
 local function corner(p, r)
 	local c = Instance.new("UICorner")
@@ -1269,7 +1277,7 @@ function CharacterCard.init()
 
 	label(card, {
 		Position = UDim2.fromOffset(98, 6),
-		Size = UDim2.new(1, -106, 0, 28),
+		Size = UDim2.new(1, -130, 0, 28),
 		Font = Enum.Font.Bangers,
 		TextSize = 28,
 		TextColor3 = GOLD,
@@ -1307,6 +1315,28 @@ function CharacterCard.init()
 		ZIndex = 2,
 	})
 
+	-- The whole card is a button that opens the character dropdown.
+	arrow = label(card, {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -8, 0, 8),
+		Size = UDim2.fromOffset(20, 20),
+		Font = Enum.Font.GothamBlack,
+		TextSize = 14,
+		TextColor3 = GOLD,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Text = "▼",
+		ZIndex = 3,
+	})
+	local hit = Instance.new("TextButton")
+	hit.Name = "OpenCharacters"
+	hit.BackgroundTransparency = 1
+	hit.Text = ""
+	hit.Size = UDim2.fromScale(1, 1)
+	hit.ZIndex = 4
+	hit.Parent = card
+	hit.Activated:Connect(CharacterCard.toggle)
+	buildDropdown()
+
 	local function onCharacter(character)
 		task.defer(refreshViewport, character)
 	end
@@ -1316,6 +1346,191 @@ function CharacterCard.init()
 	if player.Character then
 		onCharacter(player.Character)
 	end
+end
+
+---------------------------------------------------------------------------
+-- Dropdown
+---------------------------------------------------------------------------
+local ROW_W = 290
+
+local function chip(parent, text, color, textColor)
+	local c = label(parent, {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -8, 0.5, 0),
+		Size = UDim2.fromOffset(104, 22),
+		Font = Enum.Font.GothamBlack,
+		TextSize = 11,
+		TextColor3 = textColor or Color3.new(1, 1, 1),
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextStrokeTransparency = 1,
+		BackgroundTransparency = 0,
+		BackgroundColor3 = color,
+		Text = text,
+	})
+	corner(c, 6)
+	return c
+end
+
+local function buildDropdown()
+	dropdown = Instance.new("Frame")
+	dropdown.Name = "CharacterList"
+	dropdown.Position = UDim2.fromOffset(12, 112)
+	dropdown.Size = UDim2.fromOffset(ROW_W, 0)
+	dropdown.BackgroundColor3 = DARK
+	dropdown.BackgroundTransparency = 0.08
+	dropdown.ClipsDescendants = true
+	dropdown.Visible = false
+	dropdown.Parent = gui
+	corner(dropdown, 12)
+	stroke(dropdown, GOLD, 1.5)
+
+	dropdownList = Instance.new("ScrollingFrame")
+	dropdownList.BackgroundTransparency = 1
+	dropdownList.BorderSizePixel = 0
+	dropdownList.Size = UDim2.fromScale(1, 1)
+	dropdownList.CanvasSize = UDim2.new()
+	dropdownList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	dropdownList.ScrollBarThickness = 4
+	dropdownList.Parent = dropdown
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 4)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = dropdownList
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 8)
+	pad.PaddingBottom = UDim.new(0, 8)
+	pad.PaddingLeft = UDim.new(0, 8)
+	pad.PaddingRight = UDim.new(0, 8)
+	pad.Parent = dropdownList
+
+	label(dropdownList, {
+		LayoutOrder = 0,
+		Size = UDim2.new(1, 0, 0, 18),
+		Font = Enum.Font.GothamBlack,
+		TextSize = 11,
+		TextColor3 = Color3.fromRGB(170, 160, 200),
+		Text = "CHARACTERS",
+	})
+
+	rosterRows, actRows = {}, {}
+	local order = 1
+	for _, entry in ipairs(TuskConfig.Roster or {}) do
+		local row = Instance.new("Frame")
+		row.LayoutOrder = order
+		order = order + 1
+		row.Size = UDim2.new(1, 0, 0, entry.Note and 62 or 50)
+		row.BackgroundColor3 = Color3.fromRGB(28, 24, 40)
+		row.Parent = dropdownList
+		corner(row, 8)
+		local stripe = Instance.new("Frame")
+		stripe.Size = UDim2.new(0, 4, 1, -12)
+		stripe.Position = UDim2.fromOffset(6, 6)
+		stripe.BackgroundColor3 = entry.Color
+		stripe.BorderSizePixel = 0
+		stripe.Parent = row
+		label(row, { Position = UDim2.fromOffset(16, 4), Size = UDim2.new(1, -130, 0, 24), Font = Enum.Font.Bangers, TextSize = 22, TextColor3 = entry.Available and GOLD or Color3.fromRGB(150, 145, 160), Text = entry.Name })
+		label(row, { Position = UDim2.fromOffset(16, 27), Size = UDim2.new(1, -130, 0, 16), Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = entry.Color, Text = "STAND: " .. entry.Stand })
+		if entry.Note then
+			label(row, { Position = UDim2.fromOffset(16, 43), Size = UDim2.new(1, -24, 0, 14), Font = Enum.Font.Gotham, TextSize = 10, TextColor3 = Color3.fromRGB(170, 170, 185), Text = entry.Note })
+		end
+		local status
+		if entry.Available then
+			status = Instance.new("TextButton")
+			status.AnchorPoint = Vector2.new(1, 0)
+			status.Position = UDim2.new(1, -8, 0, 12)
+			status.Size = UDim2.fromOffset(104, 24)
+			status.Font = Enum.Font.GothamBlack
+			status.TextSize = 11
+			status.AutoButtonColor = true
+			status.Parent = row
+			corner(status, 6)
+			status.Activated:Connect(function()
+				Net.get("TuskRequest"):FireServer("Character", entry.Id)
+			end)
+		else
+			status = chip(row, "IN DEVELOPMENT", Color3.fromRGB(60, 58, 72), Color3.fromRGB(190, 185, 200))
+			status.AnchorPoint = Vector2.new(1, 0)
+			status.Position = UDim2.new(1, -8, 0, 12)
+		end
+		rosterRows[entry.Id] = { Row = row, Status = status, Entry = entry }
+
+		-- Johnny expands into the four Tusk Acts.
+		if entry.Id == "Johnny" then
+			for act = 1, 4 do
+				local info = Registry.get(act)
+				local actRow = Instance.new("Frame")
+				actRow.LayoutOrder = order
+				order = order + 1
+				actRow.Size = UDim2.new(1, 0, 0, 52)
+				actRow.BackgroundColor3 = Color3.fromRGB(20, 18, 30)
+				actRow.Parent = dropdownList
+				corner(actRow, 8)
+				local edge = stroke(actRow, info.Theme.Primary, 1.5)
+				label(actRow, { Position = UDim2.fromOffset(12, 3), Size = UDim2.new(1, -120, 0, 20), Font = Enum.Font.Bangers, TextSize = 18, TextColor3 = info.Theme.Primary, Text = info.Name })
+				label(actRow, { Position = UDim2.fromOffset(12, 22), Size = UDim2.new(1, -20, 0, 13), Font = Enum.Font.GothamBold, TextSize = 9, TextColor3 = Color3.fromRGB(200, 205, 220), TextTruncate = Enum.TextTruncate.AtEnd, Text = "1 " .. info.Abilities[1] .. " · 2 " .. info.Abilities[2] .. " · 3 " .. info.Abilities[3] })
+				label(actRow, { Position = UDim2.fromOffset(12, 35), Size = UDim2.new(1, -20, 0, 13), Font = Enum.Font.GothamBold, TextSize = 9, TextColor3 = GOLD, TextTruncate = Enum.TextTruncate.AtEnd, Text = "G " .. info.Ultimate .. (info.Next and (" → ACT " .. info.Next) or "  (FINAL FORM)") })
+				local state = label(actRow, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 5), Size = UDim2.fromOffset(100, 16), Font = Enum.Font.GothamBlack, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Right, Text = "" })
+				actRows[act] = { Row = actRow, Edge = edge, State = state }
+			end
+		end
+	end
+end
+
+local function refreshDropdown(act)
+	if not dropdown then
+		return
+	end
+	local johnny = rosterRows.Johnny
+	if johnny then
+		local playing = act ~= nil
+		johnny.Status.Text = playing and "PLAYING" or "SELECT"
+		johnny.Status.BackgroundColor3 = playing and Color3.fromRGB(40, 120, 70) or Color3.fromRGB(40, 90, 200)
+		johnny.Status.TextColor3 = Color3.new(1, 1, 1)
+		johnny.Status.Active = not playing
+	end
+	for i, r in pairs(actRows) do
+		if act == i then
+			r.State.Text = "◆ YOU ARE HERE"
+			r.State.TextColor3 = Color3.new(1, 1, 1)
+			r.Row.BackgroundColor3 = Color3.fromRGB(40, 34, 64)
+			r.Edge.Thickness = 2.5
+			r.Edge.Transparency = 0
+		elseif act and i < act then
+			r.State.Text = "AWAKENED ✓"
+			r.State.TextColor3 = Color3.fromRGB(120, 220, 140)
+			r.Row.BackgroundColor3 = Color3.fromRGB(20, 18, 30)
+			r.Edge.Thickness = 1
+			r.Edge.Transparency = 0.4
+		else
+			r.State.Text = i == 1 and "START" or "AWAKEN WITH G"
+			r.State.TextColor3 = Color3.fromRGB(160, 160, 180)
+			r.Row.BackgroundColor3 = Color3.fromRGB(20, 18, 30)
+			r.Edge.Thickness = 1
+			r.Edge.Transparency = 0.6
+		end
+	end
+end
+
+function CharacterCard.toggle()
+	if not dropdown then
+		return
+	end
+	open = not open
+	local target = math.min(420, (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 600) - 170)
+	refreshDropdown(shownAct)
+	if open then
+		dropdown.Visible = true
+	end
+	arrow.Text = open and "▲" or "▼"
+	local from = dropdown.Size.Y.Offset
+	local to = open and target or 0
+	VFXLib.animate(0.2, function(a)
+		dropdown.Size = UDim2.fromOffset(ROW_W, from + (to - from) * VFXLib.easeOut(a))
+	end, function()
+		if not open then
+			dropdown.Visible = false
+		end
+	end)
 end
 
 function CharacterCard.pop(color)
@@ -1355,6 +1570,7 @@ function CharacterCard.step()
 		if evolved and info then
 			CharacterCard.pop(info.Theme.Primary)
 		end
+		refreshDropdown(act)
 	end
 end
 
@@ -4560,7 +4776,32 @@ local function update(stand, root, dt, now)
 	end
 end
 
+-- Rebuild every Stand (e.g. when a custom model finishes loading).
+function TuskStand.rebuildAll()
+	for character, stand in pairs(stands) do
+		stands[character] = nil
+		if stand then
+			destroy(stand)
+		end
+	end
+end
+
 function TuskStand.init()
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local function watch(folder)
+		folder.ChildAdded:Connect(TuskStand.rebuildAll)
+		folder.ChildRemoved:Connect(TuskStand.rebuildAll)
+	end
+	local existing = ReplicatedStorage:FindFirstChild("SpinAssets")
+	if existing then
+		watch(existing)
+	end
+	ReplicatedStorage.ChildAdded:Connect(function(child)
+		if child.Name == "SpinAssets" then
+			watch(child)
+			TuskStand.rebuildAll()
+		end
+	end)
 	RunService.RenderStepped:Connect(function(dt)
 		local now = os.clock()
 		local seen = {}
@@ -4623,10 +4864,11 @@ __modules["TuskStandModels"] = function()
 	in gold stars, floppy ears, a big forehead star with a gold pin running
 	to a yellow beak, heavy-lidded eyes and four thin legs ending in hearts.
 
-	Using your own model instead: put a Model named "TuskAct1" (PrimaryPart
-	set) in ReplicatedStorage.SpinShared.Assets. It is cloned and resized,
-	and gets the same idle motion (ears and legs only animate on the
-	built-in model).
+	Using your own model instead: set its asset id in TuskConfig.StandModels
+	(StandAssetLoader loads it into ReplicatedStorage.SpinAssets), or put a
+	Model named "TuskAct1" in ReplicatedStorage.SpinAssets by hand. It is
+	cloned, cleaned of scripts, welded, resized to the configured Height and
+	gets the same floating motion (ears/legs only animate on built-in models).
 ]]
 
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
@@ -4671,32 +4913,86 @@ local function attach(body, p, cf)
 	return w
 end
 
+-- Custom Stand model: ReplicatedStorage.SpinAssets.TuskActN (loaded by
+-- StandAssetLoader or placed by hand) or SpinShared.Assets.TuskActN.
+local function findCustom(act)
+	local name = "TuskAct" .. act
+	local rs = game:GetService("ReplicatedStorage"):FindFirstChild("SpinAssets")
+	local custom = rs and rs:FindFirstChild(name)
+	if not custom then
+		local assets = game:GetService("ReplicatedStorage"):FindFirstChild("SpinAssets")
+		custom = assets and assets:FindFirstChild(name)
+	end
+	return custom
+end
+
 local function override(act, scale)
-	local assets = game:GetService("ReplicatedStorage"):FindFirstChild("SpinAssets")
-	local custom = assets and assets:FindFirstChild("TuskAct" .. act)
-	if custom and custom:IsA("Model") and custom.PrimaryPart then
-		local clone = custom:Clone()
-		local size = clone:GetExtentsSize()
-		local largest = math.max(size.X, size.Y, size.Z)
-		if largest > 0 then
-			clone:ScaleTo(clone:GetScale() * (2.4 * scale) / largest)
+	local custom = findCustom(act)
+	if not custom then
+		return nil
+	end
+	local clone = custom:Clone()
+	if not clone:IsA("Model") then
+		local wrapper = Instance.new("Model")
+		clone.Parent = wrapper
+		clone = wrapper
+	end
+	-- Safety + visual-only: no scripts, no collisions, no sounds playing.
+	local parts = {}
+	for _, d in ipairs(clone:GetDescendants()) do
+		if d:IsA("LuaSourceContainer") or d:IsA("Sound") then
+			d:Destroy()
+		elseif d:IsA("BasePart") then
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			d.Massless = true
+			d.Anchored = false
+			table.insert(parts, d)
 		end
-		for _, d in ipairs(clone:GetDescendants()) do
-			if d:IsA("BasePart") then
-				d.CanCollide = false
-				d.CanQuery = false
-				d.CanTouch = false
-				d.Massless = true
-				d.Anchored = d == clone.PrimaryPart
+	end
+	if #parts == 0 then
+		return nil
+	end
+	-- Root = the PrimaryPart, or the biggest part.
+	local root = clone.PrimaryPart
+	if not root or not root:IsDescendantOf(clone) then
+		root = parts[1]
+		for _, p in ipairs(parts) do
+			if p.Size.Magnitude > root.Size.Magnitude then
+				root = p
 			end
 		end
-		local point = Instance.new("Attachment")
-		point.Name = "NailPoint"
-		point.Position = Vector3.new(0, 0, -size.Z * 0.5)
-		point.Parent = clone.PrimaryPart
-		return clone, { Body = clone.PrimaryPart, Joints = {}, NailPoint = point }
+		clone.PrimaryPart = root
 	end
-	return nil
+	-- Weld every loose part to the root so the model moves as one piece.
+	for _, p in ipairs(parts) do
+		if p ~= root then
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = root
+			w.Part1 = p
+			w.Parent = p
+		end
+	end
+	root.Anchored = true
+
+	-- Size and facing from TuskConfig.StandModels.
+	local settings = TuskConfig.StandModels and TuskConfig.StandModels[act] or {}
+	local extents = clone:GetExtentsSize()
+	local height = (settings.Height or 3) * scale
+	if extents.Y > 0 then
+		clone:ScaleTo(clone:GetScale() * height / extents.Y)
+	end
+	local rot = settings.Rotation or Vector3.new()
+	local boxCF = clone:GetBoundingBox()
+	-- Pivot at the model's centre, facing -Z, plus the configured rotation.
+	clone.WorldPivot = CFrame.new(boxCF.Position) * CFrame.Angles(math.rad(rot.X), math.rad(rot.Y), math.rad(rot.Z))
+
+	local point = Instance.new("Attachment")
+	point.Name = "NailPoint"
+	point.Parent = root
+	point.WorldPosition = boxCF.Position + Vector3.new(0, 0, -clone:GetExtentsSize().Z * 0.5)
+	return clone, { Body = root, Joints = {}, NailPoint = point, Custom = true }
 end
 
 -- Five-point star made of five thin spikes, laid on the surface facing `normal`.

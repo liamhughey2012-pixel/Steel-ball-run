@@ -2368,6 +2368,96 @@ return SpinService
 end
 
 -- ======================================================================
+-- MODULE: StandAssetLoader
+-- ======================================================================
+__modules["StandAssetLoader"] = function()
+--[[
+	StandAssetLoader  (ServerScriptService.SpinServer.StandAssetLoader)
+
+	Loads the Stand models listed in TuskConfig.StandModels (by asset id)
+	into ReplicatedStorage.SpinAssets as "TuskAct1", "TuskAct2"...
+	Every client then uses that model instead of the built-in one.
+
+	Safety: every Script, LocalScript and ModuleScript inside a loaded
+	model is deleted before anyone can see it (free models sometimes hide
+	harmful scripts).
+
+	If Roblox refuses to load an asset (InsertService can only load models
+	your account owns, or free models depending on Roblox's rules), the
+	Output says so. Then insert the model yourself: Toolbox > search the id
+	> drag it into ReplicatedStorage > put it in a Folder named SpinAssets
+	> rename it TuskAct1.
+]]
+
+local InsertService = game:GetService("InsertService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+
+local StandAssetLoader = {}
+
+local function assetsFolder()
+	local folder = ReplicatedStorage:FindFirstChild("SpinAssets")
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "SpinAssets"
+		folder.Parent = ReplicatedStorage
+	end
+	return folder
+end
+
+local function sanitize(model)
+	local removed = 0
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("LuaSourceContainer") then
+			d:Destroy()
+			removed = removed + 1
+		end
+	end
+	return removed
+end
+
+local function load(act, entry)
+	local name = "TuskAct" .. act
+	local folder = assetsFolder()
+	if folder:FindFirstChild(name) then
+		return -- already placed by hand: keep it
+	end
+	local ok, container = pcall(function()
+		return InsertService:LoadAsset(entry.AssetId)
+	end)
+	if not ok or not container then
+		warn(("[Spin] Could not load Stand model %d for Act %d (%s). Insert it by hand: Toolbox > drag into ReplicatedStorage.SpinAssets > rename %s."):format(entry.AssetId, act, tostring(container), name))
+		return
+	end
+	local model = container:FindFirstChildWhichIsA("Model", true) or container
+	local removed = sanitize(model)
+	model.Name = name
+	if not model:IsA("Model") then
+		local wrapper = Instance.new("Model")
+		for _, child in ipairs(model:GetChildren()) do
+			child.Parent = wrapper
+		end
+		model = wrapper
+		model.Name = name
+	end
+	model.Parent = folder
+	container:Destroy()
+	print(("[Spin] Loaded Stand model %d as %s%s"):format(entry.AssetId, name, removed > 0 and (" (removed " .. removed .. " scripts for safety)") or ""))
+end
+
+function StandAssetLoader.init()
+	for act, entry in pairs(TuskConfig.StandModels or {}) do
+		if entry.AssetId and entry.AssetId ~= 0 then
+			task.spawn(load, act, entry)
+		end
+	end
+end
+
+return StandAssetLoader
+end
+
+-- ======================================================================
 -- MODULE: SteelBallModel
 -- ======================================================================
 __modules["SteelBallModel"] = function()
@@ -4485,6 +4575,14 @@ local function onRequest(player, action, a, b, c)
 		TuskService.select(player, a)
 		return
 	end
+	if action == "Character" then
+		-- Character dropdown: Johnny Joestar = Tusk (starts at Act 1).
+		local st = states[player]
+		if a == "Johnny" and st and not st.Act then
+			TuskService.select(player, TuskConfig.Progression.DefaultAct, true)
+		end
+		return
+	end
 	local state = states[player]
 	if not state or not state.Act or not state.Character then
 		return
@@ -4916,10 +5014,11 @@ __modules["TuskStandModels"] = function()
 	in gold stars, floppy ears, a big forehead star with a gold pin running
 	to a yellow beak, heavy-lidded eyes and four thin legs ending in hearts.
 
-	Using your own model instead: put a Model named "TuskAct1" (PrimaryPart
-	set) in ReplicatedStorage.SpinShared.Assets. It is cloned and resized,
-	and gets the same idle motion (ears and legs only animate on the
-	built-in model).
+	Using your own model instead: set its asset id in TuskConfig.StandModels
+	(StandAssetLoader loads it into ReplicatedStorage.SpinAssets), or put a
+	Model named "TuskAct1" in ReplicatedStorage.SpinAssets by hand. It is
+	cloned, cleaned of scripts, welded, resized to the configured Height and
+	gets the same floating motion (ears/legs only animate on built-in models).
 ]]
 
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
@@ -4964,32 +5063,86 @@ local function attach(body, p, cf)
 	return w
 end
 
+-- Custom Stand model: ReplicatedStorage.SpinAssets.TuskActN (loaded by
+-- StandAssetLoader or placed by hand) or SpinShared.Assets.TuskActN.
+local function findCustom(act)
+	local name = "TuskAct" .. act
+	local rs = game:GetService("ReplicatedStorage"):FindFirstChild("SpinAssets")
+	local custom = rs and rs:FindFirstChild(name)
+	if not custom then
+		local assets = game:GetService("ReplicatedStorage"):FindFirstChild("SpinAssets")
+		custom = assets and assets:FindFirstChild(name)
+	end
+	return custom
+end
+
 local function override(act, scale)
-	local assets = game:GetService("ReplicatedStorage"):FindFirstChild("SpinAssets")
-	local custom = assets and assets:FindFirstChild("TuskAct" .. act)
-	if custom and custom:IsA("Model") and custom.PrimaryPart then
-		local clone = custom:Clone()
-		local size = clone:GetExtentsSize()
-		local largest = math.max(size.X, size.Y, size.Z)
-		if largest > 0 then
-			clone:ScaleTo(clone:GetScale() * (2.4 * scale) / largest)
+	local custom = findCustom(act)
+	if not custom then
+		return nil
+	end
+	local clone = custom:Clone()
+	if not clone:IsA("Model") then
+		local wrapper = Instance.new("Model")
+		clone.Parent = wrapper
+		clone = wrapper
+	end
+	-- Safety + visual-only: no scripts, no collisions, no sounds playing.
+	local parts = {}
+	for _, d in ipairs(clone:GetDescendants()) do
+		if d:IsA("LuaSourceContainer") or d:IsA("Sound") then
+			d:Destroy()
+		elseif d:IsA("BasePart") then
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			d.Massless = true
+			d.Anchored = false
+			table.insert(parts, d)
 		end
-		for _, d in ipairs(clone:GetDescendants()) do
-			if d:IsA("BasePart") then
-				d.CanCollide = false
-				d.CanQuery = false
-				d.CanTouch = false
-				d.Massless = true
-				d.Anchored = d == clone.PrimaryPart
+	end
+	if #parts == 0 then
+		return nil
+	end
+	-- Root = the PrimaryPart, or the biggest part.
+	local root = clone.PrimaryPart
+	if not root or not root:IsDescendantOf(clone) then
+		root = parts[1]
+		for _, p in ipairs(parts) do
+			if p.Size.Magnitude > root.Size.Magnitude then
+				root = p
 			end
 		end
-		local point = Instance.new("Attachment")
-		point.Name = "NailPoint"
-		point.Position = Vector3.new(0, 0, -size.Z * 0.5)
-		point.Parent = clone.PrimaryPart
-		return clone, { Body = clone.PrimaryPart, Joints = {}, NailPoint = point }
+		clone.PrimaryPart = root
 	end
-	return nil
+	-- Weld every loose part to the root so the model moves as one piece.
+	for _, p in ipairs(parts) do
+		if p ~= root then
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = root
+			w.Part1 = p
+			w.Parent = p
+		end
+	end
+	root.Anchored = true
+
+	-- Size and facing from TuskConfig.StandModels.
+	local settings = TuskConfig.StandModels and TuskConfig.StandModels[act] or {}
+	local extents = clone:GetExtentsSize()
+	local height = (settings.Height or 3) * scale
+	if extents.Y > 0 then
+		clone:ScaleTo(clone:GetScale() * height / extents.Y)
+	end
+	local rot = settings.Rotation or Vector3.new()
+	local boxCF = clone:GetBoundingBox()
+	-- Pivot at the model's centre, facing -Z, plus the configured rotation.
+	clone.WorldPivot = CFrame.new(boxCF.Position) * CFrame.Angles(math.rad(rot.X), math.rad(rot.Y), math.rad(rot.Z))
+
+	local point = Instance.new("Attachment")
+	point.Name = "NailPoint"
+	point.Parent = root
+	point.WorldPosition = boxCF.Position + Vector3.new(0, 0, -clone:GetExtentsSize().Z * 0.5)
+	return clone, { Body = root, Joints = {}, NailPoint = point, Custom = true }
 end
 
 -- Five-point star made of five thin spikes, laid on the surface facing `normal`.
@@ -5582,6 +5735,7 @@ local SpinService = __require("SpinService")
 local TuskService = __require("TuskService")
 local NPCService = __require("NPCService")
 local TestDummies = __require("TestDummies")
+__require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 SpinService.init()

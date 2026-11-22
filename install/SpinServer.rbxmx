@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Script" referent="RBX27"><Properties><string name="Name">SpinServer</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Script" referent="RBX28"><Properties><string name="Name">SpinServer</string><ProtectedString name="Source"><![CDATA[--[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
 	Boots every server system: Golden Spin, Tusk, NPCs and Studio test dummies.
 ]]
@@ -8,10 +8,12 @@ local SpinService = require(script.SpinService)
 local TuskService = require(script.TuskService)
 local NPCService = require(script.NPCService)
 local TestDummies = require(script.TestDummies)
+local StandAssetLoader = require(script.StandAssetLoader)
 
 -- Shared projectile budget (Tusk's barrage fires several nails at once).
 ProjectileService.MaxActivePerPlayer = 20
 
+StandAssetLoader.init()
 SpinService.init()
 TuskService.init()
 NPCService.init()
@@ -970,7 +972,91 @@ function SpinService.init()
 end
 
 return SpinService
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX17"><Properties><string name="Name">TestDummies</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX17"><Properties><string name="Name">StandAssetLoader</string><ProtectedString name="Source"><![CDATA[--[[
+	StandAssetLoader  (ServerScriptService.SpinServer.StandAssetLoader)
+
+	Loads the Stand models listed in TuskConfig.StandModels (by asset id)
+	into ReplicatedStorage.SpinAssets as "TuskAct1", "TuskAct2"...
+	Every client then uses that model instead of the built-in one.
+
+	Safety: every Script, LocalScript and ModuleScript inside a loaded
+	model is deleted before anyone can see it (free models sometimes hide
+	harmful scripts).
+
+	If Roblox refuses to load an asset (InsertService can only load models
+	your account owns, or free models depending on Roblox's rules), the
+	Output says so. Then insert the model yourself: Toolbox > search the id
+	> drag it into ReplicatedStorage > put it in a Folder named SpinAssets
+	> rename it TuskAct1.
+]]
+
+local InsertService = game:GetService("InsertService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local TuskConfig = require(game:GetService("ReplicatedStorage").SpinShared.TuskConfig)
+
+local StandAssetLoader = {}
+
+local function assetsFolder()
+	local folder = ReplicatedStorage:FindFirstChild("SpinAssets")
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "SpinAssets"
+		folder.Parent = ReplicatedStorage
+	end
+	return folder
+end
+
+local function sanitize(model)
+	local removed = 0
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("LuaSourceContainer") then
+			d:Destroy()
+			removed = removed + 1
+		end
+	end
+	return removed
+end
+
+local function load(act, entry)
+	local name = "TuskAct" .. act
+	local folder = assetsFolder()
+	if folder:FindFirstChild(name) then
+		return -- already placed by hand: keep it
+	end
+	local ok, container = pcall(function()
+		return InsertService:LoadAsset(entry.AssetId)
+	end)
+	if not ok or not container then
+		warn(("[Spin] Could not load Stand model %d for Act %d (%s). Insert it by hand: Toolbox > drag into ReplicatedStorage.SpinAssets > rename %s."):format(entry.AssetId, act, tostring(container), name))
+		return
+	end
+	local model = container:FindFirstChildWhichIsA("Model", true) or container
+	local removed = sanitize(model)
+	model.Name = name
+	if not model:IsA("Model") then
+		local wrapper = Instance.new("Model")
+		for _, child in ipairs(model:GetChildren()) do
+			child.Parent = wrapper
+		end
+		model = wrapper
+		model.Name = name
+	end
+	model.Parent = folder
+	container:Destroy()
+	print(("[Spin] Loaded Stand model %d as %s%s"):format(entry.AssetId, name, removed > 0 and (" (removed " .. removed .. " scripts for safety)") or ""))
+end
+
+function StandAssetLoader.init()
+	for act, entry in pairs(TuskConfig.StandModels or {}) do
+		if entry.AssetId and entry.AssetId ~= 0 then
+			task.spawn(load, act, entry)
+		end
+	end
+end
+
+return StandAssetLoader
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX18"><Properties><string name="Name">TestDummies</string><ProtectedString name="Source"><![CDATA[--[[
 	TestDummies  (ServerScriptService.SpinServer.TestDummies)
 	Studio-only practice targets so Spin can be tested solo.
 	Never runs in a live server (guarded by RunService:IsStudio()).
@@ -1029,7 +1115,7 @@ function TestDummies.init()
 end
 
 return TestDummies
-]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX22"><Properties><string name="Name">TuskActs</string></Properties><Item class="ModuleScript" referent="RBX18"><Properties><string name="Name">TuskAct1</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX23"><Properties><string name="Name">TuskActs</string></Properties><Item class="ModuleScript" referent="RBX19"><Properties><string name="Name">TuskAct1</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAct1  (ServerScriptService.SpinServer.TuskActs.TuskAct1)
 
 	Server logic for Tusk Act 1, "the beginning of Spin".
@@ -1383,7 +1469,7 @@ function Act1.Cleanup(S, player, state)
 end
 
 return Act1
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX19"><Properties><string name="Name">TuskAct2</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX20"><Properties><string name="Name">TuskAct2</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAct2  (ServerScriptService.SpinServer.TuskActs.TuskAct2)
 
 	Tusk Act 2: wormhole combat.
@@ -1650,7 +1736,7 @@ function Act2.Cleanup(S, player, state)
 end
 
 return Act2
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX20"><Properties><string name="Name">TuskAct3</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX21"><Properties><string name="Name">TuskAct3</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAct3  (ServerScriptService.SpinServer.TuskActs.TuskAct3)
 
 	Tusk Act 3: master of spatial movement.
@@ -1835,7 +1921,7 @@ function Act3.Cleanup(S, player, state)
 end
 
 return Act3
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX21"><Properties><string name="Name">TuskAct4</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX22"><Properties><string name="Name">TuskAct4</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAct4  (ServerScriptService.SpinServer.TuskActs.TuskAct4)
 
 	Tusk Act 4: Infinite Rotation. Gold and deep blue, heavy and majestic.
@@ -2102,7 +2188,7 @@ function Act4.Cleanup(S, player, state)
 end
 
 return Act4
-]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX23"><Properties><string name="Name">TuskHitbox</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX24"><Properties><string name="Name">TuskHitbox</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskHitbox  (ServerScriptService.SpinServer.TuskHitbox)
 	Server-side spatial queries for melee and area attacks.
 	Returns unique characters (models with a Humanoid), nearest first.
@@ -2177,7 +2263,7 @@ function TuskHitbox.lineOfSight(fromPos, toPos, ignore)
 end
 
 return TuskHitbox
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX24"><Properties><string name="Name">TuskMoves</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">TuskMoves</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskMoves  (ServerScriptService.SpinServer.TuskMoves)
 
 	Shared server building blocks for every Tusk Act, so each Act module
@@ -2433,7 +2519,7 @@ end
 
 TuskMoves.Config = TuskConfig
 return TuskMoves
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">TuskService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX26"><Properties><string name="Name">TuskService</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskService  (ServerScriptService.SpinServer.TuskService)
 
 	Server brain for Tusk (the "TuskController" of the design doc):
@@ -2760,6 +2846,14 @@ local function onRequest(player, action, a, b, c)
 		TuskService.select(player, a)
 		return
 	end
+	if action == "Character" then
+		-- Character dropdown: Johnny Joestar = Tusk (starts at Act 1).
+		local st = states[player]
+		if a == "Johnny" and st and not st.Act then
+			TuskService.select(player, TuskConfig.Progression.DefaultAct, true)
+		end
+		return
+	end
 	local state = states[player]
 	if not state or not state.Act or not state.Character then
 		return
@@ -2907,7 +3001,7 @@ function TuskService.init()
 end
 
 return TuskService
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX26"><Properties><string name="Name">TuskSneakService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX27"><Properties><string name="Name">TuskSneakService</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskSneakService  (ServerScriptService.SpinServer.TuskSneakService)
 
 	Tusk Sneak (every Act): a crouched, slowed stalking state, plus the

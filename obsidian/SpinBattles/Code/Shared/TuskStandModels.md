@@ -41,10 +41,11 @@ Back to [[Where To Put Code]]
 	in gold stars, floppy ears, a big forehead star with a gold pin running
 	to a yellow beak, heavy-lidded eyes and four thin legs ending in hearts.
 
-	Using your own model instead: put a Model named "TuskAct1" (PrimaryPart
-	set) in ReplicatedStorage.SpinShared.Assets. It is cloned and resized,
-	and gets the same idle motion (ears and legs only animate on the
-	built-in model).
+	Using your own model instead: set its asset id in TuskConfig.StandModels
+	(StandAssetLoader loads it into ReplicatedStorage.SpinAssets), or put a
+	Model named "TuskAct1" in ReplicatedStorage.SpinAssets by hand. It is
+	cloned, cleaned of scripts, welded, resized to the configured Height and
+	gets the same floating motion (ears/legs only animate on built-in models).
 ]]
 
 local TuskConfig = require(script.Parent.TuskConfig)
@@ -89,32 +90,86 @@ local function attach(body, p, cf)
 	return w
 end
 
+-- Custom Stand model: ReplicatedStorage.SpinAssets.TuskActN (loaded by
+-- StandAssetLoader or placed by hand) or SpinShared.Assets.TuskActN.
+local function findCustom(act)
+	local name = "TuskAct" .. act
+	local rs = game:GetService("ReplicatedStorage"):FindFirstChild("SpinAssets")
+	local custom = rs and rs:FindFirstChild(name)
+	if not custom then
+		local assets = script.Parent:FindFirstChild("Assets")
+		custom = assets and assets:FindFirstChild(name)
+	end
+	return custom
+end
+
 local function override(act, scale)
-	local assets = script.Parent:FindFirstChild("Assets")
-	local custom = assets and assets:FindFirstChild("TuskAct" .. act)
-	if custom and custom:IsA("Model") and custom.PrimaryPart then
-		local clone = custom:Clone()
-		local size = clone:GetExtentsSize()
-		local largest = math.max(size.X, size.Y, size.Z)
-		if largest > 0 then
-			clone:ScaleTo(clone:GetScale() * (2.4 * scale) / largest)
+	local custom = findCustom(act)
+	if not custom then
+		return nil
+	end
+	local clone = custom:Clone()
+	if not clone:IsA("Model") then
+		local wrapper = Instance.new("Model")
+		clone.Parent = wrapper
+		clone = wrapper
+	end
+	-- Safety + visual-only: no scripts, no collisions, no sounds playing.
+	local parts = {}
+	for _, d in ipairs(clone:GetDescendants()) do
+		if d:IsA("LuaSourceContainer") or d:IsA("Sound") then
+			d:Destroy()
+		elseif d:IsA("BasePart") then
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			d.Massless = true
+			d.Anchored = false
+			table.insert(parts, d)
 		end
-		for _, d in ipairs(clone:GetDescendants()) do
-			if d:IsA("BasePart") then
-				d.CanCollide = false
-				d.CanQuery = false
-				d.CanTouch = false
-				d.Massless = true
-				d.Anchored = d == clone.PrimaryPart
+	end
+	if #parts == 0 then
+		return nil
+	end
+	-- Root = the PrimaryPart, or the biggest part.
+	local root = clone.PrimaryPart
+	if not root or not root:IsDescendantOf(clone) then
+		root = parts[1]
+		for _, p in ipairs(parts) do
+			if p.Size.Magnitude > root.Size.Magnitude then
+				root = p
 			end
 		end
-		local point = Instance.new("Attachment")
-		point.Name = "NailPoint"
-		point.Position = Vector3.new(0, 0, -size.Z * 0.5)
-		point.Parent = clone.PrimaryPart
-		return clone, { Body = clone.PrimaryPart, Joints = {}, NailPoint = point }
+		clone.PrimaryPart = root
 	end
-	return nil
+	-- Weld every loose part to the root so the model moves as one piece.
+	for _, p in ipairs(parts) do
+		if p ~= root then
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = root
+			w.Part1 = p
+			w.Parent = p
+		end
+	end
+	root.Anchored = true
+
+	-- Size and facing from TuskConfig.StandModels.
+	local settings = TuskConfig.StandModels and TuskConfig.StandModels[act] or {}
+	local extents = clone:GetExtentsSize()
+	local height = (settings.Height or 3) * scale
+	if extents.Y > 0 then
+		clone:ScaleTo(clone:GetScale() * height / extents.Y)
+	end
+	local rot = settings.Rotation or Vector3.new()
+	local boxCF = clone:GetBoundingBox()
+	-- Pivot at the model's centre, facing -Z, plus the configured rotation.
+	clone.WorldPivot = CFrame.new(boxCF.Position) * CFrame.Angles(math.rad(rot.X), math.rad(rot.Y), math.rad(rot.Z))
+
+	local point = Instance.new("Attachment")
+	point.Name = "NailPoint"
+	point.Parent = root
+	point.WorldPosition = boxCF.Position + Vector3.new(0, 0, -clone:GetExtentsSize().Z * 0.5)
+	return clone, { Body = root, Joints = {}, NailPoint = point, Custom = true }
 end
 
 -- Five-point star made of five thin spikes, laid on the surface facing `normal`.

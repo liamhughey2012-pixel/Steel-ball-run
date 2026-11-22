@@ -17,3 +17,5 @@ updated: 2026-11-22
 | 2026-11-22 | Acts 2–4 Stands are procedural first passes until reference images arrive |
 | 2026-11-22 | Johnny Joestar card in the top left, live avatar portrait by default |
 | 2026-11-22 | Map upgrade: landforms, railway, mine, oasis, horses, moving life (client-only) |
+| 2026-11-22 | Character card became a dropdown roster (Johnny playable; Gyro in development) |
+| 2026-11-22 | Tusk Act 1 uses the owner's Creator Store model 8768080824; loaded scripts are stripped for safety |

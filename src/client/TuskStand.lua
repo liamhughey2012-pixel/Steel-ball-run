@@ -186,7 +186,32 @@ local function update(stand, root, dt, now)
 	end
 end
 
+-- Rebuild every Stand (e.g. when a custom model finishes loading).
+function TuskStand.rebuildAll()
+	for character, stand in pairs(stands) do
+		stands[character] = nil
+		if stand then
+			destroy(stand)
+		end
+	end
+end
+
 function TuskStand.init()
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local function watch(folder)
+		folder.ChildAdded:Connect(TuskStand.rebuildAll)
+		folder.ChildRemoved:Connect(TuskStand.rebuildAll)
+	end
+	local existing = ReplicatedStorage:FindFirstChild("SpinAssets")
+	if existing then
+		watch(existing)
+	end
+	ReplicatedStorage.ChildAdded:Connect(function(child)
+		if child.Name == "SpinAssets" then
+			watch(child)
+			TuskStand.rebuildAll()
+		end
+	end)
 	RunService.RenderStepped:Connect(function(dt)
 		local now = os.clock()
 		local seen = {}
