@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spin Battlegrounds Brain</title>
+<style>
+:root{
+  --bg:#f6efe2; --panel:#fffaf0; --ink:#2a1d10; --muted:#7a6650; --line:#e2d3b8;
+  --accent:#3f8a1e; --accent-ink:#ffffff; --gold:#c8901a; --warn:#b4502a; --done:#3f8a1e; --todo:#9a8a74;
+  --chip:#efe4cf; --code:#f1e7d3;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16110b; --panel:#211912; --ink:#f3e8d6; --muted:#b29d82; --line:#3a2d20;
+    --accent:#7cc84a; --accent-ink:#10200a; --gold:#f0bb48; --warn:#ef8b62; --done:#7cc84a; --todo:#8d7c66;
+    --chip:#2d2219; --code:#2a2017;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16110b; --panel:#211912; --ink:#f3e8d6; --muted:#b29d82; --line:#3a2d20;
+  --accent:#7cc84a; --accent-ink:#10200a; --gold:#f0bb48; --warn:#ef8b62; --done:#7cc84a; --todo:#8d7c66;
+  --chip:#2d2219; --code:#2a2017;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+nav{position:sticky;top:0;height:100vh;overflow:auto;padding:20px 14px;border-right:1px solid var(--line);background:var(--panel)}
+nav h1{font-size:15px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+nav .sub{color:var(--muted);font-size:12px;margin-bottom:16px}
+nav a{display:block;padding:7px 10px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:14px}
+nav a:hover,nav a.active{background:var(--chip)}
+nav button{margin-top:16px;width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+main{padding:28px 36px;max-width:1080px;min-width:0}
+.wrap>*{min-width:0}
+section{margin-bottom:40px;scroll-margin-top:16px}
+h2{font-size:22px;margin:0 0 6px}
+h3{font-size:16px;margin:22px 0 8px}
+p.lead{color:var(--muted);margin:0 0 16px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.card .k{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.card .v{font-size:20px;font-weight:700;margin-top:2px}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;background:var(--chip);color:var(--muted)}
+.pill.done{background:var(--done);color:var(--accent-ink)}
+.pill.wip{background:var(--gold);color:#20160a}
+.pill.wait{background:var(--warn);color:#fff}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--chip);font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+code{background:var(--code);padding:1px 6px;border-radius:5px;font-size:13px;font-family:ui-monospace,Consolas,monospace}
+.tree{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 18px;font-family:ui-monospace,Consolas,monospace;font-size:13px;line-height:1.7;overflow-x:auto;white-space:pre}
+.tree .svc{color:var(--gold);font-weight:700}
+.tree .cls{color:var(--muted)}
+.steps{counter-reset:s;list-style:none;padding:0;margin:0}
+.steps li{counter-increment:s;position:relative;padding:10px 12px 10px 48px;background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:8px}
+.steps li::before{content:counter(s);position:absolute;left:12px;top:10px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:700;display:grid;place-items:center;font-size:13px}
+.check{display:flex;gap:10px;align-items:flex-start;padding:8px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:6px;cursor:pointer}
+.check input{margin-top:4px;accent-color:var(--accent)}
+.check.on span{text-decoration:line-through;color:var(--muted)}
+.progress{height:8px;background:var(--chip);border-radius:99px;overflow:hidden;margin:6px 0 14px}
+.progress div{height:100%;background:var(--accent)}
+.phase{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:6px}
+.phase b{font-variant-numeric:tabular-nums;color:var(--muted)}
+.hero{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:center}
+.hero img{width:100%;border-radius:12px;border:1px solid var(--line);background:#fff}
+.note{border-left:4px solid var(--gold);background:var(--panel);padding:10px 14px;border-radius:0 10px 10px 0;margin:12px 0}
+@media (max-width:820px){
+  .wrap{grid-template-columns:1fr}
+  nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:4px;padding:12px 16px}
+  nav h1,nav .sub{width:100%}
+  nav button{width:auto;margin:0 0 0 auto}
+  main{padding:20px 16px}
+  .hero{grid-template-columns:1fr}
+  table{display:block;overflow-x:auto}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav id="nav">
+  <h1>Spin Battlegrounds</h1>
+  <div class="sub">Second Brain · updated 2026-11-22</div>
+  <a href="#overview">Overview</a>
+  <a href="#files">Where every file goes</a>
+  <a href="#install">Install steps</a>
+  <a href="#roadmap">Roadmap</a>
+  <a href="#spin">Spin design</a>
+  <a href="#models">Models</a>
+  <a href="#tests">Test checklist</a>
+  <a href="#waiting">Waiting on you</a>
+  <a href="#decisions">Decision log</a>
+  <a href="#issues">Known issues</a>
+  <a href="#rules">Ground rules</a>
+  <button id="theme" type="button">Toggle theme</button>
+</nav>
+<main>
+
+<section id="overview">
+  <div class="hero">
+    <div>
+      <h2>Spin Battlegrounds</h2>
+      <p class="lead">A Steel Ball Run-inspired Roblox Battlegrounds game: Spin mechanics, Tusk Acts 1–4, Steel Balls and Wrecking Balls, cinematic ultimates and procedural anime VFX, with the server deciding every hit.</p>
+      <div class="cards">
+        <div class="card"><div class="k">Current phase</div><div class="v">Spin + Steel Ball</div></div>
+        <div class="card"><div class="k">Status</div><div class="v"><span class="pill wip">Built, not yet tested in Studio</span></div></div>
+        <div class="card"><div class="k">Next up</div><div class="v">Tusk Act 1</div></div>
+      </div>
+    </div>
+    <img src="data:image/png;base64,__PREVIEW__" alt="Procedural green Steel Ball, front and back views">
+  </div>
+</section>
+
+<section id="files">
+  <h2>Where every file goes</h2>
+  <p class="lead">Three model files, three Roblox services. Everything else sits inside them.</p>
+  <table>
+    <thead><tr><th>File (in <code>install/</code>)</th><th>Put it in (Explorer)</th><th>What it becomes</th></tr></thead>
+    <tbody>
+      <tr><td><code>SpinShared.rbxmx</code></td><td><b>ReplicatedStorage</b></td><td>Folder <code>SpinShared</code> of ModuleScripts, used by both server and client</td></tr>
+      <tr><td><code>SpinServer.rbxmx</code></td><td><b>ServerScriptService</b></td><td>Script <code>SpinServer</code> with its ModuleScripts inside</td></tr>
+      <tr><td><code>SpinClient.rbxmx</code></td><td><b>StarterPlayer › StarterPlayerScripts</b></td><td>LocalScript <code>SpinClient</code> with its ModuleScripts inside</td></tr>
+      <tr><td><code>assets/audio/*.ogg</code></td><td>Creator Hub › Asset Manager (upload)</td><td>Sound ids you paste into <code>SpinConfig.Sounds</code></td></tr>
+    </tbody>
+  </table>
+  <h3>Full tree after installing</h3>
+<div class="tree"><span class="svc">ReplicatedStorage</span>
+└─ SpinShared              <span class="cls">Folder</span>
+   ├─ SpinConfig           <span class="cls">ModuleScript · every Spin number, keybind, colour, sound id</span>
+   ├─ VFXQuality           <span class="cls">ModuleScript · Low / Medium / High presets</span>
+   ├─ Net                  <span class="cls">ModuleScript · creates RemoteEvents in ReplicatedStorage.SpinRemotes</span>
+   ├─ Maid                 <span class="cls">ModuleScript · cleanup helper</span>
+   ├─ SteelBallModel       <span class="cls">ModuleScript · builds the green Steel Ball</span>
+   ├─ WreckingBallModel    <span class="cls">ModuleScript · orange studded ball, saved for the Wrecking Ball phase</span>
+   └─ Assets (optional)    <span class="cls">Folder · put a Model named "SteelBall" here to replace the generated ball</span>
+
+<span class="svc">ServerScriptService</span>
+└─ SpinServer              <span class="cls">Script · starts everything on the server</span>
+   ├─ CombatAdapter        <span class="cls">ModuleScript · damage / stun / block, connects to YOUR combat</span>
+   ├─ CooldownService      <span class="cls">ModuleScript · server cooldowns</span>
+   ├─ ProjectileService    <span class="cls">ModuleScript · server projectiles (reused for nails later)</span>
+   ├─ SpinService          <span class="cls">ModuleScript · charge, release, checks every request</span>
+   └─ TestDummies          <span class="cls">ModuleScript · practice dummies, Studio only</span>
+
+<span class="svc">StarterPlayer › StarterPlayerScripts</span>
+└─ SpinClient              <span class="cls">LocalScript · starts everything on each player</span>
+   ├─ VFXLib               <span class="cls">ModuleScript · rings, shockwaves, particles, lights, sounds</span>
+   ├─ CameraFX             <span class="cls">ModuleScript · shake, FOV punch, speed lines, impact frames</span>
+   ├─ ProceduralPose       <span class="cls">ModuleScript · arm wind-up and throw poses</span>
+   ├─ SpinVFX              <span class="cls">ModuleScript · all Spin visuals for all players</span>
+   ├─ SpinController       <span class="cls">ModuleScript · input: R / RT / mobile SPIN button</span>
+   └─ UI                   <span class="cls">Folder</span>
+      └─ SpinMeter         <span class="cls">ModuleScript · charge bar, cooldown, popups, VFX toggle</span>
+
+<span class="svc">ReplicatedStorage</span>  (created automatically when the game runs)
+└─ SpinRemotes             <span class="cls">Folder · SpinRequest, SpinFX RemoteEvents</span></div>
+  <div class="note">Don't rename anything. The scripts find each other by these exact names.</div>
+</section>
+
+<section id="install">
+  <h2>Install steps</h2>
+  <ol class="steps">
+    <li>Unzip <code>SpinBattlegrounds.zip</code> anywhere on your PC.</li>
+    <li>Open your place in Roblox Studio and show the Explorer (View › Explorer).</li>
+    <li>Right-click <b>ReplicatedStorage</b> › <b>Insert from File…</b> › choose <code>install/SpinShared.rbxmx</code>.</li>
+    <li>Right-click <b>ServerScriptService</b> › <b>Insert from File…</b> › choose <code>install/SpinServer.rbxmx</code>.</li>
+    <li>Open <b>StarterPlayer</b>, right-click <b>StarterPlayerScripts</b> › <b>Insert from File…</b> › choose <code>install/SpinClient.rbxmx</code>.</li>
+    <li>Press <b>Play</b>. Three practice dummies appear in front of the spawn. Hold <b>R</b>, let go to throw.</li>
+    <li>Optional sounds: upload the 5 files in <code>assets/audio</code> in Creator Hub › Asset Manager, then paste each id into <code>SpinShared › SpinConfig › Sounds</code> as <code>"rbxassetid://123…"</code>.</li>
+    <li>Optional, if you have your own combat system: open <code>SpinServer › CombatAdapter</code> and fill in <code>Hooks</code> so Spin uses your damage and blocking.</li>
+  </ol>
+  <div class="note">If you use Rojo instead: run <code>rojo serve</code> in the project folder and press Connect in the Rojo plugin. It builds the same tree.</div>
+</section>
+
+<section id="roadmap">
+  <h2>Roadmap</h2>
+  <p class="lead">Each phase is built and tested before the next one starts.</p>
+  <div class="progress"><div style="width:30%"></div></div>
+  <div class="phase"><b>1</b><span>Audit your existing place file</span><span class="pill wait">Need .rbxl</span></div>
+  <div class="phase"><b>2</b><span>Core foundations: remotes, combat adapter, cooldowns, projectiles, VFX library</span><span class="pill done">Built</span></div>
+  <div class="phase"><b>3</b><span>Spin charge system + Steel Ball (Quick / Power / Perfect)</span><span class="pill wip">Needs Studio test</span></div>
+  <div class="phase"><b>4</b><span>Tusk framework: Act registry, progression config, transformation</span><span class="pill">Next</span></div>
+  <div class="phase"><b>5</b><span>Tusk Sneak + underground Sneak Attack</span><span class="pill wait">Need screenshot</span></div>
+  <div class="phase"><b>6</b><span>Tusk Act 2 → Act 3 → Act 4 (Infinite World)</span><span class="pill wait">Need Act 2–4 refs</span></div>
+  <div class="phase"><b>7</b><span>Wrecking Balls: Throw, Returning Spin, Double Wrecking, Wrecking Crash</span><span class="pill">Later</span></div>
+  <div class="phase"><b>8</b><span>Full HUD: 3 ability slots, ultimate meter, Act name (PC / mobile / controller)</span><span class="pill">Later</span></div>
+  <div class="phase"><b>9</b><span>Map atmosphere: lighting, dust, decorations (map stays as is)</span><span class="pill">Later</span></div>
+  <div class="phase"><b>10</b><span>Multiplayer, respawn, mobile and low-graphics testing, then the final report</span><span class="pill">Later</span></div>
+</section>
+
+<section id="spin">
+  <h2>Spin design</h2>
+  <p class="lead">Hold to charge, release to throw. Every number lives in <code>SpinConfig</code>.</p>
+  <table>
+    <thead><tr><th>Level</th><th>Charge</th><th>Damage</th><th>Stun</th><th>Cooldown</th><th>Look</th></tr></thead>
+    <tbody>
+      <tr><td><b>QUICK SPIN</b></td><td>0 – 0.6 s</td><td>7</td><td>0.2 s</td><td>2.5 s</td><td>1 pink-white rotation ring</td></tr>
+      <tr><td><b>POWER SPIN</b></td><td>0.6 s +</td><td>13</td><td>0.4 s</td><td>4.5 s</td><td>2 rings, ground dust</td></tr>
+      <tr><td><b>PERFECT SPIN</b></td><td>release at 1.35 – 1.57 s</td><td>22</td><td>0.65 s</td><td>7 s</td><td>3 golden rings, speed lines, impact frame</td></tr>
+    </tbody>
+  </table>
+  <h3>Rules</h3>
+  <ul>
+    <li>Holding past the gold zone drops the throw back to POWER (overcharge). At 3 s it throws automatically.</li>
+    <li>The server times the charge itself and allows ±0.05 s for lag. The client's meter is only a display.</li>
+    <li><b>Counterplay:</b> the thrower moves at half speed while charging, getting hit interrupts the charge, the ball is visible and can be dodged, blocking takes 35% damage with no stun, and 0.5 s of stun immunity prevents stun-locks.</li>
+    <li><b>Controls:</b> PC <code>R</code> (aims at the mouse) · Controller <code>RT</code> · Mobile on-screen SPIN button (camera aim).</li>
+  </ul>
+</section>
+
+<section id="models">
+  <h2>Models</h2>
+  <table>
+    <thead><tr><th>Model</th><th>Reference</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td><b>Steel Ball</b>: green, hexagon plates, round panels, curved grooves</td><td>Your 5 green-ball images</td><td><span class="pill done">Built</span> used by Spin</td></tr>
+      <tr><td><b>Wrecking Ball</b>: orange, 10 gold studs, seam groove</td><td>Your orange-ball images</td><td><span class="pill">Saved for later</span></td></tr>
+      <tr><td><b>Tusk Act 1</b>: pink, star-covered, heart feet</td><td>Your Tusk image</td><td><span class="pill">Next, ask first</span></td></tr>
+      <tr><td>Tusk Acts 2, 3, 4</td><td>Not received</td><td><span class="pill wait">Need images</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="tests">
+  <h2>Test checklist</h2>
+  <p class="lead">Tick these off in Studio. Ticks are saved in this browser.</p>
+  <div class="progress"><div id="testbar" style="width:0%"></div></div>
+  <div id="checks"></div>
+</section>
+
+<section id="waiting">
+  <h2>Waiting on you</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Why it's needed</th></tr></thead>
+    <tbody>
+      <tr><td>Your place file (<code>.rbxl</code>)</td><td>To connect Spin to your real combat, M1s and UI instead of guessing</td></tr>
+      <tr><td>Tusk Sneak screenshot</td><td>Phase 5 design reference</td></tr>
+      <tr><td>Tusk Act 2, 3, 4 images</td><td>Models and VFX for each Act</td></tr>
+      <tr><td>How Acts unlock</td><td>Quests, progression or a selection menu (it will be switchable either way)</td></tr>
+      <tr><td>Push access for Claude</td><td>Allow the <code>add_repo</code> permission so work is saved to GitHub</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="decisions">
+  <h2>Decision log</h2>
+  <table>
+    <thead><tr><th>Date</th><th>Decision</th></tr></thead>
+    <tbody>
+      <tr><td>2026-11-22</td><td>Second Brain created; moved to this HTML page.</td></tr>
+      <tr><td>2026-11-22</td><td>No place file yet, so Spin is a drop-in. <code>CombatAdapter</code> is the single connection point, which avoids a duplicate combat system.</td></tr>
+      <tr><td>2026-11-22</td><td>Green ball = <b>Steel Ball</b>; orange studded ball = <b>Wrecking Ball</b>. Steel Ball first, Wrecking Balls later.</td></tr>
+      <tr><td>2026-11-22</td><td>Spin rotation rings are pink-white like the art; gold is saved for Perfect Spin.</td></tr>
+      <tr><td>2026-11-22</td><td>Models and poses are made in code, so nothing needs uploading. A custom mesh or real animations can replace them later.</td></tr>
+      <tr><td>2026-11-22</td><td>Install is drag-and-drop <code>.rbxmx</code> files. Rojo also works.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="issues">
+  <h2>Known issues and limits</h2>
+  <ul>
+    <li>Not yet run in Roblox Studio. Every file passes a Lua syntax check, and the charge-level and Perfect-window maths was tested in a Lua interpreter.</li>
+    <li>Arm pose angles and ring sizes may need tuning after the first test (<code>ProceduralPose.Poses</code>, <code>SpinConfig</code>).</li>
+    <li>No lag compensation yet, so very high-ping targets can be hit slightly behind where they appear.</li>
+    <li>The default stun slows WalkSpeed. If your game has a sprint system, use <code>CombatAdapter.Hooks.ApplyStun</code>.</li>
+    <li>Sounds stay silent until their ids are pasted into <code>SpinConfig.Sounds</code>.</li>
+  </ul>
+</section>
+
+<section id="rules">
+  <h2>Ground rules</h2>
+  <ol>
+    <li>Inspect the existing project before changing it.</li>
+    <li>Keep working systems; never build a second combat framework.</li>
+    <li>Small modular Luau files.</li>
+    <li>The server decides damage, hits, cooldowns and teleports.</li>
+    <li>Every effect cleans itself up and respects the quality setting.</li>
+    <li>No fake buttons or unexplained placeholders.</li>
+    <li>Original assets and sounds only.</li>
+    <li><b>Ask before building any weapon or Stand model</b>, so you can send a model or image first.</li>
+  </ol>
+</section>
+
+</main>
+</div>
+<script>
+(function(){
+  var tests=[
+    "Hold R: green Steel Ball appears in hand and spins",
+    "Rings add one per level; the meter fills; the gold Perfect zone flashes",
+    "Quick / Power / Perfect throws change ball size, rings and trail",
+    "Damage numbers read 7 / 13 / 22 on the dummies",
+    "Perfect release: popup, speed lines, FOV punch, impact frame on hit",
+    "Holding past the gold zone gives POWER; holding 3 s auto-throws",
+    "Cooldown blocks re-use and the bar shows the time left",
+    "Getting hit while charging shows INTERRUPTED",
+    "Throwing at a wall stops the ball with an impact and no damage",
+    "Two players can hit each other; same-team players can't",
+    "Dying mid-charge leaves no stuck ball or slow after respawn",
+    "Mobile SPIN button works; controller RT works",
+    "VFX LOW / MEDIUM / HIGH all work (Low = plain ball, no screen effects)"
+  ];
+  var key="spinbrain-tests", saved={};
+  try{saved=JSON.parse(localStorage.getItem(key)||"{}")}catch(e){}
+  var box=document.getElementById("checks"), bar=document.getElementById("testbar");
+  function update(){var n=0;tests.forEach(function(_,i){if(saved[i])n++});bar.style.width=(n/tests.length*100)+"%"}
+  tests.forEach(function(t,i){
+    var l=document.createElement("label");l.className="check"+(saved[i]?" on":"");
+    var c=document.createElement("input");c.type="checkbox";c.checked=!!saved[i];
+    var s=document.createElement("span");s.textContent=t;
+    c.addEventListener("change",function(){saved[i]=c.checked;l.className="check"+(c.checked?" on":"");try{localStorage.setItem(key,JSON.stringify(saved))}catch(e){}update()});
+    l.appendChild(c);l.appendChild(s);box.appendChild(l);
+  });
+  update();
+  var root=document.documentElement;
+  document.getElementById("theme").addEventListener("click",function(){
+    var dark=root.getAttribute("data-theme")?root.getAttribute("data-theme")==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+    root.setAttribute("data-theme",dark?"light":"dark");
+  });
+  var links=[].slice.call(document.querySelectorAll("nav a"));
+  addEventListener("scroll",function(){
+    var cur=links[0];
+    links.forEach(function(a){var s=document.querySelector(a.getAttribute("href"));if(s&&s.getBoundingClientRect().top<120)cur=a});
+    links.forEach(function(a){a.classList.toggle("active",a===cur)});
+  },{passive:true});
+})();
+</script>
+</body>
+</html>

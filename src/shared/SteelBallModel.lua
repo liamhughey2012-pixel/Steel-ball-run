@@ -1,11 +1,13 @@
 --[[
 	SteelBallModel  (ReplicatedStorage.SpinShared.SteelBallModel)
 
-	Procedurally builds the Steel Ball from the owner's reference image:
-	a glossy orange metal sphere, ten raised gold studs sitting in darker
-	gold collars, and a dark seam groove wrapping around the surface.
+	Procedurally builds the Steel Ball from the owner's reference images:
+	a glossy green metal sphere with raised hexagon panels (dark outer edge
+	plus a bright inner edge, so they read as raised plates), round
+	panels, and curved parallel grooves sweeping around the surface.
 
-	SteelBallModel.build(diameter, withGrooves) -> Model (PrimaryPart = "Core")
+	SteelBallModel.build(diameter, detailed) -> Model (PrimaryPart = "Core")
+	  detailed = false (Low quality) keeps only the hexagon outer edges.
 
 	All parts are visual only: no collision, no queries, no touch events,
 	massless, and welded to the Core. Anchor the Core to move it with
@@ -13,16 +15,33 @@
 
 	Swapping in a real mesh later: put a Model named "SteelBall" (with a
 	PrimaryPart) in ReplicatedStorage.SpinShared.Assets and build() will
-	clone it instead of generating one.
+	clone and resize it instead of generating one.
 ]]
 
 local SpinConfig = require(script.Parent.SpinConfig)
 
 local SteelBallModel = {}
 
-local GOLDEN_ANGLE = math.pi * (3 - math.sqrt(5))
-local STUD_COUNT = 10
-local SEAM_SEGMENTS = 22
+-- Panel layout (unit directions on the ball, angular radius in radians).
+-- Kept as data so the look can be tuned without touching the builder.
+SteelBallModel.Layout = {
+	Hexagons = {
+		{ Dir = Vector3.new(-0.45, 0.35, 0.82), Radius = 0.55, Spin = 0.2 },
+		{ Dir = Vector3.new(0.6, -0.2, -0.77), Radius = 0.5, Spin = 0.5 },
+		{ Dir = Vector3.new(-0.3, -0.85, -0.4), Radius = 0.45, Spin = 0.0 },
+	},
+	Circles = {
+		{ Dir = Vector3.new(0.45, -0.4, 0.8), Radius = 0.3 },
+		{ Dir = Vector3.new(0.2, 0.85, -0.45), Radius = 0.35 },
+	},
+	-- Grooves: arcs of a circle around Axis at angular radius Radius,
+	-- from angle From to To (radians).
+	Grooves = {
+		{ Axis = Vector3.new(0.95, 0.25, 0.15), Radius = 0.5, From = -1.2, To = 1.3 },
+		{ Axis = Vector3.new(0.95, 0.25, 0.15), Radius = 0.78, From = -1.0, To = 1.1 },
+		{ Axis = Vector3.new(-0.75, 0.15, -0.6), Radius = 0.6, From = 0.6, To = 3.2 },
+	},
+}
 
 local function visualPart(props)
 	local p = Instance.new("Part")
@@ -47,6 +66,20 @@ local function weld(core, part)
 	w.Parent = part
 end
 
+-- Two unit vectors perpendicular to dir.
+local function basis(dir)
+	local helper = math.abs(dir.Y) > 0.9 and Vector3.new(1, 0, 0) or Vector3.new(0, 1, 0)
+	local u = dir:Cross(helper).Unit
+	local v = dir:Cross(u).Unit
+	return u, v
+end
+
+-- Point on the unit sphere at angular distance `radius` from `center`, around angle `theta`.
+local function around(center, radius, theta)
+	local u, v = basis(center)
+	return (center * math.cos(radius) + (u * math.cos(theta) + v * math.sin(theta)) * math.sin(radius)).Unit
+end
+
 local function fromOverride(diameter)
 	local assets = script.Parent:FindFirstChild("Assets")
 	local custom = assets and assets:FindFirstChild("SteelBall")
@@ -63,10 +96,10 @@ local function fromOverride(diameter)
 	return nil
 end
 
-function SteelBallModel.build(diameter, withGrooves)
+function SteelBallModel.build(diameter, detailed)
 	diameter = diameter or 1
-	if withGrooves == nil then
-		withGrooves = true
+	if detailed == nil then
+		detailed = true
 	end
 
 	local override = fromOverride(diameter)
@@ -86,7 +119,7 @@ function SteelBallModel.build(diameter, withGrooves)
 		Size = Vector3.new(diameter, diameter, diameter),
 		Color = colors.Ball,
 		Material = Enum.Material.SmoothPlastic,
-		Reflectance = 0.2,
+		Reflectance = 0.18,
 		Massless = false,
 	})
 	core.CFrame = CFrame.new()
@@ -106,68 +139,59 @@ function SteelBallModel.build(diameter, withGrooves)
 	bottom.Position = Vector3.new(0, -r * 0.9, 0)
 	bottom.Parent = core
 
-	-- Gold studs on a Fibonacci sphere so they spread evenly.
-	for i = 0, STUD_COUNT - 1 do
-		local y = 1 - (i + 0.5) / STUD_COUNT * 2
-		local ring = math.sqrt(1 - y * y)
-		local theta = i * GOLDEN_ANGLE
-		local dir = Vector3.new(math.cos(theta) * ring, y, math.sin(theta) * ring)
-		local up = math.abs(dir.Y) > 0.95 and Vector3.new(1, 0, 0) or Vector3.new(0, 1, 0)
-
-		local collar = visualPart({
-			Name = "StudCollar",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(diameter * 0.05, diameter * 0.2, diameter * 0.2),
-			Color = colors.BallDark:Lerp(colors.Stud, 0.35),
-			Material = Enum.Material.Metal,
+	-- One straight raised line between two directions on the surface.
+	local function line(a, b, width, color, name)
+		local lift = r * 1.012
+		local pa, pb = a * lift, b * lift
+		local mid = (pa + pb) / 2
+		local seg = visualPart({
+			Name = name,
+			Size = Vector3.new(width, width * 0.5, (pb - pa).Magnitude + width * 0.6),
+			Color = color,
+			Material = Enum.Material.SmoothPlastic,
 			Reflectance = 0.1,
 		})
-		-- Cylinder axis is X, so point RightVector along the surface normal.
-		local right = dir
-		local back = right:Cross(up).Unit
-		local realUp = back:Cross(right).Unit
-		collar.CFrame = CFrame.fromMatrix(dir * r * 0.985, right, realUp)
-		collar.Parent = model
-		weld(core, collar)
-
-		local stud = visualPart({
-			Name = "Stud",
-			Shape = Enum.PartType.Ball,
-			Size = Vector3.new(diameter * 0.15, diameter * 0.15, diameter * 0.15),
-			Color = colors.Stud,
-			Material = Enum.Material.Metal,
-			Reflectance = 0.35,
-		})
-		stud.CFrame = CFrame.new(dir * r * 1.01)
-		stud.Parent = model
-		weld(core, stud)
+		seg.CFrame = CFrame.lookAt(mid, pb, mid.Unit)
+		seg.Parent = model
+		weld(core, seg)
 	end
 
-	-- Seam groove: a wave wrapping the ball like a tennis-ball seam.
-	if withGrooves then
-		local function seamPoint(t)
-			local lon = t * math.pi * 2
-			local lat = 0.55 * math.sin(2 * lon)
-			return Vector3.new(math.cos(lat) * math.cos(lon), math.sin(lat), math.cos(lat) * math.sin(lon)) * r * 1.003
-		end
-		for i = 0, SEAM_SEGMENTS - 1 do
-			local a = seamPoint(i / SEAM_SEGMENTS)
-			local b = seamPoint((i + 1) / SEAM_SEGMENTS)
-			local mid = (a + b) / 2
-			local len = (b - a).Magnitude
-			local seg = visualPart({
-				Name = "Groove",
-				Size = Vector3.new(diameter * 0.035, diameter * 0.012, len * 1.08),
-				Color = colors.BallDark,
-				Material = Enum.Material.SmoothPlastic,
-			})
-			seg.CFrame = CFrame.lookAt(mid, b, mid.Unit)
-			seg.Parent = model
-			weld(core, seg)
+	local function polygon(dirCenter, radius, sides, spin, width, color, name)
+		local c = dirCenter.Unit
+		for i = 0, sides - 1 do
+			local a = around(c, radius, spin + i / sides * math.pi * 2)
+			local b = around(c, radius, spin + (i + 1) / sides * math.pi * 2)
+			line(a, b, width, color, name)
 		end
 	end
 
-	-- Everything was laid out around the origin; move the model as one piece from here on.
+	local layout = SteelBallModel.Layout
+
+	-- Hexagon plates: dark outer edge, bright inner edge.
+	for _, hex in ipairs(layout.Hexagons) do
+		polygon(hex.Dir, hex.Radius, 6, hex.Spin, diameter * 0.04, colors.BallDark, "HexEdge")
+		if detailed then
+			polygon(hex.Dir, hex.Radius * 0.84, 6, hex.Spin, diameter * 0.025, colors.BallLight, "HexHighlight")
+		end
+	end
+
+	if detailed then
+		-- Round panels.
+		for _, circle in ipairs(layout.Circles) do
+			polygon(circle.Dir, circle.Radius, 10, 0, diameter * 0.035, colors.BallDark, "RoundPanel")
+		end
+		-- Curved grooves.
+		for _, groove in ipairs(layout.Grooves) do
+			local axis = groove.Axis.Unit
+			local steps = 6
+			for i = 0, steps - 1 do
+				local t0 = groove.From + (groove.To - groove.From) * i / steps
+				local t1 = groove.From + (groove.To - groove.From) * (i + 1) / steps
+				line(around(axis, groove.Radius, t0), around(axis, groove.Radius, t1), diameter * 0.03, colors.BallDark, "Groove")
+			end
+		end
+	end
+
 	return model
 end
 

@@ -1,0 +1,790 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Script" referent="RBX13"><Properties><string name="Name">SpinServer</string><ProtectedString name="Source"><![CDATA[--[[
+	SpinServer  (ServerScriptService.SpinServer — Script)
+	Boots the server half of the Golden Spin / Steel Ball system.
+]]
+
+local SpinService = require(script.SpinService)
+local TestDummies = require(script.TestDummies)
+local ProjectileService = require(script.ProjectileService)
+local SpinConfig = require(game:GetService("ReplicatedStorage").SpinShared.SpinConfig)
+
+ProjectileService.MaxActivePerPlayer = SpinConfig.Projectile.MaxActivePerPlayer
+SpinService.init()
+TestDummies.init()
+]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX8"><Properties><string name="Name">CombatAdapter</string><ProtectedString name="Source"><![CDATA[--[[
+	CombatAdapter  (ServerScriptService.SpinServer.CombatAdapter)
+
+	THE ONE PLACE the Spin system touches combat. If SPIN BATTLEGROUNDS
+	already has a combat framework (damage, stun, block), plug it into the
+	Hooks table below instead of letting this file use its defaults. That
+	way there is never a second, competing combat system.
+
+	Example (in your own server code, before players join):
+		local Adapter = require(ServerScriptService.SpinServer.CombatAdapter)
+		Adapter.Hooks.ApplyDamage = function(attacker, humanoid, amount, info)
+			YourCombat.Damage(attacker, humanoid, amount)
+		end
+		Adapter.Hooks.IsBlocking = function(character)
+			return YourCombat.IsBlocking(character)
+		end
+]]
+
+local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
+
+local Net = require(game:GetService("ReplicatedStorage").SpinShared.Net)
+local FX = Net.get("SpinFX")
+
+local Adapter = {}
+
+Adapter.Settings = {
+	FriendlyFire = false, -- same-Team players can't hit each other
+	BlockAttribute = "Blocking", -- character attribute your block sets
+	BlockDamageMultiplier = 0.35,
+	BlockKnockbackMultiplier = 0.3,
+	IFrameAttribute = "IFrames", -- character attribute = invulnerable (dashes etc.)
+	StunAttribute = "Stunned",
+	StunWalkSpeedMultiplier = 0.15,
+	StunImmunityAfter = 0.5, -- seconds after a stun ends where no new stun applies
+	KnockbackDuration = 0.18,
+}
+
+-- Optional overrides. Leave nil to use the defaults in this file.
+Adapter.Hooks = {
+	ApplyDamage = nil, -- function(attackerPlayer, humanoid, amount, info)
+	ApplyStun = nil, -- function(humanoid, duration) -> applied:boolean
+	IsBlocking = nil, -- function(character) -> boolean
+	CanAct = nil, -- function(player) -> boolean (extra checks: ragdoll, menus...)
+	CanBeHit = nil, -- function(attackerPlayer, targetCharacter) -> boolean
+}
+
+local moveMods = setmetatable({}, { __mode = "k" }) -- humanoid -> { mods = {}, product = 1 }
+local stunState = setmetatable({}, { __mode = "k" }) -- humanoid -> { token, immuneUntil }
+
+function Adapter.getAlive(player)
+	local character = player and player.Character
+	if not character then
+		return nil
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not humanoid or not root or humanoid.Health <= 0 then
+		return nil
+	end
+	return character, humanoid, root
+end
+
+function Adapter.isStunned(character)
+	return character:GetAttribute(Adapter.Settings.StunAttribute) == true
+end
+
+function Adapter.canAct(player)
+	local character = Adapter.getAlive(player)
+	if not character then
+		return false
+	end
+	if Adapter.isStunned(character) then
+		return false
+	end
+	if Adapter.Hooks.CanAct and not Adapter.Hooks.CanAct(player) then
+		return false
+	end
+	return true
+end
+
+function Adapter.canBeHit(attackerPlayer, targetCharacter)
+	if not targetCharacter or (attackerPlayer and targetCharacter == attackerPlayer.Character) then
+		return false
+	end
+	local humanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.Health <= 0 then
+		return false
+	end
+	if targetCharacter:GetAttribute(Adapter.Settings.IFrameAttribute) == true then
+		return false
+	end
+	if targetCharacter:FindFirstChildOfClass("ForceField") then
+		return false
+	end
+	if not Adapter.Settings.FriendlyFire and attackerPlayer then
+		local targetPlayer = Players:GetPlayerFromCharacter(targetCharacter)
+		if targetPlayer and not attackerPlayer.Neutral and not targetPlayer.Neutral and targetPlayer.Team == attackerPlayer.Team then
+			return false
+		end
+	end
+	if Adapter.Hooks.CanBeHit and not Adapter.Hooks.CanBeHit(attackerPlayer, targetCharacter) then
+		return false
+	end
+	return true
+end
+
+-- Stackable walk-speed multipliers keyed by source ("SpinCharge", "Stun"...).
+function Adapter.setMoveModifier(humanoid, key, multiplier)
+	local state = moveMods[humanoid]
+	if not state then
+		state = { mods = {}, product = 1 }
+		moveMods[humanoid] = state
+	end
+	local base = humanoid.WalkSpeed / state.product
+	state.mods[key] = multiplier
+	local product = 1
+	for _, m in pairs(state.mods) do
+		product = product * m
+	end
+	state.product = product
+	humanoid.WalkSpeed = base * product
+end
+
+function Adapter.isBlocking(character)
+	if Adapter.Hooks.IsBlocking then
+		return Adapter.Hooks.IsBlocking(character) == true
+	end
+	return character:GetAttribute(Adapter.Settings.BlockAttribute) == true
+end
+
+function Adapter.applyStun(humanoid, duration)
+	if duration <= 0 then
+		return false
+	end
+	if Adapter.Hooks.ApplyStun then
+		return Adapter.Hooks.ApplyStun(humanoid, duration)
+	end
+	local character = humanoid.Parent
+	local state = stunState[humanoid] or { token = 0, immuneUntil = 0 }
+	stunState[humanoid] = state
+	local now = os.clock()
+	if now < state.immuneUntil and not Adapter.isStunned(character) then
+		return false -- anti stun-lock
+	end
+	state.token = state.token + 1
+	local token = state.token
+	character:SetAttribute(Adapter.Settings.StunAttribute, true)
+	Adapter.setMoveModifier(humanoid, "Stun", Adapter.Settings.StunWalkSpeedMultiplier)
+	task.delay(duration, function()
+		if state.token ~= token or not humanoid.Parent then
+			return
+		end
+		character:SetAttribute(Adapter.Settings.StunAttribute, nil)
+		Adapter.setMoveModifier(humanoid, "Stun", nil)
+		state.immuneUntil = os.clock() + Adapter.Settings.StunImmunityAfter
+	end)
+	return true
+end
+
+function Adapter.applyKnockback(character, direction, strength)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root or strength <= 0 then
+		return
+	end
+	local flat = Vector3.new(direction.X, 0, direction.Z)
+	if flat.Magnitude < 1e-3 then
+		flat = -root.CFrame.LookVector
+	end
+	local attachment = Instance.new("Attachment")
+	attachment.Name = "SpinKnockback"
+	attachment.Parent = root
+	local velocity = Instance.new("LinearVelocity")
+	velocity.Attachment0 = attachment
+	velocity.RelativeTo = Enum.ActuatorRelativeTo.World
+	velocity.MaxForce = math.huge
+	velocity.VectorVelocity = flat.Unit * strength + Vector3.new(0, strength * 0.3, 0)
+	velocity.Parent = attachment
+	Debris:AddItem(attachment, Adapter.Settings.KnockbackDuration)
+end
+
+--[[
+	dealHit: the only entry point for Spin damage. Server only.
+	info = { Damage, Stun, Knockback, Direction, Position, Level, Perfect, Source }
+]]
+function Adapter.dealHit(attackerPlayer, targetCharacter, info)
+	if not Adapter.canBeHit(attackerPlayer, targetCharacter) then
+		return false
+	end
+	local humanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
+	local blocked = Adapter.isBlocking(targetCharacter)
+	local s = Adapter.Settings
+
+	local damage = info.Damage * (blocked and s.BlockDamageMultiplier or 1)
+	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
+
+	if Adapter.Hooks.ApplyDamage then
+		Adapter.Hooks.ApplyDamage(attackerPlayer, humanoid, damage, info)
+	else
+		humanoid:TakeDamage(damage)
+	end
+	if not blocked then
+		Adapter.applyStun(humanoid, info.Stun or 0)
+	end
+	Adapter.applyKnockback(targetCharacter, info.Direction, knockback)
+
+	FX:FireAllClients("Hit", {
+		Position = info.Position,
+		Level = info.Level,
+		Perfect = info.Perfect,
+		Blocked = blocked,
+		Victim = targetCharacter,
+		AttackerId = attackerPlayer and attackerPlayer.UserId or 0,
+	})
+	if attackerPlayer then
+		FX:FireClient(attackerPlayer, "Damage", {
+			Position = info.Position,
+			Amount = math.floor(damage + 0.5),
+			Blocked = blocked,
+			Perfect = info.Perfect,
+		})
+	end
+	return true
+end
+
+return Adapter
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX9"><Properties><string name="Name">CooldownService</string><ProtectedString name="Source"><![CDATA[--[[
+	CooldownService  (ServerScriptService.SpinServer.CooldownService)
+	Server-owned cooldowns. Clients only ever display what the server says.
+	Reusable by any ability: CooldownService.start(player, "AbilityKey", seconds)
+]]
+
+local Players = game:GetService("Players")
+
+local CooldownService = {}
+local readyAt = {} -- [player] = { [key] = os.clock() time when ready }
+
+function CooldownService.remaining(player, key)
+	local list = readyAt[player]
+	local t = list and list[key]
+	if not t then
+		return 0
+	end
+	return math.max(0, t - os.clock())
+end
+
+function CooldownService.isReady(player, key)
+	return CooldownService.remaining(player, key) <= 0
+end
+
+function CooldownService.start(player, key, duration)
+	local list = readyAt[player]
+	if not list then
+		list = {}
+		readyAt[player] = list
+	end
+	list[key] = os.clock() + duration
+end
+
+function CooldownService.reset(player, key)
+	if readyAt[player] then
+		readyAt[player][key] = nil
+	end
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	readyAt[player] = nil
+end)
+
+return CooldownService
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX10"><Properties><string name="Name">ProjectileService</string><ProtectedString name="Source"><![CDATA[--[[
+	ProjectileService  (ServerScriptService.SpinServer.ProjectileService)
+
+	Server-simulated projectiles. The server owns position, collision and
+	hits; clients only draw a matching visual (told via SpinFX
+	"ProjectileSpawn" / "ProjectileEnd"). No physics parts are created on
+	the server, so many projectiles at once stay cheap.
+
+	Reusable for nails, wrecking balls, etc.:
+		ProjectileService.fire(owner, {
+			Kind = "SteelBall", Origin = Vector3, Direction = unit Vector3,
+			Speed = 120, Radius = 1, Range = 150,
+			Visual = { ...any data the client effect needs... },
+			OnHit = function(targetCharacter, position, projectile) end,
+		})
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Net = require(game:GetService("ReplicatedStorage").SpinShared.Net)
+local Adapter = require(script.Parent.CombatAdapter)
+
+local FX = Net.get("SpinFX")
+
+local ProjectileService = {}
+ProjectileService.MaxActivePerPlayer = 4
+
+local active = {}
+local countByPlayer = {}
+local nextId = 0
+
+local function characterFromPart(part)
+	local model = part:FindFirstAncestorOfClass("Model")
+	while model do
+		if model:FindFirstChildOfClass("Humanoid") then
+			return model
+		end
+		model = model:FindFirstAncestorOfClass("Model")
+	end
+	return nil
+end
+
+local function finish(p, position, normal, hitCharacter)
+	if not active[p.Id] then
+		return
+	end
+	active[p.Id] = nil
+	if p.Owner then
+		countByPlayer[p.Owner] = math.max(0, (countByPlayer[p.Owner] or 1) - 1)
+	end
+	if hitCharacter and p.OnHit then
+		local ok, err = pcall(p.OnHit, hitCharacter, position, p)
+		if not ok then
+			warn("[ProjectileService] OnHit error:", err)
+		end
+	end
+	FX:FireAllClients("ProjectileEnd", {
+		Id = p.Id,
+		Kind = p.Kind,
+		Position = position,
+		Normal = normal or Vector3.new(0, 1, 0),
+		HitCharacter = hitCharacter ~= nil,
+		OwnerId = p.OwnerId,
+		Visual = p.Visual,
+	})
+end
+
+local function ignore(p, instance)
+	local list = p.Params.FilterDescendantsInstances
+	table.insert(list, instance)
+	p.Params.FilterDescendantsInstances = list
+end
+
+-- Point-blank check: Spherecast misses parts already inside the start sphere.
+local function overlapAtStart(p)
+	local overlap = OverlapParams.new()
+	overlap.FilterType = Enum.RaycastFilterType.Exclude
+	overlap.FilterDescendantsInstances = p.Params.FilterDescendantsInstances
+	for _, part in ipairs(workspace:GetPartBoundsInRadius(p.Position, p.Radius, overlap)) do
+		local character = characterFromPart(part)
+		if character and Adapter.canBeHit(p.Owner, character) then
+			return character, part.Position
+		end
+	end
+	return nil
+end
+
+function ProjectileService.activeCount(player)
+	return countByPlayer[player] or 0
+end
+
+function ProjectileService.fire(owner, spec)
+	if owner and ProjectileService.activeCount(owner) >= ProjectileService.MaxActivePerPlayer then
+		return nil
+	end
+	nextId = nextId + 1
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.IgnoreWater = true
+	local filter = {}
+	if owner and owner.Character then
+		table.insert(filter, owner.Character)
+	end
+	params.FilterDescendantsInstances = filter
+
+	local p = {
+		Id = nextId,
+		Owner = owner,
+		OwnerId = owner and owner.UserId or 0,
+		Kind = spec.Kind or "Projectile",
+		Position = spec.Origin,
+		Direction = spec.Direction.Unit,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Traveled = 0,
+		Params = params,
+		OnHit = spec.OnHit,
+		Visual = spec.Visual or {},
+	}
+	active[p.Id] = p
+	if owner then
+		countByPlayer[owner] = (countByPlayer[owner] or 0) + 1
+	end
+
+	FX:FireAllClients("ProjectileSpawn", {
+		Id = p.Id,
+		Kind = p.Kind,
+		Origin = p.Position,
+		Direction = p.Direction,
+		Speed = p.Speed,
+		Range = p.Range,
+		OwnerId = owner and owner.UserId or 0,
+		ServerTime = workspace:GetServerTimeNow(),
+		Visual = p.Visual,
+	})
+
+	local character, position = overlapAtStart(p)
+	if character then
+		finish(p, position, nil, character)
+	end
+	return p.Id
+end
+
+RunService.Heartbeat:Connect(function(dt)
+	for _, p in pairs(active) do
+		local step = math.min(p.Speed * dt, p.Range - p.Traveled)
+		if step <= 0.01 then
+			finish(p, p.Position, nil, nil)
+		else
+			local result = workspace:Spherecast(p.Position, p.Radius, p.Direction * step, p.Params)
+			if result then
+				local character = characterFromPart(result.Instance)
+				if character then
+					if Adapter.canBeHit(p.Owner, character) then
+						finish(p, result.Position, result.Normal, character)
+					else
+						ignore(p, character) -- ally / i-frames / dead: pass through
+					end
+				else
+					finish(p, result.Position, result.Normal, nil) -- wall / ground
+				end
+			else
+				p.Position = p.Position + p.Direction * step
+				p.Traveled = p.Traveled + step
+			end
+		end
+	end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	countByPlayer[player] = nil
+	for _, p in pairs(active) do
+		if p.Owner == player then
+			p.Owner = nil
+			p.OnHit = nil
+			finish(p, p.Position, nil, nil)
+		end
+	end
+end)
+
+return ProjectileService
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX11"><Properties><string name="Name">SpinService</string><ProtectedString name="Source"><![CDATA[--[[
+	SpinService  (ServerScriptService.SpinServer.SpinService)
+
+	Server authority for the charge-based Golden Spin throw.
+
+	Flow:
+	  client "Start"            -> validate, mark charging, slow the player,
+	                               set character attribute SpinChargeStart
+	                               (every client reads it to draw the charge)
+	  client "Release", aimDir  -> server measures charge time itself,
+	                               picks the level, starts the cooldown,
+	                               fires a server projectile
+	  "Cancel" / stun / death   -> charge ends, short cooldown
+
+	The client never sends damage, level, position or timing. It only sends
+	"I pressed" / "I let go" and an aim direction, which is sanitised.
+]]
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local SpinConfig = require(Shared.SpinConfig)
+local Net = require(Shared.Net)
+local Adapter = require(script.Parent.CombatAdapter)
+local Cooldowns = require(script.Parent.CooldownService)
+local Projectiles = require(script.Parent.ProjectileService)
+
+local Request = Net.get("SpinRequest")
+local FX = Net.get("SpinFX")
+
+local SpinService = {}
+
+local COOLDOWN_KEY = "GoldenSpin"
+local RATE_LIMIT = 10 -- requests per second per player
+
+local states = {} -- [player] = { Charging, Start, Token, Humanoid, Character }
+local rate = {} -- [player] = { WindowStart, Count }
+
+local function rateLimited(player)
+	local r = rate[player]
+	local now = os.clock()
+	if not r or now - r.WindowStart >= 1 then
+		rate[player] = { WindowStart = now, Count = 1 }
+		return false
+	end
+	r.Count = r.Count + 1
+	return r.Count > RATE_LIMIT
+end
+
+local function tell(player, status, data)
+	data = data or {}
+	data.Status = status
+	FX:FireClient(player, "SpinState", data)
+end
+
+local function sanitizeAim(aim, root)
+	local fallback = root.CFrame.LookVector
+	if typeof(aim) ~= "Vector3" then
+		return fallback
+	end
+	if aim.X ~= aim.X or aim.Y ~= aim.Y or aim.Z ~= aim.Z then
+		return fallback -- NaN
+	end
+	if aim.Magnitude < 1e-3 or aim.Magnitude > 1e4 then
+		return fallback
+	end
+	local unit = aim.Unit
+	local maxPitch = SpinConfig.Projectile.MaxAimPitch
+	local y = math.clamp(unit.Y, -maxPitch, maxPitch)
+	local flat = Vector3.new(unit.X, 0, unit.Z)
+	if flat.Magnitude < 1e-3 then
+		flat = Vector3.new(fallback.X, 0, fallback.Z)
+	end
+	flat = flat.Unit * math.sqrt(1 - y * y)
+	return Vector3.new(flat.X, y, flat.Z).Unit
+end
+
+-- Throw origin is computed by the server and line-of-sight checked, so a
+-- player standing against a wall can't spawn the ball on the other side.
+local function throwOrigin(character, root)
+	local desired = (root.CFrame * SpinConfig.Projectile.SpawnOffset).Position
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character }
+	local offset = desired - root.Position
+	if workspace:Raycast(root.Position, offset, params) then
+		return root.Position
+	end
+	return desired
+end
+
+local function endCharge(player)
+	local state = states[player]
+	if not state then
+		return nil
+	end
+	states[player] = nil
+	if state.Humanoid and state.Humanoid.Parent then
+		Adapter.setMoveModifier(state.Humanoid, "SpinCharge", nil)
+	end
+	if state.Character and state.Character.Parent then
+		state.Character:SetAttribute("SpinChargeStart", nil)
+	end
+	return state
+end
+
+function SpinService.cancel(player, reason)
+	local state = endCharge(player)
+	if state then
+		Cooldowns.start(player, COOLDOWN_KEY, SpinConfig.Charge.CancelCooldown)
+		tell(player, "Cancelled", { Reason = reason, Cooldown = SpinConfig.Charge.CancelCooldown })
+	end
+end
+
+function SpinService.start(player)
+	if states[player] then
+		return
+	end
+	if not Adapter.canAct(player) then
+		tell(player, "Denied", { Reason = "Stunned" })
+		return
+	end
+	local remaining = Cooldowns.remaining(player, COOLDOWN_KEY)
+	if remaining > 0 then
+		tell(player, "Denied", { Reason = "Cooldown", Remaining = remaining })
+		return
+	end
+	local character, humanoid = Adapter.getAlive(player)
+
+	local token = {}
+	states[player] = {
+		Start = os.clock(),
+		Token = token,
+		Humanoid = humanoid,
+		Character = character,
+	}
+	Adapter.setMoveModifier(humanoid, "SpinCharge", SpinConfig.Charge.WalkSpeedMultiplier)
+	character:SetAttribute("SpinChargeStart", workspace:GetServerTimeNow())
+	tell(player, "Charging")
+
+	-- Getting stunned while charging interrupts it: that's the counterplay.
+	local stunConn
+	stunConn = character:GetAttributeChangedSignal(Adapter.Settings.StunAttribute):Connect(function()
+		if Adapter.isStunned(character) and states[player] and states[player].Token == token then
+			SpinService.cancel(player, "Interrupted")
+		end
+		if not states[player] or states[player].Token ~= token then
+			stunConn:Disconnect()
+		end
+	end)
+
+	task.delay(SpinConfig.Charge.MaxHoldTime, function()
+		local state = states[player]
+		if state and state.Token == token then
+			SpinService.release(player, nil) -- auto-release forward
+		end
+		if stunConn.Connected then
+			stunConn:Disconnect()
+		end
+	end)
+end
+
+function SpinService.release(player, aim)
+	local state = states[player]
+	if not state then
+		return
+	end
+	local chargeTime = os.clock() - state.Start
+	endCharge(player)
+
+	if not Adapter.canAct(player) then
+		return
+	end
+	local character, _, root = Adapter.getAlive(player)
+
+	local levelIndex, perfect = SpinConfig.getLevel(chargeTime, SpinConfig.Charge.ServerTimingTolerance)
+	local level = SpinConfig.Levels[levelIndex]
+	local direction = sanitizeAim(aim, root)
+	local origin = throwOrigin(character, root)
+
+	Cooldowns.start(player, COOLDOWN_KEY, level.Cooldown)
+
+	local id = Projectiles.fire(player, {
+		Kind = "SteelBall",
+		Origin = origin,
+		Direction = direction,
+		Speed = level.Speed,
+		Radius = level.Radius,
+		Range = level.Range,
+		Visual = { Level = levelIndex, Perfect = perfect },
+		OnHit = function(target, position)
+			Adapter.dealHit(player, target, {
+				Damage = level.Damage,
+				Stun = level.Stun,
+				Knockback = level.Knockback,
+				Direction = direction,
+				Position = position,
+				Level = levelIndex,
+				Perfect = perfect,
+				Source = "GoldenSpin",
+			})
+		end,
+	})
+
+	FX:FireAllClients("SpinRelease", {
+		Character = character,
+		Origin = origin,
+		Direction = direction,
+		Level = levelIndex,
+		Perfect = perfect,
+	})
+	tell(player, "Released", {
+		Level = levelIndex,
+		Perfect = perfect,
+		Cooldown = level.Cooldown,
+		Fired = id ~= nil,
+	})
+end
+
+function SpinService.init()
+	Request.OnServerEvent:Connect(function(player, action, aim)
+		if rateLimited(player) then
+			return
+		end
+		if action == "Start" then
+			SpinService.start(player)
+		elseif action == "Release" then
+			SpinService.release(player, aim)
+		elseif action == "Cancel" then
+			SpinService.cancel(player, "Manual")
+		end
+	end)
+
+	local function onCharacter(player, character)
+		endCharge(player)
+		local humanoid = character:WaitForChild("Humanoid", 10)
+		if humanoid then
+			humanoid.Died:Connect(function()
+				endCharge(player)
+			end)
+		end
+	end
+
+	local function onPlayer(player)
+		player.CharacterAdded:Connect(function(character)
+			onCharacter(player, character)
+		end)
+		if player.Character then
+			task.spawn(onCharacter, player, player.Character)
+		end
+	end
+
+	Players.PlayerAdded:Connect(onPlayer)
+	for _, player in ipairs(Players:GetPlayers()) do
+		onPlayer(player)
+	end
+	Players.PlayerRemoving:Connect(function(player)
+		endCharge(player)
+		rate[player] = nil
+	end)
+end
+
+return SpinService
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX12"><Properties><string name="Name">TestDummies</string><ProtectedString name="Source"><![CDATA[--[[
+	TestDummies  (ServerScriptService.SpinServer.TestDummies)
+	Studio-only practice targets so Spin can be tested solo.
+	Never runs in a live server (guarded by RunService:IsStudio()).
+	Turn off with SpinConfig.Debug.SpawnTestDummies = false.
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local SpinConfig = require(game:GetService("ReplicatedStorage").SpinShared.SpinConfig)
+
+local TestDummies = {}
+
+local function findSpawn()
+	local spawn = workspace:FindFirstChildWhichIsA("SpawnLocation", true)
+	if spawn then
+		return spawn.CFrame
+	end
+	return CFrame.new(0, 5, 0)
+end
+
+local function spawnDummy(folder, cframe, index)
+	local ok, dummy = pcall(function()
+		return Players:CreateHumanoidModelFromDescription(Instance.new("HumanoidDescription"), Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not dummy then
+		warn("[TestDummies] could not create dummy:", dummy)
+		return
+	end
+	dummy.Name = "SpinDummy" .. index
+	dummy:PivotTo(cframe)
+	local humanoid = dummy:FindFirstChildOfClass("Humanoid")
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+	humanoid.MaxHealth = 150
+	humanoid.Health = 150
+	dummy.Parent = folder
+	humanoid.Died:Connect(function()
+		task.wait(SpinConfig.Debug.DummyRespawnTime)
+		dummy:Destroy()
+		spawnDummy(folder, cframe, index)
+	end)
+end
+
+function TestDummies.init()
+	if not RunService:IsStudio() or not SpinConfig.Debug.SpawnTestDummies then
+		return
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "SpinTestDummies"
+	folder.Parent = workspace
+	local base = findSpawn()
+	for i = 1, SpinConfig.Debug.DummyCount do
+		local offset = CFrame.new((i - (SpinConfig.Debug.DummyCount + 1) / 2) * 8, 3, -30 - i * 6)
+		spawnDummy(folder, base * offset * CFrame.Angles(0, math.pi, 0), i)
+	end
+end
+
+return TestDummies
+]]></ProtectedString></Properties></Item></Item></roblox>

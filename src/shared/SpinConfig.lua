@@ -97,9 +97,14 @@ SpinConfig.Projectile = {
 }
 
 SpinConfig.Colors = {
-	Ball = Color3.fromRGB(226, 96, 24),
-	BallDark = Color3.fromRGB(150, 52, 12),
-	Stud = Color3.fromRGB(255, 205, 70),
+	-- Steel Ball (green, from the owner's reference art)
+	Ball = Color3.fromRGB(66, 142, 30),
+	BallDark = Color3.fromRGB(18, 56, 12),
+	BallLight = Color3.fromRGB(196, 236, 92),
+	-- Rotation lines drawn around the spinning ball (pink-white in the art)
+	SpinLine = Color3.fromRGB(255, 205, 225),
+	SpinGlow = Color3.fromRGB(170, 255, 120),
+	-- Golden Spin energy (Perfect Spin, shockwaves)
 	Gold = Color3.fromRGB(255, 196, 56),
 	GoldLight = Color3.fromRGB(255, 238, 160),
 	Orange = Color3.fromRGB(255, 130, 30),

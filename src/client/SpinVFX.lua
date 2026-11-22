@@ -49,7 +49,7 @@ local function takeBall(scale)
 		trail.Name = "SpiralTrail"
 		trail.Attachment0 = core:FindFirstChild("TrailTop")
 		trail.Attachment1 = core:FindFirstChild("TrailBottom")
-		trail.Color = ColorSequence.new(colors.Gold, colors.Orange)
+		trail.Color = ColorSequence.new(colors.SpinLine, colors.SpinGlow)
 		trail.LightEmission = 1
 		trail.LightInfluence = 0
 		trail.Lifetime = 0.18
@@ -102,14 +102,14 @@ local function createCharge(character)
 		rings[i] = VFXLib.ring({
 			Radius = 0.75 + i * 0.28,
 			Width = 0.1,
-			Color = colors.Gold,
+			Color = colors.SpinLine,
 			Transparency = 1,
 		})
 	end
 
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Texture = VFXLib.Textures.Sparkle
-	emitter.Color = ColorSequence.new(colors.GoldLight, colors.Gold)
+	emitter.Color = ColorSequence.new(colors.SpinGlow, colors.GoldLight)
 	emitter.LightEmission = 1
 	emitter.LightInfluence = 0
 	emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) })
@@ -180,6 +180,7 @@ local function updateCharge(state, startTime, dt, now)
 			ring:SetCFrame(CFrame.new(center) * CFrame.Angles(tilt + now * 0.8 * i, now * (3 + i), tilt * 0.5))
 			ring:SetTransparency(perfect and 0 or 0.25)
 			ring:SetWidth(perfect and 0.18 or 0.1)
+			ring:SetColor(perfect and colors.Gold or colors.SpinLine)
 		else
 			ring:SetTransparency(1)
 		end
@@ -354,7 +355,7 @@ local function spawnProjectile(data)
 		rings[i] = VFXLib.ring({
 			Radius = level.BallScale * 0.7 + i * 0.25,
 			Width = 0.12 + (perfect and 0.06 or 0),
-			Color = perfect and colors.Perfect or colors.Gold,
+			Color = perfect and colors.Gold or colors.SpinLine,
 		})
 	end
 

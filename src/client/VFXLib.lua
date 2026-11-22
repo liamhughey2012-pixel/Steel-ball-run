@@ -192,6 +192,12 @@ function VFXLib.ring(opts)
 			b.Transparency = seq
 		end
 	end
+	function ring:SetColor(c)
+		local seq = ColorSequence.new(c)
+		for _, b in ipairs(beams) do
+			b.Color = seq
+		end
+	end
 	function ring:SetCFrame(cf)
 		carrier.CFrame = cf
 	end

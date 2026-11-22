@@ -1,0 +1,687 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Folder" referent="RBX7"><Properties><string name="Name">SpinShared</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">Maid</string><ProtectedString name="Source"><![CDATA[--[[
+	Maid  (ReplicatedStorage.SpinShared.Maid)
+	Tracks connections, instances and cleanup functions so effects always end.
+]]
+
+local Maid = {}
+Maid.__index = Maid
+
+function Maid.new()
+	return setmetatable({ _tasks = {} }, Maid)
+end
+
+function Maid:Give(task)
+	table.insert(self._tasks, task)
+	return task
+end
+
+function Maid:Clean()
+	local tasks = self._tasks
+	self._tasks = {}
+	for i = #tasks, 1, -1 do
+		local t = tasks[i]
+		local kind = typeof(t)
+		if kind == "RBXScriptConnection" then
+			t:Disconnect()
+		elseif kind == "Instance" then
+			t:Destroy()
+		elseif kind == "function" then
+			local ok, err = pcall(t)
+			if not ok then
+				warn("[Maid] cleanup error:", err)
+			end
+		elseif kind == "table" and t.Destroy then
+			t:Destroy()
+		end
+	end
+end
+
+Maid.Destroy = Maid.Clean
+
+return Maid
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX2"><Properties><string name="Name">Net</string><ProtectedString name="Source"><![CDATA[--[[
+	Net  (ReplicatedStorage.SpinShared.Net)
+
+	Creates (server) or waits for (client) the RemoteEvents used by the
+	Spin system. All remotes live in ReplicatedStorage.SpinRemotes.
+
+	SpinRequest : client -> server  ("Start" | "Release", aimDirection | "Cancel")
+	SpinFX      : server -> client  (eventName, payloadTable)
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local REMOTES = { "SpinRequest", "SpinFX" }
+
+local Net = {}
+local folder
+
+local function getFolder()
+	if folder then
+		return folder
+	end
+	if RunService:IsServer() then
+		folder = ReplicatedStorage:FindFirstChild("SpinRemotes")
+		if not folder then
+			folder = Instance.new("Folder")
+			folder.Name = "SpinRemotes"
+			folder.Parent = ReplicatedStorage
+		end
+		for _, name in ipairs(REMOTES) do
+			if not folder:FindFirstChild(name) then
+				local remote = Instance.new("RemoteEvent")
+				remote.Name = name
+				remote.Parent = folder
+			end
+		end
+	else
+		folder = ReplicatedStorage:WaitForChild("SpinRemotes")
+	end
+	return folder
+end
+
+function Net.get(name)
+	return getFolder():WaitForChild(name)
+end
+
+return Net
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX3"><Properties><string name="Name">SpinConfig</string><ProtectedString name="Source"><![CDATA[--[[
+	SpinConfig  (ReplicatedStorage.SpinShared.SpinConfig)
+
+	Every tunable value for the Golden Spin / Steel Ball system.
+	The server reads this for damage, timing and validation; the client reads
+	it for the charge meter and visuals. Change numbers here, not in code.
+
+	Future Spin-based characters can copy this table and pass their own
+	config to SpinService.registerKit(...).
+]]
+
+local SpinConfig = {}
+
+SpinConfig.Input = {
+	ActionName = "SpinCharge",
+	Keyboard = Enum.KeyCode.R,
+	Gamepad = Enum.KeyCode.ButtonR2,
+	MobileButtonTitle = "SPIN",
+	MobileButtonPosition = UDim2.new(1, -175, 1, -175),
+}
+
+SpinConfig.Charge = {
+	MaxHoldTime = 3.0, -- auto-release after holding this long
+	WalkSpeedMultiplier = 0.5, -- movement slow while charging (counterplay)
+	CancelCooldown = 0.75, -- cooldown if the charge is interrupted
+
+	-- PERFECT SPIN: release between Start and Start + Duration (seconds of charge).
+	PerfectWindowStart = 1.35,
+	PerfectWindowDuration = 0.22,
+	ServerTimingTolerance = 0.05, -- extra slack each side for network jitter
+
+	-- Holding past the perfect window drops the throw back to this level,
+	-- so the reward comes from timing, not from holding forever.
+	OverchargeLevel = 2,
+}
+
+--[[
+	Levels: ChargeTime = seconds of charge needed to reach the level.
+	Level 3 can only be reached inside the Perfect window.
+]]
+SpinConfig.Levels = {
+	{
+		Name = "QUICK SPIN",
+		ChargeTime = 0,
+		Damage = 7,
+		Speed = 120,
+		Radius = 1.1,
+		Range = 150,
+		Knockback = 14,
+		Stun = 0.2,
+		Cooldown = 2.5,
+		BallScale = 1.0,
+		Rings = 1,
+		TrailWidth = 0.6,
+		ShockwaveRadius = 6,
+		CameraShake = 0.15,
+	},
+	{
+		Name = "POWER SPIN",
+		ChargeTime = 0.6,
+		Damage = 13,
+		Speed = 135,
+		Radius = 1.4,
+		Range = 180,
+		Knockback = 32,
+		Stun = 0.4,
+		Cooldown = 4.5,
+		BallScale = 1.25,
+		Rings = 2,
+		TrailWidth = 1.0,
+		ShockwaveRadius = 10,
+		CameraShake = 0.3,
+	},
+	{
+		Name = "PERFECT SPIN",
+		ChargeTime = 1.35, -- keep equal to Charge.PerfectWindowStart
+		Damage = 22,
+		Speed = 165,
+		Radius = 1.9,
+		Range = 220,
+		Knockback = 55,
+		Stun = 0.65,
+		Cooldown = 7,
+		BallScale = 1.6,
+		Rings = 3,
+		TrailWidth = 1.6,
+		ShockwaveRadius = 16,
+		CameraShake = 0.6,
+	},
+}
+
+SpinConfig.Projectile = {
+	MaxActivePerPlayer = 4,
+	-- Offset from HumanoidRootPart where the throw starts (right hand side).
+	SpawnOffset = CFrame.new(1, 0.8, -1.5),
+	MaxAimPitch = 0.75, -- clamp of the aim direction's Y component
+}
+
+SpinConfig.Colors = {
+	-- Steel Ball (green, from the owner's reference art)
+	Ball = Color3.fromRGB(66, 142, 30),
+	BallDark = Color3.fromRGB(18, 56, 12),
+	BallLight = Color3.fromRGB(196, 236, 92),
+	-- Rotation lines drawn around the spinning ball (pink-white in the art)
+	SpinLine = Color3.fromRGB(255, 205, 225),
+	SpinGlow = Color3.fromRGB(170, 255, 120),
+	-- Golden Spin energy (Perfect Spin, shockwaves)
+	Gold = Color3.fromRGB(255, 196, 56),
+	GoldLight = Color3.fromRGB(255, 238, 160),
+	Orange = Color3.fromRGB(255, 130, 30),
+	Perfect = Color3.fromRGB(255, 250, 210),
+}
+
+--[[
+	Sounds: upload the files from /assets/audio (Creator Hub > Asset Manager >
+	Import) and paste the ids here as "rbxassetid://123...". Empty = silent.
+]]
+SpinConfig.Sounds = {
+	Charge = "", -- spin_charge.ogg (loop)
+	LevelUp = "", -- spin_levelup.ogg
+	Perfect = "", -- spin_perfect.ogg
+	Release = "", -- spin_release.ogg
+	Impact = "", -- spin_impact.ogg
+}
+
+SpinConfig.Debug = {
+	SpawnTestDummies = true, -- only ever runs inside Roblox Studio
+	DummyCount = 3,
+	DummyRespawnTime = 3,
+}
+
+-- Returns level index (1..3) and whether it was a Perfect release.
+function SpinConfig.getLevel(chargeTime, tolerance)
+	tolerance = tolerance or 0
+	local c = SpinConfig.Charge
+	local windowStart = c.PerfectWindowStart - tolerance
+	local windowEnd = c.PerfectWindowStart + c.PerfectWindowDuration + tolerance
+	if chargeTime >= windowStart and chargeTime <= windowEnd then
+		return 3, true
+	elseif chargeTime > windowEnd then
+		return c.OverchargeLevel, false
+	elseif chargeTime >= SpinConfig.Levels[2].ChargeTime then
+		return 2, false
+	end
+	return 1, false
+end
+
+return SpinConfig
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX4"><Properties><string name="Name">SteelBallModel</string><ProtectedString name="Source"><![CDATA[--[[
+	SteelBallModel  (ReplicatedStorage.SpinShared.SteelBallModel)
+
+	Procedurally builds the Steel Ball from the owner's reference images:
+	a glossy green metal sphere with raised hexagon panels (dark outer edge
+	plus a bright inner edge, so they read as raised plates), round
+	panels, and curved parallel grooves sweeping around the surface.
+
+	SteelBallModel.build(diameter, detailed) -> Model (PrimaryPart = "Core")
+	  detailed = false (Low quality) keeps only the hexagon outer edges.
+
+	All parts are visual only: no collision, no queries, no touch events,
+	massless, and welded to the Core. Anchor the Core to move it with
+	PivotTo, or weld the Core to a hand.
+
+	Swapping in a real mesh later: put a Model named "SteelBall" (with a
+	PrimaryPart) in ReplicatedStorage.SpinShared.Assets and build() will
+	clone and resize it instead of generating one.
+]]
+
+local SpinConfig = require(script.Parent.SpinConfig)
+
+local SteelBallModel = {}
+
+-- Panel layout (unit directions on the ball, angular radius in radians).
+-- Kept as data so the look can be tuned without touching the builder.
+SteelBallModel.Layout = {
+	Hexagons = {
+		{ Dir = Vector3.new(-0.45, 0.35, 0.82), Radius = 0.55, Spin = 0.2 },
+		{ Dir = Vector3.new(0.6, -0.2, -0.77), Radius = 0.5, Spin = 0.5 },
+		{ Dir = Vector3.new(-0.3, -0.85, -0.4), Radius = 0.45, Spin = 0.0 },
+	},
+	Circles = {
+		{ Dir = Vector3.new(0.45, -0.4, 0.8), Radius = 0.3 },
+		{ Dir = Vector3.new(0.2, 0.85, -0.45), Radius = 0.35 },
+	},
+	-- Grooves: arcs of a circle around Axis at angular radius Radius,
+	-- from angle From to To (radians).
+	Grooves = {
+		{ Axis = Vector3.new(0.95, 0.25, 0.15), Radius = 0.5, From = -1.2, To = 1.3 },
+		{ Axis = Vector3.new(0.95, 0.25, 0.15), Radius = 0.78, From = -1.0, To = 1.1 },
+		{ Axis = Vector3.new(-0.75, 0.15, -0.6), Radius = 0.6, From = 0.6, To = 3.2 },
+	},
+}
+
+local function visualPart(props)
+	local p = Instance.new("Part")
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Massless = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for k, v in pairs(props) do
+		p[k] = v
+	end
+	return p
+end
+
+local function weld(core, part)
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = core
+	w.Part1 = part
+	w.Parent = part
+end
+
+-- Two unit vectors perpendicular to dir.
+local function basis(dir)
+	local helper = math.abs(dir.Y) > 0.9 and Vector3.new(1, 0, 0) or Vector3.new(0, 1, 0)
+	local u = dir:Cross(helper).Unit
+	local v = dir:Cross(u).Unit
+	return u, v
+end
+
+-- Point on the unit sphere at angular distance `radius` from `center`, around angle `theta`.
+local function around(center, radius, theta)
+	local u, v = basis(center)
+	return (center * math.cos(radius) + (u * math.cos(theta) + v * math.sin(theta)) * math.sin(radius)).Unit
+end
+
+local function fromOverride(diameter)
+	local assets = script.Parent:FindFirstChild("Assets")
+	local custom = assets and assets:FindFirstChild("SteelBall")
+	if custom and custom:IsA("Model") and custom.PrimaryPart then
+		local clone = custom:Clone()
+		local size = clone:GetExtentsSize()
+		local largest = math.max(size.X, size.Y, size.Z)
+		if largest > 0 then
+			clone:ScaleTo(clone:GetScale() * diameter / largest)
+		end
+		clone.PrimaryPart.Name = "Core"
+		return clone
+	end
+	return nil
+end
+
+function SteelBallModel.build(diameter, detailed)
+	diameter = diameter or 1
+	if detailed == nil then
+		detailed = true
+	end
+
+	local override = fromOverride(diameter)
+	if override then
+		return override
+	end
+
+	local colors = SpinConfig.Colors
+	local r = diameter / 2
+
+	local model = Instance.new("Model")
+	model.Name = "SteelBall"
+
+	local core = visualPart({
+		Name = "Core",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(diameter, diameter, diameter),
+		Color = colors.Ball,
+		Material = Enum.Material.SmoothPlastic,
+		Reflectance = 0.18,
+		Massless = false,
+	})
+	core.CFrame = CFrame.new()
+	core.Parent = model
+	model.PrimaryPart = core
+
+	-- Attachments other systems hook effects onto.
+	local center = Instance.new("Attachment")
+	center.Name = "Center"
+	center.Parent = core
+	local top = Instance.new("Attachment")
+	top.Name = "TrailTop"
+	top.Position = Vector3.new(0, r * 0.9, 0)
+	top.Parent = core
+	local bottom = Instance.new("Attachment")
+	bottom.Name = "TrailBottom"
+	bottom.Position = Vector3.new(0, -r * 0.9, 0)
+	bottom.Parent = core
+
+	-- One straight raised line between two directions on the surface.
+	local function line(a, b, width, color, name)
+		local lift = r * 1.012
+		local pa, pb = a * lift, b * lift
+		local mid = (pa + pb) / 2
+		local seg = visualPart({
+			Name = name,
+			Size = Vector3.new(width, width * 0.5, (pb - pa).Magnitude + width * 0.6),
+			Color = color,
+			Material = Enum.Material.SmoothPlastic,
+			Reflectance = 0.1,
+		})
+		seg.CFrame = CFrame.lookAt(mid, pb, mid.Unit)
+		seg.Parent = model
+		weld(core, seg)
+	end
+
+	local function polygon(dirCenter, radius, sides, spin, width, color, name)
+		local c = dirCenter.Unit
+		for i = 0, sides - 1 do
+			local a = around(c, radius, spin + i / sides * math.pi * 2)
+			local b = around(c, radius, spin + (i + 1) / sides * math.pi * 2)
+			line(a, b, width, color, name)
+		end
+	end
+
+	local layout = SteelBallModel.Layout
+
+	-- Hexagon plates: dark outer edge, bright inner edge.
+	for _, hex in ipairs(layout.Hexagons) do
+		polygon(hex.Dir, hex.Radius, 6, hex.Spin, diameter * 0.04, colors.BallDark, "HexEdge")
+		if detailed then
+			polygon(hex.Dir, hex.Radius * 0.84, 6, hex.Spin, diameter * 0.025, colors.BallLight, "HexHighlight")
+		end
+	end
+
+	if detailed then
+		-- Round panels.
+		for _, circle in ipairs(layout.Circles) do
+			polygon(circle.Dir, circle.Radius, 10, 0, diameter * 0.035, colors.BallDark, "RoundPanel")
+		end
+		-- Curved grooves.
+		for _, groove in ipairs(layout.Grooves) do
+			local axis = groove.Axis.Unit
+			local steps = 6
+			for i = 0, steps - 1 do
+				local t0 = groove.From + (groove.To - groove.From) * i / steps
+				local t1 = groove.From + (groove.To - groove.From) * (i + 1) / steps
+				line(around(axis, groove.Radius, t0), around(axis, groove.Radius, t1), diameter * 0.03, colors.BallDark, "Groove")
+			end
+		end
+	end
+
+	return model
+end
+
+return SteelBallModel
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX5"><Properties><string name="Name">VFXQuality</string><ProtectedString name="Source"><![CDATA[--[[
+	VFXQuality  (ReplicatedStorage.SpinShared.VFXQuality)
+
+	Per-player visual quality. Purely client-side: it never changes gameplay.
+	Every effect asks VFXQuality.get() before spawning detail.
+]]
+
+local VFXQuality = {}
+
+VFXQuality.Presets = {
+	Low = {
+		Particles = 0.3, -- multiplier on particle counts
+		RingSegments = 12, -- beam segments per energy ring
+		Grooves = false, -- steel ball surface grooves
+		Afterimages = false,
+		ScreenEffects = false, -- speed lines, FOV punch
+		ImpactFrames = false,
+		Lights = false,
+		MaxActiveEffects = 12,
+		ShakeScale = 0.6,
+	},
+	Medium = {
+		Particles = 0.65,
+		RingSegments = 18,
+		Grooves = true,
+		Afterimages = false,
+		ScreenEffects = true,
+		ImpactFrames = false,
+		Lights = true,
+		MaxActiveEffects = 24,
+		ShakeScale = 1,
+	},
+	High = {
+		Particles = 1,
+		RingSegments = 28,
+		Grooves = true,
+		Afterimages = true,
+		ScreenEffects = true,
+		ImpactFrames = true,
+		Lights = true,
+		MaxActiveEffects = 40,
+		ShakeScale = 1,
+	},
+}
+
+VFXQuality.Order = { "Low", "Medium", "High" }
+
+local current = "Medium"
+local changed = Instance.new("BindableEvent")
+VFXQuality.Changed = changed.Event
+
+function VFXQuality.get()
+	return VFXQuality.Presets[current], current
+end
+
+function VFXQuality.set(name)
+	if VFXQuality.Presets[name] and name ~= current then
+		current = name
+		changed:Fire(name)
+	end
+end
+
+function VFXQuality.cycle()
+	for i, name in ipairs(VFXQuality.Order) do
+		if name == current then
+			VFXQuality.set(VFXQuality.Order[i % #VFXQuality.Order + 1])
+			return current
+		end
+	end
+	return current
+end
+
+return VFXQuality
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX6"><Properties><string name="Name">WreckingBallModel</string><ProtectedString name="Source"><![CDATA[--[[
+	WreckingBallModel  (ReplicatedStorage.SpinShared.WreckingBallModel)
+
+	Procedurally builds a Wrecking Ball from the owner's reference image:
+	a glossy orange metal sphere, ten raised gold studs sitting in darker
+	gold collars, and a dark seam groove wrapping around the surface.
+	Not used yet: kept for the Wrecking Ball phase.
+
+	WreckingBallModel.build(diameter, withGrooves) -> Model (PrimaryPart = "Core")
+
+	All parts are visual only: no collision, no queries, no touch events,
+	massless, and welded to the Core. Anchor the Core to move it with
+	PivotTo, or weld the Core to a hand.
+
+	Swapping in a real mesh later: put a Model named "WreckingBall" (with a
+	PrimaryPart) in ReplicatedStorage.SpinShared.Assets and build() will
+	clone it instead of generating one.
+]]
+
+local WreckingBallModel = {}
+
+WreckingBallModel.Colors = {
+	Ball = Color3.fromRGB(226, 96, 24),
+	BallDark = Color3.fromRGB(150, 52, 12),
+	Stud = Color3.fromRGB(255, 205, 70),
+}
+
+local GOLDEN_ANGLE = math.pi * (3 - math.sqrt(5))
+local STUD_COUNT = 10
+local SEAM_SEGMENTS = 22
+
+local function visualPart(props)
+	local p = Instance.new("Part")
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Massless = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for k, v in pairs(props) do
+		p[k] = v
+	end
+	return p
+end
+
+local function weld(core, part)
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = core
+	w.Part1 = part
+	w.Parent = part
+end
+
+local function fromOverride(diameter)
+	local assets = script.Parent:FindFirstChild("Assets")
+	local custom = assets and assets:FindFirstChild("WreckingBall")
+	if custom and custom:IsA("Model") and custom.PrimaryPart then
+		local clone = custom:Clone()
+		local size = clone:GetExtentsSize()
+		local largest = math.max(size.X, size.Y, size.Z)
+		if largest > 0 then
+			clone:ScaleTo(clone:GetScale() * diameter / largest)
+		end
+		clone.PrimaryPart.Name = "Core"
+		return clone
+	end
+	return nil
+end
+
+function WreckingBallModel.build(diameter, withGrooves)
+	diameter = diameter or 1
+	if withGrooves == nil then
+		withGrooves = true
+	end
+
+	local override = fromOverride(diameter)
+	if override then
+		return override
+	end
+
+	local colors = WreckingBallModel.Colors
+	local r = diameter / 2
+
+	local model = Instance.new("Model")
+	model.Name = "WreckingBall"
+
+	local core = visualPart({
+		Name = "Core",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(diameter, diameter, diameter),
+		Color = colors.Ball,
+		Material = Enum.Material.SmoothPlastic,
+		Reflectance = 0.2,
+		Massless = false,
+	})
+	core.CFrame = CFrame.new()
+	core.Parent = model
+	model.PrimaryPart = core
+
+	-- Attachments other systems hook effects onto.
+	local center = Instance.new("Attachment")
+	center.Name = "Center"
+	center.Parent = core
+	local top = Instance.new("Attachment")
+	top.Name = "TrailTop"
+	top.Position = Vector3.new(0, r * 0.9, 0)
+	top.Parent = core
+	local bottom = Instance.new("Attachment")
+	bottom.Name = "TrailBottom"
+	bottom.Position = Vector3.new(0, -r * 0.9, 0)
+	bottom.Parent = core
+
+	-- Gold studs on a Fibonacci sphere so they spread evenly.
+	for i = 0, STUD_COUNT - 1 do
+		local y = 1 - (i + 0.5) / STUD_COUNT * 2
+		local ring = math.sqrt(1 - y * y)
+		local theta = i * GOLDEN_ANGLE
+		local dir = Vector3.new(math.cos(theta) * ring, y, math.sin(theta) * ring)
+		local up = math.abs(dir.Y) > 0.95 and Vector3.new(1, 0, 0) or Vector3.new(0, 1, 0)
+
+		local collar = visualPart({
+			Name = "StudCollar",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(diameter * 0.05, diameter * 0.2, diameter * 0.2),
+			Color = colors.BallDark:Lerp(colors.Stud, 0.35),
+			Material = Enum.Material.Metal,
+			Reflectance = 0.1,
+		})
+		-- Cylinder axis is X, so point RightVector along the surface normal.
+		local right = dir
+		local back = right:Cross(up).Unit
+		local realUp = back:Cross(right).Unit
+		collar.CFrame = CFrame.fromMatrix(dir * r * 0.985, right, realUp)
+		collar.Parent = model
+		weld(core, collar)
+
+		local stud = visualPart({
+			Name = "Stud",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(diameter * 0.15, diameter * 0.15, diameter * 0.15),
+			Color = colors.Stud,
+			Material = Enum.Material.Metal,
+			Reflectance = 0.35,
+		})
+		stud.CFrame = CFrame.new(dir * r * 1.01)
+		stud.Parent = model
+		weld(core, stud)
+	end
+
+	-- Seam groove: a wave wrapping the ball like a tennis-ball seam.
+	if withGrooves then
+		local function seamPoint(t)
+			local lon = t * math.pi * 2
+			local lat = 0.55 * math.sin(2 * lon)
+			return Vector3.new(math.cos(lat) * math.cos(lon), math.sin(lat), math.cos(lat) * math.sin(lon)) * r * 1.003
+		end
+		for i = 0, SEAM_SEGMENTS - 1 do
+			local a = seamPoint(i / SEAM_SEGMENTS)
+			local b = seamPoint((i + 1) / SEAM_SEGMENTS)
+			local mid = (a + b) / 2
+			local len = (b - a).Magnitude
+			local seg = visualPart({
+				Name = "Groove",
+				Size = Vector3.new(diameter * 0.035, diameter * 0.012, len * 1.08),
+				Color = colors.BallDark,
+				Material = Enum.Material.SmoothPlastic,
+			})
+			seg.CFrame = CFrame.lookAt(mid, b, mid.Unit)
+			seg.Parent = model
+			weld(core, seg)
+		end
+	end
+
+	-- Everything was laid out around the origin; move the model as one piece from here on.
+	return model
+end
+
+return WreckingBallModel
+]]></ProtectedString></Properties></Item></Item></roblox>
