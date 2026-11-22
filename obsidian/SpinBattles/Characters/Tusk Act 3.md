@@ -6,7 +6,7 @@ updated: 2026-11-22
 # Tusk Act 3: Master of spatial movement
 Reached by using the previous Act's ultimate. Numbers are in `TuskConfig.Act3`.
 
-**Stand:** Slender, ghostly humanoid in pink and navy, with a swirling tail (built in code; send a reference image to refine it).
+**Stand:** rebuilt from the owner's reference images: big pink bean body leaning forward, dark crest, antennae with grey balls, slotted face mask, blue shoulder balls with red stars, purple belly lens, thin limbs with grey ball joints, three-spike claws and spiked feet.
 
 | Input | Move |
 |---|---|

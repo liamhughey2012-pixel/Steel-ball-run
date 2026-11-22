@@ -22,3 +22,4 @@ updated: 2026-11-22
 | 2026-11-22 | Slower ultimate progression: per-Act meter gain + 45 s lock after each awakening; Studio refill off |
 | 2026-11-22 | Act 1 and Act 2 Stands rebuilt from the owner's images; Act 1 store model is optional (AssetId 0 by default) |
 | 2026-11-22 | Stand previews are rendered outside Studio with tools/preview (Roblox maths stand-in + ray tracer) |
+| 2026-11-22 | Act 3 and Act 4 Stands rebuilt from the owner's images |

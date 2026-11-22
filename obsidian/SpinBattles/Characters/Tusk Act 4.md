@@ -6,7 +6,7 @@ updated: 2026-11-22
 # Tusk Act 4: Infinite Rotation (gold + deep blue)
 Reached by using the previous Act's ultimate. Numbers are in `TuskConfig.Act4`.
 
-**Stand:** Tall humanoid in deep blue with gold metal trim, glowing cyan eyes and two golden rings that always orbit it (built in code; send a reference image to refine it).
+**Stand:** rebuilt from the owner's reference images: armoured pink humanoid with a slotted helmet, layered shoulder armour, blue gloves and boots, yellow stars on the legs and a long skirt of hanging pink scales (two golden rings still orbit it).
 
 | Input | Move |
 |---|---|
