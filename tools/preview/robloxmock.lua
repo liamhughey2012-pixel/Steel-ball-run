@@ -85,6 +85,7 @@ local Inst = {}
 Inst.__index = function(t, k)
 	if Inst[k] then return Inst[k] end
 	if k == "Position" then local cf = rawget(t, "CFrame"); return cf and cf.pos end
+	if k == "Parent" then return rawget(t, "_parent") end
 	return nil
 end
 function Inst.GetDescendants(self)
@@ -145,3 +146,20 @@ NumberRange = { new = function(...) return { ... } end }
 Vector2 = { new = function(x, y) return { X = x, Y = y } end }
 function Inst.FindFirstChildOfClass(self, cls) for _, c in ipairs(self._children) do if c.ClassName == cls then return c end end end
 UDim2 = { new = function(...) return { ... } end, fromScale = function(...) return { ... } end, fromOffset = function(...) return { ... } end }
+_G.Inst = Inst
+function typeof(v)
+	local mt = getmetatable(v)
+	if type(v) == "table" and mt then
+		if mt == V then return "Vector3" end
+		if mt == C then return "CFrame" end
+		if mt == Inst then return "Instance" end
+	end
+	return type(v)
+end
+math.clamp = math.clamp or function(x, a, b) return math.max(a, math.min(b, x)) end
+function C.Lerp(a, b, t)
+	-- linear blend of position + normalised basis (good enough for testing)
+	local function lv(x, y) return x + (y - x) * t end
+	local r = lv(a.r, b.r).Unit; local u = lv(a.u, b.u).Unit; local bb = lv(a.b, b.b).Unit
+	return setmetatable({ pos = lv(a.pos, b.pos), r = r, u = u, b = bb }, C)
+end

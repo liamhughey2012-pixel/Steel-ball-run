@@ -34,3 +34,5 @@ updated: 2026-11-22
 | 2026-11-22 | Gyro's look built from parts (hat, hair, striped outfit) since no catalog ids were given |
 | 2026-11-22 | Attack poses now twist, lean and dip the whole body; poses checked on a stand-in R15 rig |
 | 2026-11-22 | Gyro outfit removed (player keeps own clothes); hat rebuilt from the owner's pictures with goggles |
+| 2026-11-22 | Ball Breaker visuals: Golden Rectangle charge, Ball Breaker spirit, inward pulses, energy pillar |
+| 2026-11-22 | Animations: support AnimationConstraint joints, warn when no joints, hold poses slightly longer |

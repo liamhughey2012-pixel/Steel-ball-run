@@ -15,7 +15,7 @@ He always holds the green Steel Ball, spinning in his right hand.
 | 1 | STEEL BALL THROW | the ball flies out, then spins back to his hand; it can hit again on the way back |
 | 2 | SPIN TORNADO | bowls the ball along the ground: a green tornado travels forward for 2.2 s, sucking enemies in and juggling them, then bursts (stops at walls) |
 | 3 | SPIN VIBRATION | presses the spinning ball into the enemy in front: long paralysis stun and a small launch |
-| G | BALL BREAKER | green spiral build-up (armored), a giant ball, a spinning vortex that pulls enemies in for 2.4 s, then a big burst |
+| G | BALL BREAKER | charge: the Golden Rectangle (nested golden-ratio squares + spiral) forms in front of Gyro, 3 rings spin up round the ball · shot: giant ball trailing a spinning spiral · vortex: a ghostly skeletal Ball Breaker spirit rises and spins, rings shrink inward, dust swirls in · burst: green energy pillar, the spirit shatters, layered shockwaves |
 
 - No Tusk Sneak and no Acts: Gyro is one form, and dying keeps you as Gyro.
 - Code: server `TuskActs/GyroZeppeli`, client `TuskActVFX/Gyro` (registered internally as "Act 5").

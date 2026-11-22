@@ -215,7 +215,35 @@ local function spawnBall(data)
 	trail.WidthScale = NumberSequence.new(1, 0)
 	trail.Transparency = NumberSequence.new(0.1, 1)
 	trail.Parent = core
+	local whirl
+	if style == "Breaker" then
+		-- Spinning spiral trailing the giant ball.
+		whirl = VFXLib.anchor(CFrame.new(data.Origin))
+		local prev
+		for i = 0, 16 do
+			local t = i / 16
+			local angle = t * math.pi * 3
+			local r = 1 + t * 4
+			local a = Instance.new("Attachment")
+			a.Position = Vector3.new(math.cos(angle) * r, math.sin(angle) * r, t * 3)
+			a.Parent = whirl
+			if prev then
+				local b = Instance.new("Beam")
+				b.Attachment0 = prev
+				b.Attachment1 = a
+				b.FaceCamera = true
+				b.LightEmission = 1
+				b.Width0 = 0.5 * (1 - t * 0.6)
+				b.Width1 = 0.5 * (1 - t * 0.6)
+				b.Color = ColorSequence.new(pal.Light:Lerp(pal.Main, t))
+				b.Transparency = NumberSequence.new(t * 0.7)
+				b.Parent = whirl
+			end
+			prev = a
+		end
+	end
 	balls[data.Id] = {
+		Whirl = whirl,
 		Model = ball,
 		Rings = rings,
 		Style = style,
@@ -237,6 +265,9 @@ end
 local function removeBall(v)
 	for _, ring in ipairs(v.Rings) do
 		ring:Destroy()
+	end
+	if v.Whirl then
+		v.Whirl:Destroy()
 	end
 	v.Model:Destroy()
 end
@@ -276,6 +307,12 @@ local function stepBalls(dt)
 		if v.Style == "Breaker" and now >= v.NextGhost then
 			v.NextGhost = now + 0.05
 			VFXLib.afterimage(facing, 4, pal.Main)
+			if math.random() < 0.2 then
+				TuskVFX.CreateDistortion(pos, { Radius = 4, Duration = 0.25 })
+			end
+		end
+		if v.Whirl then
+			v.Whirl.CFrame = facing * CFrame.new(0, 0, 3.5) * CFrame.Angles(0, 0, v.Spin * 0.5)
 		end
 		if now > v.Expire then
 			balls[id] = nil
@@ -373,6 +410,149 @@ local function spiral(cframe, size, duration)
 	end)
 end
 
+-- The Golden Rectangle: nested golden-ratio rectangles with the spiral
+-- drawn through them (green/white Spin energy), growing and turning.
+local function goldenRectangle(cframe, size, duration)
+	local carrier = VFXLib.anchor(cframe)
+	local phi = 1.618
+	local function line(a, b, width, color)
+		local a0 = Instance.new("Attachment")
+		a0.Position = a
+		a0.Parent = carrier
+		local a1 = Instance.new("Attachment")
+		a1.Position = b
+		a1.Parent = carrier
+		local beam = Instance.new("Beam")
+		beam.Attachment0 = a0
+		beam.Attachment1 = a1
+		beam.FaceCamera = true
+		beam.LightEmission = 1
+		beam.Segments = 1
+		beam.Width0 = width
+		beam.Width1 = width
+		beam.Color = ColorSequence.new(color)
+		beam.Parent = carrier
+	end
+	-- Outer rectangle, then 6 nested squares cut off in turn (golden subdivision).
+	local x0, y0, w, h = -size * phi / 2, -size / 2, size * phi, size
+	local spiralPoints = {}
+	for i = 0, 6 do
+		local color = pal.Light:Lerp(pal.Main, i / 6)
+		local width = 0.16 * (1 - i * 0.1)
+		line(Vector3.new(x0, y0, 0), Vector3.new(x0 + w, y0, 0), width, color)
+		line(Vector3.new(x0 + w, y0, 0), Vector3.new(x0 + w, y0 + h, 0), width, color)
+		line(Vector3.new(x0 + w, y0 + h, 0), Vector3.new(x0, y0 + h, 0), width, color)
+		line(Vector3.new(x0, y0 + h, 0), Vector3.new(x0, y0, 0), width, color)
+		-- Cut a square off the rectangle (rotating which side each time).
+		local side = i % 4
+		local sq = math.min(w, h)
+		local cx, cy
+		if side == 0 then
+			cx, cy = x0 + sq, y0 + sq
+			x0, w = x0 + sq, w - sq
+		elseif side == 1 then
+			cx, cy = x0 + w - sq, y0 + sq
+			y0, h = y0 + sq, h - sq
+		elseif side == 2 then
+			cx, cy = x0 + w - sq, y0 + h - sq
+			w = w - sq
+		else
+			cx, cy = x0 + sq, y0 + h - sq
+			h = h - sq
+		end
+		table.insert(spiralPoints, { cx, cy, sq, side })
+	end
+	-- Quarter-circle arcs through the squares = the golden spiral.
+	local prev
+	for _, q in ipairs(spiralPoints) do
+		for k = 0, 4 do
+			local angle = (q[4] * math.pi / 2) + math.pi + k / 4 * (math.pi / 2)
+			local p = Vector3.new(q[1] + math.cos(angle) * q[3], q[2] + math.sin(angle) * q[3], -0.05)
+			if prev then
+				line(prev, p, 0.22, pal.Light)
+			end
+			prev = p
+		end
+	end
+	VFXLib.animate(duration, function(a, dt)
+		local grow = VFXLib.easeOut(math.min(a * 2.5, 1))
+		carrier.CFrame = cframe * CFrame.Angles(0, 0, a * math.pi * 0.6)
+		for _, child in ipairs(carrier:GetChildren()) do
+			if child:IsA("Beam") then
+				child.Transparency = NumberSequence.new(math.clamp(1 - grow + math.max(0, a - 0.85) / 0.15, 0, 1))
+			end
+		end
+	end, function()
+		carrier:Destroy()
+	end)
+end
+
+-- The Ball Breaker spirit: a glowing ghostly skeletal figure (ForceField
+-- material shimmers) that rises out of the vortex, spins, then shatters.
+local function breakerSpirit(position, duration)
+	local quality = VFXQuality.get()
+	local bits = {}
+	local function bone(size, offset, ellipsoid)
+		local p = VFXLib.part({ Material = Enum.Material.ForceField, Color = pal.Light, Size = size, Transparency = 0 })
+		if ellipsoid then
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.Sphere
+			mesh.Parent = p
+		end
+		table.insert(bits, { Part = p, Offset = offset, Size = size })
+	end
+	bone(Vector3.new(2.4, 2.8, 2.4), CFrame.new(0, 7.5, 0), true) -- skull
+	bone(Vector3.new(0.5, 0.6, 0.3), CFrame.new(-0.5, 7.4, -1.1), true) -- eye
+	bone(Vector3.new(0.5, 0.6, 0.3), CFrame.new(0.5, 7.4, -1.1), true) -- eye
+	bone(Vector3.new(0.5, 3.4, 0.5), CFrame.new(0, 4.5, 0.3), false) -- spine
+	for i = 0, (quality.RingSegments > 12 and 3 or 1) do -- ribs
+		bone(Vector3.new(3.4 - i * 0.35, 0.35, 1.8), CFrame.new(0, 5.6 - i * 0.7, 0), true)
+	end
+	for _, side in ipairs({ -1, 1 }) do -- arms reaching out
+		bone(Vector3.new(0.45, 3.2, 0.45), CFrame.new(side * 2.4, 5.2, -0.4) * CFrame.Angles(0, 0, side * 1.1), false)
+		bone(Vector3.new(0.9, 0.9, 0.9), CFrame.new(side * 3.8, 4.4, -0.8), true)
+	end
+	local light
+	if quality.Lights then
+		light = Instance.new("PointLight")
+		light.Color = pal.Main
+		light.Range = 30
+		light.Brightness = 4
+		light.Parent = bits[1].Part
+	end
+	local spin = 0
+	VFXLib.animate(duration, function(a, dt)
+		spin = spin + (dt or 0) * (1.5 + a * 4)
+		local rise = VFXLib.easeOut(math.min(a / 0.3, 1))
+		local base = CFrame.new(position + Vector3.new(0, -4 + rise * 4, 0)) * CFrame.Angles(0, spin, 0)
+		for _, b in ipairs(bits) do
+			b.Part.CFrame = base * b.Offset
+			b.Part.Size = b.Size * (0.4 + rise * 0.6)
+			b.Part.Transparency = 0.15 + math.sin(a * 30) * 0.08
+		end
+	end, function()
+		-- Shatter: every bone bursts into sparks.
+		for _, b in ipairs(bits) do
+			VFXLib.burst(b.Part.Position, { Count = 6, Color = pal.Light, Speed = 30, Lifetime = 0.5 })
+			b.Part:Destroy()
+		end
+	end)
+end
+
+-- Pillar of green energy shooting up at the burst.
+local function energyPillar(position, radius)
+	local pillar = VFXLib.part({ Shape = Enum.PartType.Cylinder, Color = pal.Light, Transparency = 0.1, Size = Vector3.new(1, radius, radius), CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.pi / 2) })
+	VFXLib.animate(0.6, function(a)
+		local h = 2 + 60 * VFXLib.easeOut(a)
+		local d = radius * (1 - a * 0.6)
+		pillar.Size = Vector3.new(h, d, d)
+		pillar.CFrame = CFrame.new(position + Vector3.new(0, h / 2, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+		pillar.Transparency = 0.1 + 0.9 * a
+	end, function()
+		pillar:Destroy()
+	end)
+end
+
 local function onUltimate(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
@@ -383,7 +563,23 @@ local function onUltimate(data)
 		if entry then
 			entry.Spin = 60
 		end
-		spiral(root.CFrame * CFrame.new(0, 2, -3), 6, data.Windup)
+		goldenRectangle(root.CFrame * CFrame.new(0, 2.2, -3.5), 3.2, data.Windup + 0.2)
+		-- Three rings spin up around the held ball.
+		for i = 1, 3 do
+			TuskVFX.CreateSpinRing({
+				Follow = function()
+					local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+					return hand and hand.Parent and hand.CFrame * CFrame.new(0, -0.6, -0.2) or nil
+				end,
+				Tilt = CFrame.Angles(0.7 * i, 0, 0.5 * i),
+				Radius = 0.9 + i * 0.35,
+				Width = 0.1,
+				Color = i % 2 == 1 and pal.Light or pal.Main,
+				RotationSpeed = 6 + i * 3,
+				Duration = data.Windup + 0.2,
+			})
+		end
+		VFXLib.burst(root.Position - Vector3.new(0, 2.5, 0), { Count = 30, Color = pal.Light, Speed = 12, Spread = 25, Direction = Vector3.new(0, 1, 0), Lifetime = 1 })
 		TuskVFX.CreateMagicCircle(CFrame.new(root.Position - Vector3.new(0, 2.9, 0)), { Radius = 8, Color = pal.Main, Color2 = pal.Light, Duration = data.Windup + 0.3, RotationSpeed = 2, Points = 5 })
 		TuskVFX.CreateEnergyCharge({
 			Follow = function()
@@ -422,15 +618,54 @@ local function onUltimate(data)
 		TuskVFX.CreateEnergyCharge({ CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)), Color = pal.Main, Color2 = pal.Light, MaxRadius = 3, Duration = data.Duration, Rings = 3 })
 		spiral(CFrame.new(pos + Vector3.new(0, 0.5, 0)) * CFrame.Angles(-math.pi / 2, 0, 0), data.Radius * 0.8, data.Duration)
 		VFXLib.sound(sounds.ChargeLoop, pos, 0.8, 0.6)
+		breakerSpirit(pos, data.Duration)
+		-- Rings that shrink inward show the pull.
+		local pulses = math.floor(data.Duration / 0.4)
+		for i = 0, pulses - 1 do
+			task.delay(i * 0.4, function()
+				local ring = VFXLib.ring({ CFrame = ground * CFrame.new(0, 0.3, 0), Radius = data.Radius * 1.3, Width = 0.3, Color = pal.Light, Transparency = 0.2 })
+				VFXLib.animate(0.4, function(a)
+					ring:SetRadius(data.Radius * 1.3 * (1 - a * 0.85))
+					ring:SetTransparency(0.2 + a * 0.8)
+				end, function()
+					ring:Destroy()
+				end)
+			end)
+		end
+		-- Dust swirling in.
+		local swirl = VFXLib.anchor(CFrame.new(pos), data.Duration + 1)
+		swirl.Shape = Enum.PartType.Ball
+		swirl.Size = Vector3.new(data.Radius * 2.4, data.Radius * 2.4, data.Radius * 2.4)
+		local dust = Instance.new("ParticleEmitter")
+		dust.Texture = VFXLib.Textures.Smoke
+		dust.Shape = Enum.ParticleEmitterShape.Sphere
+		dust.ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward
+		dust.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+		dust.Color = ColorSequence.new(Color3.fromRGB(205, 185, 140))
+		dust.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3), NumberSequenceKeypoint.new(1, 1) })
+		dust.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.6), NumberSequenceKeypoint.new(1, 1) })
+		dust.Lifetime = NumberRange.new(0.6, 0.8)
+		dust.Speed = NumberRange.new(data.Radius * 1.8, data.Radius * 2.2)
+		dust.RotSpeed = NumberRange.new(200, 300)
+		dust.Rate = 25 * VFXQuality.get().Particles
+		dust.Parent = swirl
+		task.delay(data.Duration, function()
+			dust.Enabled = false
+		end)
 	elseif data.Phase == "Burst" then
 		local pos = data.Position
 		TuskVFX.CreateRotationalShockwave(CFrame.new(pos - Vector3.new(0, 1, 0)), { Radius = data.Radius * 1.6, Layers = 4, Color = pal.Main, Color2 = pal.Light, Ground = true, Particles = 3, Width = 1, Duration = 0.7 })
 		TuskVFX.CreateDistortion(pos, { Radius = 10, Duration = 0.5 })
+		TuskVFX.CreateRotationalShockwave(CFrame.new(pos + Vector3.new(0, 5, 0)) * CFrame.Angles(math.pi / 2, 0, 0), { Radius = data.Radius, Layers = 2, Color = pal.Light, Color2 = pal.Main, Particles = 0, Width = 0.6 })
+		energyPillar(pos - Vector3.new(0, 2, 0), data.Radius * 0.8)
+		VFXLib.burst(pos, { Count = 60, Color = pal.Light, Speed = 55, Lifetime = 0.7 })
 		VFXLib.flash(pos, pal.Light, 14, 60, 0.7)
 		VFXLib.sound(sounds.AwakeningBurst, pos, 1, 0.8)
 		CameraFX.shakeAt(pos, 1.5, 110)
-		if Common.isLocal(character) then
+		local camera = workspace.CurrentCamera
+		if Common.isLocal(character) or (camera and (camera.CFrame.Position - pos).Magnitude < 60) then
 			CameraFX.impactFrame(pal.Light)
+			CameraFX.speedLines(0.35, pal.Light)
 		end
 	end
 end

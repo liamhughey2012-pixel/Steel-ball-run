@@ -177,6 +177,9 @@ TuskAnimation.Actions = {
 }
 
 local states = setmetatable({}, { __mode = "k" }) -- character -> { Hold, ActionJob, Tracks }
+local warned = setmetatable({}, { __mode = "k" })
+-- Extra time each move holds its last pose before relaxing (makes moves read clearly).
+TuskAnimation.HoldExtra = 0.12
 
 local function rigOf(character)
 	if character:FindFirstChild("UpperTorso") then
@@ -193,12 +196,18 @@ local function motorsOf(character)
 		return {}
 	end
 	local motors = {}
+	local found = 0
 	for name, path in pairs(JOINTS[rig]) do
 		local holder = character:FindFirstChild(path[1])
 		local motor = holder and holder:FindFirstChild(path[2])
-		if motor and motor:IsA("Motor6D") then
+		if JointCache.isJoint(motor) then
 			motors[name] = motor
+			found = found + 1
 		end
+	end
+	if found == 0 and not warned[character] then
+		warned[character] = true
+		warn("[Spin] No animatable joints found on " .. character.Name .. " (" .. rig .. "). Move animations can't play on this character.")
 	end
 	return motors
 end
@@ -270,14 +279,14 @@ local function blendTo(character, pose, duration)
 	local motors = motorsOf(character)
 	local from, to = {}, {}
 	for name, motor in pairs(motors) do
-		from[name] = motor.C0
+		from[name] = JointCache.read(motor)
 		to[name] = poseC0(motor, pose[name])
 	end
 	return VFXLib.animate(duration, function(a)
 		local e = VFXLib.easeOut(a)
 		for name, motor in pairs(motors) do
 			if motor.Parent then
-				motor.C0 = from[name]:Lerp(to[name], e)
+				JointCache.write(motor, from[name]:Lerp(to[name], e))
 			end
 		end
 	end)
@@ -306,16 +315,17 @@ function TuskAnimation.play(character, name)
 		local c0s = {}
 		for jointName, motor in pairs(motors) do
 			if i == 1 then
-				c0s[jointName] = motor.C0
+				c0s[jointName] = JointCache.read(motor)
 			else
 				c0s[jointName] = poseC0(motor, pose[jointName] or holdPose[jointName])
 			end
 		end
 		keys[i] = { Time = frame[1], C0 = c0s }
 	end
+	local total = length + TuskAnimation.HoldExtra
 	local job
-	job = VFXLib.animate(length, function(a)
-		local t = a * length
+	job = VFXLib.animate(total, function(a)
+		local t = math.min(a * total, length)
 		local k = 1
 		while k < #keys and keys[k + 1].Time < t do
 			k = k + 1
@@ -327,7 +337,7 @@ function TuskAnimation.play(character, name)
 		local e = VFXLib.easeOut(local01)
 		for jointName, motor in pairs(motors) do
 			if motor.Parent then
-				motor.C0 = current.C0[jointName]:Lerp(nextKey.C0[jointName], e)
+				JointCache.write(motor, current.C0[jointName]:Lerp(nextKey.C0[jointName], e))
 			end
 		end
 	end, function()

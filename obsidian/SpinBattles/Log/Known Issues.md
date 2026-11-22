@@ -10,3 +10,4 @@ updated: 2026-11-22
 - Keys 1–3 can also select Backpack tools; if your game uses tools, disable the Backpack or change `TuskConfig.Keys`.
 - The default stun uses WalkSpeed multipliers; use `Hooks.ApplyStun` if your game has sprint.
 - The Obsidian vault can't sync automatically: copy the updated folder over after each session.
+- Move animations are made by moving joints in code. They now work with both Motor6D joints and the newer AnimationConstraint joints. If none are found, the Output says "[Spin] No animatable joints found…" — send that line if you see it.
