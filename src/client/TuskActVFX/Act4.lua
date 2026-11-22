@@ -41,7 +41,7 @@ local function onAbility(data)
 	local root = Common.rootOf(character)
 	if data.Move == "GoldenSpinNail" and root then
 		-- A small golden sphere forms, three rings spin up, particles spiral in, release flash.
-		TuskAnimation.play(character, "NailShot")
+		TuskAnimation.play(character, "GoldenSpinNail")
 		TuskStand.action(character, "Lunge", { Target = CFrame.new(1.6, 1.2, -1.6), Duration = data.Startup + 0.3 })
 		local charge = golden(root, CFrame.new(0.9, 0.6, -2), data.Startup, 1)
 		VFXLib.sound(sounds.ChargeFull, root, 0.5, 0.8)
@@ -64,7 +64,7 @@ local function onAbility(data)
 		end
 	elseif data.Move == "GoldenPursuit" then
 		if data.Phase == "Gather" and root then
-			TuskAnimation.play(character, "M1_4")
+			TuskAnimation.play(character, "GoldenPursuit")
 			VFXLib.burst(root.Position, { Count = 20, Color = pal.Main, Speed = 8, Lifetime = 0.25 })
 			TuskVFX.CreateSpinRing({ CFrame = CFrame.new(root.Position - Vector3.new(0, 2.6, 0)), Radius = 4, Width = 0.3, Color = pal.Main, RotationSpeed = 9, Duration = 0.35 })
 		elseif data.Phase == "Dash" then

@@ -5,8 +5,10 @@
 	  * the green Steel Ball always spinning in Gyro's right hand
 	    (hidden while it's thrown, back when it returns)
 	  * thrown / returning ball with white-green spin rings and a trail
-	  * orange Wrecking Ball studs
+	  * SPIN TORNADO: a travelling green funnel of spinning rings
 	  * Spin Vibration ripples, and shaking sparks on anyone hit by the Spin
+	  * Gyro's own animations (pitch, bowl, kick, palm press...) and his
+	    ball-in-hand idle stance
 	  * BALL BREAKER: spiral build-up, giant ball, spinning vortex, burst
 ]]
 
@@ -81,8 +83,9 @@ local function updateHeld(dt)
 					weld.C0 = grip
 					weld.Parent = core
 					ball.Parent = VFXLib.Folder
-					entry = { Ball = ball, Weld = weld, Grip = grip, Angle = 0, HiddenUntil = 0, Spin = 8 }
+					entry = { Ball = ball, Weld = weld, Grip = grip, Angle = 0, HiddenUntil = 0, Spin = 8, Character = character }
 					held[character] = entry
+					TuskAnimation.hold(character, "GyroIdle") -- ball held up at the chest
 				end
 				entry.Angle = entry.Angle + dt * entry.Spin
 				entry.Weld.C0 = entry.Grip * CFrame.Angles(entry.Angle, entry.Angle * 0.3, 0)
@@ -97,6 +100,9 @@ local function updateHeld(dt)
 		if not seen[character] then
 			held[character] = nil
 			entry.Ball:Destroy()
+			if character.Parent then
+				TuskAnimation.stopHold(character, "GyroIdle")
+			end
 		end
 	end
 end
@@ -261,7 +267,7 @@ local function onAbility(data)
 	local entry = character and held[character]
 	if data.Move == "SteelBallThrow" then
 		if data.Phase == "Startup" and root then
-			TuskAnimation.play(character, "Throw")
+			TuskAnimation.play(character, "GyroThrow")
 			if entry then
 				entry.Spin = 30
 				task.delay(data.Startup, function()
@@ -275,14 +281,18 @@ local function onAbility(data)
 				VFXLib.burst(root.Position + Vector3.new(0, 1, 0), { Count = 8, Color = pal.Light, Speed = 6, Lifetime = 0.25 })
 			end
 		end
-	elseif data.Move == "WreckingBalls" and data.Phase == "Startup" and root then
-		TuskAnimation.play(character, "Throw")
-		local hand = (root.CFrame * CFrame.new(0.9, 0.6, -1.6)).Position
-		VFXLib.burst(hand, { Count = 14, Color = Color3.fromRGB(255, 170, 70), Speed = 8, Lifetime = 0.2 })
-		VFXLib.flash(hand, Color3.fromRGB(255, 180, 90), 3, 10, 0.2)
+	elseif data.Move == "SpinTornado" and data.Phase == "Startup" and root then
+		TuskAnimation.play(character, "GyroBowl")
+		if entry then
+			entry.Spin = 40
+			task.delay(data.Startup, function()
+				entry.HiddenUntil = os.clock() + 2.6 -- the ball becomes the tornado
+				entry.Spin = 8
+			end)
+		end
 	elseif data.Move == "SpinVibration" then
 		if data.Phase == "Startup" and root then
-			TuskAnimation.play(character, "M1_3")
+			TuskAnimation.play(character, "GyroPalm")
 			if entry then
 				entry.Spin = 45
 				task.delay(0.6, function()
@@ -341,7 +351,7 @@ local function onUltimate(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
 	if data.Phase == "Start" and root then
-		TuskAnimation.play(character, "Awakening")
+		TuskAnimation.play(character, "GyroBreakerCharge")
 		VFXLib.sound(sounds.AwakeningBuild, root, 0.9, 0.9)
 		local entry = held[character]
 		if entry then
@@ -368,7 +378,7 @@ local function onUltimate(data)
 			entry.Spin = 8
 		end
 		if character then
-			TuskAnimation.play(character, "Throw")
+			TuskAnimation.play(character, "GyroThrow")
 		end
 		VFXLib.flash(data.Position, pal.Light, 10, 40, 0.5)
 		if Common.isLocal(character) then
@@ -399,9 +409,109 @@ local function onUltimate(data)
 	end
 end
 
+---------------------------------------------------------------------------
+-- SPIN TORNADO visual: a funnel of spinning rings that follows the server's
+-- position updates, with a ground swirl, dust and green sparkles.
+---------------------------------------------------------------------------
+local tornadoes = {}
+
+local function startTornado(data)
+	local r = data.Radius
+	local t = { Pos = data.Position, Target = data.Position, Rings = {}, Angle = 0, Radius = r }
+	local layers = VFXQuality.get().RingSegments > 12 and 7 or 4
+	for i = 1, layers do
+		local k = (i - 1) / (layers - 1)
+		t.Rings[i] = {
+			Ring = VFXLib.ring({ Radius = r * (0.25 + k * 0.75), Width = 0.3 + k * 0.25, Color = (i % 2 == 0) and pal.Light or pal.Main, Transparency = 0.1 + k * 0.3 }),
+			Height = -2.5 + k * 11,
+			Speed = (9 - k * 4) * (i % 2 == 0 and -1 or 1),
+			Tilt = (math.random() - 0.5) * 0.3,
+		}
+	end
+	-- Swirling dust + sparkles on a carrier that moves with the tornado.
+	local carrier = VFXLib.anchor(CFrame.new(data.Position))
+	carrier.Size = Vector3.new(r * 1.2, 10, r * 1.2)
+	local dust = Instance.new("ParticleEmitter")
+	dust.Texture = VFXLib.Textures.Smoke
+	dust.Color = ColorSequence.new(Color3.fromRGB(205, 180, 135))
+	dust.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 5) })
+	dust.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 1) })
+	dust.Lifetime = NumberRange.new(0.6, 1.1)
+	dust.Speed = NumberRange.new(6, 10)
+	dust.RotSpeed = NumberRange.new(250, 400)
+	dust.EmissionDirection = Enum.NormalId.Top
+	dust.Shape = Enum.ParticleEmitterShape.Cylinder
+	dust.Rate = 30 * VFXQuality.get().Particles
+	dust.Parent = carrier
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Texture = VFXLib.Textures.Sparkle
+	sparks.Color = ColorSequence.new(pal.Light, pal.Main)
+	sparks.LightEmission = 1
+	sparks.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 0) })
+	sparks.Lifetime = NumberRange.new(0.4, 0.7)
+	sparks.Speed = NumberRange.new(8, 14)
+	sparks.EmissionDirection = Enum.NormalId.Top
+	sparks.Shape = Enum.ParticleEmitterShape.Cylinder
+	sparks.Rate = 40 * VFXQuality.get().Particles
+	sparks.Parent = carrier
+	t.Carrier = carrier
+	t.Sound = VFXLib.sound(sounds.ChargeLoop, carrier, 0.6, 0.6, true)
+	t.Expire = os.clock() + data.Duration + 1
+	tornadoes[data.Id] = t
+	VFXLib.burst(data.Position, { Count = 16, Color = pal.Light, Speed = 18, Lifetime = 0.4 })
+end
+
+local function endTornado(data)
+	local t = tornadoes[data.Id]
+	if t then
+		tornadoes[data.Id] = nil
+		for _, layer in ipairs(t.Rings) do
+			layer.Ring:Destroy()
+		end
+		if t.Sound then
+			t.Sound:Destroy()
+		end
+		t.Carrier:Destroy()
+	end
+	local pos = data.Position
+	TuskVFX.CreateRotationalShockwave(CFrame.new(pos - Vector3.new(0, 2.5, 0)), { Radius = data.Radius * 1.6, Layers = 3, Color = pal.Main, Color2 = pal.Light, Ground = true, Particles = 2, Width = 0.7 })
+	VFXLib.burst(pos, { Count = 30, Color = pal.Light, Speed = 40, Lifetime = 0.5 })
+	VFXLib.sound(sounds.Finisher, pos, 0.8, 0.9)
+	CameraFX.shakeAt(pos, 0.8, 70)
+end
+
+local function stepTornadoes(dt)
+	local now = os.clock()
+	for id, t in pairs(tornadoes) do
+		t.Pos = t.Pos:Lerp(t.Target, math.min(1, dt * 10))
+		t.Angle = t.Angle + dt
+		for _, layer in ipairs(t.Rings) do
+			local sway = math.sin(now * 3 + layer.Height) * 0.6
+			layer.Ring:SetCFrame(CFrame.new(t.Pos + Vector3.new(sway, layer.Height, 0)) * CFrame.Angles(layer.Tilt, t.Angle * layer.Speed, 0))
+		end
+		t.Carrier.CFrame = CFrame.new(t.Pos + Vector3.new(0, 2, 0))
+		if now > t.Expire then
+			endTornado({ Id = id, Position = t.Pos, Radius = t.Radius })
+		end
+	end
+end
+
 function Gyro.handle(name, data)
+	if name == "Tornado" then
+		if data.Phase == "Start" then
+			startTornado(data)
+		elseif data.Phase == "Move" then
+			local t = tornadoes[data.Id]
+			if t then
+				t.Target = data.Position
+			end
+		elseif data.Phase == "Burst" then
+			endTornado(data)
+		end
+		return
+	end
 	if name == "M1" then
-		Common.m1(data, pal)
+		Common.m1(data, pal, { AnimPrefix = "G_M1_" })
 	elseif name == "M1Finisher" then
 		Common.finisher(data, pal)
 		local entry = data.Character and held[data.Character]
@@ -423,6 +533,7 @@ function Gyro.step(dt)
 	dt = dt or 1 / 60
 	updateHeld(dt)
 	stepBalls(dt)
+	stepTornadoes(dt)
 	shakeTimer = shakeTimer + dt
 	if shakeTimer > 0.25 then
 		shakeTimer = 0

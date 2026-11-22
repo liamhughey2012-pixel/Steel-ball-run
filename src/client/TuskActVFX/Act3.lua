@@ -33,6 +33,7 @@ local function onStep(data)
 	VFXLib.sound(sounds.Emerge, data.To, 0.6, 1.3)
 	if character then
 		TuskStand.action(character, "Manifest", { Duration = 0.3 })
+		TuskAnimation.play(character, "DimensionalStep")
 	end
 	if Common.isLocal(character) then
 		CameraFX.fovPunch(8, 0.3)
@@ -46,7 +47,7 @@ local function onAbility(data)
 		onStep(data)
 	elseif data.Move == "SpatialPursuit" and data.Phase == "Open" then
 		if root then
-			TuskAnimation.play(character, "NailBarrage")
+			TuskAnimation.play(character, "SpatialPursuit")
 		end
 		local targetRoot = data.Target and data.Target:FindFirstChild("HumanoidRootPart")
 		local center = targetRoot and targetRoot.Position or data.Portals[1]
@@ -56,7 +57,7 @@ local function onAbility(data)
 		end
 	elseif data.Move == "DimensionalBreak" then
 		if data.Phase == "Charge" and root then
-			TuskAnimation.play(character, "Awakening")
+			TuskAnimation.play(character, "DimensionalBreak")
 			TuskStand.action(character, "Lunge", { Target = CFrame.new(0, 2, -2.5), Duration = data.Charge + 0.4 })
 			local charge = TuskVFX.CreateEnergyCharge({
 				Follow = function()

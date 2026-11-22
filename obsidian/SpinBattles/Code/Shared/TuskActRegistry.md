@@ -92,7 +92,7 @@ TuskActRegistry.Acts = {
 		Implemented = true,
 		Theme = { Primary = Color3.fromRGB(120, 220, 95), Secondary = Color3.fromRGB(40, 120, 50) },
 		M1 = "STEEL BALL COMBO",
-		Abilities = { "STEEL BALL THROW", "WRECKING BALLS", "SPIN VIBRATION" },
+		Abilities = { "STEEL BALL THROW", "SPIN TORNADO", "SPIN VIBRATION" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Ultimate = "BALL BREAKER",
 		Next = nil,

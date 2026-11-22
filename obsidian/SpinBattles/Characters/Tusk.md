@@ -27,3 +27,7 @@ Mobile: tap the HUD slots, the ultimate bar and the SNEAK chip; on-screen M1 but
 ## Code
 Server: `TuskService` (router, state, cooldowns, ult meter) → `TuskActs/TuskActN`
 Client: `TuskController` (input) → `TuskActVFX/ActN` (choreography), `TuskStand`, `TuskAnimation`, `TuskUI`
+
+## Johnny's animations (procedural)
+M1: right flick → left flick → finger-gun shot → overhead slam. Nail Shot: finger gun with recoil. Barrage: rapid alternating flicks. Underground Pursuit / Sneak Attack: dive into the ground. Nail Dimension: arms spread. Dimensional Step: lunge. Spatial Pursuit: sweep. Dimensional Break: crouch then two-hand push. Golden Spin Nail: spin wind-up. Golden Pursuit: dash punch.
+Real uploaded animations can replace any of these in `TuskConfig.AnimationIds`.

@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer › TuskActs` |
 | **Exact name** | `GyroZeppeli` (capitals matter) |
 
-**What it does:** Gyro Zeppeli: Steel Ball moveset (registered as "Act" 5 so it reuses the Tusk ability system: cooldowns, HUD, ultimate meter, input). M1        STEEL BALL COMBO: jab, hook, kick, spinning-ball smash (area) Ability 1 STEEL BALL THROW: the ball flies out, then returns to Gyro's hand (it can hit on the way back) Ability 2 WRECKING BALLS: the studs fly off in a spread; hits shake the target's body and slow them for a moment Ability 3 SPIN VIBRATION: press the spinning ball into the enemy in front: paralysis (long stun) and a small launch Ultimate  BALL BREAKER: spiral build-up, a huge ball opens a spinning vortex that pulls enemies in, then bursts Numbers: TuskConfig.Gyro. All damage goes through S.hit (CombatAdapter).
+**What it does:** Gyro Zeppeli: Steel Ball moveset (registered as "Act" 5 so it reuses the Tusk ability system: cooldowns, HUD, ultimate meter, input). M1        STEEL BALL COMBO: jab, hook, kick, spinning-ball smash (area) Ability 1 STEEL BALL THROW: the ball flies out, then returns to Gyro's hand (it can hit on the way back) Ability 2 SPIN TORNADO: bowl the spinning ball along the ground; it becomes a travelling tornado that pulls enemies in, juggles them and bursts (stops at walls) Ability 3 SPIN VIBRATION: press the spinning ball into the enemy in front: paralysis (long stun) and a small launch Ultimate  BALL BREAKER: spiral build-up, a huge ball opens a spinning vortex that pulls enemies in, then bursts Numbers: TuskConfig.Gyro. All damage goes through S.hit (CombatAdapter).
 
 ## How to add it
 1. In Studio's Explorer, find **TuskActs** (ServerScriptService › SpinServer › TuskActs).
@@ -32,8 +32,9 @@ Back to [[Where To Put Code]]
 	  M1        STEEL BALL COMBO: jab, hook, kick, spinning-ball smash (area)
 	  Ability 1 STEEL BALL THROW: the ball flies out, then returns to Gyro's hand
 	            (it can hit on the way back)
-	  Ability 2 WRECKING BALLS: the studs fly off in a spread; hits shake the
-	            target's body and slow them for a moment
+	  Ability 2 SPIN TORNADO: bowl the spinning ball along the ground; it
+	            becomes a travelling tornado that pulls enemies in, juggles
+	            them and bursts (stops at walls)
 	  Ability 3 SPIN VIBRATION: press the spinning ball into the enemy in front:
 	            paralysis (long stun) and a small launch
 	  Ultimate  BALL BREAKER: spiral build-up, a huge ball opens a spinning
@@ -141,43 +142,59 @@ local function steelBallThrow(S, player, state, aim)
 	end)
 end
 
-local FAN = { 0, -1, 1, -0.5, 0.5 }
-
-local function wreckingBalls(S, player, state, aim)
-	local c = cfg.WreckingBalls
-	if not ready(S, player, state, "WreckingBalls", 2) then
+-- SPIN TORNADO: the spinning ball is bowled along the ground and becomes a
+-- travelling tornado that pulls enemies in, juggles them, then bursts.
+local function spinTornado(S, player, state, aim)
+	local c = cfg.SpinTornado
+	if not ready(S, player, state, "SpinTornado", 2) then
 		return
 	end
-	S.startCooldown(player, state, "WreckingBalls", c.Cooldown, 2)
+	S.startCooldown(player, state, "SpinTornado", c.Cooldown, 2)
 	S.lock(state, c.Startup + 0.3)
 	local character, _, root = alive(S, player)
-	local direction = S.aim(aim, root)
+	local direction = Moves.flat(S.aim(aim, root))
 	local life = state.Life
-	S.fx("Ability", { Character = character, Act = 5, Move = "WreckingBalls", Phase = "Startup", Startup = c.Startup, Direction = direction })
+	local id = tostring(os.clock()) .. player.UserId
+	S.fx("Ability", { Character = character, Act = 5, Move = "SpinTornado", Phase = "Startup", Startup = c.Startup, Direction = direction })
 	task.delay(c.Startup, function()
 		if not S.stillValid(player, state, life) then
 			return
 		end
 		local char, _, r = alive(S, player)
-		local origin = S.origin(char, r, HAND)
-		local look = CFrame.lookAt(Vector3.new(), direction)
-		for i = 1, c.Count do
-			local spread = math.rad(c.SpreadDegrees) * (FAN[(i - 1) % #FAN + 1])
-			local dir = (look * CFrame.Angles((i % 2 == 0 and 0.04 or -0.03), spread, 0)).LookVector
-			S.fireBall(player, state, {
-				Origin = origin,
-				Direction = dir,
-				Speed = c.Speed,
-				Radius = c.Radius,
-				Range = c.Range,
-				Style = "Wrecking",
-				OnHit = function(target, position)
-					if S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = dir, Position = position, Source = "GyroWreckingBall" }) then
-						spinSlow(S, target, c.SlowMultiplier, c.SlowTime)
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = { char }
+		local pos = Moves.groundBelow(r.Position + direction * 4, { char }) + Vector3.new(0, 3, 0)
+		S.fx("Tornado", { Act = 5, Id = id, Phase = "Start", Position = pos, Radius = c.Radius, Duration = c.Duration })
+		local ticks = math.floor(c.Duration / c.Tick)
+		local stopped = false
+		for i = 1, ticks do
+			task.delay(i * c.Tick, function()
+				if stopped then
+					return
+				end
+				-- Move forward; stop at walls; follow the ground.
+				local step = direction * c.Speed * c.Tick
+				if workspace:Raycast(pos, step * 1.5, params) then
+					stopped = true
+				else
+					pos = Moves.groundBelow(pos + step, { char }) + Vector3.new(0, 3, 0)
+				end
+				S.fx("Tornado", { Act = 5, Id = id, Phase = "Move", Position = pos })
+				for _, target in ipairs(S.Hitbox.inRadius(player.Character, pos, c.Radius, 6)) do
+					local tr = target:FindFirstChild("HumanoidRootPart")
+					if tr and S.Adapter.canBeHit(player, target) then
+						local inward = pos - tr.Position
+						S.Adapter.applyKnockback(target, inward, c.Pull, c.Lift)
+						S.hit(player, target, { Damage = c.TickDamage, Stun = 0.3, Knockback = 0, Direction = inward, Position = tr.Position, Source = "GyroSpinTornado" })
 					end
-				end,
-			})
+				end
+			end)
 		end
+		task.delay(c.Duration + 0.05, function()
+			Moves.aoe(S, player, pos, c.Radius + 1.5, { Damage = c.BurstDamage, Stun = 0.4, Knockback = c.BurstKnockback, Launch = c.BurstLaunch, Source = "GyroSpinTornado" }, 6)
+			S.fx("Tornado", { Act = 5, Id = id, Phase = "Burst", Position = pos, Radius = c.Radius + 1.5 })
+		end)
 	end)
 end
 
@@ -212,7 +229,7 @@ function Gyro.Ability(S, player, state, slot, phase, aim)
 	if slot == 1 then
 		steelBallThrow(S, player, state, aim)
 	elseif slot == 2 then
-		wreckingBalls(S, player, state, aim)
+		spinTornado(S, player, state, aim)
 	elseif slot == 3 then
 		spinVibration(S, player, state, aim)
 	end

@@ -75,6 +75,37 @@ TuskAnimation.Poses = {
 		LeftArm = { 25, 0, -8 },
 	},
 	Emerge = { RightArm = { 150, 0, 15 }, LeftArm = { 40, 0, -40 }, Waist = { 15, 0, 0 } },
+
+	-- JOHNNY: fights with finger-gun nail shots.
+	FingerGun = { RightArm = { 95, 0, 5 }, LeftArm = { 62, 0, -38 }, Waist = { 0, -22, 0 }, Neck = { 0, 16, 0 } },
+	FingerGunRecoil = { RightArm = { 118, 0, 6 }, LeftArm = { 56, 0, -36 }, Waist = { 6, -16, 0 }, Neck = { 0, 12, 0 } },
+	FlickR = { RightArm = { 96, -8, 6 }, LeftArm = { 38, 0, -22 }, Waist = { 0, -20, 0 } },
+	FlickL = { LeftArm = { 96, 8, -6 }, RightArm = { 38, 0, 22 }, Waist = { 0, 20, 0 } },
+	SpinChargeA = { RightArm = { 104, 10, 30 }, LeftArm = { 72, 0, -42 }, Waist = { -6, -10, 0 } },
+	SpinChargeB = { RightArm = { 96, -10, 22 }, LeftArm = { 72, 0, -42 }, Waist = { -6, -10, 0 } },
+	Spread = { RightArm = { 92, 0, 70 }, LeftArm = { 92, 0, -70 }, Waist = { 10, 0, 0 }, Neck = { 15, 0, 0 } },
+	Dive = { Root = { 0, 0, 0, -0.45 }, Waist = { -38, 0, 0 }, RightArm = { 155, 0, 12 }, LeftArm = { 155, 0, -12 }, RightHip = { 40, 0, 0 }, LeftHip = { 20, 0, 0 }, RightKnee = { -45, 0, 0 }, LeftKnee = { -30, 0, 0 } },
+	LungeStep = { Waist = { -16, -12, 0 }, RightArm = { 86, 0, 0 }, LeftArm = { -22, 0, -12 }, RightHip = { 38, 0, 0 }, LeftHip = { -26, 0, 0 }, RightKnee = { -32, 0, 0 } },
+	PushTwo = { RightArm = { 92, 0, 14 }, LeftArm = { 92, 0, -14 }, Waist = { -12, 0, 0 }, RightHip = { 22, 0, 0 }, LeftHip = { -16, 0, 0 } },
+	WindSpin = { Waist = { 0, -60, 0 }, RightArm = { 62, 0, 82 }, LeftArm = { 40, 0, -30 } },
+	DashPunch = { Waist = { -20, -26, 0 }, RightArm = { 92, 0, 0 }, LeftArm = { -30, 0, -22 }, RightHip = { 42, 0, 0 }, RightKnee = { -60, 0, 0 }, LeftHip = { -30, 0, 0 } },
+
+	-- GYRO: fights like a ball thrower.
+	GyroIdle = { RightArm = { 55, 0, 14 }, LeftArm = { 12, 0, -10 } },
+	GHookWind = { RightArm = { 82, 0, 80 }, Waist = { 0, 25, 0 } },
+	GHook = { RightArm = { 86, -32, 12 }, Waist = { 0, -42, 0 }, LeftArm = { 30, 0, -20 } },
+	KickChamber = { RightHip = { 72, 0, 0 }, RightKnee = { -92, 0, 0 }, Waist = { 8, 0, 0 }, RightArm = { 30, 0, 30 }, LeftArm = { 30, 0, -30 } },
+	FrontKick = { RightHip = { 88, 0, 0 }, RightKnee = { -8, 0, 0 }, LeftKnee = { -15, 0, 0 }, Waist = { 12, 0, 0 }, RightArm = { 30, 0, 34 }, LeftArm = { 30, 0, -34 } },
+	OverheadWind = { RightArm = { 172, 0, 15 }, Waist = { 15, 20, 0 }, LeftHip = { 18, 0, 0 }, LeftKnee = { -22, 0, 0 } },
+	OverheadSmash = { RightArm = { 58, 0, 0 }, Waist = { -26, -15, 0 }, LeftHip = { 36, 0, 0 }, LeftKnee = { -30, 0, 0 }, RightHip = { -15, 0, 0 } },
+	PitchBack = { RightArm = { 200, 0, 40 }, Waist = { 5, 36, 0 }, LeftArm = { 80, 0, -30 }, LeftHip = { 48, 0, 0 }, LeftKnee = { -52, 0, 0 } },
+	PitchRelease = { RightArm = { 74, 0, -10 }, Waist = { -22, -36, 0 }, LeftArm = { -12, 0, -30 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -20, 0, 0 }, RightHip = { -30, 0, 0 } },
+	BowlWind = { Root = { 0, 0, 0, -0.4 }, RightArm = { -55, 0, 10 }, Waist = { -16, 0, 0 }, LeftHip = { 50, 0, 0 }, LeftKnee = { -62, 0, 0 }, RightKnee = { -42, 0, 0 } },
+	BowlRelease = { Root = { 0, 0, 0, -0.45 }, RightArm = { 62, 0, 0 }, Waist = { -28, 0, 0 }, LeftHip = { 55, 0, 0 }, LeftKnee = { -65, 0, 0 }, RightHip = { -20, 0, 0 } },
+	PalmWind = { RightArm = { 40, 0, 20 }, Waist = { 0, 25, 0 } },
+	PalmPress = { RightArm = { 92, 0, 0 }, LeftArm = { 70, 0, -22 }, Waist = { -16, -12, 0 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -30, 0, 0 } },
+	BreakerWindA = { Root = { 0, 0, 0, -0.3 }, RightArm = { 122, 0, 62 }, Waist = { 0, 46, 0 }, LeftArm = { 60, 0, -40 }, LeftKnee = { -25, 0, 0 }, RightKnee = { -25, 0, 0 } },
+	BreakerWindB = { Root = { 0, 0, 0, -0.3 }, RightArm = { 132, 10, 70 }, Waist = { 0, 52, 0 }, LeftArm = { 64, 0, -44 }, LeftKnee = { -25, 0, 0 }, RightKnee = { -25, 0, 0 } },
 }
 
 --[[
@@ -82,14 +113,36 @@ TuskAnimation.Poses = {
 	The last keyframe's Time is the length; after it the joints blend back.
 ]]
 TuskAnimation.Actions = {
-	M1_1 = { { 0, "Rest" }, { 0.07, "Jab" }, { 0.22, "Jab" } },
-	M1_2 = { { 0, "Rest" }, { 0.07, "JabLeft" }, { 0.22, "JabLeft" } },
-	M1_3 = { { 0, "Rest" }, { 0.08, "SpinPoke" }, { 0.25, "SpinPoke" } },
+	-- JOHNNY
+	M1_1 = { { 0, "Rest" }, { 0.06, "FlickR" }, { 0.22, "FlickR" } },
+	M1_2 = { { 0, "Rest" }, { 0.06, "FlickL" }, { 0.22, "FlickL" } },
+	M1_3 = { { 0, "Rest" }, { 0.08, "FingerGun" }, { 0.14, "FingerGunRecoil" }, { 0.27, "FingerGun" } },
 	M1_4 = { { 0, "Rest" }, { 0.12, "SlamWindup" }, { 0.2, "Slam" }, { 0.5, "Slam" } },
-	NailShot = { { 0, "Rest" }, { 0.12, "Point" }, { 0.2, "PointRecoil" }, { 0.45, "Point" } },
+	NailShot = { { 0, "Rest" }, { 0.12, "FingerGun" }, { 0.2, "FingerGunRecoil" }, { 0.45, "FingerGun" } },
 	NailBarrage = {
-		{ 0, "Rest" }, { 0.12, "BarrageA" }, { 0.21, "BarrageB" }, { 0.3, "BarrageA" },
-		{ 0.39, "BarrageB" }, { 0.48, "BarrageA" }, { 0.57, "BarrageB" }, { 0.8, "BarrageB" },
+		{ 0, "Rest" }, { 0.1, "FlickR" }, { 0.19, "FlickL" }, { 0.28, "FlickR" },
+		{ 0.37, "FlickL" }, { 0.46, "FlickR" }, { 0.55, "FlickL" }, { 0.8, "FingerGun" },
+	},
+	SpinChargeLoop = { { 0, "SpinChargeA" }, { 0.12, "SpinChargeB" }, { 0.24, "SpinChargeA" } },
+	UndergroundDive = { { 0, "Rest" }, { 0.15, "Dive" }, { 0.55, "Dive" } },
+	NailDimension = { { 0, "Rest" }, { 0.2, "Spread" }, { 0.8, "Spread" } },
+	DimensionalStep = { { 0, "Rest" }, { 0.08, "LungeStep" }, { 0.35, "LungeStep" } },
+	SpatialPursuit = { { 0, "Rest" }, { 0.1, "FlickR" }, { 0.25, "Spread" }, { 0.6, "Spread" } },
+	DimensionalBreak = { { 0, "Rest" }, { 0.25, "AwakenCrouch" }, { 0.72, "AwakenCrouch" }, { 0.82, "PushTwo" }, { 1.2, "PushTwo" } },
+	GoldenSpinNail = { { 0, "Rest" }, { 0.15, "WindSpin" }, { 0.3, "FingerGunRecoil" }, { 0.6, "FingerGun" } },
+	GoldenPursuit = { { 0, "Rest" }, { 0.12, "SlamWindup" }, { 0.25, "DashPunch" }, { 0.7, "DashPunch" } },
+
+	-- GYRO
+	G_M1_1 = { { 0, "Rest" }, { 0.06, "Jab" }, { 0.22, "Jab" } },
+	G_M1_2 = { { 0, "Rest" }, { 0.05, "GHookWind" }, { 0.12, "GHook" }, { 0.26, "GHook" } },
+	G_M1_3 = { { 0, "Rest" }, { 0.06, "KickChamber" }, { 0.12, "FrontKick" }, { 0.3, "FrontKick" } },
+	G_M1_4 = { { 0, "Rest" }, { 0.12, "OverheadWind" }, { 0.22, "OverheadSmash" }, { 0.5, "OverheadSmash" } },
+	GyroThrow = { { 0, "Rest" }, { 0.14, "PitchBack" }, { 0.24, "PitchRelease" }, { 0.55, "PitchRelease" } },
+	GyroBowl = { { 0, "Rest" }, { 0.14, "BowlWind" }, { 0.28, "BowlRelease" }, { 0.6, "BowlRelease" } },
+	GyroPalm = { { 0, "Rest" }, { 0.12, "PalmWind" }, { 0.2, "PalmPress" }, { 0.6, "PalmPress" } },
+	GyroBreakerCharge = {
+		{ 0, "Rest" }, { 0.3, "BreakerWindA" }, { 0.55, "BreakerWindB" }, { 0.8, "BreakerWindA" },
+		{ 1.05, "BreakerWindB" }, { 1.3, "BreakerWindA" }, { 1.55, "BreakerWindB" }, { 1.75, "PitchBack" },
 	},
 	SpinningNailRelease = { { 0, "ChargeNail" }, { 0.06, "PointRecoil" }, { 0.4, "Point" } },
 	Awakening = { { 0, "Rest" }, { 0.35, "AwakenCrouch" }, { 1.2, "AwakenCrouch" }, { 1.45, "AwakenRise" }, { 2.2, "AwakenRise" } },

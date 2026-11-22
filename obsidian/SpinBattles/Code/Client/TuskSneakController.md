@@ -198,6 +198,9 @@ local function onSneakAttack(data)
 	local character = data.Character
 	if data.Phase == "Burrow" then
 		local burrow = data.BurrowTime or TuskConfig.Sneak.Attack.BurrowTime
+		if character then
+			TuskAnimation.play(character, "UndergroundDive")
+		end
 		groundCrack(data.Position, colors.Cyan, 5)
 		VFXLib.sound(sounds.Burrow, data.Position, 0.7, 1)
 		undergroundTrail(data.Position, data.Target, burrow)

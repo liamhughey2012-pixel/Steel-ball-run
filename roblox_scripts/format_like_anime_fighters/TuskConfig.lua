@@ -280,7 +280,14 @@ TuskConfig.Gyro = {
 		},
 	},
 	SteelBallThrow = { Cooldown = 5, Startup = 0.22, Damage = 10, ReturnDamage = 5, Speed = 140, ReturnSpeed = 120, Radius = 1.1, Range = 120, Stun = 0.4, Knockback = 18 },
-	WreckingBalls = { Cooldown = 9, Startup = 0.18, Count = 5, SpreadDegrees = 22, Damage = 3, Speed = 160, Radius = 0.6, Range = 70, Stun = 0.2, Knockback = 6, SlowMultiplier = 0.55, SlowTime = 2 },
+	SpinTornado = {
+		Cooldown = 11, Startup = 0.28,
+		Speed = 22, -- studs per second along the ground
+		Duration = 2.2, -- how long the tornado travels
+		Radius = 6.5, Tick = 0.2, -- pull / hit every Tick seconds
+		TickDamage = 1.2, Pull = 16, Lift = 20, -- sucks enemies in and juggles them
+		BurstDamage = 6, BurstKnockback = 45, BurstLaunch = 25,
+	},
 	SpinVibration = { Cooldown = 8, Windup = 0.2, Damage = 9, Stun = 0.9, Knockback = 10, Launch = 16, HitboxSize = Vector3.new(5, 6, 6), HitboxForward = 3 },
 	Ultimate = { -- BALL BREAKER
 		Windup = 1.8, Speed = 85, Radius = 3, Range = 170, Damage = 14,

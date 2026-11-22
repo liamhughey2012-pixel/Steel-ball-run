@@ -107,7 +107,7 @@ function Common.m1(data, palette, opts)
 		return
 	end
 	local index = data.Index
-	TuskAnimation.play(character, "M1_" .. index)
+	TuskAnimation.play(character, (opts.AnimPrefix or "M1_") .. index)
 	VFXLib.sound(sounds.Swing, root, 0.5, (opts.Pitch or 1) * (0.95 + index * 0.06))
 	TuskStand.action(character, "Lunge", { Target = LUNGES[index], Duration = index == 4 and 0.5 or 0.26 })
 	Common.swipe(root, index % 2 == 1 and 1 or -1, index % 2 == 1 and palette.Main or palette.Light, opts.Scale)

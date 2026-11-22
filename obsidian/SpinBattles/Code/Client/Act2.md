@@ -54,7 +54,7 @@ local function onAbility(data)
 		Common.portal(tip, tip + data.Direction * 5, 1, data.Startup + 0.2, pal)
 	elseif data.Move == "NailDimension" and data.Phase == "Open" then
 		if root then
-			TuskAnimation.play(character, "NailShot")
+			TuskAnimation.play(character, "NailDimension")
 			TuskStand.action(character, "Lunge", { Target = CFrame.new(0, 2, -2), Duration = 0.6 })
 		end
 		for i, pos in ipairs(data.Portals) do

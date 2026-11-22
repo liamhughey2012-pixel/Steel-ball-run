@@ -355,7 +355,7 @@ local function onAbility(data)
 		Common.portal(tip, tip + data.Direction * 5, 1, data.Startup + 0.2, pal)
 	elseif data.Move == "NailDimension" and data.Phase == "Open" then
 		if root then
-			TuskAnimation.play(character, "NailShot")
+			TuskAnimation.play(character, "NailDimension")
 			TuskStand.action(character, "Lunge", { Target = CFrame.new(0, 2, -2), Duration = 0.6 })
 		end
 		for i, pos in ipairs(data.Portals) do
@@ -469,6 +469,7 @@ local function onStep(data)
 	VFXLib.sound(sounds.Emerge, data.To, 0.6, 1.3)
 	if character then
 		TuskStand.action(character, "Manifest", { Duration = 0.3 })
+		TuskAnimation.play(character, "DimensionalStep")
 	end
 	if Common.isLocal(character) then
 		CameraFX.fovPunch(8, 0.3)
@@ -482,7 +483,7 @@ local function onAbility(data)
 		onStep(data)
 	elseif data.Move == "SpatialPursuit" and data.Phase == "Open" then
 		if root then
-			TuskAnimation.play(character, "NailBarrage")
+			TuskAnimation.play(character, "SpatialPursuit")
 		end
 		local targetRoot = data.Target and data.Target:FindFirstChild("HumanoidRootPart")
 		local center = targetRoot and targetRoot.Position or data.Portals[1]
@@ -492,7 +493,7 @@ local function onAbility(data)
 		end
 	elseif data.Move == "DimensionalBreak" then
 		if data.Phase == "Charge" and root then
-			TuskAnimation.play(character, "Awakening")
+			TuskAnimation.play(character, "DimensionalBreak")
 			TuskStand.action(character, "Lunge", { Target = CFrame.new(0, 2, -2.5), Duration = data.Charge + 0.4 })
 			local charge = TuskVFX.CreateEnergyCharge({
 				Follow = function()
@@ -648,7 +649,7 @@ local function onAbility(data)
 	local root = Common.rootOf(character)
 	if data.Move == "GoldenSpinNail" and root then
 		-- A small golden sphere forms, three rings spin up, particles spiral in, release flash.
-		TuskAnimation.play(character, "NailShot")
+		TuskAnimation.play(character, "GoldenSpinNail")
 		TuskStand.action(character, "Lunge", { Target = CFrame.new(1.6, 1.2, -1.6), Duration = data.Startup + 0.3 })
 		local charge = golden(root, CFrame.new(0.9, 0.6, -2), data.Startup, 1)
 		VFXLib.sound(sounds.ChargeFull, root, 0.5, 0.8)
@@ -671,7 +672,7 @@ local function onAbility(data)
 		end
 	elseif data.Move == "GoldenPursuit" then
 		if data.Phase == "Gather" and root then
-			TuskAnimation.play(character, "M1_4")
+			TuskAnimation.play(character, "GoldenPursuit")
 			VFXLib.burst(root.Position, { Count = 20, Color = pal.Main, Speed = 8, Lifetime = 0.25 })
 			TuskVFX.CreateSpinRing({ CFrame = CFrame.new(root.Position - Vector3.new(0, 2.6, 0)), Radius = 4, Width = 0.3, Color = pal.Main, RotationSpeed = 9, Duration = 0.35 })
 		elseif data.Phase == "Dash" then
@@ -1618,8 +1619,10 @@ __modules["Gyro"] = function()
 	  * the green Steel Ball always spinning in Gyro's right hand
 	    (hidden while it's thrown, back when it returns)
 	  * thrown / returning ball with white-green spin rings and a trail
-	  * orange Wrecking Ball studs
+	  * SPIN TORNADO: a travelling green funnel of spinning rings
 	  * Spin Vibration ripples, and shaking sparks on anyone hit by the Spin
+	  * Gyro's own animations (pitch, bowl, kick, palm press...) and his
+	    ball-in-hand idle stance
 	  * BALL BREAKER: spiral build-up, giant ball, spinning vortex, burst
 ]]
 
@@ -1694,8 +1697,9 @@ local function updateHeld(dt)
 					weld.C0 = grip
 					weld.Parent = core
 					ball.Parent = VFXLib.Folder
-					entry = { Ball = ball, Weld = weld, Grip = grip, Angle = 0, HiddenUntil = 0, Spin = 8 }
+					entry = { Ball = ball, Weld = weld, Grip = grip, Angle = 0, HiddenUntil = 0, Spin = 8, Character = character }
 					held[character] = entry
+					TuskAnimation.hold(character, "GyroIdle") -- ball held up at the chest
 				end
 				entry.Angle = entry.Angle + dt * entry.Spin
 				entry.Weld.C0 = entry.Grip * CFrame.Angles(entry.Angle, entry.Angle * 0.3, 0)
@@ -1710,6 +1714,9 @@ local function updateHeld(dt)
 		if not seen[character] then
 			held[character] = nil
 			entry.Ball:Destroy()
+			if character.Parent then
+				TuskAnimation.stopHold(character, "GyroIdle")
+			end
 		end
 	end
 end
@@ -1874,7 +1881,7 @@ local function onAbility(data)
 	local entry = character and held[character]
 	if data.Move == "SteelBallThrow" then
 		if data.Phase == "Startup" and root then
-			TuskAnimation.play(character, "Throw")
+			TuskAnimation.play(character, "GyroThrow")
 			if entry then
 				entry.Spin = 30
 				task.delay(data.Startup, function()
@@ -1888,14 +1895,18 @@ local function onAbility(data)
 				VFXLib.burst(root.Position + Vector3.new(0, 1, 0), { Count = 8, Color = pal.Light, Speed = 6, Lifetime = 0.25 })
 			end
 		end
-	elseif data.Move == "WreckingBalls" and data.Phase == "Startup" and root then
-		TuskAnimation.play(character, "Throw")
-		local hand = (root.CFrame * CFrame.new(0.9, 0.6, -1.6)).Position
-		VFXLib.burst(hand, { Count = 14, Color = Color3.fromRGB(255, 170, 70), Speed = 8, Lifetime = 0.2 })
-		VFXLib.flash(hand, Color3.fromRGB(255, 180, 90), 3, 10, 0.2)
+	elseif data.Move == "SpinTornado" and data.Phase == "Startup" and root then
+		TuskAnimation.play(character, "GyroBowl")
+		if entry then
+			entry.Spin = 40
+			task.delay(data.Startup, function()
+				entry.HiddenUntil = os.clock() + 2.6 -- the ball becomes the tornado
+				entry.Spin = 8
+			end)
+		end
 	elseif data.Move == "SpinVibration" then
 		if data.Phase == "Startup" and root then
-			TuskAnimation.play(character, "M1_3")
+			TuskAnimation.play(character, "GyroPalm")
 			if entry then
 				entry.Spin = 45
 				task.delay(0.6, function()
@@ -1954,7 +1965,7 @@ local function onUltimate(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
 	if data.Phase == "Start" and root then
-		TuskAnimation.play(character, "Awakening")
+		TuskAnimation.play(character, "GyroBreakerCharge")
 		VFXLib.sound(sounds.AwakeningBuild, root, 0.9, 0.9)
 		local entry = held[character]
 		if entry then
@@ -1981,7 +1992,7 @@ local function onUltimate(data)
 			entry.Spin = 8
 		end
 		if character then
-			TuskAnimation.play(character, "Throw")
+			TuskAnimation.play(character, "GyroThrow")
 		end
 		VFXLib.flash(data.Position, pal.Light, 10, 40, 0.5)
 		if Common.isLocal(character) then
@@ -2012,9 +2023,109 @@ local function onUltimate(data)
 	end
 end
 
+---------------------------------------------------------------------------
+-- SPIN TORNADO visual: a funnel of spinning rings that follows the server's
+-- position updates, with a ground swirl, dust and green sparkles.
+---------------------------------------------------------------------------
+local tornadoes = {}
+
+local function startTornado(data)
+	local r = data.Radius
+	local t = { Pos = data.Position, Target = data.Position, Rings = {}, Angle = 0, Radius = r }
+	local layers = VFXQuality.get().RingSegments > 12 and 7 or 4
+	for i = 1, layers do
+		local k = (i - 1) / (layers - 1)
+		t.Rings[i] = {
+			Ring = VFXLib.ring({ Radius = r * (0.25 + k * 0.75), Width = 0.3 + k * 0.25, Color = (i % 2 == 0) and pal.Light or pal.Main, Transparency = 0.1 + k * 0.3 }),
+			Height = -2.5 + k * 11,
+			Speed = (9 - k * 4) * (i % 2 == 0 and -1 or 1),
+			Tilt = (math.random() - 0.5) * 0.3,
+		}
+	end
+	-- Swirling dust + sparkles on a carrier that moves with the tornado.
+	local carrier = VFXLib.anchor(CFrame.new(data.Position))
+	carrier.Size = Vector3.new(r * 1.2, 10, r * 1.2)
+	local dust = Instance.new("ParticleEmitter")
+	dust.Texture = VFXLib.Textures.Smoke
+	dust.Color = ColorSequence.new(Color3.fromRGB(205, 180, 135))
+	dust.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 5) })
+	dust.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 1) })
+	dust.Lifetime = NumberRange.new(0.6, 1.1)
+	dust.Speed = NumberRange.new(6, 10)
+	dust.RotSpeed = NumberRange.new(250, 400)
+	dust.EmissionDirection = Enum.NormalId.Top
+	dust.Shape = Enum.ParticleEmitterShape.Cylinder
+	dust.Rate = 30 * VFXQuality.get().Particles
+	dust.Parent = carrier
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Texture = VFXLib.Textures.Sparkle
+	sparks.Color = ColorSequence.new(pal.Light, pal.Main)
+	sparks.LightEmission = 1
+	sparks.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 0) })
+	sparks.Lifetime = NumberRange.new(0.4, 0.7)
+	sparks.Speed = NumberRange.new(8, 14)
+	sparks.EmissionDirection = Enum.NormalId.Top
+	sparks.Shape = Enum.ParticleEmitterShape.Cylinder
+	sparks.Rate = 40 * VFXQuality.get().Particles
+	sparks.Parent = carrier
+	t.Carrier = carrier
+	t.Sound = VFXLib.sound(sounds.ChargeLoop, carrier, 0.6, 0.6, true)
+	t.Expire = os.clock() + data.Duration + 1
+	tornadoes[data.Id] = t
+	VFXLib.burst(data.Position, { Count = 16, Color = pal.Light, Speed = 18, Lifetime = 0.4 })
+end
+
+local function endTornado(data)
+	local t = tornadoes[data.Id]
+	if t then
+		tornadoes[data.Id] = nil
+		for _, layer in ipairs(t.Rings) do
+			layer.Ring:Destroy()
+		end
+		if t.Sound then
+			t.Sound:Destroy()
+		end
+		t.Carrier:Destroy()
+	end
+	local pos = data.Position
+	TuskVFX.CreateRotationalShockwave(CFrame.new(pos - Vector3.new(0, 2.5, 0)), { Radius = data.Radius * 1.6, Layers = 3, Color = pal.Main, Color2 = pal.Light, Ground = true, Particles = 2, Width = 0.7 })
+	VFXLib.burst(pos, { Count = 30, Color = pal.Light, Speed = 40, Lifetime = 0.5 })
+	VFXLib.sound(sounds.Finisher, pos, 0.8, 0.9)
+	CameraFX.shakeAt(pos, 0.8, 70)
+end
+
+local function stepTornadoes(dt)
+	local now = os.clock()
+	for id, t in pairs(tornadoes) do
+		t.Pos = t.Pos:Lerp(t.Target, math.min(1, dt * 10))
+		t.Angle = t.Angle + dt
+		for _, layer in ipairs(t.Rings) do
+			local sway = math.sin(now * 3 + layer.Height) * 0.6
+			layer.Ring:SetCFrame(CFrame.new(t.Pos + Vector3.new(sway, layer.Height, 0)) * CFrame.Angles(layer.Tilt, t.Angle * layer.Speed, 0))
+		end
+		t.Carrier.CFrame = CFrame.new(t.Pos + Vector3.new(0, 2, 0))
+		if now > t.Expire then
+			endTornado({ Id = id, Position = t.Pos, Radius = t.Radius })
+		end
+	end
+end
+
 function Gyro.handle(name, data)
+	if name == "Tornado" then
+		if data.Phase == "Start" then
+			startTornado(data)
+		elseif data.Phase == "Move" then
+			local t = tornadoes[data.Id]
+			if t then
+				t.Target = data.Position
+			end
+		elseif data.Phase == "Burst" then
+			endTornado(data)
+		end
+		return
+	end
 	if name == "M1" then
-		Common.m1(data, pal)
+		Common.m1(data, pal, { AnimPrefix = "G_M1_" })
 	elseif name == "M1Finisher" then
 		Common.finisher(data, pal)
 		local entry = data.Character and held[data.Character]
@@ -2036,6 +2147,7 @@ function Gyro.step(dt)
 	dt = dt or 1 / 60
 	updateHeld(dt)
 	stepBalls(dt)
+	stepTornadoes(dt)
 	shakeTimer = shakeTimer + dt
 	if shakeTimer > 0.25 then
 		shakeTimer = 0
@@ -2781,7 +2893,7 @@ function Common.m1(data, palette, opts)
 		return
 	end
 	local index = data.Index
-	TuskAnimation.play(character, "M1_" .. index)
+	TuskAnimation.play(character, (opts.AnimPrefix or "M1_") .. index)
 	VFXLib.sound(sounds.Swing, root, 0.5, (opts.Pitch or 1) * (0.95 + index * 0.06))
 	TuskStand.action(character, "Lunge", { Target = LUNGES[index], Duration = index == 4 and 0.5 or 0.26 })
 	Common.swipe(root, index % 2 == 1 and 1 or -1, index % 2 == 1 and palette.Main or palette.Light, opts.Scale)
@@ -2960,7 +3072,7 @@ TuskActRegistry.Acts = {
 		Implemented = true,
 		Theme = { Primary = Color3.fromRGB(120, 220, 95), Secondary = Color3.fromRGB(40, 120, 50) },
 		M1 = "STEEL BALL COMBO",
-		Abilities = { "STEEL BALL THROW", "WRECKING BALLS", "SPIN VIBRATION" },
+		Abilities = { "STEEL BALL THROW", "SPIN TORNADO", "SPIN VIBRATION" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Ultimate = "BALL BREAKER",
 		Next = nil,
@@ -3071,6 +3183,37 @@ TuskAnimation.Poses = {
 		LeftArm = { 25, 0, -8 },
 	},
 	Emerge = { RightArm = { 150, 0, 15 }, LeftArm = { 40, 0, -40 }, Waist = { 15, 0, 0 } },
+
+	-- JOHNNY: fights with finger-gun nail shots.
+	FingerGun = { RightArm = { 95, 0, 5 }, LeftArm = { 62, 0, -38 }, Waist = { 0, -22, 0 }, Neck = { 0, 16, 0 } },
+	FingerGunRecoil = { RightArm = { 118, 0, 6 }, LeftArm = { 56, 0, -36 }, Waist = { 6, -16, 0 }, Neck = { 0, 12, 0 } },
+	FlickR = { RightArm = { 96, -8, 6 }, LeftArm = { 38, 0, -22 }, Waist = { 0, -20, 0 } },
+	FlickL = { LeftArm = { 96, 8, -6 }, RightArm = { 38, 0, 22 }, Waist = { 0, 20, 0 } },
+	SpinChargeA = { RightArm = { 104, 10, 30 }, LeftArm = { 72, 0, -42 }, Waist = { -6, -10, 0 } },
+	SpinChargeB = { RightArm = { 96, -10, 22 }, LeftArm = { 72, 0, -42 }, Waist = { -6, -10, 0 } },
+	Spread = { RightArm = { 92, 0, 70 }, LeftArm = { 92, 0, -70 }, Waist = { 10, 0, 0 }, Neck = { 15, 0, 0 } },
+	Dive = { Root = { 0, 0, 0, -0.45 }, Waist = { -38, 0, 0 }, RightArm = { 155, 0, 12 }, LeftArm = { 155, 0, -12 }, RightHip = { 40, 0, 0 }, LeftHip = { 20, 0, 0 }, RightKnee = { -45, 0, 0 }, LeftKnee = { -30, 0, 0 } },
+	LungeStep = { Waist = { -16, -12, 0 }, RightArm = { 86, 0, 0 }, LeftArm = { -22, 0, -12 }, RightHip = { 38, 0, 0 }, LeftHip = { -26, 0, 0 }, RightKnee = { -32, 0, 0 } },
+	PushTwo = { RightArm = { 92, 0, 14 }, LeftArm = { 92, 0, -14 }, Waist = { -12, 0, 0 }, RightHip = { 22, 0, 0 }, LeftHip = { -16, 0, 0 } },
+	WindSpin = { Waist = { 0, -60, 0 }, RightArm = { 62, 0, 82 }, LeftArm = { 40, 0, -30 } },
+	DashPunch = { Waist = { -20, -26, 0 }, RightArm = { 92, 0, 0 }, LeftArm = { -30, 0, -22 }, RightHip = { 42, 0, 0 }, RightKnee = { -60, 0, 0 }, LeftHip = { -30, 0, 0 } },
+
+	-- GYRO: fights like a ball thrower.
+	GyroIdle = { RightArm = { 55, 0, 14 }, LeftArm = { 12, 0, -10 } },
+	GHookWind = { RightArm = { 82, 0, 80 }, Waist = { 0, 25, 0 } },
+	GHook = { RightArm = { 86, -32, 12 }, Waist = { 0, -42, 0 }, LeftArm = { 30, 0, -20 } },
+	KickChamber = { RightHip = { 72, 0, 0 }, RightKnee = { -92, 0, 0 }, Waist = { 8, 0, 0 }, RightArm = { 30, 0, 30 }, LeftArm = { 30, 0, -30 } },
+	FrontKick = { RightHip = { 88, 0, 0 }, RightKnee = { -8, 0, 0 }, LeftKnee = { -15, 0, 0 }, Waist = { 12, 0, 0 }, RightArm = { 30, 0, 34 }, LeftArm = { 30, 0, -34 } },
+	OverheadWind = { RightArm = { 172, 0, 15 }, Waist = { 15, 20, 0 }, LeftHip = { 18, 0, 0 }, LeftKnee = { -22, 0, 0 } },
+	OverheadSmash = { RightArm = { 58, 0, 0 }, Waist = { -26, -15, 0 }, LeftHip = { 36, 0, 0 }, LeftKnee = { -30, 0, 0 }, RightHip = { -15, 0, 0 } },
+	PitchBack = { RightArm = { 200, 0, 40 }, Waist = { 5, 36, 0 }, LeftArm = { 80, 0, -30 }, LeftHip = { 48, 0, 0 }, LeftKnee = { -52, 0, 0 } },
+	PitchRelease = { RightArm = { 74, 0, -10 }, Waist = { -22, -36, 0 }, LeftArm = { -12, 0, -30 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -20, 0, 0 }, RightHip = { -30, 0, 0 } },
+	BowlWind = { Root = { 0, 0, 0, -0.4 }, RightArm = { -55, 0, 10 }, Waist = { -16, 0, 0 }, LeftHip = { 50, 0, 0 }, LeftKnee = { -62, 0, 0 }, RightKnee = { -42, 0, 0 } },
+	BowlRelease = { Root = { 0, 0, 0, -0.45 }, RightArm = { 62, 0, 0 }, Waist = { -28, 0, 0 }, LeftHip = { 55, 0, 0 }, LeftKnee = { -65, 0, 0 }, RightHip = { -20, 0, 0 } },
+	PalmWind = { RightArm = { 40, 0, 20 }, Waist = { 0, 25, 0 } },
+	PalmPress = { RightArm = { 92, 0, 0 }, LeftArm = { 70, 0, -22 }, Waist = { -16, -12, 0 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -30, 0, 0 } },
+	BreakerWindA = { Root = { 0, 0, 0, -0.3 }, RightArm = { 122, 0, 62 }, Waist = { 0, 46, 0 }, LeftArm = { 60, 0, -40 }, LeftKnee = { -25, 0, 0 }, RightKnee = { -25, 0, 0 } },
+	BreakerWindB = { Root = { 0, 0, 0, -0.3 }, RightArm = { 132, 10, 70 }, Waist = { 0, 52, 0 }, LeftArm = { 64, 0, -44 }, LeftKnee = { -25, 0, 0 }, RightKnee = { -25, 0, 0 } },
 }
 
 --[[
@@ -3078,14 +3221,36 @@ TuskAnimation.Poses = {
 	The last keyframe's Time is the length; after it the joints blend back.
 ]]
 TuskAnimation.Actions = {
-	M1_1 = { { 0, "Rest" }, { 0.07, "Jab" }, { 0.22, "Jab" } },
-	M1_2 = { { 0, "Rest" }, { 0.07, "JabLeft" }, { 0.22, "JabLeft" } },
-	M1_3 = { { 0, "Rest" }, { 0.08, "SpinPoke" }, { 0.25, "SpinPoke" } },
+	-- JOHNNY
+	M1_1 = { { 0, "Rest" }, { 0.06, "FlickR" }, { 0.22, "FlickR" } },
+	M1_2 = { { 0, "Rest" }, { 0.06, "FlickL" }, { 0.22, "FlickL" } },
+	M1_3 = { { 0, "Rest" }, { 0.08, "FingerGun" }, { 0.14, "FingerGunRecoil" }, { 0.27, "FingerGun" } },
 	M1_4 = { { 0, "Rest" }, { 0.12, "SlamWindup" }, { 0.2, "Slam" }, { 0.5, "Slam" } },
-	NailShot = { { 0, "Rest" }, { 0.12, "Point" }, { 0.2, "PointRecoil" }, { 0.45, "Point" } },
+	NailShot = { { 0, "Rest" }, { 0.12, "FingerGun" }, { 0.2, "FingerGunRecoil" }, { 0.45, "FingerGun" } },
 	NailBarrage = {
-		{ 0, "Rest" }, { 0.12, "BarrageA" }, { 0.21, "BarrageB" }, { 0.3, "BarrageA" },
-		{ 0.39, "BarrageB" }, { 0.48, "BarrageA" }, { 0.57, "BarrageB" }, { 0.8, "BarrageB" },
+		{ 0, "Rest" }, { 0.1, "FlickR" }, { 0.19, "FlickL" }, { 0.28, "FlickR" },
+		{ 0.37, "FlickL" }, { 0.46, "FlickR" }, { 0.55, "FlickL" }, { 0.8, "FingerGun" },
+	},
+	SpinChargeLoop = { { 0, "SpinChargeA" }, { 0.12, "SpinChargeB" }, { 0.24, "SpinChargeA" } },
+	UndergroundDive = { { 0, "Rest" }, { 0.15, "Dive" }, { 0.55, "Dive" } },
+	NailDimension = { { 0, "Rest" }, { 0.2, "Spread" }, { 0.8, "Spread" } },
+	DimensionalStep = { { 0, "Rest" }, { 0.08, "LungeStep" }, { 0.35, "LungeStep" } },
+	SpatialPursuit = { { 0, "Rest" }, { 0.1, "FlickR" }, { 0.25, "Spread" }, { 0.6, "Spread" } },
+	DimensionalBreak = { { 0, "Rest" }, { 0.25, "AwakenCrouch" }, { 0.72, "AwakenCrouch" }, { 0.82, "PushTwo" }, { 1.2, "PushTwo" } },
+	GoldenSpinNail = { { 0, "Rest" }, { 0.15, "WindSpin" }, { 0.3, "FingerGunRecoil" }, { 0.6, "FingerGun" } },
+	GoldenPursuit = { { 0, "Rest" }, { 0.12, "SlamWindup" }, { 0.25, "DashPunch" }, { 0.7, "DashPunch" } },
+
+	-- GYRO
+	G_M1_1 = { { 0, "Rest" }, { 0.06, "Jab" }, { 0.22, "Jab" } },
+	G_M1_2 = { { 0, "Rest" }, { 0.05, "GHookWind" }, { 0.12, "GHook" }, { 0.26, "GHook" } },
+	G_M1_3 = { { 0, "Rest" }, { 0.06, "KickChamber" }, { 0.12, "FrontKick" }, { 0.3, "FrontKick" } },
+	G_M1_4 = { { 0, "Rest" }, { 0.12, "OverheadWind" }, { 0.22, "OverheadSmash" }, { 0.5, "OverheadSmash" } },
+	GyroThrow = { { 0, "Rest" }, { 0.14, "PitchBack" }, { 0.24, "PitchRelease" }, { 0.55, "PitchRelease" } },
+	GyroBowl = { { 0, "Rest" }, { 0.14, "BowlWind" }, { 0.28, "BowlRelease" }, { 0.6, "BowlRelease" } },
+	GyroPalm = { { 0, "Rest" }, { 0.12, "PalmWind" }, { 0.2, "PalmPress" }, { 0.6, "PalmPress" } },
+	GyroBreakerCharge = {
+		{ 0, "Rest" }, { 0.3, "BreakerWindA" }, { 0.55, "BreakerWindB" }, { 0.8, "BreakerWindA" },
+		{ 1.05, "BreakerWindB" }, { 1.3, "BreakerWindA" }, { 1.55, "BreakerWindB" }, { 1.75, "PitchBack" },
 	},
 	SpinningNailRelease = { { 0, "ChargeNail" }, { 0.06, "PointRecoil" }, { 0.4, "Point" } },
 	Awakening = { { 0, "Rest" }, { 0.35, "AwakenCrouch" }, { 1.2, "AwakenCrouch" }, { 1.45, "AwakenRise" }, { 2.2, "AwakenRise" } },
@@ -4024,6 +4189,9 @@ local function onSneakAttack(data)
 	local character = data.Character
 	if data.Phase == "Burrow" then
 		local burrow = data.BurrowTime or TuskConfig.Sneak.Attack.BurrowTime
+		if character then
+			TuskAnimation.play(character, "UndergroundDive")
+		end
 		groundCrack(data.Position, colors.Cyan, 5)
 		VFXLib.sound(sounds.Burrow, data.Position, 0.7, 1)
 		undergroundTrail(data.Position, data.Target, burrow)

@@ -29,3 +29,5 @@ updated: 2026-11-22
 | 2026-11-22 | Johnny's nails: cyan glow + spinning blue Spin whirls |
 | 2026-11-22 | Gyro Zeppeli playable with a Steel Ball moveset (reuses the Tusk ability system as Act 5) |
 | 2026-11-22 | Golden Spin (R for everyone) removed; its hit feedback and settings button kept in new modules |
+| 2026-11-22 | Gyro's Wrecking Balls replaced by Spin Tornado |
+| 2026-11-22 | Separate procedural animation sets for Johnny (finger guns) and Gyro (ball thrower) |
