@@ -55,6 +55,12 @@ local function finish(p, position, normal, hitCharacter)
 			warn("[ProjectileService] OnHit error:", err)
 		end
 	end
+	if p.OnEnd then
+		local ok, err = pcall(p.OnEnd, position, normal or Vector3.new(0, 1, 0), hitCharacter, p)
+		if not ok then
+			warn("[ProjectileService] OnEnd error:", err)
+		end
+	end
 	FX:FireAllClients("ProjectileEnd", {
 		Id = p.Id,
 		Kind = p.Kind,
@@ -118,6 +124,7 @@ function ProjectileService.fire(owner, spec)
 		Traveled = 0,
 		Params = params,
 		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd, -- function(position, normal, hitCharacter, projectile): always called once
 		Visual = spec.Visual or {},
 	}
 	active[p.Id] = p
@@ -176,6 +183,7 @@ Players.PlayerRemoving:Connect(function(player)
 		if p.Owner == player then
 			p.Owner = nil
 			p.OnHit = nil
+			p.OnEnd = nil
 			finish(p, p.Position, nil, nil)
 		end
 	end

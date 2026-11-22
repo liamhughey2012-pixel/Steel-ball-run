@@ -10,7 +10,7 @@ local NPCService = require(script.NPCService)
 local TestDummies = require(script.TestDummies)
 
 -- Shared projectile budget (Tusk's barrage fires several nails at once).
-ProjectileService.MaxActivePerPlayer = 12
+ProjectileService.MaxActivePerPlayer = 20
 
 SpinService.init()
 TuskService.init()

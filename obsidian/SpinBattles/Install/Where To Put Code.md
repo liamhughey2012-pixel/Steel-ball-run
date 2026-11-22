@@ -71,10 +71,14 @@ Damage, cooldowns, projectiles, Tusk, Sneak, NPCs. Players can't see or change t
 | 5 | [[SpinService]] | ModuleScript | `ServerScriptService › SpinServer` |
 | 6 | [[TestDummies]] | ModuleScript | `ServerScriptService › SpinServer` |
 | 7 | [[TuskHitbox]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 8 | [[TuskService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 9 | [[TuskSneakService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 10 | [[SpinServer]] | Script | `ServerScriptService` |
-| 11 | [[TuskAct1]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 8 | [[TuskMoves]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 9 | [[TuskService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 10 | [[TuskSneakService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 11 | [[SpinServer]] | Script | `ServerScriptService` |
+| 12 | [[TuskAct1]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 13 | [[TuskAct2]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 14 | [[TuskAct3]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 15 | [[TuskAct4]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
 
 ## Client: StarterPlayer › StarterPlayerScripts › SpinClient
 Controls, effects, the Tusk Stand, HUD, NPC speech bubbles.
@@ -85,18 +89,23 @@ Controls, effects, the Tusk Stand, HUD, NPC speech bubbles.
 | 3 | [[ProceduralPose]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
 | 4 | [[SpinController]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
 | 5 | [[SpinVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 6 | [[TuskAnimation]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 7 | [[TuskController]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 8 | [[TuskProjectiles]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 9 | [[TuskSneakController]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 10 | [[TuskStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 11 | [[TuskVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 12 | [[VFXLib]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 13 | [[WorldClient]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 14 | [[SpinClient]] | LocalScript | `StarterPlayer › StarterPlayerScripts` |
-| 15 | [[Act1]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 16 | [[SpinMeter]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
-| 17 | [[TuskUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
+| 6 | [[TuskActCommon]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 7 | [[TuskAnimation]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 8 | [[TuskController]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 9 | [[TuskProjectiles]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 10 | [[TuskSneakController]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 11 | [[TuskStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 12 | [[TuskVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 13 | [[VFXLib]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 14 | [[WorldClient]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 15 | [[SpinClient]] | LocalScript | `StarterPlayer › StarterPlayerScripts` |
+| 16 | [[Act1]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 17 | [[Act2]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 18 | [[Act3]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 19 | [[Act4]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 20 | [[CharacterCard]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
+| 21 | [[SpinMeter]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
+| 22 | [[TuskUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
 
 ## Tools: ServerStorage › SpinTools
 Only used in Studio, to build the map once.

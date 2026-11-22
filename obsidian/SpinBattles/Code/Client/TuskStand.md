@@ -50,7 +50,14 @@ local VFXLib = require(script.Parent.VFXLib)
 
 local TuskStand = {}
 
-local IDLE_OFFSET = CFrame.new(1.9, 1.5, 1.7)
+-- Where each Act's Stand floats (bigger Acts float further back).
+local IDLE_OFFSETS = {
+	[1] = CFrame.new(1.9, 1.5, 1.7),
+	[2] = CFrame.new(2.1, 1.6, 2),
+	[3] = CFrame.new(2.4, 1.2, 2.8),
+	[4] = CFrame.new(2.6, 1.8, 3.4),
+}
+local IDLE_OFFSET = IDLE_OFFSETS[1]
 local SNEAK_OFFSET = CFrame.new(1.5, -1.4, 1.2)
 
 local stands = {} -- [character] = stand
@@ -85,7 +92,7 @@ local function build(character, act)
 	highlight.Parent = model
 	model.Parent = VFXLib.Folder
 	local root = character:FindFirstChild("HumanoidRootPart")
-	local start = root and root.CFrame * IDLE_OFFSET or CFrame.new()
+	local start = root and root.CFrame * (IDLE_OFFSETS[act] or IDLE_OFFSET) or CFrame.new()
 	model:PivotTo(start)
 	return {
 		Act = act,
@@ -148,7 +155,7 @@ local function update(stand, root, dt, now)
 	local lean = math.clamp(-localVel.Z / 40, -0.4, 0.4) -- lean forward when running
 
 	local bob = math.sin(t * 2.2) * (sneaking and 0.08 or 0.22)
-	local offset = (sneaking and SNEAK_OFFSET or IDLE_OFFSET) * CFrame.new(0, bob, 0)
+	local offset = (sneaking and SNEAK_OFFSET or (IDLE_OFFSETS[stand.Act] or IDLE_OFFSET)) * CFrame.new(0, bob, 0)
 	local desired = root.CFrame * offset * CFrame.Angles(-lean, math.sin(t * 0.9) * 0.12, math.sin(t * 1.3) * 0.08)
 	local snap = 12
 
@@ -183,6 +190,18 @@ local function update(stand, root, dt, now)
 		local flap = math.sin(t * 3.1) * 0.18 + lean * 0.5
 		joints.EarL.Weld.C0 = joints.EarL.Base * CFrame.Angles(0, 0, flap) * joints.EarL.Offset
 		joints.EarR.Weld.C0 = joints.EarR.Base * CFrame.Angles(0, 0, -flap) * joints.EarR.Offset
+	end
+	-- Arms: idle sway; thrown forward during a Lunge (punch / nail fire).
+	local punching = stand.Action and stand.Action.Kind == "Lunge"
+	local punchA = 0
+	if punching then
+		local a = (now - stand.Action.Start) / stand.Action.Duration
+		punchA = a < 0.3 and a / 0.3 or math.max(0, 1 - (a - 0.3) / 0.7)
+	end
+	if joints.ArmR then
+		local sway = math.sin(t * 2) * 0.12
+		joints.ArmR.Weld.C0 = joints.ArmR.Base * CFrame.Angles(sway + punchA * 1.7, 0, -punchA * 0.2) * joints.ArmR.Offset
+		joints.ArmL.Weld.C0 = joints.ArmL.Base * CFrame.Angles(-sway + punchA * 0.6, 0, punchA * 0.3) * joints.ArmL.Offset
 	end
 	for i = 1, 4 do
 		local leg = joints["Leg" .. i]

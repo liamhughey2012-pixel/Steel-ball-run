@@ -37,6 +37,7 @@ local TuskProjectiles = require(script.TuskProjectiles)
 local TuskSneakController = require(script.TuskSneakController)
 local TuskController = require(script.TuskController)
 local WorldClient = require(script.WorldClient)
+local CharacterCard = require(script.UI.CharacterCard)
 
 SpinMeter.init()
 SpinVFX.init()
@@ -46,4 +47,5 @@ TuskProjectiles.init()
 TuskSneakController.init()
 TuskController.init()
 WorldClient.init()
+CharacterCard.init()
 ```

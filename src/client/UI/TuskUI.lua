@@ -13,6 +13,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
@@ -326,7 +327,7 @@ function TuskUI.init(cb)
 	corner(awakenFill, 3)
 
 	-- MOVESET button (opens the Act menu), under the VFX quality button.
-	if TuskConfig.Progression.ShowSelectionMenu then
+	if TuskUI.menuAllowed() then
 		local moveset = Instance.new("TextButton")
 		moveset.AnchorPoint = Vector2.new(1, 0)
 		moveset.Position = UDim2.new(1, -12, 0, 46)
@@ -363,8 +364,46 @@ function TuskUI.init(cb)
 	end)
 end
 
+-- Awaken mode: Acts come from ultimates, so the menu is only a Studio test tool.
+function TuskUI.menuAllowed()
+	local p = TuskConfig.Progression
+	if not p.ShowSelectionMenu then
+		return false
+	end
+	if p.Mode == "Awaken" then
+		return RunService:IsStudio() and p.StudioMenu == true
+	end
+	return true
+end
+
+local function showBanner(title, subtitle, color)
+	banner.Text = title
+	banner.TextColor3 = color or colors.Cyan
+	bannerSub.Text = subtitle or ""
+	animateJob("banner", 2, function(a)
+		local slide = a < 0.12 and (1 - a / 0.12) or 0
+		banner.Position = UDim2.new(0.5, slide * 200, 0.25, 0)
+		local fade = a < 0.75 and 0 or (a - 0.75) / 0.25
+		banner.TextTransparency = fade
+		banner.TextStrokeTransparency = math.max(0.2, fade)
+		bannerSub.TextTransparency = fade
+		bannerSub.TextStrokeTransparency = math.max(0.4, fade)
+	end)
+end
+
+-- Ultimate awakened Tusk to the next Act.
+function TuskUI.onEvolve(data)
+	if data.Character ~= player.Character then
+		return
+	end
+	local info = Registry.get(data.To)
+	if info then
+		showBanner(info.Name .. "!", "AWAKENED  ·  " .. info.Tagline:upper(), info.Theme.Primary)
+	end
+end
+
 function TuskUI.toggleMenu()
-	if menu then
+	if menu and TuskUI.menuAllowed() then
 		menu.Visible = not menu.Visible
 	end
 end
@@ -447,6 +486,7 @@ local DENY_TEXT = {
 	SneakCooldown = "SNEAK ON COOLDOWN",
 	SneakAttackCooldown = "SNEAK ATTACK ON COOLDOWN",
 	NoTarget = "NO TARGET IN FRONT",
+	Blocked = "NO ROOM TO MOVE THERE",
 }
 
 function TuskUI.onState(data)

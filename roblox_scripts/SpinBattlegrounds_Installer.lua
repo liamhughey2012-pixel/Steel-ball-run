@@ -594,36 +594,40 @@ TuskActRegistry.Acts = {
 		Abilities = { "NAIL SHOT", "NAIL BARRAGE", "SPINNING NAIL" },
 		AbilityKinds = { "Press", "Press", "Hold" }, -- Hold = charge on press, fire on release
 		Ultimate = "TUSK AWAKENING",
+		Next = 2, -- the ultimate awakens Tusk to this Act
 	},
 	[2] = {
 		Name = "TUSK ACT 2",
 		Tagline = "Wormhole combat",
-		Implemented = false,
+		Implemented = true,
 		Theme = { Primary = Color3.fromRGB(70, 200, 255), Secondary = Color3.fromRGB(30, 80, 220) },
 		M1 = "DIMENSIONAL COMBO",
 		Abilities = { "WORMHOLE NAIL", "UNDERGROUND PURSUIT", "NAIL DIMENSION" },
 		AbilityKinds = { "Press", "Press", "Press" },
+		Next = 3,
 		Ultimate = "DIMENSIONAL STORM",
 	},
 	[3] = {
 		Name = "TUSK ACT 3",
 		Tagline = "Master of spatial movement",
-		Implemented = false,
+		Implemented = true,
 		Theme = { Primary = Color3.fromRGB(60, 140, 255), Secondary = Color3.fromRGB(20, 40, 160) },
 		M1 = "WORMHOLE STRIKES",
 		Abilities = { "DIMENSIONAL STEP", "SPATIAL PURSUIT", "DIMENSIONAL BREAK" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Ultimate = "INFINITE DIMENSION",
+		Next = 4,
 	},
 	[4] = {
 		Name = "TUSK ACT 4",
 		Tagline = "Infinite Rotation",
-		Implemented = false,
+		Implemented = true,
 		Theme = { Primary = Color3.fromRGB(255, 200, 70), Secondary = Color3.fromRGB(20, 40, 160) },
 		M1 = "INFINITE BARRAGE",
 		Abilities = { "GOLDEN SPIN NAIL", "INFINITE ROTATION", "GOLDEN PURSUIT" },
 		AbilityKinds = { "Press", "Hold", "Press" },
 		Ultimate = "INFINITE ROTATION",
+		Next = nil, -- final form
 	},
 }
 
@@ -666,10 +670,14 @@ TuskConfig.Keys = {
 -- Act selection / progression
 ---------------------------------------------------------------------------
 TuskConfig.Progression = {
+	-- "Awaken": everyone starts at Act 1; each ULTIMATE awakens Tusk to the
+	--           next Act (1 -> 2 -> 3 -> 4) with a new Stand and new moves.
 	-- "Menu":   any implemented Act can be picked from the Act menu (T).
 	-- "Unlock": only Acts that IsUnlocked(player, act) approves.
 	--           Point IsUnlocked at your existing unlock / quest system.
-	Mode = "Menu",
+	Mode = "Awaken",
+	ResetOnDeath = true, -- Awaken mode: dying sends you back to Act 1
+	StudioMenu = true, -- the Act menu (T) still works inside Studio for testing
 	DefaultAct = 1,
 	AutoEquip = true, -- players spawn as Tusk (set false if your game picks movesets elsewhere)
 	ShowSelectionMenu = true,
@@ -684,6 +692,18 @@ TuskConfig.Ultimate = {
 	MaxMeter = 100,
 	GainPerDamage = 1.6, -- meter gained per point of damage dealt with Tusk
 	StudioStartFull = true, -- Studio only: start full so ultimates can be tested
+	StudioRefill = true, -- Studio only: refill after each ultimate (test every Act quickly)
+}
+
+---------------------------------------------------------------------------
+-- Character card (top-left)
+---------------------------------------------------------------------------
+TuskConfig.Character = {
+	Name = "JOHNNY JOESTAR",
+	Title = "STAND USER",
+	-- Optional: upload a portrait image and paste "rbxassetid://..." here.
+	-- Empty = a live 3D view of your own avatar.
+	PortraitImage = "",
 }
 
 ---------------------------------------------------------------------------
@@ -768,16 +788,89 @@ TuskConfig.Act1 = {
 		Stun = 0.55,
 		Knockback = 38,
 	},
-	Ultimate = { -- TUSK AWAKENING
+	Ultimate = { -- TUSK AWAKENING -> evolves to Act 2
 		Windup = 1.7, -- cinematic buildup (armored, can't be stunned)
 		Radius = 18,
 		Damage = 15,
 		Stun = 0.6,
 		Knockback = 55,
 		Launch = 25,
-		Duration = 20, -- Awakened state length
-		CooldownMultiplier = 0.6, -- ability cooldowns while Awakened
-		DamageMultiplier = 1.25, -- nail damage while Awakened
+		Duration = 20, -- (Menu mode only) Awakened buff length
+		CooldownMultiplier = 0.6,
+		DamageMultiplier = 1.25,
+	},
+}
+
+---------------------------------------------------------------------------
+-- ACT 2 — wormhole combat
+---------------------------------------------------------------------------
+TuskConfig.Act2 = {
+	M1 = {
+		Interval = 0.28, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.1,
+		HitboxSize = Vector3.new(5.5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 4, Portal = true },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.5, Knockback = 45, Launch = 14, Portal = true, ShockwaveRadius = 8 },
+		},
+	},
+	WormholeNail = { Cooldown = 6, Startup = 0.16, Damage = 8, ExitDamage = 7, Speed = 160, Radius = 0.75, Range = 170, ExitDelay = 0.4, ExitSearch = 12, Stun = 0.4, Knockback = 14 },
+	UndergroundPursuit = { Cooldown = 11, Range = 45, ConeDegrees = 100, BurrowTime = 0.55, WarningTime = 0.35, Damage = 11, Stun = 0.55, Knockback = 20, Launch = 30, HitRadius = 7 },
+	NailDimension = { Cooldown = 13, Range = 70, ConeDegrees = 50, Portals = 3, PortalRadius = 11, OpenTime = 0.4, Damage = 5, Speed = 140, Stun = 0.35, Knockback = 8, FinalRadius = 9, FinalDamage = 6 },
+	Ultimate = { -- DIMENSIONAL STORM -> evolves to Act 3
+		Windup = 1.5, Radius = 24, Portals = 6, Waves = 3, WaveInterval = 0.35,
+		NailDamage = 3, NailSpeed = 150, BurstRadius = 22, BurstDamage = 14, Stun = 0.6, Knockback = 55, Launch = 25,
+	},
+}
+
+---------------------------------------------------------------------------
+-- ACT 3 — master of spatial movement
+---------------------------------------------------------------------------
+TuskConfig.Act3 = {
+	M1 = {
+		Interval = 0.24, ResetAfter = 1.0, EndLag = 0.8, Windup = 0.08,
+		HitboxSize = Vector3.new(5.5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.42, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.42, Knockback = 3, Portal = true },
+			{ Damage = 4, Stun = 0.42, Knockback = 4, Portal = true },
+			{ Damage = 7.5, Stun = 0.5, Knockback = 30, Launch = 42, Portal = true, ShockwaveRadius = 9 },
+		},
+	},
+	DimensionalStep = { Cooldown = 5, Distance = 28, IFrames = 0.25 },
+	SpatialPursuit = { Cooldown = 12, Range = 75, ConeDegrees = 60, Portals = 4, PortalRadius = 12, OpenTime = 0.35, Stagger = 0.14, Damage = 4.5, Speed = 170, Stun = 0.35, Knockback = 8 },
+	DimensionalBreak = { Cooldown = 14, Charge = 0.75, Length = 34, Width = 12, Damage = 16, Stun = 0.6, Knockback = 60, Launch = 18 },
+	Ultimate = { -- INFINITE DIMENSION -> evolves to Act 4
+		Windup = 1.9, Radius = 26, Portals = 8, Damage = 20, Stun = 0.65, Knockback = 65, Launch = 35,
+	},
+}
+
+---------------------------------------------------------------------------
+-- ACT 4 — Infinite Rotation (gold + deep blue)
+---------------------------------------------------------------------------
+TuskConfig.Act4 = {
+	M1 = {
+		Interval = 0.33, ResetAfter = 1.2, EndLag = 1.0, Windup = 0.13,
+		HitboxSize = Vector3.new(6.5, 6, 7), HitboxForward = 3.8, MaxTargets = 3,
+		Hits = {
+			{ Damage = 5, Stun = 0.5, Knockback = 6 },
+			{ Damage = 5, Stun = 0.5, Knockback = 6 },
+			{ Damage = 2.5, Stun = 0.5, Knockback = 2, Repeat = 3, RepeatInterval = 0.08 },
+			{ Damage = 10, Stun = 0.55, Knockback = 60, Launch = 22, ShockwaveRadius = 13, AoeRadius = 9 },
+		},
+	},
+	GoldenSpinNail = { Cooldown = 7, Startup = 0.3, Damage = 16, Speed = 175, Radius = 1.4, Range = 210, Stun = 0.5, Knockback = 40, ImpactRadius = 6, ImpactDamage = 5 },
+	InfiniteRotation = {
+		Cooldown = 15, WalkSpeedMultiplier = 0.4, MaxHold = 3.5,
+		Stages = { 0.6, 1.3, 2.0 }, -- seconds of charge for stage 1 / 2 / 3
+		Damage = { 12, 20, 30 }, Radius = { 1.6, 2.4, 3.4 }, Speed = { 140, 150, 160 },
+		ImpactRadius = { 6, 10, 16 }, ImpactDamage = { 4, 8, 12 }, Range = 220, Stun = 0.6, Knockback = 55,
+	},
+	GoldenPursuit = { Cooldown = 12, Distance = 32, Hits = 3, HitInterval = 0.13, HitDamage = 4, FinalDamage = 12, Stun = 0.5, Knockback = 65, Launch = 25, FinalRadius = 12 },
+	Ultimate = { -- INFINITE ROTATION (Act 4 stays Act 4)
+		Windup = 2.6, ProjectileRadius = 4, Speed = 95, Range = 180, Damage = 32,
+		BlastRadius = 18, BlastDamage = 14, Stun = 0.8, Knockback = 80, Launch = 40,
 	},
 }
 
@@ -1075,8 +1168,164 @@ local function buildAct1(scale)
 	return model, rig
 end
 
+---------------------------------------------------------------------------
+-- ACT 2: Act 1 grown up. Bigger, magenta, a crest of spikes, two small arms.
+---------------------------------------------------------------------------
+local function limb(model, parent, rig, name, base, length, thickness, color, handColor)
+	local arm = part(model, { Name = name, Shape = Enum.PartType.Cylinder, Size = Vector3.new(length, thickness, thickness), Color = color })
+	-- Cylinder axis is X; hang it down from the joint.
+	local offset = CFrame.new(0, -length / 2, 0) * CFrame.Angles(0, 0, math.pi / 2)
+	local w = attach(parent, arm, base * offset)
+	rig.Joints[name] = { Weld = w, Base = base, Offset = offset }
+	local hand = part(model, { Name = name .. "Hand", Size = Vector3.new(thickness * 1.6, thickness * 1.6, thickness * 1.6), Color = handColor or color, Ellipsoid = true })
+	attach(arm, hand, CFrame.new(-length / 2 - thickness * 0.4, 0, 0))
+	return arm, hand
+end
+
+local function buildAct2(scale)
+	local s = scale * 1.25
+	local model, rig = buildAct1(s)
+	model.Name = "TuskAct2"
+	-- (Color3 values can't be table keys, so compare directly.)
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			if d.Color == colors.Pink then
+				d.Color = Color3.fromRGB(214, 84, 196)
+			elseif d.Color == colors.PinkDark then
+				d.Color = Color3.fromRGB(118, 40, 150)
+			end
+		end
+	end
+	local body = rig.Body
+	-- Crest of three spikes.
+	for i = -1, 1 do
+		local spike = part(model, { Name = "Crest", Size = Vector3.new(0.14, 0.7 - math.abs(i) * 0.2, 0.3) * s, Color = Color3.fromRGB(240, 200, 255), Ellipsoid = true })
+		attach(body, spike, CFrame.new(i * 0.22 * s, 0.95 * s, 0.1 * s) * CFrame.Angles(0, 0, -i * 0.4))
+	end
+	-- Glowing chest star.
+	local core = part(model, { Name = "Core", Size = Vector3.new(0.3, 0.3, 0.08) * s, Color = colors.Cyan, Material = Enum.Material.Neon, Ellipsoid = true })
+	attach(body, core, CFrame.new(0, -0.35 * s, -0.62 * s))
+	-- Arms.
+	limb(model, body, rig, "ArmL", CFrame.new(-0.62 * s, -0.05 * s, -0.1 * s) * CFrame.Angles(0, 0, -0.5), 0.6 * s, 0.13 * s, Color3.fromRGB(214, 84, 196), colors.Star)
+	local _, hand = limb(model, body, rig, "ArmR", CFrame.new(0.62 * s, -0.05 * s, -0.1 * s) * CFrame.Angles(0, 0, 0.5), 0.6 * s, 0.13 * s, Color3.fromRGB(214, 84, 196), colors.Star)
+	rig.NailPoint.Parent = hand
+	rig.NailPoint.Position = Vector3.new()
+	return model, rig
+end
+
+---------------------------------------------------------------------------
+-- Humanoid Stands (Act 3, Act 4)
+---------------------------------------------------------------------------
+local function buildHumanoid(name, scale, look)
+	local s = scale
+	local model = Instance.new("Model")
+	model.Name = name
+	local rig = { Joints = {} }
+
+	local torso = part(model, { Name = "Body", Size = look.Torso * s, Color = look.Body, Ellipsoid = true, Massless = false })
+	torso.CFrame = CFrame.new()
+	torso.Anchored = true
+	model.PrimaryPart = torso
+	rig.Body = torso
+	local ty = look.Torso.Y * s / 2
+
+	-- Chest trim and star.
+	local plate = part(model, { Name = "Chest", Size = Vector3.new(look.Torso.X * 0.75, look.Torso.Y * 0.45, 0.12) * s, Color = look.Trim, Material = look.TrimMaterial or Enum.Material.SmoothPlastic, Ellipsoid = true })
+	attach(torso, plate, CFrame.new(0, ty * 0.3, -look.Torso.Z * s * 0.44))
+	star(model, torso, Vector3.new(0, ty * 0.3, -look.Torso.Z * s * 0.52), Vector3.new(0, 0, -1), 0.55 * s, look.Star)
+
+	-- Head with eyes, forehead star and the gold pin.
+	local head = part(model, { Name = "Head", Size = look.Head * s, Color = look.HeadColor or look.Body, Ellipsoid = true })
+	attach(torso, head, CFrame.new(0, ty + look.Head.Y * s * 0.45, -0.05 * s))
+	local hy = look.Head.Y * s
+	for _, side in ipairs({ -1, 1 }) do
+		local eye = part(model, { Name = "Eye", Size = Vector3.new(0.22, 0.14, 0.08) * s, Color = look.Eye, Material = Enum.Material.Neon, Ellipsoid = true })
+		attach(head, eye, CFrame.new(side * 0.2 * s, 0.02 * s, -look.Head.Z * s * 0.47) * CFrame.Angles(0, 0, side * -0.25))
+	end
+	star(model, head, Vector3.new(0, hy * 0.32, -look.Head.Z * s * 0.42), Vector3.new(0, 0.5, -1).Unit, 0.4 * s, look.Star)
+	-- Head fins (animated like Act 1's ears).
+	for _, e in ipairs({ { "EarL", -1 }, { "EarR", 1 } }) do
+		local base = CFrame.new(e[2] * look.Head.X * s * 0.45, hy * 0.25, 0.05 * s) * CFrame.Angles(0, 0, -e[2] * 1.1)
+		local fin = part(model, { Name = e[1], Size = Vector3.new(0.22, 0.8, 0.08) * s, Color = look.Trim, Ellipsoid = true })
+		local offset = CFrame.new(0, 0.35 * s, 0)
+		local w = attach(head, fin, base * offset)
+		rig.Joints[e[1]] = { Weld = w, Base = base, Offset = offset }
+	end
+
+	-- Shoulders and arms.
+	for _, a in ipairs({ { "ArmL", -1 }, { "ArmR", 1 } }) do
+		local shoulderPos = CFrame.new(a[2] * (look.Torso.X * s * 0.5 + 0.1 * s), ty * 0.7, 0)
+		local pad = part(model, { Name = "Shoulder", Size = Vector3.new(0.6, 0.5, 0.6) * s * look.ArmThickness * 3, Color = look.Trim, Material = look.TrimMaterial or Enum.Material.SmoothPlastic, Ellipsoid = true })
+		attach(torso, pad, shoulderPos)
+		local _, hand = limb(model, torso, rig, a[1], shoulderPos * CFrame.Angles(0, 0, a[2] * 0.15), look.ArmLength * s, look.ArmThickness * s, look.Body, look.Trim)
+		if a[1] == "ArmR" then
+			local point = Instance.new("Attachment")
+			point.Name = "NailPoint"
+			point.Parent = hand
+			rig.NailPoint = point
+		end
+	end
+
+	-- Lower body: legs (Act 4) or a swirling tail (Act 3).
+	if look.Legs then
+		for i, side in ipairs({ -1, 1 }) do
+			local base = CFrame.new(side * look.Torso.X * s * 0.25, -ty * 0.85, 0)
+			limb(model, torso, rig, "Leg" .. i, base, look.LegLength * s, look.ArmThickness * 1.3 * s, look.Body, look.Trim)
+		end
+	else
+		local y = -ty * 0.9
+		for i = 1, 4 do
+			local size = Vector3.new(look.Torso.X * (0.8 - i * 0.16), 0.9, look.Torso.Z * (0.8 - i * 0.16)) * s
+			local seg = part(model, { Name = "Tail", Size = size, Color = i % 2 == 0 and look.Trim or look.Body, Ellipsoid = true })
+			attach(torso, seg, CFrame.new(math.sin(i * 1.3) * 0.25 * s, y, math.cos(i * 1.3) * 0.2 * s) * CFrame.Angles(0, i * 0.6, 0.15 * i))
+			y = y - 0.55 * s
+		end
+	end
+
+	-- Scattered stars on the torso.
+	for _, spot in ipairs({ Vector3.new(0.45, -0.3, -0.35), Vector3.new(-0.45, 0.1, -0.35), Vector3.new(0.3, 0.4, 0.4), Vector3.new(-0.35, -0.4, 0.4) }) do
+		star(model, torso, Vector3.new(spot.X * look.Torso.X, spot.Y * look.Torso.Y, spot.Z * look.Torso.Z) * s * 1.05, Vector3.new(spot.X, 0, spot.Z).Unit, 0.22 * s, look.Star)
+	end
+	return model, rig
+end
+
+local function buildAct3(scale)
+	return buildHumanoid("TuskAct3", scale, {
+		Torso = Vector3.new(1.3, 1.7, 0.9),
+		Head = Vector3.new(0.95, 1.05, 0.95),
+		Body = Color3.fromRGB(196, 96, 190),
+		HeadColor = Color3.fromRGB(236, 170, 220),
+		Trim = Color3.fromRGB(40, 50, 130),
+		Star = colors.Star,
+		Eye = Color3.fromRGB(120, 200, 255),
+		ArmLength = 1.1,
+		ArmThickness = 0.2,
+		Legs = false,
+	})
+end
+
+local function buildAct4(scale)
+	return buildHumanoid("TuskAct4", scale * 1.15, {
+		Torso = Vector3.new(1.8, 2.1, 1.1),
+		Head = Vector3.new(1, 1.1, 1),
+		Body = Color3.fromRGB(70, 56, 150),
+		HeadColor = Color3.fromRGB(200, 120, 210),
+		Trim = colors.Gold,
+		TrimMaterial = Enum.Material.Metal,
+		Star = colors.GoldLight,
+		Eye = Color3.fromRGB(110, 230, 255),
+		ArmLength = 1.4,
+		ArmThickness = 0.3,
+		Legs = true,
+		LegLength = 1.6,
+	})
+end
+
 local builders = {
 	[1] = buildAct1,
+	[2] = buildAct2,
+	[3] = buildAct3,
+	[4] = buildAct4,
 }
 
 function TuskStandModels.build(act, scale)
@@ -1363,7 +1612,7 @@ local NPCService = require(script.NPCService)
 local TestDummies = require(script.TestDummies)
 
 -- Shared projectile budget (Tusk's barrage fires several nails at once).
-ProjectileService.MaxActivePerPlayer = 12
+ProjectileService.MaxActivePerPlayer = 20
 
 SpinService.init()
 TuskService.init()
@@ -1933,6 +2182,12 @@ local function finish(p, position, normal, hitCharacter)
 			warn("[ProjectileService] OnHit error:", err)
 		end
 	end
+	if p.OnEnd then
+		local ok, err = pcall(p.OnEnd, position, normal or Vector3.new(0, 1, 0), hitCharacter, p)
+		if not ok then
+			warn("[ProjectileService] OnEnd error:", err)
+		end
+	end
 	FX:FireAllClients("ProjectileEnd", {
 		Id = p.Id,
 		Kind = p.Kind,
@@ -1996,6 +2251,7 @@ function ProjectileService.fire(owner, spec)
 		Traveled = 0,
 		Params = params,
 		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd, -- function(position, normal, hitCharacter, projectile): always called once
 		Visual = spec.Visual or {},
 	}
 	active[p.Id] = p
@@ -2054,6 +2310,7 @@ Players.PlayerRemoving:Connect(function(player)
 		if p.Owner == player then
 			p.Owner = nil
 			p.OnHit = nil
+			p.OnEnd = nil
 			finish(p, p.Position, nil, nil)
 		end
 	end
@@ -2397,8 +2654,8 @@ return TestDummies
 	  Ability 1 NAIL SHOT: one spinning nail
 	  Ability 2 NAIL BARRAGE: five nails fanned out
 	  Ability 3 SPINNING NAIL: hold to charge, release (golden-blue at full charge)
-	  Ultimate  TUSK AWAKENING: armored cinematic burst, then 20 s Awakened
-	            (faster cooldowns, stronger nails)
+	  Ultimate  TUSK AWAKENING: armored cinematic burst, then evolves to Act 2
+	            (in Menu mode: 20 s Awakened buff instead)
 
 	Every number is in TuskConfig.Act1. All hits go through S.hit()
 	(CombatAdapter), all timing and cooldowns live here on the server.
@@ -2716,6 +2973,10 @@ function Act1.Ultimate(S, player, state, aim)
 		end
 		S.fx("Ultimate", { Character = char, Act = 1, Phase = "Burst", Position = root.Position, Radius = u.Radius })
 
+		if TuskConfig.Progression.Mode == "Awaken" then
+			S.finishUltimate(player, state) -- awakens Tusk to Act 2
+			return
+		end
 		state.Awakened = true
 		local token = {}
 		state.AwakenToken = token
@@ -2739,6 +3000,731 @@ function Act1.Cleanup(S, player, state)
 end
 
 return Act1
+]=] },
+	{ Service = "ServerScriptService", Path = "SpinServer/TuskActs/TuskAct2", Class = "ModuleScript", Source = [=[
+--[[
+	TuskAct2  (ServerScriptService.SpinServer.TuskActs.TuskAct2)
+
+	Tusk Act 2: wormhole combat.
+	  M1        DIMENSIONAL COMBO: Tusk-assisted hits, portal flashes, dimensional finisher
+	  Ability 1 WORMHOLE NAIL: nail opens a wormhole where it lands; a second nail
+	            bursts out of an exit portal behind the nearest enemy
+	  Ability 2 UNDERGROUND PURSUIT: burrow, travel under the ground, emerge behind the target
+	  Ability 3 NAIL DIMENSION: three portals around the target fire converging nails,
+	            then a dimensional shockwave
+	  Ultimate  DIMENSIONAL STORM: six portals rain nail waves, giant blue burst,
+	            then Tusk evolves to Act 3
+	Numbers: TuskConfig.Act2.
+]]
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+local Moves = require(script.Parent.Parent.TuskMoves)
+local Sneak = require(script.Parent.Parent.TuskSneakService)
+
+local Act2 = {}
+local cfg = TuskConfig.Act2
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function ready(S, player, state, name, slot)
+	return not S.isBusy(state) and not state.Charging and S.cooldownReady(player, state, name, slot)
+end
+
+function Act2.M1(S, player, state, aim)
+	Moves.m1(S, player, state, aim, cfg.M1, 2)
+end
+
+local function wormholeNail(S, player, state, aim)
+	local c = cfg.WormholeNail
+	if not ready(S, player, state, "WormholeNail", 1) then
+		return
+	end
+	S.startCooldown(player, state, "WormholeNail", c.Cooldown, 1)
+	S.lock(state, c.Startup + 0.2)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = 2, Move = "WormholeNail", Phase = "Startup", Startup = c.Startup, Direction = direction })
+	task.delay(c.Startup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		Moves.nail(S, player, state, {
+			Origin = S.origin(char, r, Moves.HAND),
+			Direction = direction,
+			Speed = c.Speed,
+			Radius = c.Radius,
+			Range = c.Range,
+			Style = "Wormhole",
+			Damage = c.Damage,
+			Stun = c.Stun,
+			Knockback = c.Knockback,
+			Source = "TuskWormholeNail",
+			OnEnd = function(position, normal)
+				-- Entrance wormhole where the nail landed.
+				S.fx("Portal", { Act = 2, Position = position + normal * 0.5, LookAt = position + normal * 5, Radius = 2.4, Duration = c.ExitDelay + 0.35 })
+				-- Exit portal behind the nearest enemy near the impact.
+				local victims = S.Hitbox.inRadius(char, position, c.ExitSearch, 1)
+				local victim = victims[1]
+				local vr = victim and victim:FindFirstChild("HumanoidRootPart")
+				if not vr then
+					return
+				end
+				local exitPos = (vr.CFrame * CFrame.new(0, 1.5, 6)).Position
+				if not S.Hitbox.lineOfSight(vr.Position, exitPos, { char, victim }) then
+					exitPos = vr.Position + Vector3.new(0, 7, 0)
+				end
+				S.fx("Portal", { Act = 2, Position = exitPos, LookAt = vr.Position, Radius = 2.2, Duration = c.ExitDelay + 0.45 })
+				task.delay(c.ExitDelay, function()
+					if state.Life ~= life or not vr.Parent then
+						return
+					end
+					local dir = (vr.Position - exitPos)
+					if dir.Magnitude < 0.5 then
+						return
+					end
+					Moves.nail(S, player, state, {
+						Origin = exitPos,
+						Direction = dir.Unit,
+						Speed = c.Speed,
+						Radius = c.Radius,
+						Range = dir.Magnitude + 6,
+						Style = "Wormhole",
+						Damage = c.ExitDamage,
+						Stun = c.Stun,
+						Knockback = c.Knockback,
+						Source = "TuskWormholeNail",
+					})
+				end)
+			end,
+		})
+	end)
+end
+
+local function undergroundPursuit(S, player, state, aim)
+	local c = cfg.UndergroundPursuit
+	if not ready(S, player, state, "UndergroundPursuit", 2) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local target = Moves.findTarget(S, character, root, c.Range, c.ConeDegrees, S.aim(aim, root))
+	if not target then
+		S.startCooldown(player, state, "UndergroundPursuit", 1.5, 2)
+		S.tell(player, "Denied", { Reason = "NoTarget" })
+		return
+	end
+	S.startCooldown(player, state, "UndergroundPursuit", c.Cooldown, 2)
+	Sneak.burrowStrike(player, state, target, {
+		Range = c.Range,
+		BurrowTime = c.BurrowTime,
+		WarningTime = c.WarningTime,
+		EmergeDistance = 3.5,
+		MaxTargetDrift = 16,
+		HitRadius = c.HitRadius,
+		Damage = c.Damage,
+		Stun = c.Stun,
+		Knockback = c.Knockback,
+		Launch = c.Launch,
+	}, "TuskUndergroundPursuit")
+end
+
+-- Portals around a point fire converging nails, then a shockwave.
+local function nailDimension(S, player, state, aim)
+	local c = cfg.NailDimension
+	if not ready(S, player, state, "NailDimension", 3) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local target = Moves.findTarget(S, character, root, c.Range, c.ConeDegrees, direction)
+	local center
+	if target then
+		center = target.HumanoidRootPart.Position
+	else
+		center = Moves.groundBelow(root.Position + Moves.flat(direction) * 35, { character }) + Vector3.new(0, 3, 0)
+	end
+	S.startCooldown(player, state, "NailDimension", c.Cooldown, 3)
+	S.lock(state, 0.6)
+	local yaw = math.atan2(direction.Z, direction.X)
+	local portals = Moves.ring(center, c.Portals, c.PortalRadius, yaw, 4, 8)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = 2, Move = "NailDimension", Phase = "Open", Portals = portals, Center = center, OpenTime = c.OpenTime })
+	task.delay(c.OpenTime, function()
+		if state.Life ~= life then
+			return
+		end
+		local aimAt = (target and target.Parent and target:FindFirstChild("HumanoidRootPart")) and target.HumanoidRootPart.Position or center
+		for _, pos in ipairs(portals) do
+			local dir = aimAt - pos
+			Moves.nail(S, player, state, {
+				Origin = pos,
+				Direction = dir.Unit,
+				Speed = c.Speed,
+				Radius = 0.8,
+				Range = dir.Magnitude + 8,
+				Style = "Portal",
+				Damage = c.Damage,
+				Stun = c.Stun,
+				Knockback = c.Knockback,
+				Source = "TuskNailDimension",
+			})
+		end
+		local travel = (portals[1] - aimAt).Magnitude / c.Speed
+		task.delay(travel + 0.05, function()
+			if state.Life ~= life then
+				return
+			end
+			Moves.aoe(S, player, aimAt, c.FinalRadius, { Damage = c.FinalDamage, Stun = 0.3, Knockback = 20, Launch = 12, Source = "TuskNailDimension" }, 5)
+			S.fx("AbilityImpact", { Act = 2, Move = "NailDimension", Position = aimAt, Radius = c.FinalRadius })
+		end)
+	end)
+end
+
+function Act2.Ability(S, player, state, slot, phase, aim)
+	if phase ~= "Press" then
+		return
+	end
+	if slot == 1 then
+		wormholeNail(S, player, state, aim)
+	elseif slot == 2 then
+		undergroundPursuit(S, player, state, aim)
+	elseif slot == 3 then
+		nailDimension(S, player, state, aim)
+	end
+end
+
+-- DIMENSIONAL STORM
+function Act2.Ultimate(S, player, state, aim)
+	local u = cfg.Ultimate
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local life = state.Life
+	local total = u.Windup + u.Waves * u.WaveInterval + 0.5
+	S.lock(state, total)
+	character:SetAttribute("Armored", true)
+	local center = root.Position
+	local portals = Moves.ring(center, u.Portals, u.Radius * 0.55, math.random() * math.pi * 2, 7, 11)
+	S.fx("Ultimate", { Character = character, Act = 2, Phase = "Start", Windup = u.Windup, Portals = portals, Center = center })
+
+	local function finish()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+	end
+	for wave = 1, u.Waves do
+		task.delay(u.Windup + (wave - 1) * u.WaveInterval, function()
+			if state.Life ~= life then
+				return
+			end
+			local targets = S.Hitbox.inRadius(character, center, u.Radius, 8)
+			for i, pos in ipairs(portals) do
+				local t = targets[(i + wave) % math.max(#targets, 1) + 1]
+				local tr = t and t:FindFirstChild("HumanoidRootPart")
+				local aimAt = tr and tr.Position or (center + Vector3.new(math.random(-12, 12), -2, math.random(-12, 12)))
+				local dir = aimAt - pos
+				Moves.nail(S, player, state, {
+					Origin = pos,
+					Direction = dir.Unit,
+					Speed = u.NailSpeed,
+					Radius = 0.8,
+					Range = dir.Magnitude + 10,
+					Style = "Portal",
+					Damage = u.NailDamage,
+					Stun = 0.3,
+					Knockback = 4,
+					Source = "TuskDimensionalStorm",
+				})
+			end
+		end)
+	end
+	task.delay(total - 0.4, function()
+		finish()
+		if state.Life ~= life or not alive(S, player) then
+			return
+		end
+		Moves.aoe(S, player, center, u.BurstRadius, { Damage = u.BurstDamage, Stun = u.Stun, Knockback = u.Knockback, Launch = u.Launch, Source = "TuskDimensionalStorm" }, 8)
+		S.fx("Ultimate", { Character = character, Act = 2, Phase = "Burst", Position = center, Radius = u.BurstRadius })
+		task.delay(0.35, function()
+			if state.Life == life then
+				S.finishUltimate(player, state) -- evolves to Act 3
+			end
+		end)
+	end)
+	task.delay(total + 1, finish)
+end
+
+function Act2.Cleanup(S, player, state)
+	if state.Character then
+		state.Character:SetAttribute("Armored", nil)
+	end
+end
+
+return Act2
+]=] },
+	{ Service = "ServerScriptService", Path = "SpinServer/TuskActs/TuskAct3", Class = "ModuleScript", Source = [=[
+--[[
+	TuskAct3  (ServerScriptService.SpinServer.TuskActs.TuskAct3)
+
+	Tusk Act 3: master of spatial movement.
+	  M1        WORMHOLE STRIKES: fast combo with portal flashes, portal uppercut finisher
+	  Ability 1 DIMENSIONAL STEP: short validated portal teleport (entrance + exit portals)
+	  Ability 2 SPATIAL PURSUIT: four portals around the target fire nails one after
+	            another, each re-aimed at where the target is now
+	  Ability 3 DIMENSIONAL BREAK: energy gathers, a large portal opens, a long
+	            dimensional shockwave tears forward
+	  Ultimate  INFINITE DIMENSION: layered portals around the battlefield, a giant
+	            dimensional collapse, then Tusk evolves to Act 4
+	Numbers: TuskConfig.Act3.
+]]
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+local Moves = require(script.Parent.Parent.TuskMoves)
+
+local Act3 = {}
+local cfg = TuskConfig.Act3
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function ready(S, player, state, name, slot)
+	return not S.isBusy(state) and not state.Charging and S.cooldownReady(player, state, name, slot)
+end
+
+function Act3.M1(S, player, state, aim)
+	Moves.m1(S, player, state, aim, cfg.M1, 3)
+end
+
+local function dimensionalStep(S, player, state, aim)
+	local c = cfg.DimensionalStep
+	if not ready(S, player, state, "DimensionalStep", 1) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	local destination = Moves.safeStep(character, root, direction, c.Distance)
+	if not destination then
+		S.tell(player, "Denied", { Reason = "Blocked" })
+		return
+	end
+	S.startCooldown(player, state, "DimensionalStep", c.Cooldown, 1)
+	S.lock(state, 0.25)
+	local from = root.Position
+	character:SetAttribute(S.Adapter.Settings.IFrameAttribute, true)
+	character:PivotTo(CFrame.lookAt(destination, destination + direction))
+	S.fx("Ability", { Character = character, Act = 3, Move = "DimensionalStep", From = from, To = destination, Direction = direction })
+	task.delay(c.IFrames, function()
+		if character.Parent then
+			character:SetAttribute(S.Adapter.Settings.IFrameAttribute, nil)
+		end
+	end)
+end
+
+local function spatialPursuit(S, player, state, aim)
+	local c = cfg.SpatialPursuit
+	if not ready(S, player, state, "SpatialPursuit", 2) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local target = Moves.findTarget(S, character, root, c.Range, c.ConeDegrees, direction)
+	if not target then
+		S.startCooldown(player, state, "SpatialPursuit", 1.5, 2)
+		S.tell(player, "Denied", { Reason = "NoTarget" })
+		return
+	end
+	S.startCooldown(player, state, "SpatialPursuit", c.Cooldown, 2)
+	S.lock(state, 0.5)
+	local tr = target.HumanoidRootPart
+	local portals = Moves.ring(tr.Position, c.Portals, c.PortalRadius, math.random() * math.pi * 2, 3, 7)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = 3, Move = "SpatialPursuit", Phase = "Open", Portals = portals, Target = target, OpenTime = c.OpenTime, Stagger = c.Stagger })
+	for i, pos in ipairs(portals) do
+		task.delay(c.OpenTime + (i - 1) * c.Stagger, function()
+			if state.Life ~= life or not tr.Parent then
+				return
+			end
+			local dir = tr.Position - pos -- re-aimed at the target's current position
+			Moves.nail(S, player, state, {
+				Origin = pos,
+				Direction = dir.Unit,
+				Speed = c.Speed,
+				Radius = 0.8,
+				Range = dir.Magnitude + 10,
+				Style = "Portal",
+				Damage = c.Damage,
+				Stun = c.Stun,
+				Knockback = c.Knockback,
+				Source = "TuskSpatialPursuit",
+			})
+		end)
+	end
+end
+
+local function dimensionalBreak(S, player, state, aim)
+	local c = cfg.DimensionalBreak
+	if not ready(S, player, state, "DimensionalBreak", 3) then
+		return
+	end
+	S.startCooldown(player, state, "DimensionalBreak", c.Cooldown, 3)
+	S.lock(state, c.Charge + 0.5)
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = 3, Move = "DimensionalBreak", Phase = "Charge", Charge = c.Charge, Direction = direction })
+	task.delay(c.Charge, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local _, _, r = alive(S, player)
+		local origin = r.Position
+		local cf = CFrame.lookAt(origin, origin + direction) * CFrame.new(0, 0, -(c.Length / 2 + 1))
+		Moves.boxHit(S, player, cf, Vector3.new(c.Width, 9, c.Length), { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Launch = c.Launch, Direction = direction, Source = "TuskDimensionalBreak" }, 6)
+		S.fx("Ability", { Character = character, Act = 3, Move = "DimensionalBreak", Phase = "Release", Origin = origin, Direction = direction, Length = c.Length, Width = c.Width })
+	end)
+end
+
+function Act3.Ability(S, player, state, slot, phase, aim)
+	if phase ~= "Press" then
+		return
+	end
+	if slot == 1 then
+		dimensionalStep(S, player, state, aim)
+	elseif slot == 2 then
+		spatialPursuit(S, player, state, aim)
+	elseif slot == 3 then
+		dimensionalBreak(S, player, state, aim)
+	end
+end
+
+-- INFINITE DIMENSION
+function Act3.Ultimate(S, player, state, aim)
+	local u = cfg.Ultimate
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local life = state.Life
+	S.lock(state, u.Windup + 0.6)
+	character:SetAttribute("Armored", true)
+	local center = root.Position
+	local inner = Moves.ring(center, u.Portals / 2, u.Radius * 0.45, 0, 5, 9)
+	local outer = Moves.ring(center, u.Portals / 2, u.Radius * 0.85, math.pi / (u.Portals / 2), 10, 14)
+	local portals = {}
+	for _, p in ipairs(inner) do
+		table.insert(portals, p)
+	end
+	for _, p in ipairs(outer) do
+		table.insert(portals, p)
+	end
+	S.fx("Ultimate", { Character = character, Act = 3, Phase = "Start", Windup = u.Windup, Portals = portals, Center = center, Radius = u.Radius })
+	task.delay(u.Windup, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+		if state.Life ~= life or not alive(S, player) then
+			return
+		end
+		Moves.aoe(S, player, center, u.Radius, { Damage = u.Damage, Stun = u.Stun, Knockback = u.Knockback, Launch = u.Launch, Source = "TuskInfiniteDimension" }, 10)
+		S.fx("Ultimate", { Character = character, Act = 3, Phase = "Burst", Position = center, Radius = u.Radius })
+		task.delay(0.4, function()
+			if state.Life == life then
+				S.finishUltimate(player, state) -- evolves to Act 4
+			end
+		end)
+	end)
+end
+
+function Act3.Cleanup(S, player, state)
+	if state.Character then
+		state.Character:SetAttribute("Armored", nil)
+		state.Character:SetAttribute(S.Adapter.Settings.IFrameAttribute, nil)
+	end
+end
+
+return Act3
+]=] },
+	{ Service = "ServerScriptService", Path = "SpinServer/TuskActs/TuskAct4", Class = "ModuleScript", Source = [=[
+--[[
+	TuskAct4  (ServerScriptService.SpinServer.TuskActs.TuskAct4)
+
+	Tusk Act 4: Infinite Rotation. Gold and deep blue, heavy and majestic.
+	  M1        INFINITE BARRAGE: heavy punch, golden spin strike, rapid Stand
+	            triple-hit, massive golden rotational finisher (area)
+	  Ability 1 GOLDEN SPIN NAIL: big rotating projectile, golden impact blast
+	  Ability 2 INFINITE ROTATION (hold): 3 charge stages, bigger projectile and
+	            blast per stage
+	  Ability 3 GOLDEN PURSUIT: golden rush to the first enemy ahead, rotational
+	            strikes, huge golden shockwave
+	  Ultimate  INFINITE ROTATION: 10-step cinematic, giant golden rotational
+	            projectile, battlefield-wide golden shockwave (final form)
+	Numbers: TuskConfig.Act4.
+]]
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+local Moves = require(script.Parent.Parent.TuskMoves)
+
+local Act4 = {}
+local cfg = TuskConfig.Act4
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function ready(S, player, state, name, slot)
+	return not S.isBusy(state) and not state.Charging and S.cooldownReady(player, state, name, slot)
+end
+
+function Act4.M1(S, player, state, aim)
+	Moves.m1(S, player, state, aim, cfg.M1, 4)
+end
+
+-- Projectile with an area blast where it lands (direct target excluded from the blast).
+local function blastNail(S, player, state, spec, blastRadius, blastDamage, source)
+	local directHit = {}
+	local base = spec.OnHit
+	spec.OnEnd = function(position, _, hitCharacter)
+		if hitCharacter then
+			directHit[hitCharacter] = true
+		end
+		Moves.aoe(S, player, position, blastRadius, { Damage = blastDamage, Stun = 0.35, Knockback = 25, Launch = 10, Source = source }, 6, directHit)
+	end
+	return Moves.nail(S, player, state, spec), base
+end
+
+local function goldenSpinNail(S, player, state, aim)
+	local c = cfg.GoldenSpinNail
+	if not ready(S, player, state, "GoldenSpinNail", 1) then
+		return
+	end
+	S.startCooldown(player, state, "GoldenSpinNail", c.Cooldown, 1)
+	S.lock(state, c.Startup + 0.25)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = 4, Move = "GoldenSpinNail", Phase = "Startup", Startup = c.Startup, Direction = direction })
+	task.delay(c.Startup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		blastNail(S, player, state, {
+			Origin = S.origin(char, r, Moves.HAND),
+			Direction = direction,
+			Speed = c.Speed,
+			Radius = c.Radius,
+			Range = c.Range,
+			Style = "Golden",
+			Damage = c.Damage,
+			Stun = c.Stun,
+			Knockback = c.Knockback,
+			Source = "TuskGoldenSpinNail",
+		}, c.ImpactRadius, c.ImpactDamage, "TuskGoldenSpinNail")
+	end)
+end
+
+local function infiniteRotationRelease(S, player, state, aim)
+	local c = cfg.InfiniteRotation
+	local charge = S.endCharge(player, state)
+	if not charge or charge.Move ~= "InfiniteRotation" then
+		return
+	end
+	local character, _, root = alive(S, player)
+	if not character then
+		return
+	end
+	local held = os.clock() - charge.Start
+	local stage = 1
+	for i, t in ipairs(c.Stages) do
+		if held >= t then
+			stage = i
+		end
+	end
+	local direction = S.aim(aim, root)
+	S.startCooldown(player, state, "InfiniteRotation", c.Cooldown, 2)
+	S.lock(state, 0.4)
+	S.fx("Ability", { Character = character, Act = 4, Move = "InfiniteRotation", Phase = "Release", Stage = stage, Direction = direction })
+	blastNail(S, player, state, {
+		Origin = S.origin(character, root, CFrame.new(0, 1.2, -2.5)),
+		Direction = direction,
+		Speed = c.Speed[stage],
+		Radius = c.Radius[stage],
+		Range = c.Range,
+		Style = "Rotation",
+		Charge = stage / 3,
+		Damage = c.Damage[stage],
+		Stun = c.Stun,
+		Knockback = c.Knockback * (0.5 + stage / 6),
+		Source = "TuskInfiniteRotation",
+	}, c.ImpactRadius[stage], c.ImpactDamage[stage], "TuskInfiniteRotation")
+end
+
+local function infiniteRotationPress(S, player, state)
+	local c = cfg.InfiniteRotation
+	if not ready(S, player, state, "InfiniteRotation", 2) then
+		return
+	end
+	local charge = S.beginCharge(player, state, "InfiniteRotation", 2, c.WalkSpeedMultiplier)
+	local token = charge.Token
+	task.delay(c.MaxHold, function()
+		if state.Charging and state.Charging.Token == token then
+			infiniteRotationRelease(S, player, state, nil)
+		end
+	end)
+end
+
+local function goldenPursuit(S, player, state, aim)
+	local c = cfg.GoldenPursuit
+	if not ready(S, player, state, "GoldenPursuit", 3) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	-- Stop just short of the first enemy along the rush line.
+	local distance = c.Distance
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Distance + 4, 8)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local offset = tr.Position - root.Position
+			local along = offset:Dot(direction)
+			local side = (offset - direction * along).Magnitude
+			if along > 0 and side < 5 and along - 3 < distance then
+				distance = math.max(along - 3, 3)
+			end
+		end
+	end
+	local destination = Moves.safeStep(character, root, direction, distance)
+	if not destination then
+		S.tell(player, "Denied", { Reason = "Blocked" })
+		return
+	end
+	S.startCooldown(player, state, "GoldenPursuit", c.Cooldown, 3)
+	local gather = 0.2
+	S.lock(state, gather + c.Hits * c.HitInterval + 0.45)
+	local life = state.Life
+	local from = root.Position
+	S.fx("Ability", { Character = character, Act = 4, Move = "GoldenPursuit", Phase = "Gather", Direction = direction })
+	task.delay(gather, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		character:SetAttribute(S.Adapter.Settings.IFrameAttribute, true)
+		character:PivotTo(CFrame.lookAt(destination, destination + direction))
+		S.fx("Ability", { Character = character, Act = 4, Move = "GoldenPursuit", Phase = "Dash", From = from, To = destination })
+		task.delay(0.15, function()
+			if character.Parent then
+				character:SetAttribute(S.Adapter.Settings.IFrameAttribute, nil)
+			end
+		end)
+		local front = destination + direction * 3
+		for i = 1, c.Hits do
+			task.delay(i * c.HitInterval, function()
+				if state.Life ~= life then
+					return
+				end
+				Moves.aoe(S, player, front, 6, { Damage = c.HitDamage, Stun = 0.4, Knockback = 3, Direction = direction, Source = "TuskGoldenPursuit" }, 3)
+				S.fx("Ability", { Character = character, Act = 4, Move = "GoldenPursuit", Phase = "Hit", Position = front, Index = i })
+			end)
+		end
+		task.delay((c.Hits + 1) * c.HitInterval, function()
+			if state.Life ~= life then
+				return
+			end
+			Moves.aoe(S, player, front, c.FinalRadius, { Damage = c.FinalDamage, Stun = c.Stun, Knockback = c.Knockback, Launch = c.Launch, Direction = direction, Source = "TuskGoldenPursuit" }, 6)
+			S.fx("Ability", { Character = character, Act = 4, Move = "GoldenPursuit", Phase = "Final", Position = front, Radius = c.FinalRadius })
+		end)
+	end)
+end
+
+function Act4.Ability(S, player, state, slot, phase, aim)
+	if slot == 1 and phase == "Press" then
+		goldenSpinNail(S, player, state, aim)
+	elseif slot == 2 then
+		if phase == "Press" then
+			infiniteRotationPress(S, player, state)
+		else
+			infiniteRotationRelease(S, player, state, aim)
+		end
+	elseif slot == 3 and phase == "Press" then
+		goldenPursuit(S, player, state, aim)
+	end
+end
+
+function Act4.CancelCharge(S, player, state)
+	local charge = S.endCharge(player, state)
+	if charge then
+		S.startCooldown(player, state, charge.Move, 2, charge.Slot)
+		S.fx("Ability", { Character = state.Character, Act = 4, Move = charge.Move, Phase = "Cancel" })
+	end
+end
+
+-- INFINITE ROTATION (ultimate)
+function Act4.Ultimate(S, player, state, aim)
+	local u = cfg.Ultimate
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.lock(state, u.Windup + 0.6)
+	character:SetAttribute("Armored", true)
+	S.fx("Ultimate", { Character = character, Act = 4, Phase = "Start", Windup = u.Windup, Direction = direction })
+	task.delay(u.Windup, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+		if state.Life ~= life or not alive(S, player) then
+			return
+		end
+		local _, _, r = alive(S, player)
+		S.fx("Ultimate", { Character = character, Act = 4, Phase = "Release", Position = r.Position, Direction = direction })
+		blastNail(S, player, state, {
+			Origin = S.origin(character, r, CFrame.new(0, 2, -4)),
+			Direction = direction,
+			Speed = u.Speed,
+			Radius = u.ProjectileRadius,
+			Range = u.Range,
+			Style = "InfiniteUlt",
+			Charge = 1,
+			Damage = u.Damage,
+			Stun = u.Stun,
+			Knockback = u.Knockback,
+			Launch = u.Launch,
+			Source = "TuskInfiniteRotationUlt",
+		}, u.BlastRadius, u.BlastDamage, "TuskInfiniteRotationUlt")
+		S.finishUltimate(player, state) -- final form: no evolution (Studio refills the meter)
+	end)
+end
+
+function Act4.Cleanup(S, player, state)
+	if state.Charging then
+		S.endCharge(player, state)
+	end
+	if state.Character then
+		state.Character:SetAttribute("Armored", nil)
+		state.Character:SetAttribute(S.Adapter.Settings.IFrameAttribute, nil)
+	end
+end
+
+return Act4
 ]=] },
 	{ Service = "ServerScriptService", Path = "SpinServer/TuskHitbox", Class = "ModuleScript", Source = [=[
 --[[
@@ -2816,6 +3802,264 @@ function TuskHitbox.lineOfSight(fromPos, toPos, ignore)
 end
 
 return TuskHitbox
+]=] },
+	{ Service = "ServerScriptService", Path = "SpinServer/TuskMoves", Class = "ModuleScript", Source = [=[
+--[[
+	TuskMoves  (ServerScriptService.SpinServer.TuskMoves)
+
+	Shared server building blocks for every Tusk Act, so each Act module
+	only describes what makes it different:
+	  m1(...)          generic 4-hit combo (portals, multi-hits, AoE finisher, nail hits)
+	  findTarget(...)  nearest valid enemy in a cone with line of sight
+	  aoe(...)         radius hit with line-of-sight checks
+	  boxHit(...)      oriented box hit
+	  safeStep(...)    validated short teleport / dash destination
+	  nail(...)        fire a nail with standard damage handling
+	All damage still goes through TuskService.hit -> CombatAdapter.
+]]
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+
+local TuskMoves = {}
+TuskMoves.HAND = CFrame.new(0.9, 0.55, -1.5)
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function flat(v)
+	local f = Vector3.new(v.X, 0, v.Z)
+	return f.Magnitude > 1e-3 and f.Unit or Vector3.new(0, 0, -1)
+end
+TuskMoves.flat = flat
+
+---------------------------------------------------------------------------
+-- Targeting and area damage
+---------------------------------------------------------------------------
+function TuskMoves.findTarget(S, character, root, range, coneDegrees, direction)
+	local look = flat(direction or root.CFrame.LookVector)
+	local cosLimit = math.cos(math.rad((coneDegrees or 360) / 2))
+	local best, bestDistance
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, range)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and S.Adapter.canBeHit(nil, target) then
+			local offset = tr.Position - root.Position
+			local f = Vector3.new(offset.X, 0, offset.Z)
+			if f.Magnitude < 0.5 or f.Unit:Dot(look) >= cosLimit then
+				if S.Hitbox.lineOfSight(root.Position, tr.Position, { character, target }) then
+					if not bestDistance or offset.Magnitude < bestDistance then
+						best, bestDistance = target, offset.Magnitude
+					end
+				end
+			end
+		end
+	end
+	return best
+end
+
+-- Damage everyone in a radius (line of sight from `center`). Returns hit count.
+function TuskMoves.aoe(S, player, center, radius, info, maxTargets, exclude)
+	local character = player.Character
+	local count = 0
+	for _, target in ipairs(S.Hitbox.inRadius(character, center, radius, maxTargets or 8)) do
+		if not (exclude and exclude[target]) then
+			local tr = target:FindFirstChild("HumanoidRootPart")
+			if tr and S.Hitbox.lineOfSight(center, tr.Position, { character, target }) then
+				local hitInfo = table.clone(info)
+				hitInfo.Direction = info.Direction or (tr.Position - center)
+				hitInfo.Position = tr.Position
+				if S.hit(player, target, hitInfo) then
+					count = count + 1
+				end
+			end
+		end
+	end
+	return count
+end
+
+function TuskMoves.boxHit(S, player, cframe, size, info, maxTargets)
+	local character, _, root = alive(S, player)
+	local count, hitSet = 0, {}
+	if not character then
+		return 0, hitSet
+	end
+	for _, target in ipairs(S.Hitbox.inBox(character, cframe, size, maxTargets or 3)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and S.Hitbox.lineOfSight(root.Position, tr.Position, { character, target }) then
+			local hitInfo = table.clone(info)
+			hitInfo.Direction = info.Direction or (tr.Position - root.Position)
+			hitInfo.Position = tr.Position
+			if S.hit(player, target, hitInfo) then
+				count = count + 1
+				hitSet[target] = true
+			end
+		end
+	end
+	return count, hitSet
+end
+
+---------------------------------------------------------------------------
+-- Movement
+---------------------------------------------------------------------------
+-- Validated destination for a short teleport/dash along a flat direction.
+-- Stops before walls, needs ground below, and free space to stand in.
+function TuskMoves.safeStep(character, root, direction, distance)
+	local dir = flat(direction)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character, workspace:FindFirstChild("SpinClientFX") }
+	local wall = workspace:Raycast(root.Position, dir * distance, params)
+	local travel = wall and (wall.Distance - 2.5) or distance
+	if travel < 3 then
+		return nil
+	end
+	local groundHere = workspace:Raycast(root.Position, Vector3.new(0, -12, 0), params)
+	local height = groundHere and (root.Position.Y - groundHere.Position.Y) or 3
+	local overlap = OverlapParams.new()
+	overlap.FilterType = Enum.RaycastFilterType.Exclude
+	overlap.FilterDescendantsInstances = { character }
+	-- Walk back from the furthest point until a valid spot is found.
+	local d = travel
+	while d >= 3 do
+		local probe = root.Position + dir * d
+		local ground = workspace:Raycast(probe + Vector3.new(0, 4, 0), Vector3.new(0, -20, 0), params)
+		if ground then
+			local stand = Vector3.new(probe.X, ground.Position.Y + height, probe.Z)
+			local blocked = false
+			for _, part in ipairs(workspace:GetPartBoundsInBox(CFrame.new(stand), Vector3.new(2, 4.5, 2), overlap)) do
+				if part.CanCollide then
+					blocked = true
+					break
+				end
+			end
+			if not blocked then
+				return stand
+			end
+		end
+		d = d - 2
+	end
+	return nil
+end
+
+function TuskMoves.groundBelow(position, ignore)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = ignore or {}
+	local hit = workspace:Raycast(position + Vector3.new(0, 6, 0), Vector3.new(0, -40, 0), params)
+	return hit and hit.Position or position
+end
+
+---------------------------------------------------------------------------
+-- Nails
+---------------------------------------------------------------------------
+--[[ spec: Origin, Direction, Speed, Radius, Range, Style, Charge,
+          Damage, Stun, Knockback, Launch, Source, OnEnd ]]
+function TuskMoves.nail(S, player, state, spec)
+	return S.fireNail(player, state, {
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius or 0.7,
+		Range = spec.Range,
+		Style = spec.Style,
+		Charge = spec.Charge,
+		OnHit = function(target, position)
+			S.hit(player, target, {
+				Damage = spec.Damage,
+				Stun = spec.Stun,
+				Knockback = spec.Knockback,
+				Launch = spec.Launch,
+				Direction = spec.Direction,
+				Position = position,
+				Source = spec.Source or "TuskNail",
+			})
+		end,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+---------------------------------------------------------------------------
+-- Generic M1 combo
+---------------------------------------------------------------------------
+--[[ m1cfg.Hits[i] fields: Damage, Stun, Knockback, Launch,
+     Portal (cosmetic), Repeat + RepeatInterval (multi-hit), AoeRadius
+     (finisher hits a radius instead of the box), ShockwaveRadius (visual),
+     Projectile = { Speed, Radius, Range } (nail instead of melee) ]]
+function TuskMoves.m1(S, player, state, aim, m1cfg, act)
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	local now = os.clock()
+	if now - state.LastM1 > m1cfg.ResetAfter then
+		state.Combo = 0
+	end
+	local index = state.Combo + 1
+	state.Combo = index >= 4 and 0 or index
+	state.LastM1 = now
+	local hit = m1cfg.Hits[index]
+	local repeatTime = (hit.Repeat or 1) > 1 and (hit.Repeat - 1) * (hit.RepeatInterval or 0.08) or 0
+	S.lock(state, (index == 4 and m1cfg.EndLag or m1cfg.Interval) + repeatTime)
+
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("M1", { Character = character, Act = act, Index = index, Portal = hit.Portal == true, Repeat = hit.Repeat })
+
+	local function strike(isLast)
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		if hit.Projectile then
+			TuskMoves.nail(S, player, state, {
+				Origin = S.origin(char, r, TuskMoves.HAND),
+				Direction = direction,
+				Speed = hit.Projectile.Speed,
+				Radius = hit.Projectile.Radius,
+				Range = hit.Projectile.Range,
+				Style = "M1",
+				Damage = hit.Damage,
+				Stun = hit.Stun,
+				Knockback = hit.Knockback,
+				Source = "TuskM1",
+			})
+			return
+		end
+		local boxCF = r.CFrame * CFrame.new(0, 0, -m1cfg.HitboxForward)
+		local info = { Damage = hit.Damage, Stun = hit.Stun, Knockback = hit.Knockback, Launch = hit.Launch, Source = "TuskM1" }
+		local landed
+		if hit.AoeRadius and isLast then
+			landed = TuskMoves.aoe(S, player, boxCF.Position, hit.AoeRadius, info, 5) > 0
+		else
+			landed = TuskMoves.boxHit(S, player, boxCF, m1cfg.HitboxSize, info, m1cfg.MaxTargets) > 0
+		end
+		if index == 4 and isLast then
+			S.fx("M1Finisher", { Character = char, Act = act, Position = boxCF.Position, Radius = hit.ShockwaveRadius or 7, Hit = landed })
+		end
+	end
+
+	local count = hit.Repeat or 1
+	for i = 1, count do
+		task.delay(m1cfg.Windup + (i - 1) * (hit.RepeatInterval or 0.08), function()
+			strike(i == count)
+		end)
+	end
+end
+
+-- Ring of points around a center (portal placement shared by server and client payloads).
+function TuskMoves.ring(center, count, radius, yaw, heightA, heightB)
+	local points = {}
+	for i = 1, count do
+		local angle = (yaw or 0) + (i - 1) / count * math.pi * 2
+		local h = (i % 2 == 0) and (heightB or 6) or (heightA or 4)
+		table.insert(points, center + Vector3.new(math.cos(angle) * radius, h, math.sin(angle) * radius))
+	end
+	return points
+end
+
+TuskMoves.Config = TuskConfig
+return TuskMoves
 ]=] },
 	{ Service = "ServerScriptService", Path = "SpinServer/TuskService", Class = "ModuleScript", Source = [=[
 --[[
@@ -2988,8 +4232,10 @@ function TuskService.fireNail(player, state, spec)
 			Style = spec.Style or "Shot",
 			Charge = spec.Charge or 0,
 			Awakened = state.Awakened == true,
+			Stage = spec.Stage,
 		},
 		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
 	})
 end
 
@@ -3042,13 +4288,17 @@ end
 
 local function isUnlocked(player, act)
 	local p = TuskConfig.Progression
+	if p.Mode == "Awaken" then
+		-- Acts are reached through ultimates; the menu is a Studio testing aid only.
+		return RunService:IsStudio() and p.StudioMenu == true
+	end
 	if p.Mode == "Unlock" then
 		return p.IsUnlocked ~= nil and p.IsUnlocked(player, act) == true
 	end
 	return true
 end
 
-function TuskService.select(player, act)
+function TuskService.select(player, act, internal)
 	if typeof(act) ~= "number" or act ~= math.floor(act) then
 		return
 	end
@@ -3069,14 +4319,14 @@ function TuskService.select(player, act)
 		TuskService.tell(player, "Denied", { Reason = "NotAvailable" })
 		return
 	end
-	if not isUnlocked(player, act) then
+	if not internal and not isUnlocked(player, act) then
 		TuskService.tell(player, "Denied", { Reason = "Locked" })
 		return
 	end
 	if state.Act == act then
 		return
 	end
-	if os.clock() - state.LastSwitch < TuskConfig.Progression.SwitchCooldown or TuskService.isBusy(state) then
+	if not internal and (os.clock() - state.LastSwitch < TuskConfig.Progression.SwitchCooldown or TuskService.isBusy(state)) then
 		TuskService.tell(player, "Denied", { Reason = "SwitchCooldown" })
 		return
 	end
@@ -3088,6 +4338,33 @@ function TuskService.select(player, act)
 		state.Character:SetAttribute("TuskAct", act)
 	end
 	TuskService.tell(player, "Equipped", { Act = act })
+end
+
+-- Awakening: move straight to another Act (no menu rules, no switch cooldown).
+function TuskService.evolve(player, state, toAct)
+	if not Registry.isImplemented(toAct) or not actModules[toAct] then
+		return
+	end
+	local from = state.Act
+	cleanupAct(player, state)
+	state.Act = toAct
+	player:SetAttribute("TuskSelectedAct", toAct)
+	if state.Character then
+		state.Character:SetAttribute("TuskAct", toAct)
+	end
+	TuskService.fx("Evolve", { Character = state.Character, From = from, To = toAct })
+	TuskService.tell(player, "Evolved", { Act = toAct })
+end
+
+-- Called by every Act's ultimate when its attack has finished.
+function TuskService.finishUltimate(player, state)
+	local info = Registry.get(state.Act)
+	if TuskConfig.Progression.Mode == "Awaken" and info and info.Next then
+		TuskService.evolve(player, state, info.Next)
+	end
+	if RunService:IsStudio() and TuskConfig.Ultimate.StudioRefill then
+		player:SetAttribute("TuskUlt", TuskConfig.Ultimate.MaxMeter)
+	end
 end
 
 ---------------------------------------------------------------------------
@@ -3174,6 +4451,10 @@ local function onCharacter(player, character)
 	if not humanoid or states[player] ~= state or state.Character ~= character then
 		return
 	end
+	local progression = TuskConfig.Progression
+	if state.Act and progression.Mode == "Awaken" and progression.ResetOnDeath then
+		state.Act = progression.DefaultAct -- back to Act 1 after dying
+	end
 	if state.Act then
 		character:SetAttribute("TuskAct", state.Act)
 	end
@@ -3224,7 +4505,7 @@ local function onPlayer(player)
 		task.spawn(onCharacter, player, player.Character)
 	end
 	if TuskConfig.Progression.AutoEquip then
-		task.defer(TuskService.select, player, TuskConfig.Progression.DefaultAct)
+		task.defer(TuskService.select, player, TuskConfig.Progression.DefaultAct, true)
 	end
 end
 
@@ -3336,10 +4617,12 @@ function TuskSneakService.toggle(player, state, on)
 end
 
 -- Nearest enemy in front, in range, with line of sight.
-local function findTarget(character, root)
+local function findTarget(character, root, range, coneDegrees)
+	range = range or cfg.Attack.Range
+	coneDegrees = coneDegrees or cfg.Attack.ConeDegrees
 	local best, bestDistance
-	local cosLimit = math.cos(math.rad(cfg.Attack.ConeDegrees / 2))
-	for _, target in ipairs(Hitbox.inRadius(character, root.Position, cfg.Attack.Range)) do
+	local cosLimit = math.cos(math.rad(coneDegrees / 2))
+	for _, target in ipairs(Hitbox.inRadius(character, root.Position, range)) do
 		local targetRoot = target:FindFirstChild("HumanoidRootPart")
 		if targetRoot and Adapter.canBeHit(nil, target) then
 			local offset = targetRoot.Position - root.Position
@@ -3359,9 +4642,11 @@ end
 
 -- Safe emergence point near the target: behind first, then the sides, then in front.
 -- Must have clear line of sight from the target, solid ground below and free space.
-local function emergePoint(attacker, target)
+TuskSneakService.findTarget = findTarget
+
+local function emergePoint(attacker, target, distance)
 	local targetRoot = target.HumanoidRootPart
-	local d = cfg.Attack.EmergeDistance
+	local d = distance or cfg.Attack.EmergeDistance
 	local candidates = {
 		targetRoot.CFrame * CFrame.new(0, 0, d),
 		targetRoot.CFrame * CFrame.new(d, 0, 0),
@@ -3418,6 +4703,21 @@ function TuskSneakService.attack(player, state)
 	TuskSneakService.exit(player, state, true)
 	Cooldowns.start(player, "TuskSneakAttack", a.Cooldown)
 	S.tell(player, "SneakAttackCooldown", { Duration = a.Cooldown })
+	TuskSneakService.burrowStrike(player, state, target, a, "TuskSneakAttack")
+end
+
+--[[
+	Burrow -> warning -> emerge behind the target -> hit + shockwave.
+	Shared by the Sneak Attack and Act 2's Underground Pursuit.
+	a = { BurrowTime, WarningTime, EmergeDistance, MaxTargetDrift, Range,
+	      HitRadius, Damage, Stun, Knockback, Launch }
+]]
+function TuskSneakService.burrowStrike(player, state, target, a, source)
+	local character, _, root = Adapter.getAlive(player)
+	if not character then
+		return
+	end
+	a = setmetatable(table.clone(a), { __index = cfg.Attack })
 	S.lock(state, a.BurrowTime + 0.45)
 
 	local life = state.Life
@@ -3429,7 +4729,7 @@ function TuskSneakService.attack(player, state)
 	-- Anchor in place while underground so the hidden body can't wander.
 	root.Anchored = true
 
-	S.fx("SneakAttack", { Phase = "Burrow", Character = character, Position = startPos - Vector3.new(0, 2.8, 0), Target = target })
+	S.fx("SneakAttack", { Phase = "Burrow", Character = character, Position = startPos - Vector3.new(0, 2.8, 0), Target = target, BurrowTime = a.BurrowTime })
 
 	local function surface()
 		state.Burrowed = false
@@ -3462,7 +4762,7 @@ function TuskSneakService.attack(player, state)
 			and Adapter.canBeHit(player, target)
 			and (targetRoot.Position - targetStart).Magnitude <= a.MaxTargetDrift
 			and (targetRoot.Position - startPos).Magnitude <= a.Range * 1.4
-		local pos = valid and emergePoint(character, target) or nil
+		local pos = valid and emergePoint(character, target, a.EmergeDistance) or nil
 
 		surface()
 		if not pos then
@@ -3485,7 +4785,7 @@ function TuskSneakService.attack(player, state)
 					Launch = a.Launch,
 					Direction = victimRoot.Position - pos,
 					Position = victimRoot.Position,
-					Source = "TuskSneakAttack",
+					Source = source or "TuskSneakAttack",
 				})
 				hitAny = hitAny or hit
 			end
@@ -3510,6 +4810,7 @@ local TuskProjectiles = require(script.TuskProjectiles)
 local TuskSneakController = require(script.TuskSneakController)
 local TuskController = require(script.TuskController)
 local WorldClient = require(script.WorldClient)
+local CharacterCard = require(script.UI.CharacterCard)
 
 SpinMeter.init()
 SpinVFX.init()
@@ -3519,6 +4820,7 @@ TuskProjectiles.init()
 TuskSneakController.init()
 TuskController.init()
 WorldClient.init()
+CharacterCard.init()
 ]=] },
 	{ Service = "StarterPlayerScripts", Path = "SpinClient/CameraFX", Class = "ModuleScript", Source = [=[
 --[[
@@ -4546,6 +5848,221 @@ end
 
 return SpinVFX
 ]=] },
+	{ Service = "StarterPlayerScripts", Path = "SpinClient/TuskActCommon", Class = "ModuleScript", Source = [=[
+--[[
+	TuskActCommon  (StarterPlayerScripts.SpinClient.TuskActCommon)
+
+	Shared client choreography used by every Act's visual module:
+	  Palette(act)          each Act's colour identity
+	  m1(data, palette)     poses, Stand lunges, swipes, mini-portals
+	  finisher(data, pal)   combo-ender shockwave
+	  portal(...)           wormhole that opens, holds and collapses
+	  portalNail(...)       portals for nails fired through them
+	  evolve(data)          the "next Act" transformation + banner
+	  charge helpers        attribute-driven hold charges
+]]
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local Registry = require(Shared.TuskActRegistry)
+local VFXLib = require(script.Parent.VFXLib)
+local CameraFX = require(script.Parent.CameraFX)
+local TuskVFX = require(script.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.TuskAnimation)
+local TuskStand = require(script.Parent.TuskStand)
+
+local Common = {}
+local colors = TuskConfig.Colors
+local sounds = TuskConfig.Sounds
+local localPlayer = Players.LocalPlayer
+
+Common.Palettes = {
+	[1] = { Main = colors.Cyan, Second = colors.Blue, Light = colors.Ice },
+	[2] = { Main = Color3.fromRGB(80, 210, 255), Second = Color3.fromRGB(110, 70, 255), Light = colors.Ice },
+	[3] = { Main = Color3.fromRGB(70, 130, 255), Second = Color3.fromRGB(30, 20, 120), Light = Color3.fromRGB(190, 210, 255) },
+	[4] = { Main = colors.Gold, Second = colors.DeepBlue, Light = colors.GoldLight },
+}
+
+function Common.palette(act)
+	return Common.Palettes[act] or Common.Palettes[1]
+end
+
+function Common.rootOf(character)
+	return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+function Common.isLocal(character)
+	return character ~= nil and character == localPlayer.Character
+end
+
+function Common.swipe(root, side, color, scale)
+	if not VFXLib.acquire() then
+		return
+	end
+	scale = scale or 1
+	local cf = root.CFrame * CFrame.new(side * 0.4, 0.3, -2.4) * CFrame.Angles(0, 0, side * 0.5)
+	local ring = VFXLib.ring({ CFrame = cf, Radius = 1.6 * scale, Width = 0.22 * scale, Color = color, Segments = 10, Transparency = 0.1 })
+	VFXLib.animate(0.16, function(a)
+		ring:SetCFrame(cf * CFrame.Angles(0, side * (-1.2 + a * 2.4), 0))
+		ring:SetRadius((1.6 + a * 0.8) * scale)
+		ring:SetTransparency(0.1 + a * 0.9)
+	end, function()
+		ring:Destroy()
+		VFXLib.release()
+	end)
+end
+
+---------------------------------------------------------------------------
+-- Portals
+---------------------------------------------------------------------------
+-- A wormhole facing `lookAt`. Opens, holds `duration`, collapses.
+function Common.portal(position, lookAt, radius, duration, palette, delay)
+	palette = palette or Common.palette(2)
+	local function open()
+		local facing = (lookAt and (lookAt - position).Magnitude > 0.1) and CFrame.lookAt(position, lookAt) or CFrame.new(position)
+		TuskVFX.CreateWormhole(facing, {
+			Radius = radius or 2.5,
+			Color = palette.Main,
+			Color2 = palette.Second,
+			OpenTime = 0.22,
+			Duration = duration or 0.6,
+			CloseTime = 0.2,
+		})
+		VFXLib.sound(sounds.Warning, position, 0.25, 1.6)
+	end
+	if delay and delay > 0 then
+		task.delay(delay, open)
+	else
+		open()
+	end
+end
+
+---------------------------------------------------------------------------
+-- M1
+---------------------------------------------------------------------------
+local LUNGES = {
+	CFrame.new(0.4, 0.6, -3),
+	CFrame.new(-0.6, 0.4, -3.2),
+	CFrame.new(0.9, 1, -2.4),
+	CFrame.new(0, 1.4, -3.4),
+}
+
+function Common.m1(data, palette, opts)
+	opts = opts or {}
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if not root then
+		return
+	end
+	local index = data.Index
+	TuskAnimation.play(character, "M1_" .. index)
+	VFXLib.sound(sounds.Swing, root, 0.5, (opts.Pitch or 1) * (0.95 + index * 0.06))
+	TuskStand.action(character, "Lunge", { Target = LUNGES[index], Duration = index == 4 and 0.5 or 0.26 })
+	Common.swipe(root, index % 2 == 1 and 1 or -1, index % 2 == 1 and palette.Main or palette.Light, opts.Scale)
+	if data.Portal then
+		-- Short portal flash beside the strike.
+		local pos = (root.CFrame * CFrame.new(index % 2 == 1 and 1.6 or -1.6, 1, -2.6)).Position
+		Common.portal(pos, (root.CFrame * CFrame.new(0, 1, -6)).Position, 1.1, 0.18, palette)
+	end
+	if (data.Repeat or 1) > 1 then
+		for i = 2, data.Repeat do
+			task.delay((i - 1) * 0.08, function()
+				if root.Parent then
+					Common.swipe(root, i % 2 == 0 and -1 or 1, palette.Light, opts.Scale)
+					VFXLib.burst((root.CFrame * CFrame.new(0, 0.5, -3)).Position, { Count = 5, Color = palette.Main, Speed = 10, Lifetime = 0.2 })
+				end
+			end)
+		end
+	end
+end
+
+function Common.finisher(data, palette, opts)
+	opts = opts or {}
+	local character = data.Character
+	local root = Common.rootOf(character)
+	local pos = data.Position
+	if data.Hit and Common.isLocal(character) then
+		CameraFX.impactFrame(palette.Light)
+	end
+	TuskVFX.CreateRotationalShockwave(CFrame.new(pos - Vector3.new(0, 2.6, 0)), {
+		Radius = data.Radius or 7,
+		Layers = opts.Layers or 3,
+		Color = palette.Main,
+		Color2 = palette.Second,
+		Ground = true,
+		Particles = 1.5,
+		Width = opts.Width or 0.5,
+	})
+	TuskVFX.CreateImpact(pos, root and -root.CFrame.LookVector or Vector3.new(0, 1, 0), { Size = opts.Size or 1.2, Radius = 3, Layers = 2, Color = palette.Light, Color2 = palette.Main, Ground = false })
+	VFXLib.sound(sounds.Finisher, pos, 0.8, opts.Pitch or 1)
+	CameraFX.shakeAt(pos, opts.Shake or 0.6, 50)
+end
+
+---------------------------------------------------------------------------
+-- Evolution: Act N -> Act N+1
+---------------------------------------------------------------------------
+function Common.evolve(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if not root then
+		return
+	end
+	local palette = Common.palette(data.To)
+	local ground = root.Position - Vector3.new(0, 2.9, 0)
+	TuskVFX.CreateMagicCircle(CFrame.new(ground), { Radius = 9, Color = palette.Main, Color2 = palette.Light, Duration = 1.4, RotationSpeed = 2, Points = data.To + 4 })
+	TuskVFX.CreateRotationalShockwave(CFrame.new(ground), { Radius = 16, Layers = 3, Color = palette.Main, Color2 = palette.Light, Ground = true, Particles = 2, Width = 0.7, Duration = 0.6 })
+	VFXLib.burst(root.Position, { Count = 40, Color = palette.Light, Speed = 40, Lifetime = 0.6 })
+	VFXLib.flash(root.Position, palette.Main, 9, 30, 0.6)
+	VFXLib.sound(sounds.AwakeningBurst, root.Position, 0.9, 1 + data.To * 0.05)
+	TuskStand.action(character, "Manifest", { Duration = 0.7 })
+	if Common.isLocal(character) then
+		CameraFX.speedLines(0.5, palette.Light)
+		CameraFX.fovPunch(14, 0.6)
+	end
+end
+
+---------------------------------------------------------------------------
+-- Hold-charge visuals (shared driver)
+---------------------------------------------------------------------------
+--[[ Common.chargeDriver(act, move, makeEffect(character, root) -> effect,
+     update(effect, progress, character), finish(effect, character)) ]]
+function Common.chargeDriver(act, move, makeEffect, update, finish)
+	local active = {}
+	return function()
+		local seen = {}
+		for _, player in ipairs(Players:GetPlayers()) do
+			local character = player.Character
+			local start = character and character:GetAttribute("TuskCharge")
+			if start and character:GetAttribute("TuskAct") == act and character:GetAttribute("TuskChargeMove") == move then
+				seen[character] = true
+				local root = Common.rootOf(character)
+				if not active[character] and root then
+					active[character] = { Effect = makeEffect(character, root), Start = start }
+				end
+				local entry = active[character]
+				if entry then
+					update(entry.Effect, workspace:GetServerTimeNow() - start, character)
+				end
+			end
+		end
+		for character, entry in pairs(active) do
+			if not seen[character] then
+				active[character] = nil
+				finish(entry.Effect, character)
+			end
+		end
+	end
+end
+
+function Common.actName(act)
+	local info = Registry.get(act)
+	return info and info.Name or ("TUSK ACT " .. tostring(act))
+end
+
+return Common
+]=] },
 	{ Service = "StarterPlayerScripts", Path = "SpinClient/TuskActVFX", Class = "Folder", Source = nil },
 	{ Service = "StarterPlayerScripts", Path = "SpinClient/TuskActVFX/Act1", Class = "ModuleScript", Source = [=[
 --[[
@@ -4833,6 +6350,583 @@ function Act1.step()
 end
 
 return Act1
+]=] },
+	{ Service = "StarterPlayerScripts", Path = "SpinClient/TuskActVFX/Act2", Class = "ModuleScript", Source = [=[
+--[[
+	TuskActVFX.Act2  (StarterPlayerScripts.SpinClient.TuskActVFX.Act2)
+	Client choreography for Tusk Act 2 (wormhole combat): cyan + violet
+	portals, spatial distortion, rotating nails through wormholes.
+]]
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local VFXLib = require(script.Parent.Parent.VFXLib)
+local CameraFX = require(script.Parent.Parent.CameraFX)
+local TuskVFX = require(script.Parent.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
+local TuskStand = require(script.Parent.Parent.TuskStand)
+local Common = require(script.Parent.Parent.TuskActCommon)
+
+local Act2 = {}
+local pal = Common.palette(2)
+local sounds = TuskConfig.Sounds
+
+local function onAbility(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Move == "WormholeNail" and root then
+		TuskAnimation.play(character, "NailShot")
+		TuskStand.action(character, "Lunge", { Target = CFrame.new(1.4, 0.8, -1.2), Duration = data.Startup + 0.25 })
+		-- A small portal opens at the fingertip; the nail is fired through it.
+		local tip = (root.CFrame * CFrame.new(0.9, 0.55, -2.2)).Position
+		Common.portal(tip, tip + data.Direction * 5, 1, data.Startup + 0.2, pal)
+	elseif data.Move == "NailDimension" and data.Phase == "Open" then
+		if root then
+			TuskAnimation.play(character, "NailShot")
+			TuskStand.action(character, "Lunge", { Target = CFrame.new(0, 2, -2), Duration = 0.6 })
+		end
+		for i, pos in ipairs(data.Portals) do
+			Common.portal(pos, data.Center, 2.4, data.OpenTime + 0.55, pal, (i - 1) * 0.06)
+		end
+		TuskVFX.CreateMagicCircle(CFrame.new(data.Center - Vector3.new(0, 2.8, 0)), { Radius = 11, Color = pal.Second, Color2 = pal.Main, Duration = data.OpenTime + 0.9, RotationSpeed = 1.5, Points = 6 })
+	end
+end
+
+local function onAbilityImpact(data)
+	if data.Move == "NailDimension" then
+		TuskVFX.CreateRotationalShockwave(CFrame.new(data.Position - Vector3.new(0, 2.6, 0)), { Radius = data.Radius * 1.6, Layers = 3, Color = pal.Main, Color2 = pal.Second, Ground = true, Particles = 2, Width = 0.6 })
+		TuskVFX.CreateDistortion(data.Position, { Radius = data.Radius * 0.7 })
+		VFXLib.flash(data.Position, pal.Main, 6, 20, 0.4)
+		VFXLib.sound(sounds.Finisher, data.Position, 0.8, 0.9)
+		CameraFX.shakeAt(data.Position, 0.7, 70)
+	end
+end
+
+local function onUltimate(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Phase == "Start" then
+		if root then
+			TuskAnimation.play(character, "Awakening")
+			VFXLib.sound(sounds.AwakeningBuild, root, 0.8, 1.05)
+			TuskStand.action(character, "Manifest", { Duration = 0.6 })
+		end
+		local center = data.Center
+		TuskVFX.CreateMagicCircle(CFrame.new(center - Vector3.new(0, 2.9, 0)), { Radius = 14, Color = pal.Main, Color2 = pal.Second, Duration = data.Windup + 1.6, RotationSpeed = 1, Points = 7 })
+		for i, pos in ipairs(data.Portals) do
+			Common.portal(pos, center, 3, data.Windup + 1.2, pal, (i - 1) * (data.Windup * 0.5 / #data.Portals))
+		end
+		if Common.isLocal(character) then
+			CameraFX.setFovHold(8) -- pull back to see the storm
+			task.delay(data.Windup + 1.2, function()
+				CameraFX.setFovHold(0)
+			end)
+		end
+	elseif data.Phase == "Burst" then
+		local pos = data.Position
+		TuskVFX.CreateRotationalShockwave(CFrame.new(pos - Vector3.new(0, 2.8, 0)), { Radius = data.Radius * 1.3, Layers = 4, Color = pal.Main, Color2 = pal.Light, Ground = true, Particles = 3, Width = 0.9, Duration = 0.7 })
+		TuskVFX.CreateDistortion(pos, { Radius = 10, Duration = 0.5 })
+		VFXLib.burst(pos, { Count = 50, Color = pal.Light, Speed = 60, Lifetime = 0.7 })
+		VFXLib.flash(pos, pal.Main, 12, 50, 0.7)
+		VFXLib.sound(sounds.AwakeningBurst, pos, 1, 0.95)
+		CameraFX.shakeAt(pos, 1.3, 100)
+		if Common.isLocal(character) then
+			CameraFX.speedLines(0.45, pal.Light)
+			CameraFX.impactFrame(pal.Light)
+		end
+	end
+end
+
+function Act2.handle(name, data)
+	if name == "M1" then
+		Common.m1(data, pal)
+	elseif name == "M1Finisher" then
+		Common.finisher(data, pal)
+		Common.portal(data.Position + Vector3.new(0, 1, 0), data.Position + Vector3.new(0, 1, -4), 2.6, 0.35, pal)
+	elseif name == "Ability" then
+		onAbility(data)
+	elseif name == "AbilityImpact" then
+		onAbilityImpact(data)
+	elseif name == "Portal" then
+		Common.portal(data.Position, data.LookAt, data.Radius, data.Duration, pal)
+	elseif name == "Ultimate" then
+		onUltimate(data)
+	end
+end
+
+return Act2
+]=] },
+	{ Service = "StarterPlayerScripts", Path = "SpinClient/TuskActVFX/Act3", Class = "ModuleScript", Source = [=[
+--[[
+	TuskActVFX.Act3  (StarterPlayerScripts.SpinClient.TuskActVFX.Act3)
+	Client choreography for Tusk Act 3 (spatial movement): deep-blue
+	layered portals, blue distortion afterimages, a tearing dimensional break.
+]]
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local VFXLib = require(script.Parent.Parent.VFXLib)
+local CameraFX = require(script.Parent.Parent.CameraFX)
+local TuskVFX = require(script.Parent.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
+local TuskStand = require(script.Parent.Parent.TuskStand)
+local Common = require(script.Parent.Parent.TuskActCommon)
+
+local Act3 = {}
+local pal = Common.palette(3)
+local sounds = TuskConfig.Sounds
+
+local function onStep(data)
+	local character = data.Character
+	local up = Vector3.new(0, 1, 0)
+	Common.portal(data.From + up, data.From + up + data.Direction * 5, 2.4, 0.3, pal)
+	Common.portal(data.To + up, data.To + up - data.Direction * 5, 2.4, 0.35, pal, 0.05)
+	-- Blue distortion afterimages along the path.
+	local steps = 5
+	for i = 1, steps do
+		local p = data.From:Lerp(data.To, i / (steps + 1))
+		VFXLib.afterimage(CFrame.new(p), 2.2, pal.Main)
+		VFXLib.burst(p, { Count = 3, Color = pal.Light, Speed = 4, Lifetime = 0.3 })
+	end
+	TuskVFX.CreateDistortion(data.To, { Radius = 3, Duration = 0.25 })
+	VFXLib.sound(sounds.Emerge, data.To, 0.6, 1.3)
+	if character then
+		TuskStand.action(character, "Manifest", { Duration = 0.3 })
+	end
+	if Common.isLocal(character) then
+		CameraFX.fovPunch(8, 0.3)
+	end
+end
+
+local function onAbility(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Move == "DimensionalStep" then
+		onStep(data)
+	elseif data.Move == "SpatialPursuit" and data.Phase == "Open" then
+		if root then
+			TuskAnimation.play(character, "NailBarrage")
+		end
+		local targetRoot = data.Target and data.Target:FindFirstChild("HumanoidRootPart")
+		local center = targetRoot and targetRoot.Position or data.Portals[1]
+		for i, pos in ipairs(data.Portals) do
+			-- Each portal opens on its own beat and keeps its own rotation.
+			Common.portal(pos, center, 2.2, data.OpenTime + (i - 1) * data.Stagger + 0.35, pal, (i - 1) * 0.07)
+		end
+	elseif data.Move == "DimensionalBreak" then
+		if data.Phase == "Charge" and root then
+			TuskAnimation.play(character, "Awakening")
+			TuskStand.action(character, "Lunge", { Target = CFrame.new(0, 2, -2.5), Duration = data.Charge + 0.4 })
+			local charge = TuskVFX.CreateEnergyCharge({
+				Follow = function()
+					return root.Parent and root.CFrame * CFrame.new(0, 1.5, -3) or nil
+				end,
+				Color = pal.Main,
+				Color2 = pal.Light,
+				MaxRadius = 1.6,
+				Duration = data.Charge,
+				Rings = 3,
+			})
+			local front = root.CFrame * CFrame.new(0, 2, -5)
+			Common.portal(front.Position, front.Position + data.Direction * 10, 4.2, data.Charge + 0.4, pal, data.Charge * 0.3)
+			VFXLib.sound(sounds.ChargeLoop, root, 0.5, 1.2)
+			task.delay(data.Charge, function()
+				charge:Release(data.Direction)
+			end)
+		elseif data.Phase == "Release" then
+			-- A row of tearing rotational shockwaves races forward.
+			local rings = 6
+			for i = 1, rings do
+				task.delay(i * 0.035, function()
+					local p = data.Origin + data.Direction * (data.Length * i / rings)
+					local axis = CFrame.lookAt(p, p + data.Direction) * CFrame.Angles(math.pi / 2, 0, 0)
+					TuskVFX.CreateRotationalShockwave(axis, { Radius = data.Width * 0.7, Layers = 2, Color = pal.Main, Color2 = pal.Light, Particles = 0.6, Width = 0.5, Duration = 0.4 })
+					VFXLib.groundDisc(p - Vector3.new(0, 2.8, 0), Vector3.new(0, 1, 0), { Radius = data.Width * 0.4, Color = pal.Second, Duration = 0.35 })
+				end)
+			end
+			TuskVFX.CreateDistortion(data.Origin + data.Direction * 8, { Radius = 6 })
+			VFXLib.sound(sounds.Finisher, data.Origin, 0.9, 0.8)
+			CameraFX.shakeAt(data.Origin, 0.9, 70)
+			if Common.isLocal(character) then
+				CameraFX.speedLines(0.3, pal.Light)
+				CameraFX.fovPunch(10, 0.4)
+			end
+		end
+	end
+end
+
+local function onUltimate(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Phase == "Start" then
+		if root then
+			TuskAnimation.play(character, "Awakening")
+			VFXLib.sound(sounds.AwakeningBuild, root, 0.9, 0.9)
+			TuskStand.action(character, "Manifest", { Duration = 0.8 })
+		end
+		local ground = data.Center - Vector3.new(0, 2.9, 0)
+		TuskVFX.CreateMagicCircle(CFrame.new(ground), { Radius = data.Radius, Color = pal.Main, Color2 = pal.Light, Duration = data.Windup + 0.6, RotationSpeed = 0.8, Points = 8 })
+		TuskVFX.CreateMagicCircle(CFrame.new(ground + Vector3.new(0, 0.05, 0)), { Radius = data.Radius * 0.55, Color = pal.Second, Color2 = pal.Main, Duration = data.Windup + 0.6, RotationSpeed = -1.4, Points = 5 })
+		for i, pos in ipairs(data.Portals) do
+			Common.portal(pos, data.Center, i <= #data.Portals / 2 and 3 or 4, data.Windup + 0.4, pal, (i - 1) * (data.Windup * 0.6 / #data.Portals))
+		end
+		if root then
+			TuskVFX.CreateEnergyCharge({
+				Follow = function()
+					return root.Parent and root.CFrame * CFrame.new(0, 3, 0) or nil
+				end,
+				Color = pal.Main,
+				Color2 = pal.Light,
+				MaxRadius = 2.4,
+				Duration = data.Windup,
+				Rings = 3,
+			})
+		end
+		if Common.isLocal(character) then
+			CameraFX.setFovHold(10)
+			task.delay(data.Windup + 0.5, function()
+				CameraFX.setFovHold(0)
+			end)
+		end
+	elseif data.Phase == "Burst" then
+		local pos = data.Position
+		-- Dimensional collapse: inward flash, then layered shockwaves outward.
+		TuskVFX.CreateDistortion(pos, { Radius = 14, Duration = 0.6 })
+		task.delay(0.08, function()
+			TuskVFX.CreateRotationalShockwave(CFrame.new(pos - Vector3.new(0, 2.8, 0)), { Radius = data.Radius * 1.4, Layers = 4, Color = pal.Main, Color2 = pal.Light, Ground = true, Particles = 3, Width = 1, Duration = 0.8 })
+			TuskVFX.CreateRotationalShockwave(CFrame.new(pos + Vector3.new(0, 4, 0)) * CFrame.Angles(math.pi / 2, 0, 0), { Radius = data.Radius, Layers = 2, Color = pal.Light, Color2 = pal.Second, Particles = 0, Width = 0.6 })
+		end)
+		VFXLib.flash(pos, pal.Main, 14, 60, 0.8)
+		VFXLib.sound(sounds.AwakeningBurst, pos, 1, 0.85)
+		CameraFX.shakeAt(pos, 1.5, 110)
+		if Common.isLocal(character) then
+			CameraFX.speedLines(0.5, pal.Light)
+			CameraFX.impactFrame(pal.Light)
+		end
+	end
+end
+
+function Act3.handle(name, data)
+	if name == "M1" then
+		Common.m1(data, pal, { Pitch = 1.1 })
+	elseif name == "M1Finisher" then
+		Common.finisher(data, pal, { Layers = 3 })
+		Common.portal(data.Position + Vector3.new(0, -1, 0), data.Position + Vector3.new(0, 8, 0), 2.8, 0.35, pal)
+	elseif name == "Ability" then
+		onAbility(data)
+	elseif name == "Portal" then
+		Common.portal(data.Position, data.LookAt, data.Radius, data.Duration, pal)
+	elseif name == "Ultimate" then
+		onUltimate(data)
+	end
+end
+
+return Act3
+]=] },
+	{ Service = "StarterPlayerScripts", Path = "SpinClient/TuskActVFX/Act4", Class = "ModuleScript", Source = [=[
+--[[
+	TuskActVFX.Act4  (StarterPlayerScripts.SpinClient.TuskActVFX.Act4)
+	Client choreography for Tusk Act 4 (Infinite Rotation): gold and deep
+	blue, giant rotational rings, golden afterimages, distorted air, and the
+	10-step INFINITE ROTATION cinematic.
+]]
+
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local VFXLib = require(script.Parent.Parent.VFXLib)
+local CameraFX = require(script.Parent.Parent.CameraFX)
+local TuskVFX = require(script.Parent.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
+local TuskStand = require(script.Parent.Parent.TuskStand)
+local Common = require(script.Parent.Parent.TuskActCommon)
+
+local Act4 = {}
+local pal = Common.palette(4)
+local colors = TuskConfig.Colors
+local sounds = TuskConfig.Sounds
+local cfg = TuskConfig.Act4
+
+local function golden(root, cframeOffset, duration, maxRadius)
+	return TuskVFX.CreateEnergyCharge({
+		Follow = function()
+			return root.Parent and root.CFrame * cframeOffset or nil
+		end,
+		Color = pal.Main,
+		Color2 = pal.Light,
+		MaxRadius = maxRadius or 1,
+		Duration = duration,
+		Rings = 3,
+	})
+end
+
+local function onAbility(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Move == "GoldenSpinNail" and root then
+		-- A small golden sphere forms, three rings spin up, particles spiral in, release flash.
+		TuskAnimation.play(character, "NailShot")
+		TuskStand.action(character, "Lunge", { Target = CFrame.new(1.6, 1.2, -1.6), Duration = data.Startup + 0.3 })
+		local charge = golden(root, CFrame.new(0.9, 0.6, -2), data.Startup, 1)
+		VFXLib.sound(sounds.ChargeFull, root, 0.5, 0.8)
+		task.delay(data.Startup, function()
+			charge:Release(data.Direction)
+		end)
+	elseif data.Move == "InfiniteRotation" then
+		if data.Phase == "Release" then
+			TuskAnimation.stopHold(character, "ChargeNail")
+			TuskAnimation.play(character, "SpinningNailRelease")
+			if Common.isLocal(character) then
+				CameraFX.fovPunch(6 + data.Stage * 4, 0.45)
+				CameraFX.shake(0.3 * data.Stage, 0.3)
+				if data.Stage == 3 then
+					CameraFX.speedLines(0.35, pal.Light)
+				end
+			end
+		elseif data.Phase == "Cancel" then
+			TuskAnimation.stopHold(character, "ChargeNail")
+		end
+	elseif data.Move == "GoldenPursuit" then
+		if data.Phase == "Gather" and root then
+			TuskAnimation.play(character, "M1_4")
+			VFXLib.burst(root.Position, { Count = 20, Color = pal.Main, Speed = 8, Lifetime = 0.25 })
+			TuskVFX.CreateSpinRing({ CFrame = CFrame.new(root.Position - Vector3.new(0, 2.6, 0)), Radius = 4, Width = 0.3, Color = pal.Main, RotationSpeed = 9, Duration = 0.35 })
+		elseif data.Phase == "Dash" then
+			-- Golden streak + afterimages along the rush.
+			local length = (data.To - data.From).Magnitude
+			if length > 1 then
+				local streak = VFXLib.part({ Size = Vector3.new(0.6, 0.6, length), CFrame = CFrame.lookAt((data.From + data.To) / 2, data.To), Color = pal.Main, Transparency = 0.2 })
+				VFXLib.animate(0.3, function(a)
+					streak.Transparency = 0.2 + 0.8 * a
+					streak.Size = Vector3.new(0.6 * (1 - a), 0.6 * (1 - a), length)
+				end, function()
+					streak:Destroy()
+				end)
+			end
+			for i = 1, 4 do
+				VFXLib.afterimage(CFrame.new(data.From:Lerp(data.To, i / 5)), 2.4, i % 2 == 0 and pal.Main or pal.Second)
+			end
+			if character then
+				TuskStand.action(character, "Lunge", { Target = CFrame.new(0, 1.5, -3.5), Duration = 0.6 })
+			end
+			if Common.isLocal(character) then
+				CameraFX.speedLines(0.3, pal.Light)
+			end
+		elseif data.Phase == "Hit" then
+			local axis = CFrame.new(data.Position) * CFrame.Angles(data.Index * 0.6, data.Index, 0)
+			TuskVFX.CreateRotationalShockwave(axis, { Radius = 4, Layers = 2, Color = pal.Main, Color2 = pal.Light, Particles = 0.6, Width = 0.35, Duration = 0.25 })
+			VFXLib.sound(sounds.Hit, data.Position, 0.5, 1 + data.Index * 0.1)
+		elseif data.Phase == "Final" then
+			Common.finisher({ Character = character, Position = data.Position, Radius = data.Radius, Hit = true }, pal, { Layers = 4, Size = 1.8, Width = 0.8, Shake = 1, Pitch = 0.85 })
+			TuskVFX.CreateDistortion(data.Position, { Radius = 6 })
+		end
+	end
+end
+
+-- Hold charge for INFINITE ROTATION (stages 1 / 2 / 3).
+local function stageOf(seconds)
+	local stage = 0
+	for i, t in ipairs(cfg.InfiniteRotation.Stages) do
+		if seconds >= t then
+			stage = i
+		end
+	end
+	return stage
+end
+
+local chargeStep = Common.chargeDriver(4, "InfiniteRotation", function(character, root)
+	TuskAnimation.hold(character, "ChargeNail")
+	local effect = TuskVFX.CreateEnergyCharge({
+		Follow = function()
+			return root.Parent and root.CFrame * CFrame.new(0, 1.2, -2.6) or nil
+		end,
+		Color = pal.Main,
+		Color2 = pal.Light,
+		MaxRadius = 2.4,
+		Rings = 3,
+		Manual = true,
+	})
+	effect.Stage = 0
+	effect.Root = root
+	effect.Sound = VFXLib.sound(sounds.ChargeLoop, root, 0.5, 0.7, true)
+	return effect
+end, function(effect, seconds)
+	local stages = cfg.InfiniteRotation.Stages
+	effect:SetProgress(math.clamp(seconds / stages[#stages], 0, 1))
+	if effect.Sound then
+		effect.Sound.PlaybackSpeed = 0.7 + math.min(seconds, 2) * 0.35
+	end
+	local stage = stageOf(seconds)
+	if stage > effect.Stage then
+		effect.Stage = stage
+		local pos = effect.Root.Position
+		-- Stage 1: small golden rings · 2: more rotating circles · 3: golden-blue + distortion
+		for i, ring in ipairs(effect.Rings) do
+			ring:SetColor((stage >= 3 and i % 2 == 0) and colors.Cyan or pal.Main)
+			ring:SetWidth(0.08 + stage * 0.05)
+		end
+		TuskVFX.CreateSpinRing({ CFrame = CFrame.new(pos - Vector3.new(0, 2.7, 0)), Radius = 3 + stage * 2, Width = 0.25, Color = stage >= 3 and colors.Cyan or pal.Main, RotationSpeed = 4 * stage, Duration = 0.6 })
+		VFXLib.burst(pos, { Count = 12 * stage, Color = pal.Light, Speed = 14 + stage * 6, Lifetime = 0.35 })
+		VFXLib.flash(pos, pal.Main, 3 + stage * 2, 14, 0.25)
+		VFXLib.sound(sounds.ChargeFull, effect.Root, 0.5 + stage * 0.15, 0.8 + stage * 0.15)
+		if stage >= 3 then
+			TuskVFX.CreateDistortion(pos + Vector3.new(0, 1, -2.6), { Radius = 3.5, Duration = 0.4 })
+		end
+	end
+end, function(effect, character)
+	if effect.Sound then
+		effect.Sound:Destroy()
+	end
+	local root = Common.rootOf(character)
+	effect:Release(root and root.CFrame.LookVector)
+	TuskAnimation.stopHold(character, "ChargeNail")
+end)
+
+---------------------------------------------------------------------------
+-- Ultimate: INFINITE ROTATION (cinematic)
+---------------------------------------------------------------------------
+local function darken(duration, release)
+	local cc = Instance.new("ColorCorrectionEffect")
+	cc.Name = "TuskInfiniteDarken"
+	cc.Parent = Lighting
+	VFXLib.animate(duration, function(a)
+		cc.Brightness = -0.22 * math.min(a * 3, 1)
+		cc.TintColor = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(255, 225, 170), math.min(a * 2, 1))
+		cc.Saturation = 0.15 * a
+	end)
+	task.delay(duration + (release or 0.3), function()
+		VFXLib.animate(0.5, function(a)
+			cc.Brightness = -0.22 * (1 - a)
+			cc.Saturation = 0.15 * (1 - a)
+		end, function()
+			cc:Destroy()
+		end)
+	end)
+end
+
+local function onUltimate(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if not root then
+		return
+	end
+	local w = data.Windup
+	if data.Phase == "Start" then
+		local isLocal = Common.isLocal(character)
+		local camera = workspace.CurrentCamera
+		local near = camera and (camera.CFrame.Position - root.Position).Magnitude < 140
+		-- 1. camera moves toward Johnny
+		if isLocal then
+			CameraFX.setFovHold(-16)
+		end
+		-- 2. the environment darkens (everyone nearby)
+		if near then
+			darken(w, 0.4)
+		end
+		-- 3. Tusk manifests behind Johnny
+		TuskAnimation.play(character, "Awakening")
+		TuskStand.action(character, "Manifest", { Duration = 0.8 })
+		VFXLib.sound(sounds.AwakeningBuild, root, 1, 0.8)
+		-- 4. golden energy rotates around the player
+		local aura = TuskVFX.CreateGoldenAura(character, { Color = pal.Main, Color2 = pal.Second, Rings = 3, Particles = 2 })
+		-- 5. several massive golden rings
+		local rings = {}
+		for i = 1, 3 do
+			rings[i] = TuskVFX.CreateSpinRing({
+				Follow = function()
+					return root.Parent and CFrame.new(root.Position + Vector3.new(0, i * 1.6 - 1, 0)) or nil
+				end,
+				Tilt = CFrame.Angles(0.35 * (i - 2), 0, 0.2 * (i - 2)),
+				Radius = 5 + i * 3,
+				Width = 0.45,
+				Color = i == 2 and colors.Cyan or pal.Main,
+				RotationSpeed = (i % 2 == 0 and -1 or 1) * (1.5 + i),
+				Duration = w + 0.4,
+			})
+		end
+		TuskVFX.CreateMagicCircle(CFrame.new(root.Position - Vector3.new(0, 2.9, 0)), { Radius = 16, Color = pal.Main, Color2 = colors.Cyan, Duration = w + 0.5, RotationSpeed = 1.2, Points = 8 })
+		-- 6. energy builds in stages
+		for stage = 1, 3 do
+			task.delay(w * stage / 3.5, function()
+				for _, ring in ipairs(rings) do
+					ring.Speed = ring.Speed * 1.6
+				end
+				VFXLib.burst(root.Position, { Count = 20 * stage, Color = pal.Light, Speed = 20 + stage * 10, Lifetime = 0.5 })
+				VFXLib.flash(root.Position, pal.Main, 4 + stage * 3, 20 + stage * 10, 0.3)
+				TuskVFX.CreateDistortion(root.Position + Vector3.new(0, 2, 0), { Radius = 3 + stage * 2, Duration = 0.35 })
+				if isLocal then
+					CameraFX.shake(0.25 * stage, 0.3)
+				end
+			end)
+		end
+		-- 7. Tusk's signature: the giant rotational energy forms in front
+		local charge = golden(root, CFrame.new(0, 2, -4), w, 3.5)
+		task.delay(w, function()
+			charge:Release(data.Direction)
+			aura:Destroy()
+		end)
+	elseif data.Phase == "Release" then
+		-- 8. the giant golden rotational projectile is released (drawn by TuskProjectiles)
+		TuskAnimation.play(character, "SpinningNailRelease")
+		VFXLib.flash(data.Position, pal.Light, 14, 60, 0.5)
+		if Common.isLocal(character) then
+			-- 10. camera returns to normal (with a punch)
+			CameraFX.setFovHold(0)
+			CameraFX.fovPunch(20, 0.7)
+			CameraFX.speedLines(0.6, pal.Light)
+		end
+	end
+end
+
+-- Act 4's Stand carries two slow golden rings at all times.
+local standRings = {}
+local function updateStandRings()
+	local seen = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		local character = player.Character
+		local stand = character and character:GetAttribute("TuskAct") == 4 and TuskStand.get(character)
+		if stand and stand.Visible then
+			seen[character] = true
+			if not standRings[character] then
+				local body = stand.Rig.Body
+				standRings[character] = {
+					TuskVFX.CreateSpinRing({ Follow = function() return body.Parent and body.CFrame or nil end, Tilt = CFrame.Angles(0.4, 0, 0.2), Radius = 3.2, Width = 0.1, Color = pal.Main, RotationSpeed = 1.6, Transparency = 0.3 }),
+					TuskVFX.CreateSpinRing({ Follow = function() return body.Parent and body.CFrame or nil end, Tilt = CFrame.Angles(-0.5, 0, -0.3), Radius = 2.6, Width = 0.08, Color = colors.Cyan, RotationSpeed = -2.2, Transparency = 0.35 }),
+				}
+			end
+		end
+	end
+	for character, rings in pairs(standRings) do
+		if not seen[character] then
+			standRings[character] = nil
+			for _, ring in ipairs(rings) do
+				ring:Destroy()
+			end
+		end
+	end
+end
+
+function Act4.handle(name, data)
+	if name == "M1" then
+		Common.m1(data, pal, { Scale = 1.3, Pitch = 0.85 })
+	elseif name == "M1Finisher" then
+		Common.finisher(data, pal, { Layers = 4, Size = 1.6, Width = 0.8, Shake = 0.9, Pitch = 0.8 })
+		TuskVFX.CreateRotationalShockwave(CFrame.new(data.Position) * CFrame.Angles(math.pi / 2, 0, 0), { Radius = data.Radius * 0.7, Layers = 2, Color = pal.Light, Color2 = pal.Main, Particles = 0, Width = 0.5 })
+	elseif name == "Ability" then
+		onAbility(data)
+	elseif name == "Ultimate" then
+		onUltimate(data)
+	end
+end
+
+function Act4.step()
+	chargeStep()
+	updateStandRings()
+end
+
+return Act4
 ]=] },
 	{ Service = "StarterPlayerScripts", Path = "SpinClient/TuskAnimation", Class = "ModuleScript", Source = [=[
 --[[
@@ -5194,6 +7288,7 @@ local Net = require(Shared.Net)
 local VFXLib = require(script.Parent.VFXLib)
 local TuskAnimation = require(script.Parent.TuskAnimation)
 local TuskSneakController = require(script.Parent.TuskSneakController)
+local TuskActCommon = require(script.Parent.TuskActCommon)
 local TuskUI = require(script.Parent.UI.TuskUI)
 
 local TuskController = {}
@@ -5363,6 +7458,9 @@ function TuskController.init()
 			TuskUI.onState(data)
 		elseif name == "SneakAttack" then
 			TuskSneakController.handle(name, data)
+		elseif name == "Evolve" then
+			TuskActCommon.evolve(data)
+			TuskUI.onEvolve(data)
 		else
 			local m = actVFX[data.Act]
 			if m then
@@ -5477,6 +7575,66 @@ local function styleFor(visual)
 			s.TrailColor = colors.GoldLight
 		end
 	end
+	local act = visual.Act or 1
+	if style == "Wormhole" then
+		-- Act 2: violet-cyan helix, one tilted ring.
+		s.Color = Color3.fromRGB(110, 70, 255)
+		s.Color2 = Color3.fromRGB(80, 210, 255)
+		s.Rings = 1
+		s.RingColor = Color3.fromRGB(160, 120, 255)
+		s.ImpactSize = 1
+	elseif style == "Portal" then
+		-- Nails fired through portals (Acts 2 and 3).
+		s.Scale = 0.9
+		s.Color = act == 3 and Color3.fromRGB(30, 20, 120) or Color3.fromRGB(110, 70, 255)
+		s.Color2 = act == 3 and Color3.fromRGB(120, 160, 255) or colors.Cyan
+		s.ImpactSize = 0.8
+	elseif style == "Golden" then
+		-- Act 4: golden spin nail, three golden rings, layered gold + blue trails.
+		s.Scale = 1.9
+		s.Rings = 3
+		s.RingColor = colors.Gold
+		s.Color = colors.DeepBlue
+		s.Color2 = colors.Gold
+		s.TrailColor = colors.GoldLight
+		s.Helix = 3
+		s.SpinSpeed = 55
+		s.Afterimages = true
+		s.ImpactSize = 2
+		s.ImpactLayers = 3
+		s.ImpactColor = colors.Gold
+	elseif style == "Rotation" then
+		local stage = math.floor(charge * 3 + 0.5)
+		s.Scale = 1.6 + stage * 0.6
+		s.Rings = 1 + stage
+		s.RingColor = stage >= 3 and colors.Cyan or colors.Gold
+		s.Color = colors.DeepBlue
+		s.Color2 = colors.Gold
+		s.TrailColor = colors.GoldLight
+		s.Helix = 3
+		s.SpinSpeed = 45 + stage * 15
+		s.Afterimages = true
+		s.ImpactSize = 1.4 + stage * 0.7
+		s.ImpactLayers = 2 + stage
+		s.ImpactColor = colors.Gold
+		s.ImpactRadius = 4 + stage * 2
+	elseif style == "InfiniteUlt" then
+		s.Scale = 5
+		s.Rings = 3
+		s.RingColor = colors.Gold
+		s.Color = colors.DeepBlue
+		s.Color2 = colors.Gold
+		s.TrailColor = colors.GoldLight
+		s.TrailLength = 2
+		s.Helix = 3
+		s.HelixRadius = 0.5
+		s.SpinSpeed = 30
+		s.Afterimages = true
+		s.ImpactSize = 4.5
+		s.ImpactLayers = 4
+		s.ImpactColor = colors.Gold
+		s.ImpactRadius = 12
+	end
 	if awakened then
 		s.Rings = s.Rings + 1
 		s.Color2 = colors.Ice
@@ -5523,17 +7681,34 @@ local function onEnd(data)
 		entry.Visual:Destroy()
 	end
 	local s, style, charge = styleFor(data.Visual or {})
-	local color = (style == "Spinning" and charge >= 1) and colors.Gold or colors.Cyan
+	local color = s.ImpactColor or ((style == "Spinning" and charge >= 1) and colors.Gold or s.Color2)
 	TuskVFX.CreateImpact(data.Position, data.Normal, {
 		Size = s.ImpactSize,
 		Layers = s.ImpactLayers,
-		Radius = style == "Spinning" and 5 or 3.5,
+		Radius = s.ImpactRadius or (style == "Spinning" and 5 or 3.5),
 		Color = color,
 		Color2 = colors.Ice,
 		Sound = sounds.NailImpact,
 		Pitch = style == "Barrage" and 1.25 or 1,
 	})
-	if style == "Spinning" then
+	if style == "InfiniteUlt" or style == "Rotation" or style == "Golden" then
+		-- Massive golden shockwave across the battlefield (scaled by style).
+		local big = style == "InfiniteUlt"
+		local ground = data.Position - Vector3.new(0, 1, 0)
+		TuskVFX.CreateRotationalShockwave(CFrame.new(ground), { Radius = big and 40 or (s.ImpactRadius or 6) * 2, Layers = big and 5 or 3, Color = colors.Gold, Color2 = colors.Cyan, Ground = true, Particles = big and 4 or 1.5, Width = big and 1.4 or 0.7, Duration = big and 0.9 or 0.5 })
+		TuskVFX.CreateDistortion(data.Position, { Radius = big and 16 or 5, Duration = big and 0.7 or 0.4 })
+		VFXLib.flash(data.Position, colors.Gold, big and 16 or 7, big and 80 or 30, big and 0.9 or 0.4)
+		CameraFX.shakeAt(data.Position, big and 2 or 0.8, big and 160 or 80)
+		if big then
+			VFXLib.sound(sounds.AwakeningBurst, data.Position, 1, 0.75)
+			local camera = workspace.CurrentCamera
+			if camera and (camera.CFrame.Position - data.Position).Magnitude < 120 then
+				CameraFX.impactFrame(colors.GoldLight)
+			end
+		elseif data.HitCharacter and data.OwnerId == localPlayer.UserId then
+			CameraFX.impactFrame(colors.GoldLight)
+		end
+	elseif style == "Spinning" then
 		TuskVFX.CreateDistortion(data.Position, { Radius = 2 + charge * 3 })
 		CameraFX.shakeAt(data.Position, 0.3 + charge * 0.5, 70)
 		if charge >= 1 and data.HitCharacter and data.OwnerId == localPlayer.UserId then
@@ -5751,7 +7926,7 @@ end
 local function onSneakAttack(data)
 	local character = data.Character
 	if data.Phase == "Burrow" then
-		local burrow = TuskConfig.Sneak.Attack.BurrowTime
+		local burrow = data.BurrowTime or TuskConfig.Sneak.Attack.BurrowTime
 		groundCrack(data.Position, colors.Cyan, 5)
 		VFXLib.sound(sounds.Burrow, data.Position, 0.7, 1)
 		undergroundTrail(data.Position, data.Target, burrow)
@@ -5882,7 +8057,14 @@ local VFXLib = require(script.Parent.VFXLib)
 
 local TuskStand = {}
 
-local IDLE_OFFSET = CFrame.new(1.9, 1.5, 1.7)
+-- Where each Act's Stand floats (bigger Acts float further back).
+local IDLE_OFFSETS = {
+	[1] = CFrame.new(1.9, 1.5, 1.7),
+	[2] = CFrame.new(2.1, 1.6, 2),
+	[3] = CFrame.new(2.4, 1.2, 2.8),
+	[4] = CFrame.new(2.6, 1.8, 3.4),
+}
+local IDLE_OFFSET = IDLE_OFFSETS[1]
 local SNEAK_OFFSET = CFrame.new(1.5, -1.4, 1.2)
 
 local stands = {} -- [character] = stand
@@ -5917,7 +8099,7 @@ local function build(character, act)
 	highlight.Parent = model
 	model.Parent = VFXLib.Folder
 	local root = character:FindFirstChild("HumanoidRootPart")
-	local start = root and root.CFrame * IDLE_OFFSET or CFrame.new()
+	local start = root and root.CFrame * (IDLE_OFFSETS[act] or IDLE_OFFSET) or CFrame.new()
 	model:PivotTo(start)
 	return {
 		Act = act,
@@ -5980,7 +8162,7 @@ local function update(stand, root, dt, now)
 	local lean = math.clamp(-localVel.Z / 40, -0.4, 0.4) -- lean forward when running
 
 	local bob = math.sin(t * 2.2) * (sneaking and 0.08 or 0.22)
-	local offset = (sneaking and SNEAK_OFFSET or IDLE_OFFSET) * CFrame.new(0, bob, 0)
+	local offset = (sneaking and SNEAK_OFFSET or (IDLE_OFFSETS[stand.Act] or IDLE_OFFSET)) * CFrame.new(0, bob, 0)
 	local desired = root.CFrame * offset * CFrame.Angles(-lean, math.sin(t * 0.9) * 0.12, math.sin(t * 1.3) * 0.08)
 	local snap = 12
 
@@ -6015,6 +8197,18 @@ local function update(stand, root, dt, now)
 		local flap = math.sin(t * 3.1) * 0.18 + lean * 0.5
 		joints.EarL.Weld.C0 = joints.EarL.Base * CFrame.Angles(0, 0, flap) * joints.EarL.Offset
 		joints.EarR.Weld.C0 = joints.EarR.Base * CFrame.Angles(0, 0, -flap) * joints.EarR.Offset
+	end
+	-- Arms: idle sway; thrown forward during a Lunge (punch / nail fire).
+	local punching = stand.Action and stand.Action.Kind == "Lunge"
+	local punchA = 0
+	if punching then
+		local a = (now - stand.Action.Start) / stand.Action.Duration
+		punchA = a < 0.3 and a / 0.3 or math.max(0, 1 - (a - 0.3) / 0.7)
+	end
+	if joints.ArmR then
+		local sway = math.sin(t * 2) * 0.12
+		joints.ArmR.Weld.C0 = joints.ArmR.Base * CFrame.Angles(sway + punchA * 1.7, 0, -punchA * 0.2) * joints.ArmR.Offset
+		joints.ArmL.Weld.C0 = joints.ArmL.Base * CFrame.Angles(-sway + punchA * 0.6, 0, punchA * 0.3) * joints.ArmL.Offset
 	end
 	for i = 1, 4 do
 		local leg = joints["Leg" .. i]
@@ -6833,6 +9027,279 @@ end
 return TuskVFX
 ]=] },
 	{ Service = "StarterPlayerScripts", Path = "SpinClient/UI", Class = "Folder", Source = nil },
+	{ Service = "StarterPlayerScripts", Path = "SpinClient/UI/CharacterCard", Class = "ModuleScript", Source = [=[
+--[[
+	CharacterCard  (StarterPlayerScripts.SpinClient.UI.CharacterCard)
+
+	Top-left character card:
+	  * portrait: your uploaded image (TuskConfig.Character.PortraitImage),
+	    or a live 3D view of your own avatar
+	  * JOHNNY JOESTAR name plate (TuskConfig.Character.Name)
+	  * current Stand ("TUSK ACT 2") in that Act's colour
+	  * four Act pips that light up as Tusk awakens
+	  * health bar with numbers
+	Pops and flashes when Tusk evolves.
+]]
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local Registry = require(Shared.TuskActRegistry)
+local VFXLib = require(script.Parent.Parent.VFXLib)
+
+local CharacterCard = {}
+
+local player = Players.LocalPlayer
+local DARK = Color3.fromRGB(14, 12, 20)
+local GOLD = Color3.fromRGB(255, 205, 90)
+
+local gui, card, portrait, viewport, standLabel, pips, hpFill, hpText, scale
+local shownAct
+
+local function corner(p, r)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, r)
+	c.Parent = p
+end
+
+local function stroke(p, color, t)
+	local s = Instance.new("UIStroke")
+	s.Color = color
+	s.Thickness = t
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	s.Parent = p
+	return s
+end
+
+local function label(parent, props)
+	local l = Instance.new("TextLabel")
+	l.BackgroundTransparency = 1
+	l.TextXAlignment = Enum.TextXAlignment.Left
+	l.TextStrokeTransparency = 0.4
+	for k, v in pairs(props) do
+		l[k] = v
+	end
+	l.Parent = parent
+	return l
+end
+
+-- Live 3D portrait of your own avatar (head and shoulders).
+local function refreshViewport(character)
+	if not viewport then
+		return
+	end
+	viewport:ClearAllChildren()
+	if not character then
+		return
+	end
+	local head = character:WaitForChild("Head", 5)
+	if not head then
+		return
+	end
+	local wasArchivable = character.Archivable
+	character.Archivable = true
+	local ok, clone = pcall(function()
+		return character:Clone()
+	end)
+	character.Archivable = wasArchivable
+	if not ok or not clone then
+		return
+	end
+	for _, d in ipairs(clone:GetDescendants()) do
+		if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") or d:IsA("ForceField") then
+			d:Destroy()
+		elseif d:IsA("BasePart") then
+			d.Anchored = true
+		end
+	end
+	local humanoid = clone:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	end
+	local world = Instance.new("WorldModel")
+	world.Parent = viewport
+	clone.Parent = world
+	local cloneHead = clone:FindFirstChild("Head")
+	local camera = Instance.new("Camera")
+	camera.FieldOfView = 32
+	camera.Parent = viewport
+	viewport.CurrentCamera = camera
+	if cloneHead then
+		local h = cloneHead.CFrame
+		camera.CFrame = CFrame.lookAt((h * CFrame.new(-0.9, 0.1, -3.6)).Position, h.Position - Vector3.new(0, 0.35, 0))
+	end
+end
+
+local function buildPips(parent)
+	pips = {}
+	local row = Instance.new("Frame")
+	row.BackgroundTransparency = 1
+	row.Position = UDim2.fromOffset(98, 52)
+	row.Size = UDim2.fromOffset(120, 12)
+	row.Parent = parent
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.Padding = UDim.new(0, 5)
+	layout.Parent = row
+	for i = 1, 4 do
+		local pip = Instance.new("Frame")
+		pip.Size = UDim2.fromOffset(24, 8)
+		pip.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+		pip.BorderSizePixel = 0
+		pip.Parent = row
+		corner(pip, 4)
+		pips[i] = pip
+	end
+end
+
+function CharacterCard.init()
+	local config = TuskConfig.Character
+	gui = Instance.new("ScreenGui")
+	gui.Name = "CharacterCard"
+	gui.ResetOnSpawn = false
+	gui.DisplayOrder = 3
+	gui.Parent = player:WaitForChild("PlayerGui")
+
+	card = Instance.new("Frame")
+	card.Name = "Card"
+	card.Position = UDim2.fromOffset(12, 10)
+	card.Size = UDim2.fromOffset(290, 96)
+	card.BackgroundColor3 = DARK
+	card.BackgroundTransparency = 0.12
+	card.Parent = gui
+	corner(card, 12)
+	stroke(card, GOLD, 2)
+	scale = Instance.new("UIScale")
+	scale.Parent = card
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new(Color3.fromRGB(70, 40, 110), Color3.fromRGB(20, 18, 30))
+	gradient.Rotation = 20
+	gradient.Parent = card
+
+	-- Portrait frame.
+	local frame = Instance.new("Frame")
+	frame.Position = UDim2.fromOffset(8, 8)
+	frame.Size = UDim2.fromOffset(80, 80)
+	frame.BackgroundColor3 = Color3.fromRGB(240, 200, 120)
+	frame.ClipsDescendants = true
+	frame.Parent = card
+	corner(frame, 10)
+	stroke(frame, Color3.fromRGB(30, 20, 10), 2)
+	local frameGradient = Instance.new("UIGradient")
+	frameGradient.Color = ColorSequence.new(Color3.fromRGB(255, 220, 140), Color3.fromRGB(190, 110, 200))
+	frameGradient.Rotation = 90
+	frameGradient.Parent = frame
+	if config.PortraitImage ~= "" then
+		portrait = Instance.new("ImageLabel")
+		portrait.BackgroundTransparency = 1
+		portrait.Size = UDim2.fromScale(1, 1)
+		portrait.Image = config.PortraitImage
+		portrait.ScaleType = Enum.ScaleType.Crop
+		portrait.Parent = frame
+	else
+		viewport = Instance.new("ViewportFrame")
+		viewport.BackgroundTransparency = 1
+		viewport.Size = UDim2.fromScale(1, 1)
+		viewport.Ambient = Color3.fromRGB(170, 160, 150)
+		viewport.LightColor = Color3.fromRGB(255, 240, 220)
+		viewport.LightDirection = Vector3.new(-1, -1, -1)
+		viewport.Parent = frame
+	end
+
+	label(card, {
+		Position = UDim2.fromOffset(98, 6),
+		Size = UDim2.new(1, -106, 0, 28),
+		Font = Enum.Font.Bangers,
+		TextSize = 28,
+		TextColor3 = GOLD,
+		Text = config.Name,
+	})
+	standLabel = label(card, {
+		Position = UDim2.fromOffset(98, 33),
+		Size = UDim2.new(1, -106, 0, 16),
+		Font = Enum.Font.GothamBlack,
+		TextSize = 12,
+		TextColor3 = Color3.fromRGB(200, 220, 255),
+		Text = config.Title,
+	})
+	buildPips(card)
+
+	local hp = Instance.new("Frame")
+	hp.Position = UDim2.fromOffset(98, 70)
+	hp.Size = UDim2.new(1, -108, 0, 14)
+	hp.BackgroundColor3 = Color3.fromRGB(40, 20, 25)
+	hp.Parent = card
+	corner(hp, 5)
+	hpFill = Instance.new("Frame")
+	hpFill.BorderSizePixel = 0
+	hpFill.BackgroundColor3 = Color3.fromRGB(90, 220, 120)
+	hpFill.Size = UDim2.fromScale(1, 1)
+	hpFill.Parent = hp
+	corner(hpFill, 5)
+	hpText = label(hp, {
+		Size = UDim2.fromScale(1, 1),
+		Font = Enum.Font.GothamBold,
+		TextSize = 11,
+		TextColor3 = Color3.new(1, 1, 1),
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Text = "",
+		ZIndex = 2,
+	})
+
+	local function onCharacter(character)
+		task.defer(refreshViewport, character)
+	end
+	game:GetService("RunService").RenderStepped:Connect(CharacterCard.step)
+	player.CharacterAdded:Connect(onCharacter)
+	player.CharacterAppearanceLoaded:Connect(onCharacter)
+	if player.Character then
+		onCharacter(player.Character)
+	end
+end
+
+function CharacterCard.pop(color)
+	VFXLib.animate(0.5, function(a)
+		scale.Scale = 1 + 0.12 * math.sin(a * math.pi)
+		card.BackgroundColor3 = color:Lerp(DARK, a)
+	end, function()
+		scale.Scale = 1
+		card.BackgroundColor3 = DARK
+	end)
+end
+
+function CharacterCard.step()
+	if not card then
+		return
+	end
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		local frac = math.clamp(humanoid.Health / math.max(humanoid.MaxHealth, 1), 0, 1)
+		hpFill.Size = UDim2.fromScale(frac, 1)
+		hpFill.BackgroundColor3 = Color3.fromRGB(220, 70, 60):Lerp(Color3.fromRGB(90, 220, 120), frac)
+		hpText.Text = math.ceil(humanoid.Health) .. " / " .. math.floor(humanoid.MaxHealth)
+	end
+	local act = character and character:GetAttribute("TuskAct")
+	if act ~= shownAct then
+		local evolved = shownAct ~= nil and act ~= nil and act > shownAct
+		shownAct = act
+		local info = act and Registry.get(act)
+		standLabel.Text = info and ("STAND  ·  " .. info.Name) or TuskConfig.Character.Title
+		standLabel.TextColor3 = info and info.Theme.Primary or Color3.fromRGB(200, 220, 255)
+		for i, pip in ipairs(pips) do
+			local on = act ~= nil and i <= act
+			local theme = Registry.get(i) and Registry.get(i).Theme.Primary or GOLD
+			pip.BackgroundColor3 = on and theme or Color3.fromRGB(60, 60, 80)
+		end
+		if evolved and info then
+			CharacterCard.pop(info.Theme.Primary)
+		end
+	end
+end
+
+return CharacterCard
+]=] },
 	{ Service = "StarterPlayerScripts", Path = "SpinClient/UI/SpinMeter", Class = "ModuleScript", Source = [=[
 --[[
 	SpinMeter  (StarterPlayerScripts.SpinClient.UI.SpinMeter)
@@ -7159,6 +9626,7 @@ return SpinMeter
 ]]
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
@@ -7472,7 +9940,7 @@ function TuskUI.init(cb)
 	corner(awakenFill, 3)
 
 	-- MOVESET button (opens the Act menu), under the VFX quality button.
-	if TuskConfig.Progression.ShowSelectionMenu then
+	if TuskUI.menuAllowed() then
 		local moveset = Instance.new("TextButton")
 		moveset.AnchorPoint = Vector2.new(1, 0)
 		moveset.Position = UDim2.new(1, -12, 0, 46)
@@ -7509,8 +9977,46 @@ function TuskUI.init(cb)
 	end)
 end
 
+-- Awaken mode: Acts come from ultimates, so the menu is only a Studio test tool.
+function TuskUI.menuAllowed()
+	local p = TuskConfig.Progression
+	if not p.ShowSelectionMenu then
+		return false
+	end
+	if p.Mode == "Awaken" then
+		return RunService:IsStudio() and p.StudioMenu == true
+	end
+	return true
+end
+
+local function showBanner(title, subtitle, color)
+	banner.Text = title
+	banner.TextColor3 = color or colors.Cyan
+	bannerSub.Text = subtitle or ""
+	animateJob("banner", 2, function(a)
+		local slide = a < 0.12 and (1 - a / 0.12) or 0
+		banner.Position = UDim2.new(0.5, slide * 200, 0.25, 0)
+		local fade = a < 0.75 and 0 or (a - 0.75) / 0.25
+		banner.TextTransparency = fade
+		banner.TextStrokeTransparency = math.max(0.2, fade)
+		bannerSub.TextTransparency = fade
+		bannerSub.TextStrokeTransparency = math.max(0.4, fade)
+	end)
+end
+
+-- Ultimate awakened Tusk to the next Act.
+function TuskUI.onEvolve(data)
+	if data.Character ~= player.Character then
+		return
+	end
+	local info = Registry.get(data.To)
+	if info then
+		showBanner(info.Name .. "!", "AWAKENED  ·  " .. info.Tagline:upper(), info.Theme.Primary)
+	end
+end
+
 function TuskUI.toggleMenu()
-	if menu then
+	if menu and TuskUI.menuAllowed() then
 		menu.Visible = not menu.Visible
 	end
 end
@@ -7593,6 +10099,7 @@ local DENY_TEXT = {
 	SneakCooldown = "SNEAK ON COOLDOWN",
 	SneakAttackCooldown = "SNEAK ATTACK ON COOLDOWN",
 	NoTarget = "NO TARGET IN FRONT",
+	Blocked = "NO ROOM TO MOVE THERE",
 }
 
 function TuskUI.onState(data)
@@ -8009,8 +10516,11 @@ return VFXLib
 	  * NPC speech bubbles (from NPCService "NPCSay"), shown within 60 studs
 	  * drifting desert dust around the camera when the SBRMap is present
 	    (particle count follows VFXQuality)
+	  * map life (client-only, no server cost): spinning windmills (tag
+	    "SpinWindmill"), circling vultures, rolling tumbleweeds, dust devils
 ]]
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -8102,6 +10612,119 @@ local function startDust()
 	end)
 end
 
+---------------------------------------------------------------------------
+-- Map life
+---------------------------------------------------------------------------
+local function startLife(map)
+	local origin = map:GetAttribute("Origin") or Vector3.new()
+	local quality = VFXQuality.get()
+
+	-- Vultures circling high over the desert.
+	local vultures = {}
+	for i = 1, (quality.Particles >= 0.6 and 5 or 2) do
+		local bird = Instance.new("Model")
+		bird.Name = "Vulture"
+		local body = VFXLib.part({ Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(35, 30, 30), Size = Vector3.new(0.8, 0.6, 2) })
+		body.Parent = bird
+		for _, side in ipairs({ -1, 1 }) do
+			local wing = VFXLib.part({ Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(25, 22, 22), Size = Vector3.new(3.2, 0.12, 1.2) })
+			wing.Name = side < 0 and "WingL" or "WingR"
+			wing.Parent = bird
+		end
+		bird.Parent = VFXLib.Folder
+		vultures[i] = { Model = bird, Center = origin + Vector3.new(math.random(-200, 200), 0, math.random(-200, 200)), Radius = math.random(30, 70), Height = math.random(90, 130), Speed = 0.15 + math.random() * 0.1, Phase = math.random() * 6 }
+	end
+
+	-- Tumbleweeds rolling with the wind near the camera.
+	local weeds = {}
+	local function newWeed()
+		local camera = workspace.CurrentCamera
+		local base = camera and camera.CFrame.Position or origin
+		local size = 1.6 + math.random() * 1.4
+		local weed = VFXLib.part({ Shape = Enum.PartType.Ball, Material = Enum.Material.Grass, Color = Color3.fromRGB(150, 120, 75), Size = Vector3.new(size, size, size), Transparency = 0.15 })
+		return { Part = weed, Pos = Vector3.new(base.X - 90, 0, base.Z + math.random(-70, 70)), Size = size, Speed = 10 + math.random() * 8, Spin = 0, Life = 0 }
+	end
+	for i = 1, (quality.Particles >= 0.6 and 6 or 2) do
+		weeds[i] = newWeed()
+		weeds[i].Pos = weeds[i].Pos + Vector3.new(math.random(0, 160), 0, 0)
+	end
+
+	-- Dust devils: a swirling smoke column drifting slowly.
+	local devils = {}
+	if quality.Particles >= 0.6 then
+		for i = 1, 2 do
+			local carrier = VFXLib.part({ Transparency = 1, Size = Vector3.new(4, 18, 4) })
+			local e = Instance.new("ParticleEmitter")
+			e.Texture = VFXLib.Textures.Smoke
+			e.Color = ColorSequence.new(Color3.fromRGB(215, 190, 145))
+			e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 5) })
+			e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.7), NumberSequenceKeypoint.new(1, 1) })
+			e.Lifetime = NumberRange.new(2, 3)
+			e.Speed = NumberRange.new(3, 6)
+			e.RotSpeed = NumberRange.new(200, 300)
+			e.Rate = 14
+			e.EmissionDirection = Enum.NormalId.Top
+			e.Shape = Enum.ParticleEmitterShape.Cylinder
+			e.Parent = carrier
+			devils[i] = { Part = carrier, Pos = origin + Vector3.new(math.random(-350, 350), 9, math.random(-350, 350)), Dir = Vector3.new(math.random() - 0.5, 0, math.random() - 0.5).Unit }
+		end
+	end
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { workspace.Terrain }
+
+	RunService.RenderStepped:Connect(function(dt)
+		local t = os.clock()
+		-- Windmills
+		for _, hub in ipairs(CollectionService:GetTagged("SpinWindmill")) do
+			if hub:IsA("BasePart") and hub:IsDescendantOf(workspace) then
+				hub.CFrame = hub.CFrame * CFrame.Angles(0, 0, dt * 1.4)
+			end
+		end
+		-- Vultures
+		for _, v in ipairs(vultures) do
+			local a = t * v.Speed + v.Phase
+			local pos = v.Center + Vector3.new(math.cos(a) * v.Radius, v.Height + math.sin(t * 0.7 + v.Phase) * 4, math.sin(a) * v.Radius)
+			local ahead = v.Center + Vector3.new(math.cos(a + 0.05) * v.Radius, v.Height, math.sin(a + 0.05) * v.Radius)
+			local cf = CFrame.lookAt(pos, ahead) * CFrame.Angles(0, 0, 0.35)
+			local flap = math.sin(t * 3 + v.Phase) * 0.25
+			local parts = v.Model:GetChildren()
+			for _, p in ipairs(parts) do
+				if p.Name == "WingL" then
+					p.CFrame = cf * CFrame.new(-1.7, 0, 0) * CFrame.Angles(0, 0, flap)
+				elseif p.Name == "WingR" then
+					p.CFrame = cf * CFrame.new(1.7, 0, 0) * CFrame.Angles(0, 0, -flap)
+				else
+					p.CFrame = cf
+				end
+			end
+		end
+		-- Tumbleweeds
+		for i, w in ipairs(weeds) do
+			w.Life = w.Life + dt
+			w.Pos = w.Pos + Vector3.new(w.Speed * dt, 0, math.sin(t + i) * dt * 2)
+			local ground = workspace:Raycast(w.Pos + Vector3.new(0, 60, 0), Vector3.new(0, -140, 0), params)
+			local y = (ground and ground.Position.Y or 0) + w.Size / 2 + math.abs(math.sin(w.Life * 3)) * 1.2
+			w.Spin = w.Spin + dt * w.Speed / w.Size
+			w.Part.CFrame = CFrame.new(w.Pos.X, y, w.Pos.Z) * CFrame.Angles(0, 0, -w.Spin)
+			local camera = workspace.CurrentCamera
+			if w.Life > 22 or (camera and (camera.CFrame.Position - w.Pos).Magnitude > 220) then
+				w.Part:Destroy()
+				weeds[i] = newWeed()
+			end
+		end
+		-- Dust devils
+		for _, d in ipairs(devils) do
+			d.Pos = d.Pos + d.Dir * dt * 4
+			if (d.Pos - origin).Magnitude > 450 then
+				d.Dir = -d.Dir
+			end
+			d.Part.CFrame = CFrame.new(d.Pos)
+		end
+	end)
+end
+
 function WorldClient.init()
 	Net.get("WorldFX").OnClientEvent:Connect(function(name, data)
 		if name == "NPCSay" and typeof(data) == "table" then
@@ -8109,8 +10732,10 @@ function WorldClient.init()
 		end
 	end)
 	task.spawn(function()
-		if workspace:WaitForChild("SBRMap", 15) then
+		local map = workspace:WaitForChild("SBRMap", 60)
+		if map then
 			startDust()
+			startLife(map)
 		end
 	end)
 end
@@ -8649,6 +11274,526 @@ local function buildDesert()
 	end
 end
 
+---------------------------------------------------------------------------
+-- MAP UPGRADE: props
+---------------------------------------------------------------------------
+local CollectionService = game:GetService("CollectionService")
+
+local function model(parent, name)
+	local m = Instance.new("Model")
+	m.Name = name
+	m.Parent = parent
+	return m
+end
+
+local function ellipsoid(parent, name, size, cf, color, material)
+	local p = block(parent, name, size, cf, color, material or Enum.Material.SmoothPlastic)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = p
+	return p
+end
+
+local function small(p)
+	p.CastShadow = false
+	return p
+end
+
+local HORSE_COATS = {
+	Color3.fromRGB(110, 70, 40), Color3.fromRGB(60, 40, 30), Color3.fromRGB(200, 190, 175),
+	Color3.fromRGB(150, 100, 60), Color3.fromRGB(35, 30, 30), Color3.fromRGB(170, 120, 80),
+}
+
+-- A standing horse (about 6 studs tall) with saddle and blanket.
+local function horse(parent, cf, coat)
+	local m = model(parent, "Horse")
+	local mane = Color3.fromRGB(40, 28, 20)
+	local function at(offset)
+		return cf * offset
+	end
+	ellipsoid(m, "Body", Vector3.new(2.4, 2.4, 5), at(CFrame.new(0, 4, 0)), coat)
+	ellipsoid(m, "Chest", Vector3.new(2.2, 2.4, 2.2), at(CFrame.new(0, 4.1, -1.9)), coat)
+	block(m, "Neck", Vector3.new(1.1, 2.8, 1.4), at(CFrame.new(0, 5.6, -2.7) * CFrame.Angles(-0.55, 0, 0)), coat)
+	ellipsoid(m, "Head", Vector3.new(1.1, 1.2, 2.4), at(CFrame.new(0, 6.6, -3.9) * CFrame.Angles(0.5, 0, 0)), coat)
+	ellipsoid(m, "Muzzle", Vector3.new(0.9, 0.8, 0.9), at(CFrame.new(0, 6.0, -4.8)), coat:Lerp(Color3.new(0, 0, 0), 0.25))
+	for _, side in ipairs({ -1, 1 }) do
+		small(block(m, "Ear", Vector3.new(0.2, 0.5, 0.2), at(CFrame.new(side * 0.3, 7.5, -3.4)), coat))
+		small(ellipsoid(m, "Eye", Vector3.new(0.15, 0.2, 0.2), at(CFrame.new(side * 0.52, 6.9, -4.1)), Color3.new(0.05, 0.05, 0.05)))
+	end
+	small(block(m, "Mane", Vector3.new(0.3, 2.8, 0.5), at(CFrame.new(0, 6.0, -2.4) * CFrame.Angles(-0.55, 0, 0)), mane))
+	ellipsoid(m, "Tail", Vector3.new(0.5, 2.6, 0.6), at(CFrame.new(0, 3.6, 2.7) * CFrame.Angles(0.35, 0, 0)), mane)
+	for _, x in ipairs({ -0.7, 0.7 }) do
+		for _, z in ipairs({ -1.8, 1.8 }) do
+			local leg = block(m, "Leg", Vector3.new(0.5, 3.2, 0.55), at(CFrame.new(x, 1.6, z)), coat)
+			small(block(m, "Hoof", Vector3.new(0.6, 0.35, 0.65), at(CFrame.new(x, 0.18, z)), Color3.fromRGB(30, 25, 20)))
+			leg.CastShadow = true
+		end
+	end
+	block(m, "Saddle", Vector3.new(1.6, 0.4, 1.8), at(CFrame.new(0, 5.3, -0.3)), Color3.fromRGB(90, 50, 25), Enum.Material.Leather)
+	block(m, "Blanket", Vector3.new(2.6, 0.15, 2.2), at(CFrame.new(0, 5.15, -0.3)), Color3.fromRGB(170, 40, 40), Enum.Material.Fabric)
+	return m
+end
+
+local function hayBale(parent, x, z, yaw)
+	local p = block(parent, "HayBale", Vector3.new(3, 2.4, 2.4), CFrame.new(x, 1.2, z) * CFrame.Angles(0, yaw or 0, 0), Color3.fromRGB(214, 180, 90), Enum.Material.Grass, { Shape = Enum.PartType.Cylinder })
+	return p
+end
+
+local function stables(parent, x, z, yaw)
+	local m = model(parent, "Stables")
+	local base = CFrame.new(x, 0, z) * CFrame.Angles(0, yaw, 0)
+	local function at(offset)
+		return base * offset
+	end
+	block(m, "Floor", Vector3.new(30, 0.4, 12), at(CFrame.new(0, 0.2, 0)), C.WoodLight, Enum.Material.WoodPlanks)
+	block(m, "BackWall", Vector3.new(30, 9, 0.6), at(CFrame.new(0, 4.5, 6)), C.Wood, Enum.Material.WoodPlanks)
+	block(m, "Roof", Vector3.new(32, 0.6, 14), at(CFrame.new(0, 9.4, 0) * CFrame.Angles(0.18, 0, 0)), C.Roof, Enum.Material.WoodPlanks)
+	for i = 0, 4 do
+		local px = -15 + i * 7.5
+		block(m, "Post", Vector3.new(0.6, 9, 0.6), at(CFrame.new(px, 4.5, -6)), C.WoodDark, Enum.Material.Wood)
+		block(m, "Divider", Vector3.new(0.4, 4, 10), at(CFrame.new(px, 2.2, 0.5)), C.Wood, Enum.Material.WoodPlanks)
+	end
+	local sign1 = block(m, "Sign", Vector3.new(10, 2, 0.3), at(CFrame.new(0, 10.4, -6.4)), C.WoodDark, Enum.Material.Wood)
+	sign(sign1, Enum.NormalId.Front, "RACE STABLES", Color3.fromRGB(240, 220, 170), nil, Enum.Font.Fondamento)
+	for i = 0, 3 do
+		horse(m, at(CFrame.new(-11.25 + i * 7.5, 0.4, 0.5) * CFrame.Angles(0, math.pi, 0)), HORSE_COATS[i % #HORSE_COATS + 1])
+	end
+	local hay = at(CFrame.new(18, 0, -2))
+	hayBale(m, hay.X, hay.Z, 0.3)
+	return m
+end
+
+-- Rope between two points with small hanging pieces (pennants or light bulbs).
+local function hangingLine(parent, a, b, count, kind)
+	local m = model(parent, kind == "lights" and "StringLights" or "Pennants")
+	local sag = (b - a).Magnitude * 0.06
+	local function pointAt(t)
+		return a:Lerp(b, t) - Vector3.new(0, math.sin(t * math.pi) * sag, 0)
+	end
+	local anchorA = small(block(m, "RopeA", Vector3.new(0.2, 0.2, 0.2), CFrame.new(a), Color3.new(0, 0, 0), nil, { Transparency = 1, CanCollide = false }))
+	local anchorB = small(block(m, "RopeB", Vector3.new(0.2, 0.2, 0.2), CFrame.new(b), Color3.new(0, 0, 0), nil, { Transparency = 1, CanCollide = false }))
+	-- block() already offsets by origin; the attachments sit at the parts' centres.
+	local a0 = Instance.new("Attachment")
+	a0.Parent = anchorA
+	local a1 = Instance.new("Attachment")
+	a1.Parent = anchorB
+	local rope = Instance.new("Beam")
+	rope.Attachment0 = a0
+	rope.Attachment1 = a1
+	rope.Width0 = 0.08
+	rope.Width1 = 0.08
+	rope.Color = ColorSequence.new(Color3.fromRGB(50, 40, 30))
+	rope.CurveSize0 = -sag * 1.3
+	rope.CurveSize1 = sag * 1.3
+	rope.Parent = anchorA
+	for i = 1, count do
+		local t = i / (count + 1)
+		local p = pointAt(t)
+		if kind == "lights" then
+			local bulb = small(block(m, "Bulb", Vector3.new(0.45, 0.6, 0.45), CFrame.new(p - Vector3.new(0, 0.35, 0)), Color3.fromRGB(255, 215, 140), Enum.Material.Neon, { Shape = Enum.PartType.Ball, CanCollide = false }))
+			if i % 3 == 0 then
+				local light = Instance.new("PointLight")
+				light.Range = 10
+				light.Brightness = 0.6
+				light.Color = Color3.fromRGB(255, 200, 130)
+				light.Parent = bulb
+			end
+		else
+			local palette = FLAG_PALETTES[(i % #FLAG_PALETTES) + 1]
+			local dir = (b - a).Unit
+			small(block(m, "Pennant", Vector3.new(0.05, 1.2, 1.2), CFrame.lookAt(p, p + dir) * CFrame.new(0, -0.6, 0) * CFrame.Angles(math.pi / 4, 0, 0), palette[1], Enum.Material.Fabric, { CanCollide = false }))
+		end
+	end
+	return m
+end
+
+local function palm(parent, x, z)
+	local m = model(parent, "PalmTree")
+	local lean = rng:NextNumber(-0.25, 0.25)
+	local y, px = 0, x
+	local segments = 6
+	for i = 1, segments do
+		local h = 2.6
+		cylinder(m, "Trunk", h, 1.3 - i * 0.08, CFrame.new(px, y + h / 2, z) * CFrame.Angles(0, 0, math.pi / 2 + lean), Color3.fromRGB(130, 100, 70), Enum.Material.Wood)
+		y = y + h * 0.97
+		px = px - math.sin(lean) * h
+	end
+	for i = 1, 8 do
+		local angle = i / 8 * math.pi * 2
+		local leaf = small(block(m, "Leaf", Vector3.new(1.2, 0.15, 7), CFrame.new(px, y + 0.4, z) * CFrame.Angles(0, angle, 0) * CFrame.Angles(0.45, 0, 0) * CFrame.new(0, 0, -3.3), Color3.fromRGB(70, 130, 50), Enum.Material.Grass))
+		leaf.CastShadow = true
+	end
+	for i = 1, 3 do
+		small(block(m, "Coconut", Vector3.new(0.8, 0.8, 0.8), CFrame.new(px + math.cos(i * 2) * 0.6, y - 0.3, z + math.sin(i * 2) * 0.6), Color3.fromRGB(90, 60, 30), Enum.Material.Wood, { Shape = Enum.PartType.Ball }))
+	end
+end
+
+local function deadTree(parent, x, z)
+	local m = model(parent, "DeadTree")
+	local h = rng:NextNumber(6, 11)
+	local bark = Color3.fromRGB(95, 75, 60)
+	cylinder(m, "Trunk", h, 0.9, upright(x, h / 2, z), bark, Enum.Material.Wood)
+	for i = 1, 4 do
+		local y = h * rng:NextNumber(0.45, 0.95)
+		local yaw = rng:NextNumber(0, math.pi * 2)
+		local len = rng:NextNumber(2.5, 4.5)
+		small(block(m, "Branch", Vector3.new(0.35, 0.35, len), CFrame.new(x, y, z) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(0.7, 0, 0) * CFrame.new(0, 0, -len / 2), bark, Enum.Material.Wood))
+	end
+end
+
+local function skull(parent, x, z)
+	local m = model(parent, "CattleSkull")
+	local bone = Color3.fromRGB(235, 228, 210)
+	local yaw = rng:NextNumber(0, math.pi * 2)
+	local base = CFrame.new(x, 0.4, z) * CFrame.Angles(0, yaw, 0)
+	small(block(m, "Skull", Vector3.new(1, 0.7, 1.6), base, bone))
+	small(block(m, "HornL", Vector3.new(1.6, 0.25, 0.25), base * CFrame.new(-1, 0.2, -0.3) * CFrame.Angles(0, 0, 0.4), bone))
+	small(block(m, "HornR", Vector3.new(1.6, 0.25, 0.25), base * CFrame.new(1, 0.2, -0.3) * CFrame.Angles(0, 0, -0.4), bone))
+end
+
+local function waterTower(parent, x, z)
+	local m = model(parent, "WaterTower")
+	for _, dx in ipairs({ -3, 3 }) do
+		for _, dz in ipairs({ -3, 3 }) do
+			block(m, "Leg", Vector3.new(0.8, 18, 0.8), CFrame.new(x + dx, 9, z + dz) * CFrame.Angles(dz * 0.015, 0, -dx * 0.015), C.WoodDark, Enum.Material.Wood)
+		end
+	end
+	block(m, "Brace", Vector3.new(8.5, 0.4, 0.4), CFrame.new(x, 8, z - 3), C.WoodDark, Enum.Material.Wood)
+	block(m, "Brace", Vector3.new(8.5, 0.4, 0.4), CFrame.new(x, 8, z + 3), C.WoodDark, Enum.Material.Wood)
+	cylinder(m, "Tank", 9, 10, upright(x, 22.5, z), C.Wood, Enum.Material.WoodPlanks)
+	for _, y in ipairs({ 19.5, 25.5 }) do
+		cylinder(m, "Band", 0.4, 10.2, upright(x, y, z), Color3.fromRGB(50, 50, 55), Enum.Material.Metal)
+	end
+	block(m, "Roof", Vector3.new(11, 4, 11), CFrame.new(x, 28.5, z), C.Roof, Enum.Material.WoodPlanks, { Shape = Enum.PartType.Ball })
+	small(block(m, "Spout", Vector3.new(0.6, 0.6, 5), CFrame.new(x, 18.5, z - 6) * CFrame.Angles(0.4, 0, 0), Color3.fromRGB(60, 60, 65), Enum.Material.Metal))
+end
+
+-- Windmill: the rotor hub is tagged "SpinWindmill"; clients spin it.
+local function windmill(parent, x, z)
+	local m = model(parent, "Windmill")
+	local h = 24
+	for _, d in ipairs({ { -2, -2 }, { 2, -2 }, { -2, 2 }, { 2, 2 } }) do
+		block(m, "Leg", Vector3.new(0.5, h, 0.5), CFrame.new(x + d[1] * 0.75, h / 2, z + d[2] * 0.75) * CFrame.Angles(d[2] * 0.06, 0, -d[1] * 0.06), Color3.fromRGB(90, 90, 95), Enum.Material.Metal)
+	end
+	for y = 4, h - 2, 5 do
+		block(m, "Rung", Vector3.new(3.4 - y * 0.06, 0.3, 0.3), CFrame.new(x, y, z - 1.6 + y * 0.03), Color3.fromRGB(90, 90, 95), Enum.Material.Metal)
+	end
+	local hub = block(m, "Hub", Vector3.new(1.4, 1.4, 1.4), CFrame.new(x, h + 1, z - 1.5), Color3.fromRGB(70, 70, 75), Enum.Material.Metal, { Shape = Enum.PartType.Ball })
+	CollectionService:AddTag(hub, "SpinWindmill")
+	for i = 1, 12 do
+		local blade = block(m, "Blade", Vector3.new(0.9, 4.5, 0.1), CFrame.new(), Color3.fromRGB(200, 195, 185), Enum.Material.Metal)
+		-- hub.CFrame is already in world space, so set the blade directly.
+		blade.CFrame = hub.CFrame * CFrame.Angles(0, 0, i / 12 * math.pi * 2) * CFrame.new(0, 3, -0.3) * CFrame.Angles(0, 0.35, 0)
+		blade.Anchored = false
+		blade.CastShadow = false
+		local w = Instance.new("WeldConstraint")
+		w.Part0 = hub
+		w.Part1 = blade
+		w.Parent = blade
+	end
+	local vane = block(m, "Vane", Vector3.new(0.1, 3, 5), CFrame.new(x, h + 1, z + 2), Color3.fromRGB(200, 60, 50), Enum.Material.Metal)
+	vane.CastShadow = false
+end
+
+local function telegraphLine(parent, points)
+	local m = model(parent, "TelegraphLine")
+	local tops = {}
+	for i, p in ipairs(points) do
+		cylinder(m, "Pole", 16, 0.6, upright(p.X, 8, p.Z), C.WoodDark, Enum.Material.Wood)
+		local bar = block(m, "Crossbar", Vector3.new(4, 0.4, 0.4), CFrame.new(p.X, 15, p.Z), C.WoodDark, Enum.Material.Wood)
+		tops[i] = bar
+	end
+	for i = 1, #tops - 1 do
+		for _, side in ipairs({ -1.6, 1.6 }) do
+			local a0 = Instance.new("Attachment")
+			a0.Position = Vector3.new(side, 0.3, 0)
+			a0.Parent = tops[i]
+			local a1 = Instance.new("Attachment")
+			a1.Position = Vector3.new(side, 0.3, 0)
+			a1.Parent = tops[i + 1]
+			local wire = Instance.new("Beam")
+			wire.Attachment0 = a0
+			wire.Attachment1 = a1
+			wire.Width0 = 0.06
+			wire.Width1 = 0.06
+			wire.Color = ColorSequence.new(Color3.fromRGB(30, 30, 30))
+			wire.CurveSize0 = -1.5
+			wire.CurveSize1 = 1.5
+			wire.Parent = tops[i]
+		end
+	end
+end
+
+local function railway(parent, x, z0, z1)
+	local m = model(parent, "Railway")
+	local length = z1 - z0
+	for _, dx in ipairs({ -2.4, 2.4 }) do
+		local segments = math.ceil(length / 200)
+		for i = 0, segments - 1 do
+			local a = z0 + i * 200
+			local b = math.min(z1, a + 200)
+			block(m, "Rail", Vector3.new(0.3, 0.4, b - a), CFrame.new(x + dx, 0.6, (a + b) / 2), Color3.fromRGB(80, 75, 70), Enum.Material.Metal)
+		end
+	end
+	for z = z0, z1, 4 do
+		small(block(m, "Sleeper", Vector3.new(7, 0.35, 1), CFrame.new(x, 0.25, z), Color3.fromRGB(85, 60, 40), Enum.Material.Wood))
+	end
+end
+
+local function locomotive(parent, x, z)
+	local m = model(parent, "SteamTrain")
+	local black = Color3.fromRGB(30, 30, 34)
+	local red = Color3.fromRGB(150, 30, 30)
+	local function at(dz, y)
+		return CFrame.new(x, y, z + dz)
+	end
+	block(m, "Frame", Vector3.new(6, 1, 26), at(0, 2.2), black, Enum.Material.Metal)
+	block(m, "Boiler", Vector3.new(16, 5, 5), at(-4, 5.2) * CFrame.Angles(0, math.pi / 2, 0), black, Enum.Material.Metal, { Shape = Enum.PartType.Cylinder })
+	block(m, "SmokeBox", Vector3.new(1, 5.4, 5.4), at(-12.2, 5.2) * CFrame.Angles(0, math.pi / 2, 0), Color3.fromRGB(50, 50, 55), Enum.Material.Metal, { Shape = Enum.PartType.Cylinder })
+	local stack = cylinder(m, "Smokestack", 4, 1.8, CFrame.new(x, 9.4, z - 10.5) * CFrame.Angles(0, 0, math.pi / 2), black, Enum.Material.Metal)
+	local smoke = Instance.new("Smoke")
+	smoke.Color = Color3.fromRGB(200, 200, 200)
+	smoke.Opacity = 0.15
+	smoke.RiseVelocity = 6
+	smoke.Size = 3
+	smoke.Parent = stack
+	block(m, "Dome", Vector3.new(2, 2, 2), at(-4, 8), Color3.fromRGB(190, 150, 60), Enum.Material.Metal, { Shape = Enum.PartType.Ball })
+	block(m, "Cab", Vector3.new(6, 6, 6), at(7, 6), red, Enum.Material.WoodPlanks)
+	block(m, "CabRoof", Vector3.new(7, 0.5, 7), at(7, 9.2), black, Enum.Material.Metal)
+	windowRow(m, at(7, 6.5) * CFrame.new(0, 0, 0) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.new(0, 0, -3.05), 1, 0, Vector3.new(2.5, 2, 0.2))
+	block(m, "Cowcatcher", Vector3.new(5.5, 2, 3), at(-14, 1.6) * CFrame.Angles(0.5, 0, 0), red, Enum.Material.Metal)
+	local lamp = small(block(m, "Headlamp", Vector3.new(1.2, 1.2, 1), at(-12.9, 7), Color3.fromRGB(255, 240, 190), Enum.Material.Neon))
+	local light = Instance.new("SpotLight")
+	light.Face = Enum.NormalId.Front
+	light.Range = 40
+	light.Brightness = 2
+	light.Parent = lamp
+	for _, dz in ipairs({ -9, -5, -1, 3 }) do
+		for _, dx in ipairs({ -3.1, 3.1 }) do
+			local d = dz > -6 and 4 or 2.6
+			block(m, "Wheel", Vector3.new(0.5, d, d), at(dz, d / 2 + 0.6) * CFrame.new(dx, 0, 0), red, Enum.Material.Metal, { Shape = Enum.PartType.Cylinder })
+		end
+	end
+	-- Two passenger coaches.
+	for i = 1, 2 do
+		local cz = 13 + i * 18
+		block(m, "Coach", Vector3.new(6, 6, 16), at(cz, 5), Color3.fromRGB(110, 60, 40), Enum.Material.WoodPlanks)
+		block(m, "CoachRoof", Vector3.new(6.6, 0.8, 16.6), at(cz, 8.4), Color3.fromRGB(60, 55, 50), Enum.Material.Metal)
+		windowRow(m, at(cz, 5.8) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.new(0, 0, -3.05), 5, 3, Vector3.new(1.8, 1.8, 0.2))
+		windowRow(m, at(cz, 5.8) * CFrame.Angles(0, -math.pi / 2, 0) * CFrame.new(0, 0, -3.05), 5, 3, Vector3.new(1.8, 1.8, 0.2))
+		for _, wz in ipairs({ -5, 5 }) do
+			for _, dx in ipairs({ -3.1, 3.1 }) do
+				block(m, "Wheel", Vector3.new(0.5, 2.4, 2.4), at(cz + wz, 1.8) * CFrame.new(dx, 0, 0), black, Enum.Material.Metal, { Shape = Enum.PartType.Cylinder })
+			end
+		end
+	end
+end
+
+local function station(parent, x, z)
+	local m = model(parent, "TrainStation")
+	block(m, "Platform", Vector3.new(10, 1.6, 60), CFrame.new(x, 0.8, z), Color3.fromRGB(150, 130, 105), Enum.Material.WoodPlanks)
+	block(m, "Building", Vector3.new(14, 11, 24), CFrame.new(x - 12, 5.5, z), Color3.fromRGB(170, 120, 80), Enum.Material.WoodPlanks)
+	block(m, "Roof", Vector3.new(16, 1, 26), CFrame.new(x - 12, 11.5, z) * CFrame.Angles(0, 0, 0.12), C.Roof, Enum.Material.WoodPlanks)
+	local board = block(m, "StationSign", Vector3.new(0.4, 3, 16), CFrame.new(x - 4.8, 8.5, z), C.WoodDark, Enum.Material.Wood)
+	sign(board, Enum.NormalId.Right, "DESERT JUNCTION", Color3.fromRGB(245, 225, 175), nil, Enum.Font.Fondamento)
+	windowRow(m, CFrame.new(x - 4.95, 4.5, z) * CFrame.Angles(0, math.pi / 2, 0), 4, 5, Vector3.new(2.2, 3.2, 0.2))
+	block(m, "Canopy", Vector3.new(10, 0.5, 50), CFrame.new(x, 10, z) * CFrame.Angles(0, 0, -0.08), Color3.fromRGB(120, 40, 40), Enum.Material.WoodPlanks)
+	for dz = -22, 22, 11 do
+		block(m, "CanopyPost", Vector3.new(0.5, 8.6, 0.5), CFrame.new(x + 4, 5.9, z + dz), C.WoodDark, Enum.Material.Wood)
+		small(block(m, "Bench", Vector3.new(1.4, 0.4, 5), CFrame.new(x - 3, 2.4, z + dz + 5), C.WoodLight, Enum.Material.WoodPlanks))
+	end
+	small(block(m, "Clock", Vector3.new(0.3, 2.4, 2.4), CFrame.new(x - 4.7, 12.5, z), Color3.fromRGB(240, 235, 220), nil, { Shape = Enum.PartType.Cylinder }))
+end
+
+local function mine(parent, center)
+	local m = model(parent, "OldMine")
+	local dir = Vector3.new(-center.X, 0, -center.Z).Unit
+	local entrance = center + dir * 58
+	-- Faces back into the hill: the tunnel opening is on the local +Z side.
+	local base = CFrame.lookAt(Vector3.new(entrance.X, 0, entrance.Z), Vector3.new(entrance.X, 0, entrance.Z) + dir)
+	local function at(offset)
+		return base * offset
+	end
+	block(m, "TunnelDark", Vector3.new(10, 10, 6), at(CFrame.new(0, 5, 3)), Color3.fromRGB(10, 8, 6), Enum.Material.SmoothPlastic)
+	for _, x in ipairs({ -5.5, 5.5 }) do
+		block(m, "Timber", Vector3.new(1.2, 12, 1.2), at(CFrame.new(x, 6, 0)), C.WoodDark, Enum.Material.Wood)
+	end
+	block(m, "Lintel", Vector3.new(13, 1.4, 1.4), at(CFrame.new(0, 12, 0)), C.WoodDark, Enum.Material.Wood)
+	local board = block(m, "MineSign", Vector3.new(8, 2, 0.3), at(CFrame.new(0, 14, -0.4)), C.Wood, Enum.Material.Wood)
+	sign(board, Enum.NormalId.Front, "SILVER MINE · KEEP OUT", Color3.fromRGB(240, 220, 170), nil, Enum.Font.Fondamento)
+	for _, x in ipairs({ -1.6, 1.6 }) do
+		block(m, "MineRail", Vector3.new(0.3, 0.3, 26), at(CFrame.new(x, 0.4, -10)), Color3.fromRGB(80, 75, 70), Enum.Material.Metal)
+	end
+	for zz = 0, 22, 3 do
+		small(block(m, "Sleeper", Vector3.new(4.6, 0.3, 0.8), at(CFrame.new(0, 0.2, -zz)), Color3.fromRGB(85, 60, 40), Enum.Material.Wood))
+	end
+	block(m, "OreCart", Vector3.new(3.6, 2.4, 4.4), at(CFrame.new(0, 2.1, -9)), Color3.fromRGB(70, 70, 75), Enum.Material.Metal)
+	for i = 1, 5 do
+		small(block(m, "Ore", Vector3.new(1.1, 1.1, 1.1), at(CFrame.new(rng:NextNumber(-1, 1), 3.4, -9 + rng:NextNumber(-1.4, 1.4))), Color3.fromRGB(160, 165, 175), Enum.Material.Slate, { Shape = Enum.PartType.Ball }))
+	end
+	for _, x in ipairs({ -5.5, 5.5 }) do
+		local lantern = small(block(m, "Lantern", Vector3.new(0.7, 1, 0.7), at(CFrame.new(x, 9, -0.9)), Color3.fromRGB(255, 190, 100), Enum.Material.Neon))
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 180, 90)
+		light.Range = 14
+		light.Brightness = 1.2
+		light.Parent = lantern
+	end
+end
+
+local function rockArch(parent, x, z)
+	local m = model(parent, "RockArch")
+	local stone = Color3.fromRGB(190, 120, 80)
+	block(m, "PillarL", Vector3.new(8, 26, 9), CFrame.new(x - 14, 13, z) * CFrame.Angles(0, 0, 0.08), stone, Enum.Material.Sandstone)
+	block(m, "PillarR", Vector3.new(8, 24, 9), CFrame.new(x + 14, 12, z) * CFrame.Angles(0, 0, -0.08), stone, Enum.Material.Sandstone)
+	block(m, "Span", Vector3.new(38, 7, 8), CFrame.new(x, 27, z) * CFrame.Angles(0, 0, 0.03), stone, Enum.Material.Sandstone)
+end
+
+local function well(parent, x, z)
+	local m = model(parent, "Well")
+	cylinder(m, "WellRing", 3, 5, upright(x, 1.5, z), Color3.fromRGB(150, 140, 125), Enum.Material.Cobblestone)
+	cylinder(m, "WellWater", 0.2, 4.2, upright(x, 2.5, z), Color3.fromRGB(60, 100, 120), Enum.Material.Glass)
+	for _, dx in ipairs({ -2.2, 2.2 }) do
+		block(m, "Post", Vector3.new(0.5, 6, 0.5), CFrame.new(x + dx, 4, z), C.WoodDark, Enum.Material.Wood)
+	end
+	block(m, "Roof", Vector3.new(6, 0.5, 4), CFrame.new(x, 7.2, z), C.Roof, Enum.Material.WoodPlanks)
+	small(block(m, "Bucket", Vector3.new(0.9, 0.9, 0.9), CFrame.new(x, 4.5, z), C.Wood, Enum.Material.Wood))
+end
+
+local function wantedBoard(parent, x, z, yaw)
+	local m = model(parent, "WantedBoard")
+	local board = block(m, "Board", Vector3.new(6, 4, 0.3), CFrame.new(x, 4, z) * CFrame.Angles(0, yaw, 0), C.Wood, Enum.Material.WoodPlanks)
+	for _, dx in ipairs({ -2.6, 2.6 }) do
+		block(m, "Leg", Vector3.new(0.4, 6, 0.4), CFrame.new(x, 3, z) * CFrame.Angles(0, yaw, 0) * CFrame.new(dx, 0, 0.3), C.WoodDark, Enum.Material.Wood)
+	end
+	for i, text in ipairs({ "WANTED\nGYRO", "WANTED\nDIO", "REWARD\n$5000" }) do
+		local poster = small(block(m, "Poster", Vector3.new(1.6, 2.2, 0.05), CFrame.new(x, 4.1, z) * CFrame.Angles(0, yaw, 0) * CFrame.new(-2 + (i - 1) * 2, 0, -0.18), Color3.fromRGB(230, 210, 170), Enum.Material.Fabric))
+		sign(poster, Enum.NormalId.Front, text, Color3.fromRGB(60, 30, 15), nil, Enum.Font.Fondamento)
+	end
+end
+
+local function boardwalk(parent, x, z0, z1)
+	block(parent, "Boardwalk", Vector3.new(5, 0.6, math.abs(z1 - z0)), CFrame.new(x, 0.3, (z0 + z1) / 2), C.WoodLight, Enum.Material.WoodPlanks)
+end
+
+local function scoreboard(parent, x, z, yaw)
+	local m = model(parent, "Scoreboard")
+	local board = block(m, "Board", Vector3.new(20, 10, 0.6), CFrame.new(x, 12, z) * CFrame.Angles(0, yaw, 0), Color3.fromRGB(30, 40, 30), Enum.Material.WoodPlanks)
+	sign(board, Enum.NormalId.Front, "STAGE 1 — SAN DIEGO BEACH\n1. ???   2. ???   3. ???\n6,000 KM TO NEW YORK", Color3.fromRGB(240, 235, 200), nil, Enum.Font.Fondamento)
+	for _, dx in ipairs({ -8, 8 }) do
+		block(m, "Leg", Vector3.new(0.8, 12, 0.8), CFrame.new(x, 6, z) * CFrame.Angles(0, yaw, 0) * CFrame.new(dx, 0, 0.6), C.WoodDark, Enum.Material.Wood)
+	end
+	block(m, "Trim", Vector3.new(21, 1, 1), CFrame.new(x, 17.4, z) * CFrame.Angles(0, yaw, 0), C.Gold, Enum.Material.Metal)
+end
+
+---------------------------------------------------------------------------
+-- MAP UPGRADE: sections
+---------------------------------------------------------------------------
+local function buildLandforms()
+	local terrain = workspace.Terrain
+	local o = origin
+	-- Rolling dunes in the open desert.
+	for _ = 1, 45 do
+		local angle = rng:NextNumber(0, math.pi * 2)
+		local dist = rng:NextNumber(230, 470)
+		local p = Vector3.new(math.cos(angle) * dist, 0, math.sin(angle) * dist)
+		local inTown = p.X > 170 and p.X < 470 and p.Z > -340 and p.Z < 140
+		if not inTown then
+			local r = rng:NextNumber(18, 45)
+			terrain:FillBall(o + p - Vector3.new(0, r * 0.78, 0), r, Enum.Material.Sand)
+		end
+	end
+	-- Layered mesas (stratified sandstone and rock).
+	local mesas = { Vector3.new(-380, 0, 60), Vector3.new(-300, 0, -250), Vector3.new(120, 0, -430), Vector3.new(-120, 0, 400), Vector3.new(330, 0, 380), Vector3.new(-430, 0, 300) }
+	for i, p in ipairs(mesas) do
+		local radius = 30 + (i % 3) * 10
+		local height = 0
+		local layers = { Enum.Material.Sandstone, Enum.Material.Rock, Enum.Material.Sandstone, Enum.Material.Slate }
+		for l = 1, 4 do
+			local h = rng:NextNumber(10, 16)
+			local r = radius * (1 - (l - 1) * 0.12)
+			terrain:FillCylinder(CFrame.new(o + p + Vector3.new(0, height + h / 2, 0)), h, r, layers[l])
+			height = height + h
+		end
+	end
+	-- Oasis: pond, grass ring, palms.
+	local oasis = Vector3.new(-280, 0, 200)
+	terrain:FillCylinder(CFrame.new(o + oasis + Vector3.new(0, -0.5, 0)), 2, 34, Enum.Material.Grass)
+	terrain:FillCylinder(CFrame.new(o + oasis + Vector3.new(0, -2, 0)), 4, 20, Enum.Material.Water)
+	-- Mine hill.
+	terrain:FillBall(o + Vector3.new(-360, -30, -380), 70, Enum.Material.Rock)
+	-- Roads (hard-packed ground).
+	terrain:FillBlock(CFrame.new(o + Vector3.new(350, -0.6, 0)), Vector3.new(180, 1.2, 16), Enum.Material.Ground)
+	terrain:FillBlock(CFrame.new(o + Vector3.new(-140, -0.6, 150)), Vector3.new(280, 1.2, 14), Enum.Material.Ground)
+	terrain:FillBlock(CFrame.new(o + Vector3.new(-170, -0.6, -340)) * CFrame.Angles(0, 0.75, 0), Vector3.new(14, 1.2, 240), Enum.Material.Ground)
+	return oasis
+end
+
+local function buildUpgrades()
+	local f = folder("Upgrades")
+	local oasis = buildLandforms()
+
+	-- Race grounds: stables, horses, pennants, lights, scoreboard, hay.
+	stables(f, -80, 125, -math.pi / 2)
+	for i = 0, 3 do
+		horse(f, CFrame.new(26 + (i % 2) * 4, 0, 130 - i * 6) * CFrame.Angles(0, math.pi / 2 + rng:NextNumber(-0.3, 0.3), 0), HORSE_COATS[(i + 2) % #HORSE_COATS + 1])
+	end
+	for i = 0, 10 do
+		local z = 120 - i * 32
+		hangingLine(f, Vector3.new(-22, 14.5, z), Vector3.new(-22, 14.5, z - 32), 7, "pennants")
+		hangingLine(f, Vector3.new(22, 13.5, z - 16), Vector3.new(22, 13.5, z - 48), 8, "lights")
+	end
+	hangingLine(f, Vector3.new(-16, 21, 110), Vector3.new(16, 21, 110), 10, "lights")
+	scoreboard(f, 44, 118, -math.pi / 2)
+	for i = 1, 10 do
+		hayBale(f, rng:NextNumber(-18, -12) * (i % 2 == 0 and 1 or -1), 100 - i * 30, rng:NextNumber(0, 3))
+	end
+
+	-- Town extras: boardwalks, well, wanted board, water tower, windmill.
+	boardwalk(f, 260 - 14.5, -110, 60)
+	boardwalk(f, 260 + 14.5, -110, 60)
+	well(f, 260, -70)
+	wantedBoard(f, 248, 80, math.pi / 2)
+	waterTower(f, 300, 70)
+	windmill(f, 315, 115)
+
+	-- Railway, station and steam train.
+	railway(f, 440, -600, 600)
+	station(f, 432, 0)
+	locomotive(f, 440, -20)
+	waterTower(f, 420, 50)
+
+	-- Telegraph line: race start -> town -> station.
+	local poles = {}
+	for x = 30, 250, 40 do
+		table.insert(poles, Vector3.new(x, 0, 92))
+	end
+	for x = 290, 410, 40 do
+		table.insert(poles, Vector3.new(x, 0, -10))
+	end
+	telegraphLine(f, poles)
+
+	-- Oasis palms, mine, rock arch, desert details.
+	for i = 1, 9 do
+		local angle = i / 9 * math.pi * 2
+		palm(f, oasis.X + math.cos(angle) * rng:NextNumber(23, 30), oasis.Z + math.sin(angle) * rng:NextNumber(23, 30))
+	end
+	mine(f, Vector3.new(-360, 0, -380))
+	rockArch(f, -150, -440)
+	for _ = 1, 22 do
+		local x, z = rng:NextNumber(-460, 460), rng:NextNumber(-460, 460)
+		if math.abs(x) > 140 and not (x > 170 and x < 470) then
+			if rng:NextNumber() < 0.5 then
+				deadTree(f, x, z)
+			else
+				skull(f, x, z)
+			end
+		end
+	end
+	-- Wrecked wagon out in the desert.
+	wagon(f, -200, -120, 0.7)
+end
+
 -- NPC markers: NPCService (runtime) spawns a character at each.
 local NPCS = {
 	{ "Race Announcer", "Announcer", Vector3.new(-6, 0, 118), 0, "Welcome, riders! The greatest horse race in history starts right here!|Six thousand kilometers of desert, mountains and rivers. Only one can win.|Keep your Spin steady and your eyes on the trail!" },
@@ -8662,6 +11807,10 @@ local NPCS = {
 	{ "Shopkeeper", "Spectator", Vector3.new(272, 0, 40), 6, "Ropes, canteens, horseshoes, all here.|Prices doubled for the race. Supply and demand!|Come back when you've got more coin." },
 	{ "Townsfolk", "Spectator", Vector3.new(260, 0, -40), 30, "The racers came through town at dawn!|My money's on the cowboy with the blue scarf.|Did you see that flash of light out by the church?" },
 	{ "Priest", "Spectator", Vector3.new(0, 0, -270), 10, "Peace be with you, traveller.|This mission has stood for a hundred years.|Many racers rest here before the long road." },
+	{ "Stable Hand", "Spectator", Vector3.new(-66, 0, 112), 8, "Easy, easy... these horses are nervous before a race.|A good horse is worth more than gold out here.|Feed them, water them, never rush them." },
+	{ "Station Master", "Official", Vector3.new(425, 1.6, 10), 10, "Next train to the east leaves at sundown.|Racers ride horses, not trains. Rules are rules!|The telegraph says the leaders passed Arizona already." },
+	{ "Old Miner", "Spectator", Vector3.new(-320, 0, -335), 6, "Silver? Nah, the mine's been empty for years.|I heard strange spinning sounds down there last night.|Don't go in without a lantern." },
+	{ "Oasis Traveller", "Spectator", Vector3.new(-262, 0, 178), 10, "Fresh water! First I've seen in two days.|Rest here before you cross the dunes.|The mesas make good landmarks. Don't get lost." },
 	{ "Headquarters Clerk", "Official", Vector3.new(260, 18, -228), 8, "Registration is closed, I'm afraid.|The sponsors are watching every rider closely.|Prize money is fifty million dollars. Can you believe it?" },
 }
 
@@ -8718,6 +11867,7 @@ function SBRMapBuilder.Build(options)
 	buildTown()
 	buildHeadquarters()
 	buildDesert()
+	buildUpgrades()
 	buildNPCMarkers()
 	root.Parent = workspace
 

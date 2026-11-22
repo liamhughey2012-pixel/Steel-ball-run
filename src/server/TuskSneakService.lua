@@ -77,10 +77,12 @@ function TuskSneakService.toggle(player, state, on)
 end
 
 -- Nearest enemy in front, in range, with line of sight.
-local function findTarget(character, root)
+local function findTarget(character, root, range, coneDegrees)
+	range = range or cfg.Attack.Range
+	coneDegrees = coneDegrees or cfg.Attack.ConeDegrees
 	local best, bestDistance
-	local cosLimit = math.cos(math.rad(cfg.Attack.ConeDegrees / 2))
-	for _, target in ipairs(Hitbox.inRadius(character, root.Position, cfg.Attack.Range)) do
+	local cosLimit = math.cos(math.rad(coneDegrees / 2))
+	for _, target in ipairs(Hitbox.inRadius(character, root.Position, range)) do
 		local targetRoot = target:FindFirstChild("HumanoidRootPart")
 		if targetRoot and Adapter.canBeHit(nil, target) then
 			local offset = targetRoot.Position - root.Position
@@ -100,9 +102,11 @@ end
 
 -- Safe emergence point near the target: behind first, then the sides, then in front.
 -- Must have clear line of sight from the target, solid ground below and free space.
-local function emergePoint(attacker, target)
+TuskSneakService.findTarget = findTarget
+
+local function emergePoint(attacker, target, distance)
 	local targetRoot = target.HumanoidRootPart
-	local d = cfg.Attack.EmergeDistance
+	local d = distance or cfg.Attack.EmergeDistance
 	local candidates = {
 		targetRoot.CFrame * CFrame.new(0, 0, d),
 		targetRoot.CFrame * CFrame.new(d, 0, 0),
@@ -159,6 +163,21 @@ function TuskSneakService.attack(player, state)
 	TuskSneakService.exit(player, state, true)
 	Cooldowns.start(player, "TuskSneakAttack", a.Cooldown)
 	S.tell(player, "SneakAttackCooldown", { Duration = a.Cooldown })
+	TuskSneakService.burrowStrike(player, state, target, a, "TuskSneakAttack")
+end
+
+--[[
+	Burrow -> warning -> emerge behind the target -> hit + shockwave.
+	Shared by the Sneak Attack and Act 2's Underground Pursuit.
+	a = { BurrowTime, WarningTime, EmergeDistance, MaxTargetDrift, Range,
+	      HitRadius, Damage, Stun, Knockback, Launch }
+]]
+function TuskSneakService.burrowStrike(player, state, target, a, source)
+	local character, _, root = Adapter.getAlive(player)
+	if not character then
+		return
+	end
+	a = setmetatable(table.clone(a), { __index = cfg.Attack })
 	S.lock(state, a.BurrowTime + 0.45)
 
 	local life = state.Life
@@ -170,7 +189,7 @@ function TuskSneakService.attack(player, state)
 	-- Anchor in place while underground so the hidden body can't wander.
 	root.Anchored = true
 
-	S.fx("SneakAttack", { Phase = "Burrow", Character = character, Position = startPos - Vector3.new(0, 2.8, 0), Target = target })
+	S.fx("SneakAttack", { Phase = "Burrow", Character = character, Position = startPos - Vector3.new(0, 2.8, 0), Target = target, BurrowTime = a.BurrowTime })
 
 	local function surface()
 		state.Burrowed = false
@@ -203,7 +222,7 @@ function TuskSneakService.attack(player, state)
 			and Adapter.canBeHit(player, target)
 			and (targetRoot.Position - targetStart).Magnitude <= a.MaxTargetDrift
 			and (targetRoot.Position - startPos).Magnitude <= a.Range * 1.4
-		local pos = valid and emergePoint(character, target) or nil
+		local pos = valid and emergePoint(character, target, a.EmergeDistance) or nil
 
 		surface()
 		if not pos then
@@ -226,7 +245,7 @@ function TuskSneakService.attack(player, state)
 					Launch = a.Launch,
 					Direction = victimRoot.Position - pos,
 					Position = victimRoot.Position,
-					Source = "TuskSneakAttack",
+					Source = source or "TuskSneakAttack",
 				})
 				hitAny = hitAny or hit
 			end

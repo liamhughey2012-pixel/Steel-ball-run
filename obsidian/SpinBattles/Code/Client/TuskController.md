@@ -51,6 +51,7 @@ local Net = require(Shared.Net)
 local VFXLib = require(script.Parent.VFXLib)
 local TuskAnimation = require(script.Parent.TuskAnimation)
 local TuskSneakController = require(script.Parent.TuskSneakController)
+local TuskActCommon = require(script.Parent.TuskActCommon)
 local TuskUI = require(script.Parent.UI.TuskUI)
 
 local TuskController = {}
@@ -220,6 +221,9 @@ function TuskController.init()
 			TuskUI.onState(data)
 		elseif name == "SneakAttack" then
 			TuskSneakController.handle(name, data)
+		elseif name == "Evolve" then
+			TuskActCommon.evolve(data)
+			TuskUI.onEvolve(data)
 		else
 			local m = actVFX[data.Act]
 			if m then

@@ -168,8 +168,10 @@ function TuskService.fireNail(player, state, spec)
 			Style = spec.Style or "Shot",
 			Charge = spec.Charge or 0,
 			Awakened = state.Awakened == true,
+			Stage = spec.Stage,
 		},
 		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
 	})
 end
 
@@ -222,13 +224,17 @@ end
 
 local function isUnlocked(player, act)
 	local p = TuskConfig.Progression
+	if p.Mode == "Awaken" then
+		-- Acts are reached through ultimates; the menu is a Studio testing aid only.
+		return RunService:IsStudio() and p.StudioMenu == true
+	end
 	if p.Mode == "Unlock" then
 		return p.IsUnlocked ~= nil and p.IsUnlocked(player, act) == true
 	end
 	return true
 end
 
-function TuskService.select(player, act)
+function TuskService.select(player, act, internal)
 	if typeof(act) ~= "number" or act ~= math.floor(act) then
 		return
 	end
@@ -249,14 +255,14 @@ function TuskService.select(player, act)
 		TuskService.tell(player, "Denied", { Reason = "NotAvailable" })
 		return
 	end
-	if not isUnlocked(player, act) then
+	if not internal and not isUnlocked(player, act) then
 		TuskService.tell(player, "Denied", { Reason = "Locked" })
 		return
 	end
 	if state.Act == act then
 		return
 	end
-	if os.clock() - state.LastSwitch < TuskConfig.Progression.SwitchCooldown or TuskService.isBusy(state) then
+	if not internal and (os.clock() - state.LastSwitch < TuskConfig.Progression.SwitchCooldown or TuskService.isBusy(state)) then
 		TuskService.tell(player, "Denied", { Reason = "SwitchCooldown" })
 		return
 	end
@@ -268,6 +274,33 @@ function TuskService.select(player, act)
 		state.Character:SetAttribute("TuskAct", act)
 	end
 	TuskService.tell(player, "Equipped", { Act = act })
+end
+
+-- Awakening: move straight to another Act (no menu rules, no switch cooldown).
+function TuskService.evolve(player, state, toAct)
+	if not Registry.isImplemented(toAct) or not actModules[toAct] then
+		return
+	end
+	local from = state.Act
+	cleanupAct(player, state)
+	state.Act = toAct
+	player:SetAttribute("TuskSelectedAct", toAct)
+	if state.Character then
+		state.Character:SetAttribute("TuskAct", toAct)
+	end
+	TuskService.fx("Evolve", { Character = state.Character, From = from, To = toAct })
+	TuskService.tell(player, "Evolved", { Act = toAct })
+end
+
+-- Called by every Act's ultimate when its attack has finished.
+function TuskService.finishUltimate(player, state)
+	local info = Registry.get(state.Act)
+	if TuskConfig.Progression.Mode == "Awaken" and info and info.Next then
+		TuskService.evolve(player, state, info.Next)
+	end
+	if RunService:IsStudio() and TuskConfig.Ultimate.StudioRefill then
+		player:SetAttribute("TuskUlt", TuskConfig.Ultimate.MaxMeter)
+	end
 end
 
 ---------------------------------------------------------------------------
@@ -354,6 +387,10 @@ local function onCharacter(player, character)
 	if not humanoid or states[player] ~= state or state.Character ~= character then
 		return
 	end
+	local progression = TuskConfig.Progression
+	if state.Act and progression.Mode == "Awaken" and progression.ResetOnDeath then
+		state.Act = progression.DefaultAct -- back to Act 1 after dying
+	end
 	if state.Act then
 		character:SetAttribute("TuskAct", state.Act)
 	end
@@ -404,7 +441,7 @@ local function onPlayer(player)
 		task.spawn(onCharacter, player, player.Character)
 	end
 	if TuskConfig.Progression.AutoEquip then
-		task.defer(TuskService.select, player, TuskConfig.Progression.DefaultAct)
+		task.defer(TuskService.select, player, TuskConfig.Progression.DefaultAct, true)
 	end
 end
 

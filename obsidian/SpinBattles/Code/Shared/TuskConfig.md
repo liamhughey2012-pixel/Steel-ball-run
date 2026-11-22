@@ -51,10 +51,14 @@ TuskConfig.Keys = {
 -- Act selection / progression
 ---------------------------------------------------------------------------
 TuskConfig.Progression = {
+	-- "Awaken": everyone starts at Act 1; each ULTIMATE awakens Tusk to the
+	--           next Act (1 -> 2 -> 3 -> 4) with a new Stand and new moves.
 	-- "Menu":   any implemented Act can be picked from the Act menu (T).
 	-- "Unlock": only Acts that IsUnlocked(player, act) approves.
 	--           Point IsUnlocked at your existing unlock / quest system.
-	Mode = "Menu",
+	Mode = "Awaken",
+	ResetOnDeath = true, -- Awaken mode: dying sends you back to Act 1
+	StudioMenu = true, -- the Act menu (T) still works inside Studio for testing
 	DefaultAct = 1,
 	AutoEquip = true, -- players spawn as Tusk (set false if your game picks movesets elsewhere)
 	ShowSelectionMenu = true,
@@ -69,6 +73,18 @@ TuskConfig.Ultimate = {
 	MaxMeter = 100,
 	GainPerDamage = 1.6, -- meter gained per point of damage dealt with Tusk
 	StudioStartFull = true, -- Studio only: start full so ultimates can be tested
+	StudioRefill = true, -- Studio only: refill after each ultimate (test every Act quickly)
+}
+
+---------------------------------------------------------------------------
+-- Character card (top-left)
+---------------------------------------------------------------------------
+TuskConfig.Character = {
+	Name = "JOHNNY JOESTAR",
+	Title = "STAND USER",
+	-- Optional: upload a portrait image and paste "rbxassetid://..." here.
+	-- Empty = a live 3D view of your own avatar.
+	PortraitImage = "",
 }
 
 ---------------------------------------------------------------------------
@@ -153,16 +169,89 @@ TuskConfig.Act1 = {
 		Stun = 0.55,
 		Knockback = 38,
 	},
-	Ultimate = { -- TUSK AWAKENING
+	Ultimate = { -- TUSK AWAKENING -> evolves to Act 2
 		Windup = 1.7, -- cinematic buildup (armored, can't be stunned)
 		Radius = 18,
 		Damage = 15,
 		Stun = 0.6,
 		Knockback = 55,
 		Launch = 25,
-		Duration = 20, -- Awakened state length
-		CooldownMultiplier = 0.6, -- ability cooldowns while Awakened
-		DamageMultiplier = 1.25, -- nail damage while Awakened
+		Duration = 20, -- (Menu mode only) Awakened buff length
+		CooldownMultiplier = 0.6,
+		DamageMultiplier = 1.25,
+	},
+}
+
+---------------------------------------------------------------------------
+-- ACT 2 — wormhole combat
+---------------------------------------------------------------------------
+TuskConfig.Act2 = {
+	M1 = {
+		Interval = 0.28, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.1,
+		HitboxSize = Vector3.new(5.5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 4, Portal = true },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.5, Knockback = 45, Launch = 14, Portal = true, ShockwaveRadius = 8 },
+		},
+	},
+	WormholeNail = { Cooldown = 6, Startup = 0.16, Damage = 8, ExitDamage = 7, Speed = 160, Radius = 0.75, Range = 170, ExitDelay = 0.4, ExitSearch = 12, Stun = 0.4, Knockback = 14 },
+	UndergroundPursuit = { Cooldown = 11, Range = 45, ConeDegrees = 100, BurrowTime = 0.55, WarningTime = 0.35, Damage = 11, Stun = 0.55, Knockback = 20, Launch = 30, HitRadius = 7 },
+	NailDimension = { Cooldown = 13, Range = 70, ConeDegrees = 50, Portals = 3, PortalRadius = 11, OpenTime = 0.4, Damage = 5, Speed = 140, Stun = 0.35, Knockback = 8, FinalRadius = 9, FinalDamage = 6 },
+	Ultimate = { -- DIMENSIONAL STORM -> evolves to Act 3
+		Windup = 1.5, Radius = 24, Portals = 6, Waves = 3, WaveInterval = 0.35,
+		NailDamage = 3, NailSpeed = 150, BurstRadius = 22, BurstDamage = 14, Stun = 0.6, Knockback = 55, Launch = 25,
+	},
+}
+
+---------------------------------------------------------------------------
+-- ACT 3 — master of spatial movement
+---------------------------------------------------------------------------
+TuskConfig.Act3 = {
+	M1 = {
+		Interval = 0.24, ResetAfter = 1.0, EndLag = 0.8, Windup = 0.08,
+		HitboxSize = Vector3.new(5.5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.42, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.42, Knockback = 3, Portal = true },
+			{ Damage = 4, Stun = 0.42, Knockback = 4, Portal = true },
+			{ Damage = 7.5, Stun = 0.5, Knockback = 30, Launch = 42, Portal = true, ShockwaveRadius = 9 },
+		},
+	},
+	DimensionalStep = { Cooldown = 5, Distance = 28, IFrames = 0.25 },
+	SpatialPursuit = { Cooldown = 12, Range = 75, ConeDegrees = 60, Portals = 4, PortalRadius = 12, OpenTime = 0.35, Stagger = 0.14, Damage = 4.5, Speed = 170, Stun = 0.35, Knockback = 8 },
+	DimensionalBreak = { Cooldown = 14, Charge = 0.75, Length = 34, Width = 12, Damage = 16, Stun = 0.6, Knockback = 60, Launch = 18 },
+	Ultimate = { -- INFINITE DIMENSION -> evolves to Act 4
+		Windup = 1.9, Radius = 26, Portals = 8, Damage = 20, Stun = 0.65, Knockback = 65, Launch = 35,
+	},
+}
+
+---------------------------------------------------------------------------
+-- ACT 4 — Infinite Rotation (gold + deep blue)
+---------------------------------------------------------------------------
+TuskConfig.Act4 = {
+	M1 = {
+		Interval = 0.33, ResetAfter = 1.2, EndLag = 1.0, Windup = 0.13,
+		HitboxSize = Vector3.new(6.5, 6, 7), HitboxForward = 3.8, MaxTargets = 3,
+		Hits = {
+			{ Damage = 5, Stun = 0.5, Knockback = 6 },
+			{ Damage = 5, Stun = 0.5, Knockback = 6 },
+			{ Damage = 2.5, Stun = 0.5, Knockback = 2, Repeat = 3, RepeatInterval = 0.08 },
+			{ Damage = 10, Stun = 0.55, Knockback = 60, Launch = 22, ShockwaveRadius = 13, AoeRadius = 9 },
+		},
+	},
+	GoldenSpinNail = { Cooldown = 7, Startup = 0.3, Damage = 16, Speed = 175, Radius = 1.4, Range = 210, Stun = 0.5, Knockback = 40, ImpactRadius = 6, ImpactDamage = 5 },
+	InfiniteRotation = {
+		Cooldown = 15, WalkSpeedMultiplier = 0.4, MaxHold = 3.5,
+		Stages = { 0.6, 1.3, 2.0 }, -- seconds of charge for stage 1 / 2 / 3
+		Damage = { 12, 20, 30 }, Radius = { 1.6, 2.4, 3.4 }, Speed = { 140, 150, 160 },
+		ImpactRadius = { 6, 10, 16 }, ImpactDamage = { 4, 8, 12 }, Range = 220, Stun = 0.6, Knockback = 55,
+	},
+	GoldenPursuit = { Cooldown = 12, Distance = 32, Hits = 3, HitInterval = 0.13, HitDamage = 4, FinalDamage = 12, Stun = 0.5, Knockback = 65, Launch = 25, FinalRadius = 12 },
+	Ultimate = { -- INFINITE ROTATION (Act 4 stays Act 4)
+		Windup = 2.6, ProjectileRadius = 4, Speed = 95, Range = 180, Damage = 32,
+		BlastRadius = 18, BlastDamage = 14, Stun = 0.8, Knockback = 80, Launch = 40,
 	},
 }
 

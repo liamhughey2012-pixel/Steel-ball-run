@@ -26,3 +26,13 @@ updated: 2026-11-22
 - [ ] Two players in a server: both see each other's Stands and effects
 - [ ] Die mid-charge / mid-burrow: respawn clean
 - [ ] VFX LOW on a phone: still smooth
+## Evolution
+- [ ] G as Act 1: transformation, banner "TUSK ACT 2!", the Stand changes, new move names on the HUD
+- [ ] Act 2: Wormhole Nail exit portal, Underground Pursuit, Nail Dimension portals, Dimensional Storm then Act 3
+- [ ] Act 3: Dimensional Step can't go through walls, Spatial Pursuit, Dimensional Break, Infinite Dimension then Act 4
+- [ ] Act 4: Golden Spin Nail, Infinite Rotation stages 1/2/3, Golden Pursuit, the Infinite Rotation cinematic
+- [ ] Die as Act 3: respawn as Act 1
+## Character card
+- [ ] Top left shows JOHNNY JOESTAR, your avatar, the Stand name, 4 pips, health
+## Map 2
+- [ ] Train, station, mine, oasis, horses, windmill spinning, vultures, tumbleweeds

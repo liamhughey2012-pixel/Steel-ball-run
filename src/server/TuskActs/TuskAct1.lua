@@ -6,8 +6,8 @@
 	  Ability 1 NAIL SHOT: one spinning nail
 	  Ability 2 NAIL BARRAGE: five nails fanned out
 	  Ability 3 SPINNING NAIL: hold to charge, release (golden-blue at full charge)
-	  Ultimate  TUSK AWAKENING: armored cinematic burst, then 20 s Awakened
-	            (faster cooldowns, stronger nails)
+	  Ultimate  TUSK AWAKENING: armored cinematic burst, then evolves to Act 2
+	            (in Menu mode: 20 s Awakened buff instead)
 
 	Every number is in TuskConfig.Act1. All hits go through S.hit()
 	(CombatAdapter), all timing and cooldowns live here on the server.
@@ -325,6 +325,10 @@ function Act1.Ultimate(S, player, state, aim)
 		end
 		S.fx("Ultimate", { Character = char, Act = 1, Phase = "Burst", Position = root.Position, Radius = u.Radius })
 
+		if TuskConfig.Progression.Mode == "Awaken" then
+			S.finishUltimate(player, state) -- awakens Tusk to Act 2
+			return
+		end
 		state.Awakened = true
 		local token = {}
 		state.AwakenToken = token

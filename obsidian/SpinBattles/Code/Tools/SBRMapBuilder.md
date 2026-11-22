@@ -554,6 +554,526 @@ local function buildDesert()
 	end
 end
 
+---------------------------------------------------------------------------
+-- MAP UPGRADE: props
+---------------------------------------------------------------------------
+local CollectionService = game:GetService("CollectionService")
+
+local function model(parent, name)
+	local m = Instance.new("Model")
+	m.Name = name
+	m.Parent = parent
+	return m
+end
+
+local function ellipsoid(parent, name, size, cf, color, material)
+	local p = block(parent, name, size, cf, color, material or Enum.Material.SmoothPlastic)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = p
+	return p
+end
+
+local function small(p)
+	p.CastShadow = false
+	return p
+end
+
+local HORSE_COATS = {
+	Color3.fromRGB(110, 70, 40), Color3.fromRGB(60, 40, 30), Color3.fromRGB(200, 190, 175),
+	Color3.fromRGB(150, 100, 60), Color3.fromRGB(35, 30, 30), Color3.fromRGB(170, 120, 80),
+}
+
+-- A standing horse (about 6 studs tall) with saddle and blanket.
+local function horse(parent, cf, coat)
+	local m = model(parent, "Horse")
+	local mane = Color3.fromRGB(40, 28, 20)
+	local function at(offset)
+		return cf * offset
+	end
+	ellipsoid(m, "Body", Vector3.new(2.4, 2.4, 5), at(CFrame.new(0, 4, 0)), coat)
+	ellipsoid(m, "Chest", Vector3.new(2.2, 2.4, 2.2), at(CFrame.new(0, 4.1, -1.9)), coat)
+	block(m, "Neck", Vector3.new(1.1, 2.8, 1.4), at(CFrame.new(0, 5.6, -2.7) * CFrame.Angles(-0.55, 0, 0)), coat)
+	ellipsoid(m, "Head", Vector3.new(1.1, 1.2, 2.4), at(CFrame.new(0, 6.6, -3.9) * CFrame.Angles(0.5, 0, 0)), coat)
+	ellipsoid(m, "Muzzle", Vector3.new(0.9, 0.8, 0.9), at(CFrame.new(0, 6.0, -4.8)), coat:Lerp(Color3.new(0, 0, 0), 0.25))
+	for _, side in ipairs({ -1, 1 }) do
+		small(block(m, "Ear", Vector3.new(0.2, 0.5, 0.2), at(CFrame.new(side * 0.3, 7.5, -3.4)), coat))
+		small(ellipsoid(m, "Eye", Vector3.new(0.15, 0.2, 0.2), at(CFrame.new(side * 0.52, 6.9, -4.1)), Color3.new(0.05, 0.05, 0.05)))
+	end
+	small(block(m, "Mane", Vector3.new(0.3, 2.8, 0.5), at(CFrame.new(0, 6.0, -2.4) * CFrame.Angles(-0.55, 0, 0)), mane))
+	ellipsoid(m, "Tail", Vector3.new(0.5, 2.6, 0.6), at(CFrame.new(0, 3.6, 2.7) * CFrame.Angles(0.35, 0, 0)), mane)
+	for _, x in ipairs({ -0.7, 0.7 }) do
+		for _, z in ipairs({ -1.8, 1.8 }) do
+			local leg = block(m, "Leg", Vector3.new(0.5, 3.2, 0.55), at(CFrame.new(x, 1.6, z)), coat)
+			small(block(m, "Hoof", Vector3.new(0.6, 0.35, 0.65), at(CFrame.new(x, 0.18, z)), Color3.fromRGB(30, 25, 20)))
+			leg.CastShadow = true
+		end
+	end
+	block(m, "Saddle", Vector3.new(1.6, 0.4, 1.8), at(CFrame.new(0, 5.3, -0.3)), Color3.fromRGB(90, 50, 25), Enum.Material.Leather)
+	block(m, "Blanket", Vector3.new(2.6, 0.15, 2.2), at(CFrame.new(0, 5.15, -0.3)), Color3.fromRGB(170, 40, 40), Enum.Material.Fabric)
+	return m
+end
+
+local function hayBale(parent, x, z, yaw)
+	local p = block(parent, "HayBale", Vector3.new(3, 2.4, 2.4), CFrame.new(x, 1.2, z) * CFrame.Angles(0, yaw or 0, 0), Color3.fromRGB(214, 180, 90), Enum.Material.Grass, { Shape = Enum.PartType.Cylinder })
+	return p
+end
+
+local function stables(parent, x, z, yaw)
+	local m = model(parent, "Stables")
+	local base = CFrame.new(x, 0, z) * CFrame.Angles(0, yaw, 0)
+	local function at(offset)
+		return base * offset
+	end
+	block(m, "Floor", Vector3.new(30, 0.4, 12), at(CFrame.new(0, 0.2, 0)), C.WoodLight, Enum.Material.WoodPlanks)
+	block(m, "BackWall", Vector3.new(30, 9, 0.6), at(CFrame.new(0, 4.5, 6)), C.Wood, Enum.Material.WoodPlanks)
+	block(m, "Roof", Vector3.new(32, 0.6, 14), at(CFrame.new(0, 9.4, 0) * CFrame.Angles(0.18, 0, 0)), C.Roof, Enum.Material.WoodPlanks)
+	for i = 0, 4 do
+		local px = -15 + i * 7.5
+		block(m, "Post", Vector3.new(0.6, 9, 0.6), at(CFrame.new(px, 4.5, -6)), C.WoodDark, Enum.Material.Wood)
+		block(m, "Divider", Vector3.new(0.4, 4, 10), at(CFrame.new(px, 2.2, 0.5)), C.Wood, Enum.Material.WoodPlanks)
+	end
+	local sign1 = block(m, "Sign", Vector3.new(10, 2, 0.3), at(CFrame.new(0, 10.4, -6.4)), C.WoodDark, Enum.Material.Wood)
+	sign(sign1, Enum.NormalId.Front, "RACE STABLES", Color3.fromRGB(240, 220, 170), nil, Enum.Font.Fondamento)
+	for i = 0, 3 do
+		horse(m, at(CFrame.new(-11.25 + i * 7.5, 0.4, 0.5) * CFrame.Angles(0, math.pi, 0)), HORSE_COATS[i % #HORSE_COATS + 1])
+	end
+	local hay = at(CFrame.new(18, 0, -2))
+	hayBale(m, hay.X, hay.Z, 0.3)
+	return m
+end
+
+-- Rope between two points with small hanging pieces (pennants or light bulbs).
+local function hangingLine(parent, a, b, count, kind)
+	local m = model(parent, kind == "lights" and "StringLights" or "Pennants")
+	local sag = (b - a).Magnitude * 0.06
+	local function pointAt(t)
+		return a:Lerp(b, t) - Vector3.new(0, math.sin(t * math.pi) * sag, 0)
+	end
+	local anchorA = small(block(m, "RopeA", Vector3.new(0.2, 0.2, 0.2), CFrame.new(a), Color3.new(0, 0, 0), nil, { Transparency = 1, CanCollide = false }))
+	local anchorB = small(block(m, "RopeB", Vector3.new(0.2, 0.2, 0.2), CFrame.new(b), Color3.new(0, 0, 0), nil, { Transparency = 1, CanCollide = false }))
+	-- block() already offsets by origin; the attachments sit at the parts' centres.
+	local a0 = Instance.new("Attachment")
+	a0.Parent = anchorA
+	local a1 = Instance.new("Attachment")
+	a1.Parent = anchorB
+	local rope = Instance.new("Beam")
+	rope.Attachment0 = a0
+	rope.Attachment1 = a1
+	rope.Width0 = 0.08
+	rope.Width1 = 0.08
+	rope.Color = ColorSequence.new(Color3.fromRGB(50, 40, 30))
+	rope.CurveSize0 = -sag * 1.3
+	rope.CurveSize1 = sag * 1.3
+	rope.Parent = anchorA
+	for i = 1, count do
+		local t = i / (count + 1)
+		local p = pointAt(t)
+		if kind == "lights" then
+			local bulb = small(block(m, "Bulb", Vector3.new(0.45, 0.6, 0.45), CFrame.new(p - Vector3.new(0, 0.35, 0)), Color3.fromRGB(255, 215, 140), Enum.Material.Neon, { Shape = Enum.PartType.Ball, CanCollide = false }))
+			if i % 3 == 0 then
+				local light = Instance.new("PointLight")
+				light.Range = 10
+				light.Brightness = 0.6
+				light.Color = Color3.fromRGB(255, 200, 130)
+				light.Parent = bulb
+			end
+		else
+			local palette = FLAG_PALETTES[(i % #FLAG_PALETTES) + 1]
+			local dir = (b - a).Unit
+			small(block(m, "Pennant", Vector3.new(0.05, 1.2, 1.2), CFrame.lookAt(p, p + dir) * CFrame.new(0, -0.6, 0) * CFrame.Angles(math.pi / 4, 0, 0), palette[1], Enum.Material.Fabric, { CanCollide = false }))
+		end
+	end
+	return m
+end
+
+local function palm(parent, x, z)
+	local m = model(parent, "PalmTree")
+	local lean = rng:NextNumber(-0.25, 0.25)
+	local y, px = 0, x
+	local segments = 6
+	for i = 1, segments do
+		local h = 2.6
+		cylinder(m, "Trunk", h, 1.3 - i * 0.08, CFrame.new(px, y + h / 2, z) * CFrame.Angles(0, 0, math.pi / 2 + lean), Color3.fromRGB(130, 100, 70), Enum.Material.Wood)
+		y = y + h * 0.97
+		px = px - math.sin(lean) * h
+	end
+	for i = 1, 8 do
+		local angle = i / 8 * math.pi * 2
+		local leaf = small(block(m, "Leaf", Vector3.new(1.2, 0.15, 7), CFrame.new(px, y + 0.4, z) * CFrame.Angles(0, angle, 0) * CFrame.Angles(0.45, 0, 0) * CFrame.new(0, 0, -3.3), Color3.fromRGB(70, 130, 50), Enum.Material.Grass))
+		leaf.CastShadow = true
+	end
+	for i = 1, 3 do
+		small(block(m, "Coconut", Vector3.new(0.8, 0.8, 0.8), CFrame.new(px + math.cos(i * 2) * 0.6, y - 0.3, z + math.sin(i * 2) * 0.6), Color3.fromRGB(90, 60, 30), Enum.Material.Wood, { Shape = Enum.PartType.Ball }))
+	end
+end
+
+local function deadTree(parent, x, z)
+	local m = model(parent, "DeadTree")
+	local h = rng:NextNumber(6, 11)
+	local bark = Color3.fromRGB(95, 75, 60)
+	cylinder(m, "Trunk", h, 0.9, upright(x, h / 2, z), bark, Enum.Material.Wood)
+	for i = 1, 4 do
+		local y = h * rng:NextNumber(0.45, 0.95)
+		local yaw = rng:NextNumber(0, math.pi * 2)
+		local len = rng:NextNumber(2.5, 4.5)
+		small(block(m, "Branch", Vector3.new(0.35, 0.35, len), CFrame.new(x, y, z) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(0.7, 0, 0) * CFrame.new(0, 0, -len / 2), bark, Enum.Material.Wood))
+	end
+end
+
+local function skull(parent, x, z)
+	local m = model(parent, "CattleSkull")
+	local bone = Color3.fromRGB(235, 228, 210)
+	local yaw = rng:NextNumber(0, math.pi * 2)
+	local base = CFrame.new(x, 0.4, z) * CFrame.Angles(0, yaw, 0)
+	small(block(m, "Skull", Vector3.new(1, 0.7, 1.6), base, bone))
+	small(block(m, "HornL", Vector3.new(1.6, 0.25, 0.25), base * CFrame.new(-1, 0.2, -0.3) * CFrame.Angles(0, 0, 0.4), bone))
+	small(block(m, "HornR", Vector3.new(1.6, 0.25, 0.25), base * CFrame.new(1, 0.2, -0.3) * CFrame.Angles(0, 0, -0.4), bone))
+end
+
+local function waterTower(parent, x, z)
+	local m = model(parent, "WaterTower")
+	for _, dx in ipairs({ -3, 3 }) do
+		for _, dz in ipairs({ -3, 3 }) do
+			block(m, "Leg", Vector3.new(0.8, 18, 0.8), CFrame.new(x + dx, 9, z + dz) * CFrame.Angles(dz * 0.015, 0, -dx * 0.015), C.WoodDark, Enum.Material.Wood)
+		end
+	end
+	block(m, "Brace", Vector3.new(8.5, 0.4, 0.4), CFrame.new(x, 8, z - 3), C.WoodDark, Enum.Material.Wood)
+	block(m, "Brace", Vector3.new(8.5, 0.4, 0.4), CFrame.new(x, 8, z + 3), C.WoodDark, Enum.Material.Wood)
+	cylinder(m, "Tank", 9, 10, upright(x, 22.5, z), C.Wood, Enum.Material.WoodPlanks)
+	for _, y in ipairs({ 19.5, 25.5 }) do
+		cylinder(m, "Band", 0.4, 10.2, upright(x, y, z), Color3.fromRGB(50, 50, 55), Enum.Material.Metal)
+	end
+	block(m, "Roof", Vector3.new(11, 4, 11), CFrame.new(x, 28.5, z), C.Roof, Enum.Material.WoodPlanks, { Shape = Enum.PartType.Ball })
+	small(block(m, "Spout", Vector3.new(0.6, 0.6, 5), CFrame.new(x, 18.5, z - 6) * CFrame.Angles(0.4, 0, 0), Color3.fromRGB(60, 60, 65), Enum.Material.Metal))
+end
+
+-- Windmill: the rotor hub is tagged "SpinWindmill"; clients spin it.
+local function windmill(parent, x, z)
+	local m = model(parent, "Windmill")
+	local h = 24
+	for _, d in ipairs({ { -2, -2 }, { 2, -2 }, { -2, 2 }, { 2, 2 } }) do
+		block(m, "Leg", Vector3.new(0.5, h, 0.5), CFrame.new(x + d[1] * 0.75, h / 2, z + d[2] * 0.75) * CFrame.Angles(d[2] * 0.06, 0, -d[1] * 0.06), Color3.fromRGB(90, 90, 95), Enum.Material.Metal)
+	end
+	for y = 4, h - 2, 5 do
+		block(m, "Rung", Vector3.new(3.4 - y * 0.06, 0.3, 0.3), CFrame.new(x, y, z - 1.6 + y * 0.03), Color3.fromRGB(90, 90, 95), Enum.Material.Metal)
+	end
+	local hub = block(m, "Hub", Vector3.new(1.4, 1.4, 1.4), CFrame.new(x, h + 1, z - 1.5), Color3.fromRGB(70, 70, 75), Enum.Material.Metal, { Shape = Enum.PartType.Ball })
+	CollectionService:AddTag(hub, "SpinWindmill")
+	for i = 1, 12 do
+		local blade = block(m, "Blade", Vector3.new(0.9, 4.5, 0.1), CFrame.new(), Color3.fromRGB(200, 195, 185), Enum.Material.Metal)
+		-- hub.CFrame is already in world space, so set the blade directly.
+		blade.CFrame = hub.CFrame * CFrame.Angles(0, 0, i / 12 * math.pi * 2) * CFrame.new(0, 3, -0.3) * CFrame.Angles(0, 0.35, 0)
+		blade.Anchored = false
+		blade.CastShadow = false
+		local w = Instance.new("WeldConstraint")
+		w.Part0 = hub
+		w.Part1 = blade
+		w.Parent = blade
+	end
+	local vane = block(m, "Vane", Vector3.new(0.1, 3, 5), CFrame.new(x, h + 1, z + 2), Color3.fromRGB(200, 60, 50), Enum.Material.Metal)
+	vane.CastShadow = false
+end
+
+local function telegraphLine(parent, points)
+	local m = model(parent, "TelegraphLine")
+	local tops = {}
+	for i, p in ipairs(points) do
+		cylinder(m, "Pole", 16, 0.6, upright(p.X, 8, p.Z), C.WoodDark, Enum.Material.Wood)
+		local bar = block(m, "Crossbar", Vector3.new(4, 0.4, 0.4), CFrame.new(p.X, 15, p.Z), C.WoodDark, Enum.Material.Wood)
+		tops[i] = bar
+	end
+	for i = 1, #tops - 1 do
+		for _, side in ipairs({ -1.6, 1.6 }) do
+			local a0 = Instance.new("Attachment")
+			a0.Position = Vector3.new(side, 0.3, 0)
+			a0.Parent = tops[i]
+			local a1 = Instance.new("Attachment")
+			a1.Position = Vector3.new(side, 0.3, 0)
+			a1.Parent = tops[i + 1]
+			local wire = Instance.new("Beam")
+			wire.Attachment0 = a0
+			wire.Attachment1 = a1
+			wire.Width0 = 0.06
+			wire.Width1 = 0.06
+			wire.Color = ColorSequence.new(Color3.fromRGB(30, 30, 30))
+			wire.CurveSize0 = -1.5
+			wire.CurveSize1 = 1.5
+			wire.Parent = tops[i]
+		end
+	end
+end
+
+local function railway(parent, x, z0, z1)
+	local m = model(parent, "Railway")
+	local length = z1 - z0
+	for _, dx in ipairs({ -2.4, 2.4 }) do
+		local segments = math.ceil(length / 200)
+		for i = 0, segments - 1 do
+			local a = z0 + i * 200
+			local b = math.min(z1, a + 200)
+			block(m, "Rail", Vector3.new(0.3, 0.4, b - a), CFrame.new(x + dx, 0.6, (a + b) / 2), Color3.fromRGB(80, 75, 70), Enum.Material.Metal)
+		end
+	end
+	for z = z0, z1, 4 do
+		small(block(m, "Sleeper", Vector3.new(7, 0.35, 1), CFrame.new(x, 0.25, z), Color3.fromRGB(85, 60, 40), Enum.Material.Wood))
+	end
+end
+
+local function locomotive(parent, x, z)
+	local m = model(parent, "SteamTrain")
+	local black = Color3.fromRGB(30, 30, 34)
+	local red = Color3.fromRGB(150, 30, 30)
+	local function at(dz, y)
+		return CFrame.new(x, y, z + dz)
+	end
+	block(m, "Frame", Vector3.new(6, 1, 26), at(0, 2.2), black, Enum.Material.Metal)
+	block(m, "Boiler", Vector3.new(16, 5, 5), at(-4, 5.2) * CFrame.Angles(0, math.pi / 2, 0), black, Enum.Material.Metal, { Shape = Enum.PartType.Cylinder })
+	block(m, "SmokeBox", Vector3.new(1, 5.4, 5.4), at(-12.2, 5.2) * CFrame.Angles(0, math.pi / 2, 0), Color3.fromRGB(50, 50, 55), Enum.Material.Metal, { Shape = Enum.PartType.Cylinder })
+	local stack = cylinder(m, "Smokestack", 4, 1.8, CFrame.new(x, 9.4, z - 10.5) * CFrame.Angles(0, 0, math.pi / 2), black, Enum.Material.Metal)
+	local smoke = Instance.new("Smoke")
+	smoke.Color = Color3.fromRGB(200, 200, 200)
+	smoke.Opacity = 0.15
+	smoke.RiseVelocity = 6
+	smoke.Size = 3
+	smoke.Parent = stack
+	block(m, "Dome", Vector3.new(2, 2, 2), at(-4, 8), Color3.fromRGB(190, 150, 60), Enum.Material.Metal, { Shape = Enum.PartType.Ball })
+	block(m, "Cab", Vector3.new(6, 6, 6), at(7, 6), red, Enum.Material.WoodPlanks)
+	block(m, "CabRoof", Vector3.new(7, 0.5, 7), at(7, 9.2), black, Enum.Material.Metal)
+	windowRow(m, at(7, 6.5) * CFrame.new(0, 0, 0) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.new(0, 0, -3.05), 1, 0, Vector3.new(2.5, 2, 0.2))
+	block(m, "Cowcatcher", Vector3.new(5.5, 2, 3), at(-14, 1.6) * CFrame.Angles(0.5, 0, 0), red, Enum.Material.Metal)
+	local lamp = small(block(m, "Headlamp", Vector3.new(1.2, 1.2, 1), at(-12.9, 7), Color3.fromRGB(255, 240, 190), Enum.Material.Neon))
+	local light = Instance.new("SpotLight")
+	light.Face = Enum.NormalId.Front
+	light.Range = 40
+	light.Brightness = 2
+	light.Parent = lamp
+	for _, dz in ipairs({ -9, -5, -1, 3 }) do
+		for _, dx in ipairs({ -3.1, 3.1 }) do
+			local d = dz > -6 and 4 or 2.6
+			block(m, "Wheel", Vector3.new(0.5, d, d), at(dz, d / 2 + 0.6) * CFrame.new(dx, 0, 0), red, Enum.Material.Metal, { Shape = Enum.PartType.Cylinder })
+		end
+	end
+	-- Two passenger coaches.
+	for i = 1, 2 do
+		local cz = 13 + i * 18
+		block(m, "Coach", Vector3.new(6, 6, 16), at(cz, 5), Color3.fromRGB(110, 60, 40), Enum.Material.WoodPlanks)
+		block(m, "CoachRoof", Vector3.new(6.6, 0.8, 16.6), at(cz, 8.4), Color3.fromRGB(60, 55, 50), Enum.Material.Metal)
+		windowRow(m, at(cz, 5.8) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.new(0, 0, -3.05), 5, 3, Vector3.new(1.8, 1.8, 0.2))
+		windowRow(m, at(cz, 5.8) * CFrame.Angles(0, -math.pi / 2, 0) * CFrame.new(0, 0, -3.05), 5, 3, Vector3.new(1.8, 1.8, 0.2))
+		for _, wz in ipairs({ -5, 5 }) do
+			for _, dx in ipairs({ -3.1, 3.1 }) do
+				block(m, "Wheel", Vector3.new(0.5, 2.4, 2.4), at(cz + wz, 1.8) * CFrame.new(dx, 0, 0), black, Enum.Material.Metal, { Shape = Enum.PartType.Cylinder })
+			end
+		end
+	end
+end
+
+local function station(parent, x, z)
+	local m = model(parent, "TrainStation")
+	block(m, "Platform", Vector3.new(10, 1.6, 60), CFrame.new(x, 0.8, z), Color3.fromRGB(150, 130, 105), Enum.Material.WoodPlanks)
+	block(m, "Building", Vector3.new(14, 11, 24), CFrame.new(x - 12, 5.5, z), Color3.fromRGB(170, 120, 80), Enum.Material.WoodPlanks)
+	block(m, "Roof", Vector3.new(16, 1, 26), CFrame.new(x - 12, 11.5, z) * CFrame.Angles(0, 0, 0.12), C.Roof, Enum.Material.WoodPlanks)
+	local board = block(m, "StationSign", Vector3.new(0.4, 3, 16), CFrame.new(x - 4.8, 8.5, z), C.WoodDark, Enum.Material.Wood)
+	sign(board, Enum.NormalId.Right, "DESERT JUNCTION", Color3.fromRGB(245, 225, 175), nil, Enum.Font.Fondamento)
+	windowRow(m, CFrame.new(x - 4.95, 4.5, z) * CFrame.Angles(0, math.pi / 2, 0), 4, 5, Vector3.new(2.2, 3.2, 0.2))
+	block(m, "Canopy", Vector3.new(10, 0.5, 50), CFrame.new(x, 10, z) * CFrame.Angles(0, 0, -0.08), Color3.fromRGB(120, 40, 40), Enum.Material.WoodPlanks)
+	for dz = -22, 22, 11 do
+		block(m, "CanopyPost", Vector3.new(0.5, 8.6, 0.5), CFrame.new(x + 4, 5.9, z + dz), C.WoodDark, Enum.Material.Wood)
+		small(block(m, "Bench", Vector3.new(1.4, 0.4, 5), CFrame.new(x - 3, 2.4, z + dz + 5), C.WoodLight, Enum.Material.WoodPlanks))
+	end
+	small(block(m, "Clock", Vector3.new(0.3, 2.4, 2.4), CFrame.new(x - 4.7, 12.5, z), Color3.fromRGB(240, 235, 220), nil, { Shape = Enum.PartType.Cylinder }))
+end
+
+local function mine(parent, center)
+	local m = model(parent, "OldMine")
+	local dir = Vector3.new(-center.X, 0, -center.Z).Unit
+	local entrance = center + dir * 58
+	-- Faces back into the hill: the tunnel opening is on the local +Z side.
+	local base = CFrame.lookAt(Vector3.new(entrance.X, 0, entrance.Z), Vector3.new(entrance.X, 0, entrance.Z) + dir)
+	local function at(offset)
+		return base * offset
+	end
+	block(m, "TunnelDark", Vector3.new(10, 10, 6), at(CFrame.new(0, 5, 3)), Color3.fromRGB(10, 8, 6), Enum.Material.SmoothPlastic)
+	for _, x in ipairs({ -5.5, 5.5 }) do
+		block(m, "Timber", Vector3.new(1.2, 12, 1.2), at(CFrame.new(x, 6, 0)), C.WoodDark, Enum.Material.Wood)
+	end
+	block(m, "Lintel", Vector3.new(13, 1.4, 1.4), at(CFrame.new(0, 12, 0)), C.WoodDark, Enum.Material.Wood)
+	local board = block(m, "MineSign", Vector3.new(8, 2, 0.3), at(CFrame.new(0, 14, -0.4)), C.Wood, Enum.Material.Wood)
+	sign(board, Enum.NormalId.Front, "SILVER MINE · KEEP OUT", Color3.fromRGB(240, 220, 170), nil, Enum.Font.Fondamento)
+	for _, x in ipairs({ -1.6, 1.6 }) do
+		block(m, "MineRail", Vector3.new(0.3, 0.3, 26), at(CFrame.new(x, 0.4, -10)), Color3.fromRGB(80, 75, 70), Enum.Material.Metal)
+	end
+	for zz = 0, 22, 3 do
+		small(block(m, "Sleeper", Vector3.new(4.6, 0.3, 0.8), at(CFrame.new(0, 0.2, -zz)), Color3.fromRGB(85, 60, 40), Enum.Material.Wood))
+	end
+	block(m, "OreCart", Vector3.new(3.6, 2.4, 4.4), at(CFrame.new(0, 2.1, -9)), Color3.fromRGB(70, 70, 75), Enum.Material.Metal)
+	for i = 1, 5 do
+		small(block(m, "Ore", Vector3.new(1.1, 1.1, 1.1), at(CFrame.new(rng:NextNumber(-1, 1), 3.4, -9 + rng:NextNumber(-1.4, 1.4))), Color3.fromRGB(160, 165, 175), Enum.Material.Slate, { Shape = Enum.PartType.Ball }))
+	end
+	for _, x in ipairs({ -5.5, 5.5 }) do
+		local lantern = small(block(m, "Lantern", Vector3.new(0.7, 1, 0.7), at(CFrame.new(x, 9, -0.9)), Color3.fromRGB(255, 190, 100), Enum.Material.Neon))
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 180, 90)
+		light.Range = 14
+		light.Brightness = 1.2
+		light.Parent = lantern
+	end
+end
+
+local function rockArch(parent, x, z)
+	local m = model(parent, "RockArch")
+	local stone = Color3.fromRGB(190, 120, 80)
+	block(m, "PillarL", Vector3.new(8, 26, 9), CFrame.new(x - 14, 13, z) * CFrame.Angles(0, 0, 0.08), stone, Enum.Material.Sandstone)
+	block(m, "PillarR", Vector3.new(8, 24, 9), CFrame.new(x + 14, 12, z) * CFrame.Angles(0, 0, -0.08), stone, Enum.Material.Sandstone)
+	block(m, "Span", Vector3.new(38, 7, 8), CFrame.new(x, 27, z) * CFrame.Angles(0, 0, 0.03), stone, Enum.Material.Sandstone)
+end
+
+local function well(parent, x, z)
+	local m = model(parent, "Well")
+	cylinder(m, "WellRing", 3, 5, upright(x, 1.5, z), Color3.fromRGB(150, 140, 125), Enum.Material.Cobblestone)
+	cylinder(m, "WellWater", 0.2, 4.2, upright(x, 2.5, z), Color3.fromRGB(60, 100, 120), Enum.Material.Glass)
+	for _, dx in ipairs({ -2.2, 2.2 }) do
+		block(m, "Post", Vector3.new(0.5, 6, 0.5), CFrame.new(x + dx, 4, z), C.WoodDark, Enum.Material.Wood)
+	end
+	block(m, "Roof", Vector3.new(6, 0.5, 4), CFrame.new(x, 7.2, z), C.Roof, Enum.Material.WoodPlanks)
+	small(block(m, "Bucket", Vector3.new(0.9, 0.9, 0.9), CFrame.new(x, 4.5, z), C.Wood, Enum.Material.Wood))
+end
+
+local function wantedBoard(parent, x, z, yaw)
+	local m = model(parent, "WantedBoard")
+	local board = block(m, "Board", Vector3.new(6, 4, 0.3), CFrame.new(x, 4, z) * CFrame.Angles(0, yaw, 0), C.Wood, Enum.Material.WoodPlanks)
+	for _, dx in ipairs({ -2.6, 2.6 }) do
+		block(m, "Leg", Vector3.new(0.4, 6, 0.4), CFrame.new(x, 3, z) * CFrame.Angles(0, yaw, 0) * CFrame.new(dx, 0, 0.3), C.WoodDark, Enum.Material.Wood)
+	end
+	for i, text in ipairs({ "WANTED\nGYRO", "WANTED\nDIO", "REWARD\n$5000" }) do
+		local poster = small(block(m, "Poster", Vector3.new(1.6, 2.2, 0.05), CFrame.new(x, 4.1, z) * CFrame.Angles(0, yaw, 0) * CFrame.new(-2 + (i - 1) * 2, 0, -0.18), Color3.fromRGB(230, 210, 170), Enum.Material.Fabric))
+		sign(poster, Enum.NormalId.Front, text, Color3.fromRGB(60, 30, 15), nil, Enum.Font.Fondamento)
+	end
+end
+
+local function boardwalk(parent, x, z0, z1)
+	block(parent, "Boardwalk", Vector3.new(5, 0.6, math.abs(z1 - z0)), CFrame.new(x, 0.3, (z0 + z1) / 2), C.WoodLight, Enum.Material.WoodPlanks)
+end
+
+local function scoreboard(parent, x, z, yaw)
+	local m = model(parent, "Scoreboard")
+	local board = block(m, "Board", Vector3.new(20, 10, 0.6), CFrame.new(x, 12, z) * CFrame.Angles(0, yaw, 0), Color3.fromRGB(30, 40, 30), Enum.Material.WoodPlanks)
+	sign(board, Enum.NormalId.Front, "STAGE 1 — SAN DIEGO BEACH\n1. ???   2. ???   3. ???\n6,000 KM TO NEW YORK", Color3.fromRGB(240, 235, 200), nil, Enum.Font.Fondamento)
+	for _, dx in ipairs({ -8, 8 }) do
+		block(m, "Leg", Vector3.new(0.8, 12, 0.8), CFrame.new(x, 6, z) * CFrame.Angles(0, yaw, 0) * CFrame.new(dx, 0, 0.6), C.WoodDark, Enum.Material.Wood)
+	end
+	block(m, "Trim", Vector3.new(21, 1, 1), CFrame.new(x, 17.4, z) * CFrame.Angles(0, yaw, 0), C.Gold, Enum.Material.Metal)
+end
+
+---------------------------------------------------------------------------
+-- MAP UPGRADE: sections
+---------------------------------------------------------------------------
+local function buildLandforms()
+	local terrain = workspace.Terrain
+	local o = origin
+	-- Rolling dunes in the open desert.
+	for _ = 1, 45 do
+		local angle = rng:NextNumber(0, math.pi * 2)
+		local dist = rng:NextNumber(230, 470)
+		local p = Vector3.new(math.cos(angle) * dist, 0, math.sin(angle) * dist)
+		local inTown = p.X > 170 and p.X < 470 and p.Z > -340 and p.Z < 140
+		if not inTown then
+			local r = rng:NextNumber(18, 45)
+			terrain:FillBall(o + p - Vector3.new(0, r * 0.78, 0), r, Enum.Material.Sand)
+		end
+	end
+	-- Layered mesas (stratified sandstone and rock).
+	local mesas = { Vector3.new(-380, 0, 60), Vector3.new(-300, 0, -250), Vector3.new(120, 0, -430), Vector3.new(-120, 0, 400), Vector3.new(330, 0, 380), Vector3.new(-430, 0, 300) }
+	for i, p in ipairs(mesas) do
+		local radius = 30 + (i % 3) * 10
+		local height = 0
+		local layers = { Enum.Material.Sandstone, Enum.Material.Rock, Enum.Material.Sandstone, Enum.Material.Slate }
+		for l = 1, 4 do
+			local h = rng:NextNumber(10, 16)
+			local r = radius * (1 - (l - 1) * 0.12)
+			terrain:FillCylinder(CFrame.new(o + p + Vector3.new(0, height + h / 2, 0)), h, r, layers[l])
+			height = height + h
+		end
+	end
+	-- Oasis: pond, grass ring, palms.
+	local oasis = Vector3.new(-280, 0, 200)
+	terrain:FillCylinder(CFrame.new(o + oasis + Vector3.new(0, -0.5, 0)), 2, 34, Enum.Material.Grass)
+	terrain:FillCylinder(CFrame.new(o + oasis + Vector3.new(0, -2, 0)), 4, 20, Enum.Material.Water)
+	-- Mine hill.
+	terrain:FillBall(o + Vector3.new(-360, -30, -380), 70, Enum.Material.Rock)
+	-- Roads (hard-packed ground).
+	terrain:FillBlock(CFrame.new(o + Vector3.new(350, -0.6, 0)), Vector3.new(180, 1.2, 16), Enum.Material.Ground)
+	terrain:FillBlock(CFrame.new(o + Vector3.new(-140, -0.6, 150)), Vector3.new(280, 1.2, 14), Enum.Material.Ground)
+	terrain:FillBlock(CFrame.new(o + Vector3.new(-170, -0.6, -340)) * CFrame.Angles(0, 0.75, 0), Vector3.new(14, 1.2, 240), Enum.Material.Ground)
+	return oasis
+end
+
+local function buildUpgrades()
+	local f = folder("Upgrades")
+	local oasis = buildLandforms()
+
+	-- Race grounds: stables, horses, pennants, lights, scoreboard, hay.
+	stables(f, -80, 125, -math.pi / 2)
+	for i = 0, 3 do
+		horse(f, CFrame.new(26 + (i % 2) * 4, 0, 130 - i * 6) * CFrame.Angles(0, math.pi / 2 + rng:NextNumber(-0.3, 0.3), 0), HORSE_COATS[(i + 2) % #HORSE_COATS + 1])
+	end
+	for i = 0, 10 do
+		local z = 120 - i * 32
+		hangingLine(f, Vector3.new(-22, 14.5, z), Vector3.new(-22, 14.5, z - 32), 7, "pennants")
+		hangingLine(f, Vector3.new(22, 13.5, z - 16), Vector3.new(22, 13.5, z - 48), 8, "lights")
+	end
+	hangingLine(f, Vector3.new(-16, 21, 110), Vector3.new(16, 21, 110), 10, "lights")
+	scoreboard(f, 44, 118, -math.pi / 2)
+	for i = 1, 10 do
+		hayBale(f, rng:NextNumber(-18, -12) * (i % 2 == 0 and 1 or -1), 100 - i * 30, rng:NextNumber(0, 3))
+	end
+
+	-- Town extras: boardwalks, well, wanted board, water tower, windmill.
+	boardwalk(f, 260 - 14.5, -110, 60)
+	boardwalk(f, 260 + 14.5, -110, 60)
+	well(f, 260, -70)
+	wantedBoard(f, 248, 80, math.pi / 2)
+	waterTower(f, 300, 70)
+	windmill(f, 315, 115)
+
+	-- Railway, station and steam train.
+	railway(f, 440, -600, 600)
+	station(f, 432, 0)
+	locomotive(f, 440, -20)
+	waterTower(f, 420, 50)
+
+	-- Telegraph line: race start -> town -> station.
+	local poles = {}
+	for x = 30, 250, 40 do
+		table.insert(poles, Vector3.new(x, 0, 92))
+	end
+	for x = 290, 410, 40 do
+		table.insert(poles, Vector3.new(x, 0, -10))
+	end
+	telegraphLine(f, poles)
+
+	-- Oasis palms, mine, rock arch, desert details.
+	for i = 1, 9 do
+		local angle = i / 9 * math.pi * 2
+		palm(f, oasis.X + math.cos(angle) * rng:NextNumber(23, 30), oasis.Z + math.sin(angle) * rng:NextNumber(23, 30))
+	end
+	mine(f, Vector3.new(-360, 0, -380))
+	rockArch(f, -150, -440)
+	for _ = 1, 22 do
+		local x, z = rng:NextNumber(-460, 460), rng:NextNumber(-460, 460)
+		if math.abs(x) > 140 and not (x > 170 and x < 470) then
+			if rng:NextNumber() < 0.5 then
+				deadTree(f, x, z)
+			else
+				skull(f, x, z)
+			end
+		end
+	end
+	-- Wrecked wagon out in the desert.
+	wagon(f, -200, -120, 0.7)
+end
+
 -- NPC markers: NPCService (runtime) spawns a character at each.
 local NPCS = {
 	{ "Race Announcer", "Announcer", Vector3.new(-6, 0, 118), 0, "Welcome, riders! The greatest horse race in history starts right here!|Six thousand kilometers of desert, mountains and rivers. Only one can win.|Keep your Spin steady and your eyes on the trail!" },
@@ -567,6 +1087,10 @@ local NPCS = {
 	{ "Shopkeeper", "Spectator", Vector3.new(272, 0, 40), 6, "Ropes, canteens, horseshoes, all here.|Prices doubled for the race. Supply and demand!|Come back when you've got more coin." },
 	{ "Townsfolk", "Spectator", Vector3.new(260, 0, -40), 30, "The racers came through town at dawn!|My money's on the cowboy with the blue scarf.|Did you see that flash of light out by the church?" },
 	{ "Priest", "Spectator", Vector3.new(0, 0, -270), 10, "Peace be with you, traveller.|This mission has stood for a hundred years.|Many racers rest here before the long road." },
+	{ "Stable Hand", "Spectator", Vector3.new(-66, 0, 112), 8, "Easy, easy... these horses are nervous before a race.|A good horse is worth more than gold out here.|Feed them, water them, never rush them." },
+	{ "Station Master", "Official", Vector3.new(425, 1.6, 10), 10, "Next train to the east leaves at sundown.|Racers ride horses, not trains. Rules are rules!|The telegraph says the leaders passed Arizona already." },
+	{ "Old Miner", "Spectator", Vector3.new(-320, 0, -335), 6, "Silver? Nah, the mine's been empty for years.|I heard strange spinning sounds down there last night.|Don't go in without a lantern." },
+	{ "Oasis Traveller", "Spectator", Vector3.new(-262, 0, 178), 10, "Fresh water! First I've seen in two days.|Rest here before you cross the dunes.|The mesas make good landmarks. Don't get lost." },
 	{ "Headquarters Clerk", "Official", Vector3.new(260, 18, -228), 8, "Registration is closed, I'm afraid.|The sponsors are watching every rider closely.|Prize money is fifty million dollars. Can you believe it?" },
 }
 
@@ -623,6 +1147,7 @@ function SBRMapBuilder.Build(options)
 	buildTown()
 	buildHeadquarters()
 	buildDesert()
+	buildUpgrades()
 	buildNPCMarkers()
 	root.Parent = workspace
 

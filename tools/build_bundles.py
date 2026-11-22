@@ -110,7 +110,7 @@ local TuskService = __require("TuskService")
 local NPCService = __require("NPCService")
 local TestDummies = __require("TestDummies")
 
-ProjectileService.MaxActivePerPlayer = 12
+ProjectileService.MaxActivePerPlayer = 20
 SpinService.init()
 TuskService.init()
 if BUILD_MAP_ON_START and not workspace:FindFirstChild("SBRMap") then
@@ -145,6 +145,7 @@ __require("TuskProjectiles").init()
 __require("TuskSneakController").init()
 __require("TuskController").init()
 __require("WorldClient").init()
+__require("CharacterCard").init()
 '''
 
 out = "roblox_scripts/format_like_anime_fighters"

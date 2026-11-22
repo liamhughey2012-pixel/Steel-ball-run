@@ -68,6 +68,66 @@ local function styleFor(visual)
 			s.TrailColor = colors.GoldLight
 		end
 	end
+	local act = visual.Act or 1
+	if style == "Wormhole" then
+		-- Act 2: violet-cyan helix, one tilted ring.
+		s.Color = Color3.fromRGB(110, 70, 255)
+		s.Color2 = Color3.fromRGB(80, 210, 255)
+		s.Rings = 1
+		s.RingColor = Color3.fromRGB(160, 120, 255)
+		s.ImpactSize = 1
+	elseif style == "Portal" then
+		-- Nails fired through portals (Acts 2 and 3).
+		s.Scale = 0.9
+		s.Color = act == 3 and Color3.fromRGB(30, 20, 120) or Color3.fromRGB(110, 70, 255)
+		s.Color2 = act == 3 and Color3.fromRGB(120, 160, 255) or colors.Cyan
+		s.ImpactSize = 0.8
+	elseif style == "Golden" then
+		-- Act 4: golden spin nail, three golden rings, layered gold + blue trails.
+		s.Scale = 1.9
+		s.Rings = 3
+		s.RingColor = colors.Gold
+		s.Color = colors.DeepBlue
+		s.Color2 = colors.Gold
+		s.TrailColor = colors.GoldLight
+		s.Helix = 3
+		s.SpinSpeed = 55
+		s.Afterimages = true
+		s.ImpactSize = 2
+		s.ImpactLayers = 3
+		s.ImpactColor = colors.Gold
+	elseif style == "Rotation" then
+		local stage = math.floor(charge * 3 + 0.5)
+		s.Scale = 1.6 + stage * 0.6
+		s.Rings = 1 + stage
+		s.RingColor = stage >= 3 and colors.Cyan or colors.Gold
+		s.Color = colors.DeepBlue
+		s.Color2 = colors.Gold
+		s.TrailColor = colors.GoldLight
+		s.Helix = 3
+		s.SpinSpeed = 45 + stage * 15
+		s.Afterimages = true
+		s.ImpactSize = 1.4 + stage * 0.7
+		s.ImpactLayers = 2 + stage
+		s.ImpactColor = colors.Gold
+		s.ImpactRadius = 4 + stage * 2
+	elseif style == "InfiniteUlt" then
+		s.Scale = 5
+		s.Rings = 3
+		s.RingColor = colors.Gold
+		s.Color = colors.DeepBlue
+		s.Color2 = colors.Gold
+		s.TrailColor = colors.GoldLight
+		s.TrailLength = 2
+		s.Helix = 3
+		s.HelixRadius = 0.5
+		s.SpinSpeed = 30
+		s.Afterimages = true
+		s.ImpactSize = 4.5
+		s.ImpactLayers = 4
+		s.ImpactColor = colors.Gold
+		s.ImpactRadius = 12
+	end
 	if awakened then
 		s.Rings = s.Rings + 1
 		s.Color2 = colors.Ice
@@ -114,17 +174,34 @@ local function onEnd(data)
 		entry.Visual:Destroy()
 	end
 	local s, style, charge = styleFor(data.Visual or {})
-	local color = (style == "Spinning" and charge >= 1) and colors.Gold or colors.Cyan
+	local color = s.ImpactColor or ((style == "Spinning" and charge >= 1) and colors.Gold or s.Color2)
 	TuskVFX.CreateImpact(data.Position, data.Normal, {
 		Size = s.ImpactSize,
 		Layers = s.ImpactLayers,
-		Radius = style == "Spinning" and 5 or 3.5,
+		Radius = s.ImpactRadius or (style == "Spinning" and 5 or 3.5),
 		Color = color,
 		Color2 = colors.Ice,
 		Sound = sounds.NailImpact,
 		Pitch = style == "Barrage" and 1.25 or 1,
 	})
-	if style == "Spinning" then
+	if style == "InfiniteUlt" or style == "Rotation" or style == "Golden" then
+		-- Massive golden shockwave across the battlefield (scaled by style).
+		local big = style == "InfiniteUlt"
+		local ground = data.Position - Vector3.new(0, 1, 0)
+		TuskVFX.CreateRotationalShockwave(CFrame.new(ground), { Radius = big and 40 or (s.ImpactRadius or 6) * 2, Layers = big and 5 or 3, Color = colors.Gold, Color2 = colors.Cyan, Ground = true, Particles = big and 4 or 1.5, Width = big and 1.4 or 0.7, Duration = big and 0.9 or 0.5 })
+		TuskVFX.CreateDistortion(data.Position, { Radius = big and 16 or 5, Duration = big and 0.7 or 0.4 })
+		VFXLib.flash(data.Position, colors.Gold, big and 16 or 7, big and 80 or 30, big and 0.9 or 0.4)
+		CameraFX.shakeAt(data.Position, big and 2 or 0.8, big and 160 or 80)
+		if big then
+			VFXLib.sound(sounds.AwakeningBurst, data.Position, 1, 0.75)
+			local camera = workspace.CurrentCamera
+			if camera and (camera.CFrame.Position - data.Position).Magnitude < 120 then
+				CameraFX.impactFrame(colors.GoldLight)
+			end
+		elseif data.HitCharacter and data.OwnerId == localPlayer.UserId then
+			CameraFX.impactFrame(colors.GoldLight)
+		end
+	elseif style == "Spinning" then
 		TuskVFX.CreateDistortion(data.Position, { Radius = 2 + charge * 3 })
 		CameraFX.shakeAt(data.Position, 0.3 + charge * 0.5, 70)
 		if charge >= 1 and data.HitCharacter and data.OwnerId == localPlayer.UserId then

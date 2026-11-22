@@ -233,8 +233,164 @@ local function buildAct1(scale)
 	return model, rig
 end
 
+---------------------------------------------------------------------------
+-- ACT 2: Act 1 grown up. Bigger, magenta, a crest of spikes, two small arms.
+---------------------------------------------------------------------------
+local function limb(model, parent, rig, name, base, length, thickness, color, handColor)
+	local arm = part(model, { Name = name, Shape = Enum.PartType.Cylinder, Size = Vector3.new(length, thickness, thickness), Color = color })
+	-- Cylinder axis is X; hang it down from the joint.
+	local offset = CFrame.new(0, -length / 2, 0) * CFrame.Angles(0, 0, math.pi / 2)
+	local w = attach(parent, arm, base * offset)
+	rig.Joints[name] = { Weld = w, Base = base, Offset = offset }
+	local hand = part(model, { Name = name .. "Hand", Size = Vector3.new(thickness * 1.6, thickness * 1.6, thickness * 1.6), Color = handColor or color, Ellipsoid = true })
+	attach(arm, hand, CFrame.new(-length / 2 - thickness * 0.4, 0, 0))
+	return arm, hand
+end
+
+local function buildAct2(scale)
+	local s = scale * 1.25
+	local model, rig = buildAct1(s)
+	model.Name = "TuskAct2"
+	-- (Color3 values can't be table keys, so compare directly.)
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			if d.Color == colors.Pink then
+				d.Color = Color3.fromRGB(214, 84, 196)
+			elseif d.Color == colors.PinkDark then
+				d.Color = Color3.fromRGB(118, 40, 150)
+			end
+		end
+	end
+	local body = rig.Body
+	-- Crest of three spikes.
+	for i = -1, 1 do
+		local spike = part(model, { Name = "Crest", Size = Vector3.new(0.14, 0.7 - math.abs(i) * 0.2, 0.3) * s, Color = Color3.fromRGB(240, 200, 255), Ellipsoid = true })
+		attach(body, spike, CFrame.new(i * 0.22 * s, 0.95 * s, 0.1 * s) * CFrame.Angles(0, 0, -i * 0.4))
+	end
+	-- Glowing chest star.
+	local core = part(model, { Name = "Core", Size = Vector3.new(0.3, 0.3, 0.08) * s, Color = colors.Cyan, Material = Enum.Material.Neon, Ellipsoid = true })
+	attach(body, core, CFrame.new(0, -0.35 * s, -0.62 * s))
+	-- Arms.
+	limb(model, body, rig, "ArmL", CFrame.new(-0.62 * s, -0.05 * s, -0.1 * s) * CFrame.Angles(0, 0, -0.5), 0.6 * s, 0.13 * s, Color3.fromRGB(214, 84, 196), colors.Star)
+	local _, hand = limb(model, body, rig, "ArmR", CFrame.new(0.62 * s, -0.05 * s, -0.1 * s) * CFrame.Angles(0, 0, 0.5), 0.6 * s, 0.13 * s, Color3.fromRGB(214, 84, 196), colors.Star)
+	rig.NailPoint.Parent = hand
+	rig.NailPoint.Position = Vector3.new()
+	return model, rig
+end
+
+---------------------------------------------------------------------------
+-- Humanoid Stands (Act 3, Act 4)
+---------------------------------------------------------------------------
+local function buildHumanoid(name, scale, look)
+	local s = scale
+	local model = Instance.new("Model")
+	model.Name = name
+	local rig = { Joints = {} }
+
+	local torso = part(model, { Name = "Body", Size = look.Torso * s, Color = look.Body, Ellipsoid = true, Massless = false })
+	torso.CFrame = CFrame.new()
+	torso.Anchored = true
+	model.PrimaryPart = torso
+	rig.Body = torso
+	local ty = look.Torso.Y * s / 2
+
+	-- Chest trim and star.
+	local plate = part(model, { Name = "Chest", Size = Vector3.new(look.Torso.X * 0.75, look.Torso.Y * 0.45, 0.12) * s, Color = look.Trim, Material = look.TrimMaterial or Enum.Material.SmoothPlastic, Ellipsoid = true })
+	attach(torso, plate, CFrame.new(0, ty * 0.3, -look.Torso.Z * s * 0.44))
+	star(model, torso, Vector3.new(0, ty * 0.3, -look.Torso.Z * s * 0.52), Vector3.new(0, 0, -1), 0.55 * s, look.Star)
+
+	-- Head with eyes, forehead star and the gold pin.
+	local head = part(model, { Name = "Head", Size = look.Head * s, Color = look.HeadColor or look.Body, Ellipsoid = true })
+	attach(torso, head, CFrame.new(0, ty + look.Head.Y * s * 0.45, -0.05 * s))
+	local hy = look.Head.Y * s
+	for _, side in ipairs({ -1, 1 }) do
+		local eye = part(model, { Name = "Eye", Size = Vector3.new(0.22, 0.14, 0.08) * s, Color = look.Eye, Material = Enum.Material.Neon, Ellipsoid = true })
+		attach(head, eye, CFrame.new(side * 0.2 * s, 0.02 * s, -look.Head.Z * s * 0.47) * CFrame.Angles(0, 0, side * -0.25))
+	end
+	star(model, head, Vector3.new(0, hy * 0.32, -look.Head.Z * s * 0.42), Vector3.new(0, 0.5, -1).Unit, 0.4 * s, look.Star)
+	-- Head fins (animated like Act 1's ears).
+	for _, e in ipairs({ { "EarL", -1 }, { "EarR", 1 } }) do
+		local base = CFrame.new(e[2] * look.Head.X * s * 0.45, hy * 0.25, 0.05 * s) * CFrame.Angles(0, 0, -e[2] * 1.1)
+		local fin = part(model, { Name = e[1], Size = Vector3.new(0.22, 0.8, 0.08) * s, Color = look.Trim, Ellipsoid = true })
+		local offset = CFrame.new(0, 0.35 * s, 0)
+		local w = attach(head, fin, base * offset)
+		rig.Joints[e[1]] = { Weld = w, Base = base, Offset = offset }
+	end
+
+	-- Shoulders and arms.
+	for _, a in ipairs({ { "ArmL", -1 }, { "ArmR", 1 } }) do
+		local shoulderPos = CFrame.new(a[2] * (look.Torso.X * s * 0.5 + 0.1 * s), ty * 0.7, 0)
+		local pad = part(model, { Name = "Shoulder", Size = Vector3.new(0.6, 0.5, 0.6) * s * look.ArmThickness * 3, Color = look.Trim, Material = look.TrimMaterial or Enum.Material.SmoothPlastic, Ellipsoid = true })
+		attach(torso, pad, shoulderPos)
+		local _, hand = limb(model, torso, rig, a[1], shoulderPos * CFrame.Angles(0, 0, a[2] * 0.15), look.ArmLength * s, look.ArmThickness * s, look.Body, look.Trim)
+		if a[1] == "ArmR" then
+			local point = Instance.new("Attachment")
+			point.Name = "NailPoint"
+			point.Parent = hand
+			rig.NailPoint = point
+		end
+	end
+
+	-- Lower body: legs (Act 4) or a swirling tail (Act 3).
+	if look.Legs then
+		for i, side in ipairs({ -1, 1 }) do
+			local base = CFrame.new(side * look.Torso.X * s * 0.25, -ty * 0.85, 0)
+			limb(model, torso, rig, "Leg" .. i, base, look.LegLength * s, look.ArmThickness * 1.3 * s, look.Body, look.Trim)
+		end
+	else
+		local y = -ty * 0.9
+		for i = 1, 4 do
+			local size = Vector3.new(look.Torso.X * (0.8 - i * 0.16), 0.9, look.Torso.Z * (0.8 - i * 0.16)) * s
+			local seg = part(model, { Name = "Tail", Size = size, Color = i % 2 == 0 and look.Trim or look.Body, Ellipsoid = true })
+			attach(torso, seg, CFrame.new(math.sin(i * 1.3) * 0.25 * s, y, math.cos(i * 1.3) * 0.2 * s) * CFrame.Angles(0, i * 0.6, 0.15 * i))
+			y = y - 0.55 * s
+		end
+	end
+
+	-- Scattered stars on the torso.
+	for _, spot in ipairs({ Vector3.new(0.45, -0.3, -0.35), Vector3.new(-0.45, 0.1, -0.35), Vector3.new(0.3, 0.4, 0.4), Vector3.new(-0.35, -0.4, 0.4) }) do
+		star(model, torso, Vector3.new(spot.X * look.Torso.X, spot.Y * look.Torso.Y, spot.Z * look.Torso.Z) * s * 1.05, Vector3.new(spot.X, 0, spot.Z).Unit, 0.22 * s, look.Star)
+	end
+	return model, rig
+end
+
+local function buildAct3(scale)
+	return buildHumanoid("TuskAct3", scale, {
+		Torso = Vector3.new(1.3, 1.7, 0.9),
+		Head = Vector3.new(0.95, 1.05, 0.95),
+		Body = Color3.fromRGB(196, 96, 190),
+		HeadColor = Color3.fromRGB(236, 170, 220),
+		Trim = Color3.fromRGB(40, 50, 130),
+		Star = colors.Star,
+		Eye = Color3.fromRGB(120, 200, 255),
+		ArmLength = 1.1,
+		ArmThickness = 0.2,
+		Legs = false,
+	})
+end
+
+local function buildAct4(scale)
+	return buildHumanoid("TuskAct4", scale * 1.15, {
+		Torso = Vector3.new(1.8, 2.1, 1.1),
+		Head = Vector3.new(1, 1.1, 1),
+		Body = Color3.fromRGB(70, 56, 150),
+		HeadColor = Color3.fromRGB(200, 120, 210),
+		Trim = colors.Gold,
+		TrimMaterial = Enum.Material.Metal,
+		Star = colors.GoldLight,
+		Eye = Color3.fromRGB(110, 230, 255),
+		ArmLength = 1.4,
+		ArmThickness = 0.3,
+		Legs = true,
+		LegLength = 1.6,
+	})
+end
+
 local builders = {
 	[1] = buildAct1,
+	[2] = buildAct2,
+	[3] = buildAct3,
+	[4] = buildAct4,
 }
 
 function TuskStandModels.build(act, scale)
