@@ -2,14 +2,22 @@
 tags: [install]
 updated: 2026-11-22
 ---
-# Quick Install (one file)
-File: `SpinBattlegrounds_Installer.lua`
+# Quick Install (4 files)
+Same format as Anime Fighters: `_Server` = Script, `_Client` = LocalScript, settings = ModuleScripts.
 
-1. Studio › **Plugins** tab › **Plugins Folder**. Put the file there and restart Studio.
-2. Open your place › Plugins tab › **Install Scripts** (click Allow if asked).
-3. Click **Build Map** (first time only).
-4. File › **Save**, then press **Play**.
+| File | Type | Put it in |
+|---|---|---|
+| `SpinConfig.lua` | **ModuleScript** named `SpinConfig` | **ReplicatedStorage** |
+| `TuskConfig.lua` | **ModuleScript** named `TuskConfig` | **ReplicatedStorage** |
+| `Spin_Server.lua` | **Script** named `Spin_Server` | **ServerScriptService** |
+| `Spin_Client.lua` | **LocalScript** named `Spin_Client` | **StarterPlayer › StarterPlayerScripts** |
 
-For updates, put the new installer file in the Plugins folder, restart Studio and click **Install Scripts** again. It replaces the old scripts.
+1. Explorer › right-click the place › ➕ Insert Object › pick the type › rename it.
+2. Open it, Ctrl+A, paste the matching file.
+3. Press **Play**. The SBR map builds itself when the game starts (turn off with `BUILD_MAP_ON_START = false` at the top of Spin_Server).
+4. Watch the Output window for "[Spin] Server ready".
 
-No plugin? Paste the whole file into View › Command Bar and press Enter.
+**Updates:** open the script, Ctrl+A, paste the new version. The names don't change.
+**Settings** (damage, cooldowns, keys, sound ids) live only in SpinConfig and TuskConfig.
+
+> If you installed the older 39-script version, delete the `SpinShared`, `SpinServer`, `SpinClient` and `SpinTools` objects first.
