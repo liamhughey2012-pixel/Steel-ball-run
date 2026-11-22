@@ -143,3 +143,5 @@ NumberSequence = { new = function(...) return { ... } end }
 NumberSequenceKeypoint = { new = function(...) return { ... } end }
 NumberRange = { new = function(...) return { ... } end }
 Vector2 = { new = function(x, y) return { X = x, Y = y } end }
+function Inst.FindFirstChildOfClass(self, cls) for _, c in ipairs(self._children) do if c.ClassName == cls then return c end end end
+UDim2 = { new = function(...) return { ... } end, fromScale = function(...) return { ... } end, fromOffset = function(...) return { ... } end }

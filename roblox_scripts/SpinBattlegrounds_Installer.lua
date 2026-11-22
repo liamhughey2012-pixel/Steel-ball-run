@@ -2265,12 +2265,14 @@ local TuskService = require(script.TuskService)
 local NPCService = require(script.NPCService)
 local TestDummies = require(script.TestDummies)
 local StandAssetLoader = require(script.StandAssetLoader)
+local GyroOutfit = require(script.GyroOutfit)
 
 -- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
 
 StandAssetLoader.init()
 TuskService.init()
+GyroOutfit.init()
 NPCService.init()
 TestDummies.init()
 ]=] },
@@ -2562,6 +2564,305 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return CooldownService
+]=] },
+	{ Service = "ServerScriptService", Path = "SpinServer/GyroOutfit", Class = "ModuleScript", Source = [=[
+--[[
+	GyroOutfit  (ServerScriptService.SpinServer.GyroOutfit)
+
+	Dresses a character as Gyro Zeppeli while they play Gyro (TuskAct 5),
+	built from parts so no catalog asset ids are needed:
+	  * cream wide-brimmed hat, dark band, gold "GO! GO! ZEPPELI" plate
+	  * long blond hair with two braids
+	  * purple outfit with black stripes (shirt/pants swapped for body
+	    colours + stripe bands), dark gloves, belt with a gold buckle, boots
+	The player's own hats/hair are hidden and their clothes put back when
+	they switch to another character. Works on R15 and R6. Built on the
+	server so every player sees it.
+]]
+
+local Players = game:GetService("Players")
+
+local GyroOutfit = {}
+GyroOutfit.GyroAct = 5
+
+local C = {
+	Hat = Color3.fromRGB(232, 222, 200),
+	HatBand = Color3.fromRGB(60, 40, 90),
+	Gold = Color3.fromRGB(235, 190, 70),
+	Hair = Color3.fromRGB(240, 205, 110),
+	HairDark = Color3.fromRGB(210, 170, 80),
+	Shirt = Color3.fromRGB(102, 64, 150),
+	Pants = Color3.fromRGB(70, 46, 110),
+	Stripe = Color3.fromRGB(25, 20, 35),
+	Glove = Color3.fromRGB(45, 32, 70),
+	Belt = Color3.fromRGB(95, 60, 35),
+	Boot = Color3.fromRGB(70, 45, 30),
+}
+
+local saved = setmetatable({}, { __mode = "k" }) -- character -> what to restore
+
+local function piece(parent, outfit, props, offset, ellipsoid)
+	local p = Instance.new("Part")
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.SmoothPlastic
+	for k, v in pairs(props) do
+		p[k] = v
+	end
+	if ellipsoid then
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = p
+	end
+	p.CFrame = parent.CFrame * offset
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = parent
+	weld.Part1 = p
+	weld.Parent = p
+	p.Parent = outfit
+	return p
+end
+
+-- A flat stripe wrapped around a limb (limbs are boxes, so a box band fits).
+local function band(limb, outfit, y, thickness, color)
+	return piece(limb, outfit, { Name = "Band", Size = Vector3.new(limb.Size.X * 1.05, thickness, limb.Size.Z * 1.05), Color = color }, CFrame.new(0, y, 0))
+end
+
+local function hat(head, outfit)
+	local s = head.Size.Y / 1.2
+	local top = head.Size.Y * 0.5
+	local base = CFrame.new(0, top - 0.05 * s, 0.05 * s) * CFrame.Angles(-0.12, 0, 0)
+	piece(head, outfit, { Name = "HatBrim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.1 * s, 2.7 * s, 2.7 * s), Color = C.Hat }, base * CFrame.Angles(0, 0, math.pi / 2))
+	piece(head, outfit, { Name = "HatCrown", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.75 * s, 1.35 * s, 1.35 * s), Color = C.Hat }, base * CFrame.new(0, 0.42 * s, 0) * CFrame.Angles(0, 0, math.pi / 2))
+	piece(head, outfit, { Name = "HatTop", Size = Vector3.new(1.3, 0.45, 1.3) * s, Color = C.Hat }, base * CFrame.new(0, 0.8 * s, 0), true)
+	piece(head, outfit, { Name = "HatBand", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.22 * s, 1.39 * s, 1.39 * s), Color = C.HatBand }, base * CFrame.new(0, 0.18 * s, 0) * CFrame.Angles(0, 0, math.pi / 2))
+	-- Gold plate on the front of the band with the motto.
+	local plate = piece(head, outfit, { Name = "HatPlate", Size = Vector3.new(0.9, 0.2, 0.05) * s, Color = C.Gold, Material = Enum.Material.Metal }, base * CFrame.new(0, 0.18 * s, -0.7 * s))
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 120
+	gui.Parent = plate
+	local text = Instance.new("TextLabel")
+	text.BackgroundTransparency = 1
+	text.Size = UDim2.fromScale(1, 1)
+	text.Font = Enum.Font.GothamBlack
+	text.TextScaled = true
+	text.TextColor3 = Color3.fromRGB(60, 30, 10)
+	text.Text = "GO! GO! ZEPPELI"
+	text.Parent = gui
+	-- Two eyelets on the crown, like Gyro's hat.
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, { Name = "HatEyelet", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.05, 0.2, 0.2) * s, Color = C.Gold, Material = Enum.Material.Metal }, base * CFrame.new(side * 0.3 * s, 0.55 * s, -0.62 * s) * CFrame.Angles(0, math.pi / 2, 0))
+	end
+end
+
+local function hair(head, outfit)
+	local s = head.Size.Y / 1.2
+	piece(head, outfit, { Name = "HairBack", Size = Vector3.new(1.25, 1.5, 0.55) * s, Color = C.Hair }, CFrame.new(0, -0.25 * s, 0.45 * s), true)
+	piece(head, outfit, { Name = "HairTop", Size = Vector3.new(1.28, 0.6, 1.25) * s, Color = C.Hair }, CFrame.new(0, 0.38 * s, 0.05 * s), true)
+	-- Long side locks framing the face, and two braids hanging past the shoulders.
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, { Name = "SideHair", Size = Vector3.new(0.32, 1.5, 0.7) * s, Color = C.Hair }, CFrame.new(side * 0.66 * s, -0.35 * s, 0.12 * s), true)
+		for i = 0, 5 do
+			piece(head, outfit, { Name = "Braid", Size = Vector3.new(0.26, 0.34, 0.26) * s, Color = (i % 2 == 0) and C.Hair or C.HairDark }, CFrame.new(side * 0.78 * s, (-0.55 - i * 0.28) * s, -0.05 * s), true)
+		end
+	end
+	-- Short fringe peeking out under the hat brim.
+	piece(head, outfit, { Name = "Fringe", Size = Vector3.new(1.1, 0.25, 0.3) * s, Color = C.Hair }, CFrame.new(0, 0.42 * s, -0.5 * s), true)
+end
+
+local LIMBS = {
+	R15 = {
+		Arms = { "LeftUpperArm", "LeftLowerArm", "RightUpperArm", "RightLowerArm" },
+		Legs = { "LeftUpperLeg", "LeftLowerLeg", "RightUpperLeg", "RightLowerLeg" },
+		Hands = { "LeftHand", "RightHand" },
+		Feet = { "LeftFoot", "RightFoot" },
+		Torso = "UpperTorso",
+		Waist = "LowerTorso",
+	},
+	R6 = {
+		Arms = { "Left Arm", "Right Arm" },
+		Legs = { "Left Leg", "Right Leg" },
+		Hands = {},
+		Feet = {},
+		Torso = "Torso",
+		Waist = "Torso",
+	},
+}
+
+function GyroOutfit.apply(character)
+	if character:FindFirstChild("GyroOutfit") then
+		return
+	end
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local rig = character:FindFirstChild("UpperTorso") and "R15" or "R6"
+	local parts = LIMBS[rig]
+	local store = { Clothes = {}, Hidden = {}, Colors = nil }
+	saved[character] = store
+
+	-- Hide the player's own hats and hair; take off shirt / pants.
+	for _, d in ipairs(character:GetChildren()) do
+		if d:IsA("Accessory") then
+			local handle = d:FindFirstChild("Handle")
+			if handle and (d.AccessoryType == Enum.AccessoryType.Hat or d.AccessoryType == Enum.AccessoryType.Hair or d.AccessoryType == Enum.AccessoryType.Face or d.AccessoryType == Enum.AccessoryType.Unknown) then
+				store.Hidden[handle] = handle.Transparency
+				handle.Transparency = 1
+			end
+		elseif d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") then
+			table.insert(store.Clothes, d)
+			d.Parent = nil
+		end
+	end
+	local colors = character:FindFirstChildOfClass("BodyColors")
+	if colors then
+		store.Colors = {
+			TorsoColor3 = colors.TorsoColor3,
+			LeftArmColor3 = colors.LeftArmColor3,
+			RightArmColor3 = colors.RightArmColor3,
+			LeftLegColor3 = colors.LeftLegColor3,
+			RightLegColor3 = colors.RightLegColor3,
+		}
+		colors.TorsoColor3 = C.Shirt
+		colors.LeftArmColor3 = C.Shirt
+		colors.RightArmColor3 = C.Shirt
+		colors.LeftLegColor3 = C.Pants
+		colors.RightLegColor3 = C.Pants
+	end
+
+	local outfit = Instance.new("Model")
+	outfit.Name = "GyroOutfit"
+	outfit.Parent = character
+
+	hat(head, outfit)
+	hair(head, outfit)
+
+	-- Black stripes on arms, legs and torso.
+	for _, name in ipairs(parts.Arms) do
+		local limb = character:FindFirstChild(name)
+		if limb then
+			band(limb, outfit, limb.Size.Y * 0.2, 0.12, C.Stripe)
+			band(limb, outfit, -limb.Size.Y * 0.2, 0.12, C.Stripe)
+		end
+	end
+	for _, name in ipairs(parts.Legs) do
+		local limb = character:FindFirstChild(name)
+		if limb then
+			band(limb, outfit, limb.Size.Y * 0.25, 0.12, C.Stripe)
+			band(limb, outfit, -limb.Size.Y * 0.1, 0.12, C.Stripe)
+		end
+	end
+	local torso = character:FindFirstChild(parts.Torso)
+	if torso then
+		for i = -1, 1 do
+			piece(torso, outfit, { Name = "TorsoStripe", Size = Vector3.new(torso.Size.X * 1.02, 0.1, torso.Size.Z * 1.04), Color = C.Stripe }, CFrame.new(0, i * torso.Size.Y * 0.25, 0))
+		end
+		-- Collar.
+		piece(torso, outfit, { Name = "Collar", Size = Vector3.new(torso.Size.X * 0.7, 0.25, torso.Size.Z * 1.1), Color = C.HatBand }, CFrame.new(0, torso.Size.Y * 0.47, 0), true)
+	end
+	-- Belt with a gold buckle.
+	local waist = character:FindFirstChild(parts.Waist)
+	if waist then
+		local y = rig == "R6" and -waist.Size.Y * 0.42 or 0
+		piece(waist, outfit, { Name = "Belt", Size = Vector3.new(waist.Size.X * 1.04, 0.22, waist.Size.Z * 1.06), Color = C.Belt, Material = Enum.Material.Leather }, CFrame.new(0, y, 0))
+		piece(waist, outfit, { Name = "Buckle", Size = Vector3.new(0.35, 0.28, 0.06), Color = C.Gold, Material = Enum.Material.Metal }, CFrame.new(0, y, -waist.Size.Z * 0.54))
+	end
+	-- Gloves and boots.
+	if rig == "R15" then
+		for _, name in ipairs(parts.Hands) do
+			local hand = character:FindFirstChild(name)
+			if hand then
+				piece(hand, outfit, { Name = "Glove", Size = hand.Size * Vector3.new(1.25, 2.2, 1.25), Color = C.Glove }, CFrame.new(0, 0.05, 0), true)
+			end
+		end
+		for _, name in ipairs(parts.Feet) do
+			local foot = character:FindFirstChild(name)
+			if foot then
+				piece(foot, outfit, { Name = "Boot", Size = foot.Size * Vector3.new(1.12, 1.6, 1.15), Color = C.Boot }, CFrame.new(0, 0.05, -0.05), true)
+			end
+		end
+	else
+		for _, name in ipairs({ "Left Arm", "Right Arm" }) do
+			local arm = character:FindFirstChild(name)
+			if arm then
+				piece(arm, outfit, { Name = "Glove", Size = Vector3.new(1.1, 0.5, 1.1), Color = C.Glove }, CFrame.new(0, -arm.Size.Y * 0.4, 0))
+			end
+		end
+		for _, name in ipairs({ "Left Leg", "Right Leg" }) do
+			local leg = character:FindFirstChild(name)
+			if leg then
+				piece(leg, outfit, { Name = "Boot", Size = Vector3.new(1.1, 0.7, 1.15), Color = C.Boot }, CFrame.new(0, -leg.Size.Y * 0.36, -0.03))
+			end
+		end
+	end
+end
+
+function GyroOutfit.remove(character)
+	local outfit = character:FindFirstChild("GyroOutfit")
+	if outfit then
+		outfit:Destroy()
+	end
+	local store = saved[character]
+	if not store then
+		return
+	end
+	saved[character] = nil
+	for handle, transparency in pairs(store.Hidden) do
+		if handle.Parent then
+			handle.Transparency = transparency
+		end
+	end
+	for _, clothing in ipairs(store.Clothes) do
+		clothing.Parent = character
+	end
+	local colors = character:FindFirstChildOfClass("BodyColors")
+	if colors and store.Colors then
+		for k, v in pairs(store.Colors) do
+			colors[k] = v
+		end
+	end
+end
+
+local function watch(character)
+	local function update()
+		if character:GetAttribute("TuskAct") == GyroOutfit.GyroAct then
+			-- Wait for the avatar's clothes/accessories to load before swapping them.
+			task.delay(0.3, function()
+				if character.Parent and character:GetAttribute("TuskAct") == GyroOutfit.GyroAct then
+					GyroOutfit.apply(character)
+				end
+			end)
+		else
+			GyroOutfit.remove(character)
+		end
+	end
+	character:GetAttributeChangedSignal("TuskAct"):Connect(update)
+	update()
+end
+
+function GyroOutfit.init()
+	local function onPlayer(player)
+		player.CharacterAppearanceLoaded:Connect(watch)
+		if player.Character then
+			watch(player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	for _, player in ipairs(Players:GetPlayers()) do
+		onPlayer(player)
+	end
+end
+
+return GyroOutfit
 ]=] },
 	{ Service = "ServerScriptService", Path = "SpinServer/NPCService", Class = "ModuleScript", Source = [=[
 --[[
@@ -7617,18 +7918,18 @@ local JOINTS = {
 
 TuskAnimation.Poses = {
 	Rest = {},
-	Point = { RightArm = { 92, 0, 0 }, LeftArm = { 15, 0, -10 }, Waist = { 0, -18, 0 } },
-	PointRecoil = { RightArm = { 110, 0, 0 }, Waist = { 6, -14, 0 } },
-	Jab = { RightArm = { 88, 0, 12 }, Waist = { 0, -28, 0 }, LeftArm = { 30, 0, -20 } },
-	JabLeft = { LeftArm = { 88, 0, -12 }, Waist = { 0, 28, 0 }, RightArm = { 30, 0, 20 } },
-	SpinPoke = { RightArm = { 100, 25, 0 }, Waist = { -10, -24, 0 }, LeftArm = { 20, 0, -30 } },
-	SlamWindup = { RightArm = { 165, 0, 10 }, LeftArm = { 40, 0, -30 }, Waist = { 12, 15, 0 } },
-	Slam = { RightArm = { 55, 0, 0 }, LeftArm = { 20, 0, -20 }, Waist = { -22, -10, 0 } },
+	Point = { Root = { 0, -12, 0 }, RightArm = { 92, 0, 0 }, LeftArm = { 15, 0, -10 }, Waist = { 0, -18, 0 } },
+	PointRecoil = { Root = { 6, -8, 0 }, RightArm = { 110, 0, 0 }, Waist = { 6, -14, 0 } },
+	Jab = { Root = { 0, -18, 0 }, RightArm = { 88, 0, 12 }, Waist = { 0, -28, 0 }, LeftArm = { 30, 0, -20 } },
+	JabLeft = { Root = { 0, 18, 0 }, LeftArm = { 88, 0, -12 }, Waist = { 0, 28, 0 }, RightArm = { 30, 0, 20 } },
+	SpinPoke = { Root = { -6, -20, 0 }, RightArm = { 100, 25, 0 }, Waist = { -10, -24, 0 }, LeftArm = { 20, 0, -30 } },
+	SlamWindup = { Root = { 10, 14, 0 }, RightArm = { 165, 0, 10 }, LeftArm = { 40, 0, -30 }, Waist = { 12, 15, 0 } },
+	Slam = { Root = { -14, -10, 0, -0.3 }, RightArm = { 55, 0, 0 }, LeftArm = { 20, 0, -20 }, Waist = { -22, -10, 0 } },
 	ChargeNail = { RightArm = { 75, 0, 28 }, LeftArm = { 75, 0, -28 }, Waist = { -8, 0, 0 } },
-	BarrageA = { RightArm = { 95, 4, 0 }, LeftArm = { 60, 0, -20 }, Waist = { 0, -14, 0 } },
-	BarrageB = { RightArm = { 88, -4, 0 }, LeftArm = { 60, 0, -20 }, Waist = { 0, -18, 0 } },
-	AwakenCrouch = { RightArm = { 30, 0, 40 }, LeftArm = { 30, 0, -40 }, Waist = { -25, 0, 0 }, Neck = { -15, 0, 0 } },
-	AwakenRise = { RightArm = { 130, 0, 35 }, LeftArm = { 130, 0, -35 }, Waist = { 14, 0, 0 }, Neck = { 22, 0, 0 } },
+	BarrageA = { Root = { 0, -14, 0 }, RightArm = { 95, 4, 0 }, LeftArm = { 60, 0, -20 }, Waist = { 0, -14, 0 } },
+	BarrageB = { Root = { 0, -20, 0 }, RightArm = { 88, -4, 0 }, LeftArm = { 60, 0, -20 }, Waist = { 0, -18, 0 } },
+	AwakenCrouch = { Root = { -6, 0, 0, -0.3 }, RightArm = { 30, 0, 40 }, LeftArm = { 30, 0, -40 }, Waist = { -25, 0, 0 }, Neck = { -15, 0, 0 } },
+	AwakenRise = { Root = { 6, 0, 0 }, RightArm = { 130, 0, 35 }, LeftArm = { 130, 0, -35 }, Waist = { 14, 0, 0 }, Neck = { 22, 0, 0 } },
 	Sneak = {
 		Root = { 0, 0, 0, -0.65 },
 		Waist = { -26, 0, 0 },
@@ -7643,33 +7944,33 @@ TuskAnimation.Poses = {
 	Emerge = { RightArm = { 150, 0, 15 }, LeftArm = { 40, 0, -40 }, Waist = { 15, 0, 0 } },
 
 	-- JOHNNY: fights with finger-gun nail shots.
-	FingerGun = { RightArm = { 95, 0, 5 }, LeftArm = { 62, 0, -38 }, Waist = { 0, -22, 0 }, Neck = { 0, 16, 0 } },
-	FingerGunRecoil = { RightArm = { 118, 0, 6 }, LeftArm = { 56, 0, -36 }, Waist = { 6, -16, 0 }, Neck = { 0, 12, 0 } },
-	FlickR = { RightArm = { 96, -8, 6 }, LeftArm = { 38, 0, -22 }, Waist = { 0, -20, 0 } },
-	FlickL = { LeftArm = { 96, 8, -6 }, RightArm = { 38, 0, 22 }, Waist = { 0, 20, 0 } },
+	FingerGun = { Root = { 0, -14, 0 }, RightArm = { 95, 0, 5 }, LeftArm = { 62, 0, -38 }, Waist = { 0, -22, 0 }, Neck = { 0, 16, 0 } },
+	FingerGunRecoil = { Root = { 6, -10, 0 }, RightArm = { 118, 0, 6 }, LeftArm = { 56, 0, -36 }, Waist = { 6, -16, 0 }, Neck = { 0, 12, 0 } },
+	FlickR = { Root = { 0, -16, 0 }, RightArm = { 96, -8, 6 }, LeftArm = { 38, 0, -22 }, Waist = { 0, -20, 0 } },
+	FlickL = { Root = { 0, 16, 0 }, LeftArm = { 96, 8, -6 }, RightArm = { 38, 0, 22 }, Waist = { 0, 20, 0 } },
 	SpinChargeA = { RightArm = { 104, 10, 30 }, LeftArm = { 72, 0, -42 }, Waist = { -6, -10, 0 } },
 	SpinChargeB = { RightArm = { 96, -10, 22 }, LeftArm = { 72, 0, -42 }, Waist = { -6, -10, 0 } },
-	Spread = { RightArm = { 92, 0, 70 }, LeftArm = { 92, 0, -70 }, Waist = { 10, 0, 0 }, Neck = { 15, 0, 0 } },
+	Spread = { Root = { 8, 0, 0 }, RightArm = { 92, 0, 70 }, LeftArm = { 92, 0, -70 }, Waist = { 10, 0, 0 }, Neck = { 15, 0, 0 } },
 	Dive = { Root = { 0, 0, 0, -0.45 }, Waist = { -38, 0, 0 }, RightArm = { 155, 0, 12 }, LeftArm = { 155, 0, -12 }, RightHip = { 40, 0, 0 }, LeftHip = { 20, 0, 0 }, RightKnee = { -45, 0, 0 }, LeftKnee = { -30, 0, 0 } },
-	LungeStep = { Waist = { -16, -12, 0 }, RightArm = { 86, 0, 0 }, LeftArm = { -22, 0, -12 }, RightHip = { 38, 0, 0 }, LeftHip = { -26, 0, 0 }, RightKnee = { -32, 0, 0 } },
-	PushTwo = { RightArm = { 92, 0, 14 }, LeftArm = { 92, 0, -14 }, Waist = { -12, 0, 0 }, RightHip = { 22, 0, 0 }, LeftHip = { -16, 0, 0 } },
-	WindSpin = { Waist = { 0, -60, 0 }, RightArm = { 62, 0, 82 }, LeftArm = { 40, 0, -30 } },
-	DashPunch = { Waist = { -20, -26, 0 }, RightArm = { 92, 0, 0 }, LeftArm = { -30, 0, -22 }, RightHip = { 42, 0, 0 }, RightKnee = { -60, 0, 0 }, LeftHip = { -30, 0, 0 } },
+	LungeStep = { Root = { -10, -10, 0, -0.2 }, Waist = { -16, -12, 0 }, RightArm = { 86, 0, 0 }, LeftArm = { -22, 0, -12 }, RightHip = { 38, 0, 0 }, LeftHip = { -26, 0, 0 }, RightKnee = { -32, 0, 0 } },
+	PushTwo = { Root = { -10, 0, 0 }, RightArm = { 92, 0, 14 }, LeftArm = { 92, 0, -14 }, Waist = { -12, 0, 0 }, RightHip = { 22, 0, 0 }, LeftHip = { -16, 0, 0 } },
+	WindSpin = { Root = { 0, -45, 0 }, Waist = { 0, -60, 0 }, RightArm = { 62, 0, 82 }, LeftArm = { 40, 0, -30 } },
+	DashPunch = { Root = { -16, -16, 0, -0.25 }, Waist = { -20, -26, 0 }, RightArm = { 92, 0, 0 }, LeftArm = { -30, 0, -22 }, RightHip = { 42, 0, 0 }, RightKnee = { -60, 0, 0 }, LeftHip = { -30, 0, 0 } },
 
 	-- GYRO: fights like a ball thrower.
 	GyroIdle = { RightArm = { 55, 0, 14 }, LeftArm = { 12, 0, -10 } },
-	GHookWind = { RightArm = { 82, 0, 80 }, Waist = { 0, 25, 0 } },
-	GHook = { RightArm = { 86, -32, 12 }, Waist = { 0, -42, 0 }, LeftArm = { 30, 0, -20 } },
-	KickChamber = { RightHip = { 72, 0, 0 }, RightKnee = { -92, 0, 0 }, Waist = { 8, 0, 0 }, RightArm = { 30, 0, 30 }, LeftArm = { 30, 0, -30 } },
-	FrontKick = { RightHip = { 88, 0, 0 }, RightKnee = { -8, 0, 0 }, LeftKnee = { -15, 0, 0 }, Waist = { 12, 0, 0 }, RightArm = { 30, 0, 34 }, LeftArm = { 30, 0, -34 } },
-	OverheadWind = { RightArm = { 172, 0, 15 }, Waist = { 15, 20, 0 }, LeftHip = { 18, 0, 0 }, LeftKnee = { -22, 0, 0 } },
-	OverheadSmash = { RightArm = { 58, 0, 0 }, Waist = { -26, -15, 0 }, LeftHip = { 36, 0, 0 }, LeftKnee = { -30, 0, 0 }, RightHip = { -15, 0, 0 } },
-	PitchBack = { RightArm = { 200, 0, 40 }, Waist = { 5, 36, 0 }, LeftArm = { 80, 0, -30 }, LeftHip = { 48, 0, 0 }, LeftKnee = { -52, 0, 0 } },
-	PitchRelease = { RightArm = { 74, 0, -10 }, Waist = { -22, -36, 0 }, LeftArm = { -12, 0, -30 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -20, 0, 0 }, RightHip = { -30, 0, 0 } },
+	GHookWind = { Root = { 0, 22, 0 }, RightArm = { 82, 0, 80 }, Waist = { 0, 25, 0 } },
+	GHook = { Root = { 0, -38, 0 }, RightArm = { 86, -32, 12 }, Waist = { 0, -42, 0 }, LeftArm = { 30, 0, -20 } },
+	KickChamber = { Root = { 8, 0, 0 }, RightHip = { 72, 0, 0 }, RightKnee = { -92, 0, 0 }, Waist = { 8, 0, 0 }, RightArm = { 30, 0, 30 }, LeftArm = { 30, 0, -30 } },
+	FrontKick = { Root = { 15, 0, 0 }, RightHip = { 88, 0, 0 }, RightKnee = { -8, 0, 0 }, LeftKnee = { -15, 0, 0 }, Waist = { 12, 0, 0 }, RightArm = { 30, 0, 34 }, LeftArm = { 30, 0, -34 } },
+	OverheadWind = { Root = { 10, 16, 0 }, RightArm = { 172, 0, 15 }, Waist = { 15, 20, 0 }, LeftHip = { 18, 0, 0 }, LeftKnee = { -22, 0, 0 } },
+	OverheadSmash = { Root = { -16, -10, 0, -0.35 }, RightArm = { 58, 0, 0 }, Waist = { -26, -15, 0 }, LeftHip = { 36, 0, 0 }, LeftKnee = { -30, 0, 0 }, RightHip = { -15, 0, 0 } },
+	PitchBack = { Root = { 4, 32, 0 }, RightArm = { 200, 0, 40 }, Waist = { 5, 36, 0 }, LeftArm = { 80, 0, -30 }, LeftHip = { 48, 0, 0 }, LeftKnee = { -52, 0, 0 } },
+	PitchRelease = { Root = { -14, -32, 0, -0.15 }, RightArm = { 74, 0, -10 }, Waist = { -22, -36, 0 }, LeftArm = { -12, 0, -30 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -20, 0, 0 }, RightHip = { -30, 0, 0 } },
 	BowlWind = { Root = { 0, 0, 0, -0.4 }, RightArm = { -55, 0, 10 }, Waist = { -16, 0, 0 }, LeftHip = { 50, 0, 0 }, LeftKnee = { -62, 0, 0 }, RightKnee = { -42, 0, 0 } },
 	BowlRelease = { Root = { 0, 0, 0, -0.45 }, RightArm = { 62, 0, 0 }, Waist = { -28, 0, 0 }, LeftHip = { 55, 0, 0 }, LeftKnee = { -65, 0, 0 }, RightHip = { -20, 0, 0 } },
-	PalmWind = { RightArm = { 40, 0, 20 }, Waist = { 0, 25, 0 } },
-	PalmPress = { RightArm = { 92, 0, 0 }, LeftArm = { 70, 0, -22 }, Waist = { -16, -12, 0 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -30, 0, 0 } },
+	PalmWind = { Root = { 0, 20, 0 }, RightArm = { 40, 0, 20 }, Waist = { 0, 25, 0 } },
+	PalmPress = { Root = { -12, -12, 0, -0.1 }, RightArm = { 92, 0, 0 }, LeftArm = { 70, 0, -22 }, Waist = { -16, -12, 0 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -30, 0, 0 } },
 	BreakerWindA = { Root = { 0, 0, 0, -0.3 }, RightArm = { 122, 0, 62 }, Waist = { 0, 46, 0 }, LeftArm = { 60, 0, -40 }, LeftKnee = { -25, 0, 0 }, RightKnee = { -25, 0, 0 } },
 	BreakerWindB = { Root = { 0, 0, 0, -0.3 }, RightArm = { 132, 10, 70 }, Waist = { 0, 52, 0 }, LeftArm = { 64, 0, -44 }, LeftKnee = { -25, 0, 0 }, RightKnee = { -25, 0, 0 } },
 }

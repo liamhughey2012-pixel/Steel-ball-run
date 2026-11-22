@@ -7,6 +7,8 @@ updated: 2026-11-22
 Pick him from the character dropdown (top-left card ▼ → GYRO ZEPPELI → SELECT). Numbers: `TuskConfig.Gyro`.
 He always holds the green Steel Ball, spinning in his right hand.
 
+**Look** (`GyroOutfit`, built from parts, everyone sees it): cream wide-brimmed hat with a dark band, gold "GO! GO! ZEPPELI" plate and eyelets; long blond hair with side locks, braids and a fringe; purple outfit with black stripes; dark gloves; brown belt with a gold buckle; brown boots. Your own hats, hair and clothes are hidden while you play Gyro and come back when you switch to Johnny.
+
 | Input | Move | What it does |
 |---|---|---|
 | M1 ×4 | STEEL BALL COMBO | jab, hook, kick, then a spinning-ball smash that hits everyone close |
@@ -20,5 +22,5 @@ He always holds the green Steel Ball, spinning in his right hand.
 
 Status: 🧪 built, not yet tested in Studio.
 
-## Animations (procedural)
+## Animations (procedural, whole-body)
 Idle: ball held up at the chest, spinning. M1: jab → hook → front kick → overhead ball smash. Throw: baseball pitch with a leg lift. Tornado: underhand bowl. Spin Vibration: palm press. Ball Breaker: swaying wind-up, then the big pitch.

@@ -120,6 +120,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
+__require("GyroOutfit").init()
 if BUILD_MAP_ON_START and not workspace:FindFirstChild("SBRMap") then
 	local ok, err = pcall(function()
 		__require("SBRMapBuilder").Build({ Origin = MAP_ORIGIN })

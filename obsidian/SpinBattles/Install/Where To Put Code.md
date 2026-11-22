@@ -66,20 +66,21 @@ Damage, cooldowns, projectiles, Tusk, Sneak, NPCs. Players can't see or change t
 |---|---|---|---|
 | 1 | [[CombatAdapter]] | ModuleScript | `ServerScriptService › SpinServer` |
 | 2 | [[CooldownService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 3 | [[NPCService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 4 | [[ProjectileService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 5 | [[StandAssetLoader]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 6 | [[TestDummies]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 7 | [[TuskHitbox]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 8 | [[TuskMoves]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 9 | [[TuskService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 10 | [[TuskSneakService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 11 | [[SpinServer]] | Script | `ServerScriptService` |
-| 12 | [[GyroZeppeli]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 13 | [[TuskAct1]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 14 | [[TuskAct2]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 15 | [[TuskAct3]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 16 | [[TuskAct4]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 3 | [[GyroOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 4 | [[NPCService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 5 | [[ProjectileService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 6 | [[StandAssetLoader]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 7 | [[TestDummies]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 8 | [[TuskHitbox]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 9 | [[TuskMoves]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 10 | [[TuskService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 11 | [[TuskSneakService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 12 | [[SpinServer]] | Script | `ServerScriptService` |
+| 13 | [[GyroZeppeli]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 14 | [[TuskAct1]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 15 | [[TuskAct2]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 16 | [[TuskAct3]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 17 | [[TuskAct4]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
 
 ## Client: StarterPlayer › StarterPlayerScripts › SpinClient
 Controls, effects, the Tusk Stand, HUD, NPC speech bubbles.

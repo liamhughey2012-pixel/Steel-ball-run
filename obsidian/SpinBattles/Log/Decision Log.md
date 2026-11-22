@@ -31,3 +31,5 @@ updated: 2026-11-22
 | 2026-11-22 | Golden Spin (R for everyone) removed; its hit feedback and settings button kept in new modules |
 | 2026-11-22 | Gyro's Wrecking Balls replaced by Spin Tornado |
 | 2026-11-22 | Separate procedural animation sets for Johnny (finger guns) and Gyro (ball thrower) |
+| 2026-11-22 | Gyro's look built from parts (hat, hair, striped outfit) since no catalog ids were given |
+| 2026-11-22 | Attack poses now twist, lean and dip the whole body; poses checked on a stand-in R15 rig |
