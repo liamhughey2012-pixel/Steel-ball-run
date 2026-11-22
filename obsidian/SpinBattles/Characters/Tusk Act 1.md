@@ -4,9 +4,9 @@ status: built
 updated: 2026-11-22
 ---
 # Tusk Act 1: the beginning of Spin
-**Default look "Mascot"** (owner's written description): a small blue/cyan toy-like humanoid with a big round head, big eyes, mechanical seams and bolts, pink accents, short arms and legs, cyan Spin sparkles on its hands. It floats with quick, bouncy, slightly unpredictable motion and looks around.
+**Alternative look "Mascot"** (owner's written description): a small blue/cyan toy-like humanoid with a big round head, big eyes, mechanical seams and bolts, pink accents, short arms and legs, cyan Spin sparkles on its hands. It floats with quick, bouncy, slightly unpredictable motion and looks around.
 
-**Alternative look "Classic"** (`TuskConfig.StandModels[1].Style = "Classic"`), from the owner's two drawings: tilted pink egg, big five-point forehead star with dark fur, gold pin to a gold cone beak, heavy-lidded eyes with lashes and wavy tendrils, one big sweeping ear and one drooping ear, long chin with gold spikes, a side appendage with a horn, orange stars everywhere, five legs with heart feet.
+**Default look "Classic"** (`TuskConfig.StandModels[1].Style = "Classic"`), from the owner's two drawings: tilted pink egg, big five-point forehead star with dark fur, gold pin to a gold cone beak, heavy-lidded eyes with lashes and wavy tendrils, one big sweeping ear and one drooping ear, long chin with gold spikes, a side appendage with a horn, orange stars everywhere, five legs with heart feet.
 
 | Input | Move | What it does | Numbers (TuskConfig.Act1) |
 |---|---|---|---|
@@ -22,3 +22,6 @@ Status: 🧪 code complete, waiting for the owner's Studio test. See [[Test Chec
 
 ## Ultimate pacing
 The meter fills slower each Act (`GainByAct`), and the ultimate stays locked for 45 s after each awakening (`MinSecondsPerAct`). Studio test helpers (`StudioStartFull`, `StudioRefill`) are now OFF by default.
+
+## Nail shots
+Cyan glowing nails with **blue Spin whirls** (3-armed spirals, cyan centre fading to blue) that keep spinning around the shot, plus the cyan/blue helix trail. Shot = 2 whirls, M1/Barrage = 1, Spinning Nail = 2–3 (golden at full charge). Act 4's golden shots get golden whirls.

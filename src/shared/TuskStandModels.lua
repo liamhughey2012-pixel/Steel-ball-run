@@ -245,7 +245,7 @@ local function buildAct1Classic(scale)
 
 	local model = Instance.new("Model")
 	model.Name = "TuskAct1"
-	local bodySize = Vector3.new(1.7, 2.25, 1.5) * s
+	local bodySize = Vector3.new(1.65, 2.5, 1.5) * s
 	local h = bodySize / 2
 	local body = part(model, { Name = "Body", Size = bodySize, Color = pink, Ellipsoid = true, Massless = false })
 	-- Leans to its right and tips forward a little, like the drawings.
@@ -259,6 +259,9 @@ local function buildAct1Classic(scale)
 	attach(body, cap, CFrame.new(0.12 * s, 0.42 * s, -0.22 * s))
 	local belly = part(model, { Name = "Belly", Size = bodySize * Vector3.new(0.92, 0.6, 0.94), Color = pinkDark, Ellipsoid = true })
 	attach(body, belly, CFrame.new(0.04 * s, -0.42 * s, 0.02 * s))
+	-- Pointed bottom: the egg narrows down toward the heart legs.
+	local tip = part(model, { Name = "LowerTip", Size = Vector3.new(0.9, 1.0, 0.85) * s, Color = pinkDark, Ellipsoid = true })
+	attach(body, tip, CFrame.new(-0.05 * s, -1.05 * s, 0.05 * s))
 
 	-- Long chin / snout below the face, with little gold spikes.
 	local chin = part(model, { Name = "Chin", Size = Vector3.new(0.95, 1.15, 0.95) * s, Color = pink, Ellipsoid = true })
@@ -330,6 +333,8 @@ local function buildAct1Classic(scale)
 		Vector3.new(0.7, 0.55, -0.3), Vector3.new(0.85, 0.05, -0.2), Vector3.new(-0.9, 0.15, -0.1), Vector3.new(-0.7, -0.45, -0.35),
 		Vector3.new(0.6, -0.55, -0.5), Vector3.new(0.15, 0.95, 0.2), Vector3.new(-0.35, 0.45, 0.8), Vector3.new(0.45, 0.2, 0.85),
 		Vector3.new(-0.1, -0.7, 0.7), Vector3.new(-0.55, -0.15, -0.8), Vector3.new(0.3, 0.7, -0.6), Vector3.new(-0.8, 0.6, 0.3),
+		Vector3.new(0.9, -0.35, 0.2), Vector3.new(-0.5, -0.8, -0.2), Vector3.new(0.65, 0.9, 0.1), Vector3.new(-0.95, -0.4, 0.3),
+		Vector3.new(0.2, -0.9, -0.4), Vector3.new(0.95, 0.4, 0.4),
 	}
 	for i, d in ipairs(spots) do
 		local p = onSurface(h, d, 1.01)
@@ -340,7 +345,7 @@ local function buildAct1Classic(scale)
 	local ears = {
 		-- Right ear sweeps up and out; left ear droops down beside the face.
 		{ Name = "EarL", Base = CFrame.new(-0.5 * s, 0.9 * s, 0.1 * s) * CFrame.Angles(0.25, -0.3, 1.15), Size = Vector3.new(0.6, 1.8, 0.13) },
-		{ Name = "EarR", Base = CFrame.new(0.66 * s, 0.55 * s, 0.05 * s) * CFrame.Angles(-0.15, 0.2, -2.55), Size = Vector3.new(0.5, 1.45, 0.13) },
+		{ Name = "EarR", Base = CFrame.new(0.7 * s, 0.75 * s, 0.05 * s) * CFrame.Angles(-0.1, 0.25, -1.35), Size = Vector3.new(0.5, 1.4, 0.13) },
 	}
 	for _, e in ipairs(ears) do
 		local ear = part(model, { Name = e.Name, Size = e.Size * s, Color = pink, Ellipsoid = true })
@@ -376,9 +381,9 @@ local function buildAct1Classic(scale)
 	star5(model, body, Vector3.new(-1.02 * s, -0.12 * s, -0.33 * s), Vector3.new(-0.2, 0.1, -1), 0.22 * s, starColor, 0.5)
 
 	-- Five thin legs ending in hearts (four animated).
-	local legX = { -0.36, -0.16, 0.04, 0.24, 0.42 }
+	local legX = { -0.34, -0.15, 0.04, 0.22, 0.4 }
 	for i = 1, 5 do
-		local base = CFrame.new(legX[i] * s, -1.0 * s, (i % 2 == 0 and 0.12 or -0.12) * s)
+		local base = CFrame.new(legX[i] * s, -1.4 * s, (i % 2 == 0 and 0.12 or -0.12) * s)
 		local legLength = (0.55 + ((i * 7) % 4) * 0.1) * s
 		local leg = part(model, { Name = "Leg" .. i, Shape = Enum.PartType.Cylinder, Size = Vector3.new(legLength, 0.06 * s, 0.06 * s), Color = pinkDark })
 		local offset = CFrame.new(0, -legLength / 2, 0) * CFrame.Angles(0, 0, math.pi / 2)

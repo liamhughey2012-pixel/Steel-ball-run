@@ -71,14 +71,22 @@ local function styleFor(visual)
 		ImpactSize = 0.8,
 		ImpactLayers = 1,
 		Afterimages = false,
+		-- Johnny's nail look: cyan glowing nail, blue Spin whirls always spinning.
+		Glow = true,
+		GlowColor = colors.Cyan,
+		Whirls = 2,
+		WhirlColor = colors.Cyan,
+		WhirlColor2 = colors.Blue,
 	}
 	if style == "M1" then
 		s.Scale = 0.75
 		s.Helix = 1
+		s.Whirls = 1
 		s.ImpactSize = 0.6
 	elseif style == "Barrage" then
 		s.Scale = 0.8
 		s.Helix = 1
+		s.Whirls = 1
 		s.ImpactSize = 0.6
 	elseif style == "Spinning" then
 		s.Scale = 1 + charge * 0.7
@@ -87,8 +95,11 @@ local function styleFor(visual)
 		s.ImpactSize = 1 + charge * 1.2
 		s.ImpactLayers = 2 + math.floor(charge + 0.01)
 		s.Afterimages = charge > 0.5
+		s.Whirls = 2 + math.floor(charge + 0.01)
 		if charge >= 1 then
 			-- Full charge: golden-blue identity.
+			s.WhirlColor = colors.GoldLight
+			s.WhirlColor2 = colors.Cyan
 			s.RingColor = colors.Gold
 			s.Color2 = colors.Gold
 			s.TrailColor = colors.GoldLight
@@ -109,6 +120,9 @@ local function styleFor(visual)
 		s.Color2 = act == 3 and Color3.fromRGB(120, 160, 255) or colors.Cyan
 		s.ImpactSize = 0.8
 	elseif style == "Golden" then
+		s.GlowColor = colors.GoldLight
+		s.WhirlColor = colors.GoldLight
+		s.WhirlColor2 = colors.Gold
 		-- Act 4: golden spin nail, three golden rings, layered gold + blue trails.
 		s.Scale = 1.9
 		s.Rings = 3
@@ -123,6 +137,9 @@ local function styleFor(visual)
 		s.ImpactLayers = 3
 		s.ImpactColor = colors.Gold
 	elseif style == "Rotation" then
+		s.GlowColor = colors.GoldLight
+		s.WhirlColor = colors.GoldLight
+		s.WhirlColor2 = colors.Gold
 		local stage = math.floor(charge * 3 + 0.5)
 		s.Scale = 1.6 + stage * 0.6
 		s.Rings = 1 + stage
@@ -138,6 +155,9 @@ local function styleFor(visual)
 		s.ImpactColor = colors.Gold
 		s.ImpactRadius = 4 + stage * 2
 	elseif style == "InfiniteUlt" then
+		s.GlowColor = colors.GoldLight
+		s.WhirlColor = colors.GoldLight
+		s.WhirlColor2 = colors.Gold
 		s.Scale = 5
 		s.Rings = 3
 		s.RingColor = colors.Gold

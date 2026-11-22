@@ -25,3 +25,5 @@ updated: 2026-11-22
 | 2026-11-22 | Act 3 and Act 4 Stands rebuilt from the owner's images |
 | 2026-11-22 | Act 1 default look is the blue/cyan Mascot (owner's description); the pink Classic look stays as an option |
 | 2026-11-22 | Both scripts check they are in the right kind of script and explain the fix if not |
+| 2026-11-22 | Act 1 back to the pink Classic look by default (owner re-sent the drawing); Mascot kept as an option |
+| 2026-11-22 | Johnny's nails: cyan glow + spinning blue Spin whirls |

@@ -727,7 +727,7 @@ TuskConfig.Ultimate = {
 TuskConfig.StandModels = {
 	[1] = {
 		AssetId = 0, -- set 8768080824 to use the "Tusk1" store model instead
-		Style = "Mascot", -- built-in look: "Mascot" (small blue/cyan toy-like humanoid) or "Classic" (pink star creature)
+		Style = "Classic", -- built-in look: "Classic" (pink star creature from the drawings) or "Mascot" (small blue/cyan toy-like humanoid)
 		Height = 3.2,
 		Rotation = Vector3.new(0, 0, 0),
 	},
@@ -1234,7 +1234,7 @@ local function buildAct1Classic(scale)
 
 	local model = Instance.new("Model")
 	model.Name = "TuskAct1"
-	local bodySize = Vector3.new(1.7, 2.25, 1.5) * s
+	local bodySize = Vector3.new(1.65, 2.5, 1.5) * s
 	local h = bodySize / 2
 	local body = part(model, { Name = "Body", Size = bodySize, Color = pink, Ellipsoid = true, Massless = false })
 	-- Leans to its right and tips forward a little, like the drawings.
@@ -1248,6 +1248,9 @@ local function buildAct1Classic(scale)
 	attach(body, cap, CFrame.new(0.12 * s, 0.42 * s, -0.22 * s))
 	local belly = part(model, { Name = "Belly", Size = bodySize * Vector3.new(0.92, 0.6, 0.94), Color = pinkDark, Ellipsoid = true })
 	attach(body, belly, CFrame.new(0.04 * s, -0.42 * s, 0.02 * s))
+	-- Pointed bottom: the egg narrows down toward the heart legs.
+	local tip = part(model, { Name = "LowerTip", Size = Vector3.new(0.9, 1.0, 0.85) * s, Color = pinkDark, Ellipsoid = true })
+	attach(body, tip, CFrame.new(-0.05 * s, -1.05 * s, 0.05 * s))
 
 	-- Long chin / snout below the face, with little gold spikes.
 	local chin = part(model, { Name = "Chin", Size = Vector3.new(0.95, 1.15, 0.95) * s, Color = pink, Ellipsoid = true })
@@ -1319,6 +1322,8 @@ local function buildAct1Classic(scale)
 		Vector3.new(0.7, 0.55, -0.3), Vector3.new(0.85, 0.05, -0.2), Vector3.new(-0.9, 0.15, -0.1), Vector3.new(-0.7, -0.45, -0.35),
 		Vector3.new(0.6, -0.55, -0.5), Vector3.new(0.15, 0.95, 0.2), Vector3.new(-0.35, 0.45, 0.8), Vector3.new(0.45, 0.2, 0.85),
 		Vector3.new(-0.1, -0.7, 0.7), Vector3.new(-0.55, -0.15, -0.8), Vector3.new(0.3, 0.7, -0.6), Vector3.new(-0.8, 0.6, 0.3),
+		Vector3.new(0.9, -0.35, 0.2), Vector3.new(-0.5, -0.8, -0.2), Vector3.new(0.65, 0.9, 0.1), Vector3.new(-0.95, -0.4, 0.3),
+		Vector3.new(0.2, -0.9, -0.4), Vector3.new(0.95, 0.4, 0.4),
 	}
 	for i, d in ipairs(spots) do
 		local p = onSurface(h, d, 1.01)
@@ -1329,7 +1334,7 @@ local function buildAct1Classic(scale)
 	local ears = {
 		-- Right ear sweeps up and out; left ear droops down beside the face.
 		{ Name = "EarL", Base = CFrame.new(-0.5 * s, 0.9 * s, 0.1 * s) * CFrame.Angles(0.25, -0.3, 1.15), Size = Vector3.new(0.6, 1.8, 0.13) },
-		{ Name = "EarR", Base = CFrame.new(0.66 * s, 0.55 * s, 0.05 * s) * CFrame.Angles(-0.15, 0.2, -2.55), Size = Vector3.new(0.5, 1.45, 0.13) },
+		{ Name = "EarR", Base = CFrame.new(0.7 * s, 0.75 * s, 0.05 * s) * CFrame.Angles(-0.1, 0.25, -1.35), Size = Vector3.new(0.5, 1.4, 0.13) },
 	}
 	for _, e in ipairs(ears) do
 		local ear = part(model, { Name = e.Name, Size = e.Size * s, Color = pink, Ellipsoid = true })
@@ -1365,9 +1370,9 @@ local function buildAct1Classic(scale)
 	star5(model, body, Vector3.new(-1.02 * s, -0.12 * s, -0.33 * s), Vector3.new(-0.2, 0.1, -1), 0.22 * s, starColor, 0.5)
 
 	-- Five thin legs ending in hearts (four animated).
-	local legX = { -0.36, -0.16, 0.04, 0.24, 0.42 }
+	local legX = { -0.34, -0.15, 0.04, 0.22, 0.4 }
 	for i = 1, 5 do
-		local base = CFrame.new(legX[i] * s, -1.0 * s, (i % 2 == 0 and 0.12 or -0.12) * s)
+		local base = CFrame.new(legX[i] * s, -1.4 * s, (i % 2 == 0 and 0.12 or -0.12) * s)
 		local legLength = (0.55 + ((i * 7) % 4) * 0.1) * s
 		local leg = part(model, { Name = "Leg" .. i, Shape = Enum.PartType.Cylinder, Size = Vector3.new(legLength, 0.06 * s, 0.06 * s), Color = pinkDark })
 		local offset = CFrame.new(0, -legLength / 2, 0) * CFrame.Angles(0, 0, math.pi / 2)
@@ -8416,14 +8421,22 @@ local function styleFor(visual)
 		ImpactSize = 0.8,
 		ImpactLayers = 1,
 		Afterimages = false,
+		-- Johnny's nail look: cyan glowing nail, blue Spin whirls always spinning.
+		Glow = true,
+		GlowColor = colors.Cyan,
+		Whirls = 2,
+		WhirlColor = colors.Cyan,
+		WhirlColor2 = colors.Blue,
 	}
 	if style == "M1" then
 		s.Scale = 0.75
 		s.Helix = 1
+		s.Whirls = 1
 		s.ImpactSize = 0.6
 	elseif style == "Barrage" then
 		s.Scale = 0.8
 		s.Helix = 1
+		s.Whirls = 1
 		s.ImpactSize = 0.6
 	elseif style == "Spinning" then
 		s.Scale = 1 + charge * 0.7
@@ -8432,8 +8445,11 @@ local function styleFor(visual)
 		s.ImpactSize = 1 + charge * 1.2
 		s.ImpactLayers = 2 + math.floor(charge + 0.01)
 		s.Afterimages = charge > 0.5
+		s.Whirls = 2 + math.floor(charge + 0.01)
 		if charge >= 1 then
 			-- Full charge: golden-blue identity.
+			s.WhirlColor = colors.GoldLight
+			s.WhirlColor2 = colors.Cyan
 			s.RingColor = colors.Gold
 			s.Color2 = colors.Gold
 			s.TrailColor = colors.GoldLight
@@ -8454,6 +8470,9 @@ local function styleFor(visual)
 		s.Color2 = act == 3 and Color3.fromRGB(120, 160, 255) or colors.Cyan
 		s.ImpactSize = 0.8
 	elseif style == "Golden" then
+		s.GlowColor = colors.GoldLight
+		s.WhirlColor = colors.GoldLight
+		s.WhirlColor2 = colors.Gold
 		-- Act 4: golden spin nail, three golden rings, layered gold + blue trails.
 		s.Scale = 1.9
 		s.Rings = 3
@@ -8468,6 +8487,9 @@ local function styleFor(visual)
 		s.ImpactLayers = 3
 		s.ImpactColor = colors.Gold
 	elseif style == "Rotation" then
+		s.GlowColor = colors.GoldLight
+		s.WhirlColor = colors.GoldLight
+		s.WhirlColor2 = colors.Gold
 		local stage = math.floor(charge * 3 + 0.5)
 		s.Scale = 1.6 + stage * 0.6
 		s.Rings = 1 + stage
@@ -8483,6 +8505,9 @@ local function styleFor(visual)
 		s.ImpactColor = colors.Gold
 		s.ImpactRadius = 4 + stage * 2
 	elseif style == "InfiniteUlt" then
+		s.GlowColor = colors.GoldLight
+		s.WhirlColor = colors.GoldLight
+		s.WhirlColor2 = colors.Gold
 		s.Scale = 5
 		s.Rings = 3
 		s.RingColor = colors.Gold
@@ -9489,8 +9514,46 @@ local function trailBetween(parent, a0, a1, color, color2, lifetime, transparenc
 	return t
 end
 
+-- A Spin whirl: spiral arms of beams around an axis (the carrier's local Z),
+-- cyan at the centre fading to blue at the tips. Spin it by rotating the carrier.
+local function createWhirl(radius, color, color2, arms, points)
+	local carrier = VFXLib.anchor(CFrame.new())
+	local beams = {}
+	for arm = 0, arms - 1 do
+		local prev
+		for i = 0, points do
+			local t = i / points
+			local angle = arm / arms * math.pi * 2 + t * math.pi * 1.6
+			local r = radius * (0.25 + t * 0.75)
+			local a = Instance.new("Attachment")
+			a.Position = Vector3.new(math.cos(angle) * r, math.sin(angle) * r, t * radius * 0.35)
+			a.Parent = carrier
+			if prev then
+				local b = Instance.new("Beam")
+				b.Attachment0 = prev
+				b.Attachment1 = a
+				b.FaceCamera = true
+				b.LightEmission = 1
+				b.LightInfluence = 0
+				b.Segments = 1
+				local c = color:Lerp(color2, t)
+				b.Color = ColorSequence.new(c)
+				b.Width0 = radius * 0.16 * (1 - t * 0.6)
+				b.Width1 = radius * 0.16 * (1 - (t + 1 / points) * 0.6)
+				b.Transparency = NumberSequence.new(0.05 + t * 0.6, 0.05 + math.min(1, t + 1 / points) * 0.6)
+				b.Parent = carrier
+				table.insert(beams, b)
+			end
+			prev = a
+		end
+	end
+	return carrier
+end
+
 --[[
 	opts: Scale, Color, Color2 (helix), TrailColor, Rings (0..3), RingColor,
+	      Whirls (0..3) + WhirlColor / WhirlColor2: spinning Spin whirls
+	      Glow (true): cyan neon glow sleeve around the nail
 	      HelixRadius, Helix (strand count), Afterimages, SpinSpeed
 	visual:Step(cframe, dt)  visual:Destroy()
 ]]
@@ -9529,10 +9592,38 @@ function TuskVFX.CreateNailProjectile(opts)
 		rings[i] = VFXLib.ring({ Radius = (0.35 + i * 0.22) * scale, Width = 0.08 * scale, Color = opts.RingColor or colors.Cyan, Transparency = 0.1 })
 	end
 
+	-- Glowing cyan sleeve around the nail.
+	local glow
+	if opts.Glow then
+		glow = VFXLib.part({ Color = opts.GlowColor or colors.Cyan, Transparency = 0.45, Size = Vector3.new(0.32, 0.32, 1.6) * scale })
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = glow
+	end
+	-- Spin whirls that keep spinning around the flight path.
+	local whirls = {}
+	local whirlCount = opts.Whirls or 0
+	if q().RingSegments <= 12 then
+		whirlCount = math.min(whirlCount, 1)
+	end
+	for i = 1, whirlCount do
+		whirls[i] = createWhirl((0.55 + i * 0.22) * scale, opts.WhirlColor or colors.Cyan, opts.WhirlColor2 or colors.Blue, 3, q().RingSegments > 12 and 6 or 4)
+	end
+
 	local visual = { Spin = 0, NextGhost = 0, Alive = true }
 	function visual:Step(cframe, dt)
 		self.Spin = self.Spin + (dt or 0) * (opts.SpinSpeed or 30)
 		nail:PivotTo(cframe * CFrame.Angles(0, 0, self.Spin))
+		if glow then
+			local pulse = 1 + math.sin(self.Spin * 0.6) * 0.12
+			glow.CFrame = cframe * CFrame.new(0, 0, 0.1 * scale)
+			glow.Size = Vector3.new(0.32 * pulse, 0.32 * pulse, 1.6) * scale
+		end
+		for i, whirl in ipairs(whirls) do
+			-- Each whirl sits a little further back and spins the opposite way.
+			local dir = i % 2 == 1 and 1 or -1
+			whirl.CFrame = cframe * CFrame.new(0, 0, (0.15 + (i - 1) * 0.55) * scale) * CFrame.Angles(0, 0, self.Spin * 0.45 * dir)
+		end
 		carrier.CFrame = cframe * CFrame.new(0, 0, 0.5 * scale) * CFrame.Angles(0, 0, self.Spin * 0.5)
 		for i, ring in ipairs(rings) do
 			local tilt = 0.4 * i
@@ -9549,6 +9640,12 @@ function TuskVFX.CreateNailProjectile(opts)
 		end
 		self.Alive = false
 		returnNail(nail)
+		if glow then
+			glow:Destroy()
+		end
+		for _, whirl in ipairs(whirls) do
+			whirl:Destroy()
+		end
 		for _, ring in ipairs(rings) do
 			ring:Destroy()
 		end

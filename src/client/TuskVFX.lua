@@ -310,8 +310,46 @@ local function trailBetween(parent, a0, a1, color, color2, lifetime, transparenc
 	return t
 end
 
+-- A Spin whirl: spiral arms of beams around an axis (the carrier's local Z),
+-- cyan at the centre fading to blue at the tips. Spin it by rotating the carrier.
+local function createWhirl(radius, color, color2, arms, points)
+	local carrier = VFXLib.anchor(CFrame.new())
+	local beams = {}
+	for arm = 0, arms - 1 do
+		local prev
+		for i = 0, points do
+			local t = i / points
+			local angle = arm / arms * math.pi * 2 + t * math.pi * 1.6
+			local r = radius * (0.25 + t * 0.75)
+			local a = Instance.new("Attachment")
+			a.Position = Vector3.new(math.cos(angle) * r, math.sin(angle) * r, t * radius * 0.35)
+			a.Parent = carrier
+			if prev then
+				local b = Instance.new("Beam")
+				b.Attachment0 = prev
+				b.Attachment1 = a
+				b.FaceCamera = true
+				b.LightEmission = 1
+				b.LightInfluence = 0
+				b.Segments = 1
+				local c = color:Lerp(color2, t)
+				b.Color = ColorSequence.new(c)
+				b.Width0 = radius * 0.16 * (1 - t * 0.6)
+				b.Width1 = radius * 0.16 * (1 - (t + 1 / points) * 0.6)
+				b.Transparency = NumberSequence.new(0.05 + t * 0.6, 0.05 + math.min(1, t + 1 / points) * 0.6)
+				b.Parent = carrier
+				table.insert(beams, b)
+			end
+			prev = a
+		end
+	end
+	return carrier
+end
+
 --[[
 	opts: Scale, Color, Color2 (helix), TrailColor, Rings (0..3), RingColor,
+	      Whirls (0..3) + WhirlColor / WhirlColor2: spinning Spin whirls
+	      Glow (true): cyan neon glow sleeve around the nail
 	      HelixRadius, Helix (strand count), Afterimages, SpinSpeed
 	visual:Step(cframe, dt)  visual:Destroy()
 ]]
@@ -350,10 +388,38 @@ function TuskVFX.CreateNailProjectile(opts)
 		rings[i] = VFXLib.ring({ Radius = (0.35 + i * 0.22) * scale, Width = 0.08 * scale, Color = opts.RingColor or colors.Cyan, Transparency = 0.1 })
 	end
 
+	-- Glowing cyan sleeve around the nail.
+	local glow
+	if opts.Glow then
+		glow = VFXLib.part({ Color = opts.GlowColor or colors.Cyan, Transparency = 0.45, Size = Vector3.new(0.32, 0.32, 1.6) * scale })
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = glow
+	end
+	-- Spin whirls that keep spinning around the flight path.
+	local whirls = {}
+	local whirlCount = opts.Whirls or 0
+	if q().RingSegments <= 12 then
+		whirlCount = math.min(whirlCount, 1)
+	end
+	for i = 1, whirlCount do
+		whirls[i] = createWhirl((0.55 + i * 0.22) * scale, opts.WhirlColor or colors.Cyan, opts.WhirlColor2 or colors.Blue, 3, q().RingSegments > 12 and 6 or 4)
+	end
+
 	local visual = { Spin = 0, NextGhost = 0, Alive = true }
 	function visual:Step(cframe, dt)
 		self.Spin = self.Spin + (dt or 0) * (opts.SpinSpeed or 30)
 		nail:PivotTo(cframe * CFrame.Angles(0, 0, self.Spin))
+		if glow then
+			local pulse = 1 + math.sin(self.Spin * 0.6) * 0.12
+			glow.CFrame = cframe * CFrame.new(0, 0, 0.1 * scale)
+			glow.Size = Vector3.new(0.32 * pulse, 0.32 * pulse, 1.6) * scale
+		end
+		for i, whirl in ipairs(whirls) do
+			-- Each whirl sits a little further back and spins the opposite way.
+			local dir = i % 2 == 1 and 1 or -1
+			whirl.CFrame = cframe * CFrame.new(0, 0, (0.15 + (i - 1) * 0.55) * scale) * CFrame.Angles(0, 0, self.Spin * 0.45 * dir)
+		end
 		carrier.CFrame = cframe * CFrame.new(0, 0, 0.5 * scale) * CFrame.Angles(0, 0, self.Spin * 0.5)
 		for i, ring in ipairs(rings) do
 			local tilt = 0.4 * i
@@ -370,6 +436,12 @@ function TuskVFX.CreateNailProjectile(opts)
 		end
 		self.Alive = false
 		returnNail(nail)
+		if glow then
+			glow:Destroy()
+		end
+		for _, whirl in ipairs(whirls) do
+			whirl:Destroy()
+		end
 		for _, ring in ipairs(rings) do
 			ring:Destroy()
 		end
