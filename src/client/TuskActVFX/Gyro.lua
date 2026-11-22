@@ -369,6 +369,8 @@ end
 ---------------------------------------------------------------------------
 -- Moves
 ---------------------------------------------------------------------------
+local vibrationStartup, vibrationHit -- defined below (they use the spiral helpers)
+
 local function onAbility(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
@@ -424,18 +426,9 @@ local function onAbility(data)
 					entry.Spin = 8
 				end)
 			end
+			vibrationStartup(character, root, data)
 		elseif data.Phase == "Hit" then
-			-- Spiral ripples spreading from the ball.
-			for i = 1, 3 do
-				task.delay(i * 0.06, function()
-					local axis = CFrame.new(data.Position) * CFrame.Angles(math.pi / 2, 0, 0)
-					TuskVFX.CreateRotationalShockwave(axis, { Radius = 2 + i * 1.5, Layers = 1, Color = pal.Light, Color2 = pal.Main, Particles = 0.4, Width = 0.25, Duration = 0.3, Spin = 5 })
-				end)
-			end
-			VFXLib.sound(sounds.Hit, data.Position, 0.6, 0.7)
-			if data.Hit and Common.isLocal(character) then
-				CameraFX.shake(0.4, 0.3)
-			end
+			vibrationHit(character, root, data)
 		end
 	end
 end
@@ -549,6 +542,135 @@ local function goldenRectangle(cframe, size, duration)
 	end)
 end
 
+---------------------------------------------------------------------------
+-- SPIN VIBRATION: Gyro presses the spinning ball into the target and the
+-- Spin shakes everything around it.
+---------------------------------------------------------------------------
+-- Zigzag "vibration" lines that jitter every frame while they shoot outward.
+local function vibrationLines(axisCF, count, length, duration)
+	local carrier = VFXLib.anchor(axisCF)
+	local lines = {}
+	local points = 7
+	for i = 1, count do
+		local angle = (i / count) * math.pi * 2
+		local dir = Vector3.new(math.cos(angle), math.sin(angle), -0.6).Unit
+		local side = dir:Cross(Vector3.new(0, 0, 1))
+		if side.Magnitude < 0.01 then
+			side = Vector3.new(1, 0, 0)
+		end
+		local atts = {}
+		for k = 0, points do
+			local a = Instance.new("Attachment")
+			a.Parent = carrier
+			atts[k] = a
+			if k > 0 then
+				local b = Instance.new("Beam")
+				b.Attachment0 = atts[k - 1]
+				b.Attachment1 = a
+				b.FaceCamera = true
+				b.LightEmission = 1
+				b.LightInfluence = 0
+				b.Segments = 1
+				b.Width0 = 0.22 * (1 - (k - 1) / points)
+				b.Width1 = 0.22 * (1 - k / points)
+				b.Color = ColorSequence.new(Color3.new(1, 1, 1):Lerp(pal.Main, k / points))
+				b.Parent = carrier
+			end
+		end
+		lines[i] = { Atts = atts, Dir = dir, Side = side.Unit }
+	end
+	VFXLib.animate(duration, function(a)
+		local reach = length * VFXLib.easeOut(a)
+		local shake = 0.45 * (1 - a)
+		for _, line in ipairs(lines) do
+			for k = 0, points do
+				local t = k / points
+				local zig = (k % 2 == 0 and 1 or -1) * shake * (0.6 + math.random() * 0.8)
+				line.Atts[k].Position = line.Dir * (0.6 + reach * t) + line.Side * zig
+			end
+		end
+		local fade = NumberSequence.new(math.clamp((a - 0.4) / 0.6, 0, 1))
+		for _, b in ipairs(carrier:GetChildren()) do
+			if b:IsA("Beam") then
+				b.Transparency = fade
+			end
+		end
+	end, function()
+		carrier:Destroy()
+	end)
+end
+
+function vibrationStartup(character, root, data)
+	local windup = data.Windup or 0.35
+	-- The ball in hand winds up inside tight, fast rings + gathering energy.
+	for i = 1, 3 do
+		TuskVFX.CreateSpinRing({
+			Follow = function()
+				local hand = handOf(character)
+				return hand and hand.Parent and hand.CFrame * CFrame.new(0, -0.6, 0) or nil
+			end,
+			Tilt = CFrame.Angles(0.8 * i, 0.4 * i, 0.5 * i),
+			Radius = 0.6 + i * 0.22,
+			Width = 0.07,
+			Color = i % 2 == 1 and pal.Light or pal.Main,
+			RotationSpeed = 14 + i * 5,
+			Duration = windup + 0.15,
+		})
+	end
+	local charge = TuskVFX.CreateEnergyCharge({
+		Follow = function()
+			local hand = handOf(character)
+			return hand and hand.Parent and hand.CFrame * CFrame.new(0, -0.6, 0) or nil
+		end,
+		Color = pal.Main,
+		Color2 = pal.Light,
+		MaxRadius = 0.9,
+		Duration = windup,
+		Rings = 2,
+	})
+	task.delay(windup, function()
+		charge:Release(root and root.CFrame.LookVector)
+	end)
+	VFXLib.sound(sounds.ChargeLoop, root, 0.35, 1.8)
+end
+
+function vibrationHit(character, root, data)
+	local pos = data.Position
+	local look = root and root.CFrame.LookVector or Vector3.new(0, 0, -1)
+	local facing = CFrame.lookAt(pos, pos + look)
+	-- 1. contact: flash + starburst + a spinning golden spiral pressed into the air
+	VFXLib.flash(pos, pal.Light, 6, 20, 0.25)
+	TuskVFX.CreateImpactStar(pos, { Size = data.Hit and 6 or 3.5, Rays = 9, Color = pal.Main, Color2 = pal.Light, Duration = 0.3 })
+	spiral(facing, data.Hit and 3.2 or 2.2, 0.45)
+	if data.Hit then
+		goldenRectangle(facing * CFrame.new(0, 0, -0.4), 2.4, 0.5)
+	end
+	-- 2. vibration: jittering zigzag lines + layered ripples pushed forward
+	vibrationLines(facing, VFXQuality.get().RingSegments > 12 and 10 or 6, data.Hit and 7 or 4.5, 0.4)
+	local axis = facing * CFrame.Angles(math.pi / 2, 0, 0)
+	for i = 1, 4 do
+		task.delay(i * 0.05, function()
+			TuskVFX.CreateRotationalShockwave(axis * CFrame.new(0, -i * 0.9, 0), { Radius = 1.5 + i * 1.3, Layers = 1, Color = i % 2 == 1 and pal.Light or pal.Main, Color2 = pal.Main, Particles = i == 1 and 0.6 or 0, Width = 0.22, Duration = 0.28, Spin = (i % 2 == 1 and 7 or -7) })
+		end)
+	end
+	TuskVFX.CreateDistortion(pos, { Radius = data.Hit and 4 or 2.5, Duration = 0.3 })
+	-- 3. on hit: the ground trembles under the target
+	if data.Hit then
+		TuskVFX.CreateGroundCracks(pos, { Radius = 6, Count = 6, Color = pal.Main, Duration = 1.4 })
+		VFXLib.burst(pos, { Count = 20, Color = pal.Light, Speed = 26, Lifetime = 0.35, Spread = 60, Direction = look })
+	end
+	VFXLib.sound(sounds.Hit, pos, 0.7, 0.7)
+	VFXLib.sound(sounds.NailImpact, pos, 0.4, 1.4)
+	if Common.isLocal(character) then
+		CameraFX.shake(data.Hit and 0.55 or 0.25, 0.35)
+		if data.Hit then
+			CameraFX.fovPunch(6, 0.25)
+		end
+	end
+	CameraFX.shakeAt(pos, 0.35, 40)
+end
+
+
 -- The Ball Breaker spirit: a glowing ghostly skeletal figure (ForceField
 -- material shimmers) that rises out of the vortex, spins, then shatters.
 local function breakerSpirit(position, duration)
@@ -630,7 +752,7 @@ local function onUltimate(data)
 		end
 		VFXLib.burst(root.Position - Vector3.new(0, 2.5, 0), { Count = 30, Color = pal.Light, Speed = 12, Spread = 25, Direction = Vector3.new(0, 1, 0), Lifetime = 1 })
 		TuskVFX.CreateMagicCircle(CFrame.new(root.Position - Vector3.new(0, 2.9, 0)), { Radius = 8, Color = pal.Main, Color2 = pal.Light, Duration = data.Windup + 0.3, RotationSpeed = 2, Points = 5 })
-		TuskVFX.CreateEnergyCharge({
+		local charge = TuskVFX.CreateEnergyCharge({
 			Follow = function()
 				return root.Parent and root.CFrame * CFrame.new(0.9, 0.8, -1.8) or nil
 			end,
@@ -640,6 +762,9 @@ local function onUltimate(data)
 			Duration = data.Windup,
 			Rings = 3,
 		})
+		task.delay(data.Windup, function()
+			charge:Release()
+		end)
 		if Common.isLocal(character) then
 			CameraFX.setFovHold(-10)
 		end
@@ -664,7 +789,10 @@ local function onUltimate(data)
 			TuskVFX.CreateSpinRing({ CFrame = ground * CFrame.new(0, i * 1.6, 0), Tilt = CFrame.Angles(0.15 * i, 0, 0), Radius = data.Radius * (1.05 - i * 0.2), Width = 0.4, Color = i % 2 == 1 and pal.Main or pal.Light, RotationSpeed = (5 + i * 2) * (i % 2 == 0 and -1 or 1), Duration = data.Duration })
 		end
 		TuskVFX.CreateMagicCircle(ground, { Radius = data.Radius, Color = pal.Main, Color2 = pal.Light, Duration = data.Duration, RotationSpeed = 3, Points = 6 })
-		TuskVFX.CreateEnergyCharge({ CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)), Color = pal.Main, Color2 = pal.Light, MaxRadius = 3, Duration = data.Duration, Rings = 3 })
+		local vortexCore = TuskVFX.CreateEnergyCharge({ CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)), Color = pal.Main, Color2 = pal.Light, MaxRadius = 3, Duration = data.Duration, Rings = 3 })
+		task.delay(data.Duration, function()
+			vortexCore:Release()
+		end)
 		spiral(CFrame.new(pos + Vector3.new(0, 0.5, 0)) * CFrame.Angles(-math.pi / 2, 0, 0), data.Radius * 0.8, data.Duration)
 		VFXLib.sound(sounds.ChargeLoop, pos, 0.8, 0.6)
 		breakerSpirit(pos, data.Duration)

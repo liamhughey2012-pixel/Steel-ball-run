@@ -40,3 +40,6 @@ updated: 2026-11-22
 | 2026-11-22 | VFX polish for Johnny and Gyro: crescent M1 slashes, impact stars on every hit (cyan/green by attacker), finisher and ultimate ground cracks |
 | 2026-11-22 | Gyro: Steel Ball Throw gets a glow, spiral trails, afterimages, a release ring and drilling ripples; Spin Tornado gets spiral strands, a wind body, a ground swirl, flying debris and sparks |
 | 2026-11-22 | Map upgrade 3: river with waterfall, covered bridge, railway trestle, gold camp, Dustwater ghost town, Lucky Horseshoe Ranch, Fort Dust, signpost, 8 NPCs |
+| 2026-11-22 | Spin Vibration visuals rebuilt (charge, spiral, zigzag vibration lines, ripples, cracks) |
+| 2026-11-22 | Move HUD rebuilt as a battlegrounds hotbar: drawn move icons, cooldown drain + ready flash, charge bars, ULT card with glow/shine, combo counter, toast pills, ゴゴゴ banner |
+| 2026-11-22 | Fixed glowing charge orbs that never disappeared (Act 3 ultimate, Ball Breaker windup and vortex) |

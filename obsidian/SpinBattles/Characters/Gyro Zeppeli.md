@@ -24,3 +24,6 @@ Status: 🧪 built, not yet tested in Studio.
 
 ## Animations (procedural, whole-body)
 Idle: ball held up at the chest, spinning. M1: jab → hook → front kick → overhead ball smash. Throw: baseball pitch with a leg lift. Tornado: underhand bowl. Spin Vibration: palm press. Ball Breaker: swaying wind-up, then the big pitch.
+
+## Spin Vibration visuals
+Wind-up: three tight green rings and a charge gathering on the ball in his hand. Hit: flash, starburst, a golden spiral pressed into the air (plus a Golden Rectangle on a hit), jittering zigzag "vibration" lines, four ripples pushed forward, heat haze; on a hit the ground cracks and sparks fly. Camera shake and a small FOV punch for Gyro.

@@ -1148,7 +1148,7 @@ local function onUltimate(data)
 			Common.portal(pos, data.Center, i <= #data.Portals / 2 and 3 or 4, data.Windup + 0.4, pal, (i - 1) * (data.Windup * 0.6 / #data.Portals))
 		end
 		if root then
-			TuskVFX.CreateEnergyCharge({
+			local charge = TuskVFX.CreateEnergyCharge({
 				Follow = function()
 					return root.Parent and root.CFrame * CFrame.new(0, 3, 0) or nil
 				end,
@@ -1158,6 +1158,9 @@ local function onUltimate(data)
 				Duration = data.Windup,
 				Rings = 3,
 			})
+			task.delay(data.Windup, function()
+				charge:Release()
+			end)
 		end
 		if Common.isLocal(character) then
 			CameraFX.setFovHold(10)
@@ -1876,6 +1879,8 @@ end
 ---------------------------------------------------------------------------
 -- Moves
 ---------------------------------------------------------------------------
+local vibrationStartup, vibrationHit -- defined below (they use the spiral helpers)
+
 local function onAbility(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
@@ -1931,18 +1936,9 @@ local function onAbility(data)
 					entry.Spin = 8
 				end)
 			end
+			vibrationStartup(character, root, data)
 		elseif data.Phase == "Hit" then
-			-- Spiral ripples spreading from the ball.
-			for i = 1, 3 do
-				task.delay(i * 0.06, function()
-					local axis = CFrame.new(data.Position) * CFrame.Angles(math.pi / 2, 0, 0)
-					TuskVFX.CreateRotationalShockwave(axis, { Radius = 2 + i * 1.5, Layers = 1, Color = pal.Light, Color2 = pal.Main, Particles = 0.4, Width = 0.25, Duration = 0.3, Spin = 5 })
-				end)
-			end
-			VFXLib.sound(sounds.Hit, data.Position, 0.6, 0.7)
-			if data.Hit and Common.isLocal(character) then
-				CameraFX.shake(0.4, 0.3)
-			end
+			vibrationHit(character, root, data)
 		end
 	end
 end
@@ -2056,6 +2052,135 @@ local function goldenRectangle(cframe, size, duration)
 	end)
 end
 
+---------------------------------------------------------------------------
+-- SPIN VIBRATION: Gyro presses the spinning ball into the target and the
+-- Spin shakes everything around it.
+---------------------------------------------------------------------------
+-- Zigzag "vibration" lines that jitter every frame while they shoot outward.
+local function vibrationLines(axisCF, count, length, duration)
+	local carrier = VFXLib.anchor(axisCF)
+	local lines = {}
+	local points = 7
+	for i = 1, count do
+		local angle = (i / count) * math.pi * 2
+		local dir = Vector3.new(math.cos(angle), math.sin(angle), -0.6).Unit
+		local side = dir:Cross(Vector3.new(0, 0, 1))
+		if side.Magnitude < 0.01 then
+			side = Vector3.new(1, 0, 0)
+		end
+		local atts = {}
+		for k = 0, points do
+			local a = Instance.new("Attachment")
+			a.Parent = carrier
+			atts[k] = a
+			if k > 0 then
+				local b = Instance.new("Beam")
+				b.Attachment0 = atts[k - 1]
+				b.Attachment1 = a
+				b.FaceCamera = true
+				b.LightEmission = 1
+				b.LightInfluence = 0
+				b.Segments = 1
+				b.Width0 = 0.22 * (1 - (k - 1) / points)
+				b.Width1 = 0.22 * (1 - k / points)
+				b.Color = ColorSequence.new(Color3.new(1, 1, 1):Lerp(pal.Main, k / points))
+				b.Parent = carrier
+			end
+		end
+		lines[i] = { Atts = atts, Dir = dir, Side = side.Unit }
+	end
+	VFXLib.animate(duration, function(a)
+		local reach = length * VFXLib.easeOut(a)
+		local shake = 0.45 * (1 - a)
+		for _, line in ipairs(lines) do
+			for k = 0, points do
+				local t = k / points
+				local zig = (k % 2 == 0 and 1 or -1) * shake * (0.6 + math.random() * 0.8)
+				line.Atts[k].Position = line.Dir * (0.6 + reach * t) + line.Side * zig
+			end
+		end
+		local fade = NumberSequence.new(math.clamp((a - 0.4) / 0.6, 0, 1))
+		for _, b in ipairs(carrier:GetChildren()) do
+			if b:IsA("Beam") then
+				b.Transparency = fade
+			end
+		end
+	end, function()
+		carrier:Destroy()
+	end)
+end
+
+function vibrationStartup(character, root, data)
+	local windup = data.Windup or 0.35
+	-- The ball in hand winds up inside tight, fast rings + gathering energy.
+	for i = 1, 3 do
+		TuskVFX.CreateSpinRing({
+			Follow = function()
+				local hand = handOf(character)
+				return hand and hand.Parent and hand.CFrame * CFrame.new(0, -0.6, 0) or nil
+			end,
+			Tilt = CFrame.Angles(0.8 * i, 0.4 * i, 0.5 * i),
+			Radius = 0.6 + i * 0.22,
+			Width = 0.07,
+			Color = i % 2 == 1 and pal.Light or pal.Main,
+			RotationSpeed = 14 + i * 5,
+			Duration = windup + 0.15,
+		})
+	end
+	local charge = TuskVFX.CreateEnergyCharge({
+		Follow = function()
+			local hand = handOf(character)
+			return hand and hand.Parent and hand.CFrame * CFrame.new(0, -0.6, 0) or nil
+		end,
+		Color = pal.Main,
+		Color2 = pal.Light,
+		MaxRadius = 0.9,
+		Duration = windup,
+		Rings = 2,
+	})
+	task.delay(windup, function()
+		charge:Release(root and root.CFrame.LookVector)
+	end)
+	VFXLib.sound(sounds.ChargeLoop, root, 0.35, 1.8)
+end
+
+function vibrationHit(character, root, data)
+	local pos = data.Position
+	local look = root and root.CFrame.LookVector or Vector3.new(0, 0, -1)
+	local facing = CFrame.lookAt(pos, pos + look)
+	-- 1. contact: flash + starburst + a spinning golden spiral pressed into the air
+	VFXLib.flash(pos, pal.Light, 6, 20, 0.25)
+	TuskVFX.CreateImpactStar(pos, { Size = data.Hit and 6 or 3.5, Rays = 9, Color = pal.Main, Color2 = pal.Light, Duration = 0.3 })
+	spiral(facing, data.Hit and 3.2 or 2.2, 0.45)
+	if data.Hit then
+		goldenRectangle(facing * CFrame.new(0, 0, -0.4), 2.4, 0.5)
+	end
+	-- 2. vibration: jittering zigzag lines + layered ripples pushed forward
+	vibrationLines(facing, VFXQuality.get().RingSegments > 12 and 10 or 6, data.Hit and 7 or 4.5, 0.4)
+	local axis = facing * CFrame.Angles(math.pi / 2, 0, 0)
+	for i = 1, 4 do
+		task.delay(i * 0.05, function()
+			TuskVFX.CreateRotationalShockwave(axis * CFrame.new(0, -i * 0.9, 0), { Radius = 1.5 + i * 1.3, Layers = 1, Color = i % 2 == 1 and pal.Light or pal.Main, Color2 = pal.Main, Particles = i == 1 and 0.6 or 0, Width = 0.22, Duration = 0.28, Spin = (i % 2 == 1 and 7 or -7) })
+		end)
+	end
+	TuskVFX.CreateDistortion(pos, { Radius = data.Hit and 4 or 2.5, Duration = 0.3 })
+	-- 3. on hit: the ground trembles under the target
+	if data.Hit then
+		TuskVFX.CreateGroundCracks(pos, { Radius = 6, Count = 6, Color = pal.Main, Duration = 1.4 })
+		VFXLib.burst(pos, { Count = 20, Color = pal.Light, Speed = 26, Lifetime = 0.35, Spread = 60, Direction = look })
+	end
+	VFXLib.sound(sounds.Hit, pos, 0.7, 0.7)
+	VFXLib.sound(sounds.NailImpact, pos, 0.4, 1.4)
+	if Common.isLocal(character) then
+		CameraFX.shake(data.Hit and 0.55 or 0.25, 0.35)
+		if data.Hit then
+			CameraFX.fovPunch(6, 0.25)
+		end
+	end
+	CameraFX.shakeAt(pos, 0.35, 40)
+end
+
+
 -- The Ball Breaker spirit: a glowing ghostly skeletal figure (ForceField
 -- material shimmers) that rises out of the vortex, spins, then shatters.
 local function breakerSpirit(position, duration)
@@ -2137,7 +2262,7 @@ local function onUltimate(data)
 		end
 		VFXLib.burst(root.Position - Vector3.new(0, 2.5, 0), { Count = 30, Color = pal.Light, Speed = 12, Spread = 25, Direction = Vector3.new(0, 1, 0), Lifetime = 1 })
 		TuskVFX.CreateMagicCircle(CFrame.new(root.Position - Vector3.new(0, 2.9, 0)), { Radius = 8, Color = pal.Main, Color2 = pal.Light, Duration = data.Windup + 0.3, RotationSpeed = 2, Points = 5 })
-		TuskVFX.CreateEnergyCharge({
+		local charge = TuskVFX.CreateEnergyCharge({
 			Follow = function()
 				return root.Parent and root.CFrame * CFrame.new(0.9, 0.8, -1.8) or nil
 			end,
@@ -2147,6 +2272,9 @@ local function onUltimate(data)
 			Duration = data.Windup,
 			Rings = 3,
 		})
+		task.delay(data.Windup, function()
+			charge:Release()
+		end)
 		if Common.isLocal(character) then
 			CameraFX.setFovHold(-10)
 		end
@@ -2171,7 +2299,10 @@ local function onUltimate(data)
 			TuskVFX.CreateSpinRing({ CFrame = ground * CFrame.new(0, i * 1.6, 0), Tilt = CFrame.Angles(0.15 * i, 0, 0), Radius = data.Radius * (1.05 - i * 0.2), Width = 0.4, Color = i % 2 == 1 and pal.Main or pal.Light, RotationSpeed = (5 + i * 2) * (i % 2 == 0 and -1 or 1), Duration = data.Duration })
 		end
 		TuskVFX.CreateMagicCircle(ground, { Radius = data.Radius, Color = pal.Main, Color2 = pal.Light, Duration = data.Duration, RotationSpeed = 3, Points = 6 })
-		TuskVFX.CreateEnergyCharge({ CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)), Color = pal.Main, Color2 = pal.Light, MaxRadius = 3, Duration = data.Duration, Rings = 3 })
+		local vortexCore = TuskVFX.CreateEnergyCharge({ CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)), Color = pal.Main, Color2 = pal.Light, MaxRadius = 3, Duration = data.Duration, Rings = 3 })
+		task.delay(data.Duration, function()
+			vortexCore:Release()
+		end)
 		spiral(CFrame.new(pos + Vector3.new(0, 0.5, 0)) * CFrame.Angles(-math.pi / 2, 0, 0), data.Radius * 0.8, data.Duration)
 		VFXLib.sound(sounds.ChargeLoop, pos, 0.8, 0.6)
 		breakerSpirit(pos, data.Duration)
@@ -5624,16 +5755,21 @@ end
 return SettingsUI
 ]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX48"><Properties><string name="Name">TuskUI</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskUI  (StarterPlayerScripts.SpinClient.UI.TuskUI)
-	("TuskUIController" in the design doc)
 
-	JoJo-style Tusk HUD (only visible while Tusk is equipped):
-	  * Act name + tagline
-	  * three ability slots: key, name, cooldown sweep (tap/click = use; mobile-friendly)
-	  * ultimate meter + "READY" prompt (tap/click = use)
-	  * sneak chip (tap = toggle) + sneak attack hint
-	  * combo counter, transformation banner, Awakened timer, short toasts
-	Act menu (T / MOVESET button): one card per Act. Unfinished Acts are shown
-	locked as IN DEVELOPMENT, never as working buttons.
+	Battlegrounds-style move HUD (shown while Johnny or Gyro is equipped):
+	  * header: Act / character name with a slanted colour band + tagline
+	  * hotbar of move cards: M1, 1, 2, 3 and a big ULT card
+	      - key badge, a drawn icon for each move, the move name
+	      - cooldown shade that drains with a countdown, greys the icon,
+	        then a white "ready" flash and pop
+	      - cards squash when pressed (mouse, touch or keyboard)
+	      - hold moves show a charge bar (FULL when fully charged)
+	  * ULT card: rising meter, %, READY glow with a spinning shine,
+	    LOCKED timer after an awakening
+	  * sneak chip (Johnny), combo counter, toasts, awakening banner with
+	    menacing "ゴ" letters, Awakened timer bar
+	  * scales down on small screens
+	Act menu (T / MOVESET button): Studio test tool, one card per Act.
 ]]
 
 local Players = game:GetService("Players")
@@ -5651,21 +5787,37 @@ local TuskUI = {}
 local player = Players.LocalPlayer
 local colors = TuskConfig.Colors
 local DARK = Color3.fromRGB(12, 16, 28)
+local DARK2 = Color3.fromRGB(26, 34, 56)
+local GREY = Color3.fromRGB(110, 118, 135)
+local WHITE = Color3.new(1, 1, 1)
 local FONT = Enum.Font.GothamBlack
 local TITLE_FONT = Enum.Font.Bangers
 
+local CARD_W, CARD_H, M1_W, ULT_W, GAP = 84, 96, 66, 112, 8
+
 local callbacks
-local gui, hud, actLabel, taglineLabel, ultFill, ultLabel, sneakChip, sneakHint, comboLabel, toastLabel, banner, bannerSub, awakenBar, awakenFill
-local slots = {}
+local gui, hud, hudScale, header, actLabel, actGradient, actBand, taglineLabel
+local sneakChip, sneakHint, comboFrame, comboNumber, comboWord, comboDrain
+local toastFrame, toastLabel, toastAccent
+local bannerBand, banner, bannerSub, bannerGradient, menacing = nil, nil, nil, nil, {}
+local awakenBar, awakenFill
+local slots = {} -- [1..3] abilities, slots.M1, slots.Ult
 local menu
 local shownAct
+local theme = { Primary = colors.Cyan, Secondary = colors.Blue }
 local combo = { Count = 0, Last = 0 }
 local jobs = {}
+local ultShown = 0
+local wasReady = false
 
+---------------------------------------------------------------------------
+-- Small builders
+---------------------------------------------------------------------------
 local function corner(p, r)
 	local c = Instance.new("UICorner")
 	c.CornerRadius = UDim.new(0, r or 8)
 	c.Parent = p
+	return c
 end
 
 local function stroke(p, color, t)
@@ -5675,6 +5827,24 @@ local function stroke(p, color, t)
 	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	s.Parent = p
 	return s
+end
+
+local function gradient(p, c0, c1, rotation)
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new(c0, c1)
+	g.Rotation = rotation or 90
+	g.Parent = p
+	return g
+end
+
+local function frame(parent, props)
+	local f = Instance.new("Frame")
+	f.BorderSizePixel = 0
+	for k, v in pairs(props) do
+		f[k] = v
+	end
+	f.Parent = parent
+	return f
 end
 
 local function text(parent, props)
@@ -5692,6 +5862,9 @@ end
 
 local function keyName(slotKey)
 	local keys = TuskConfig.Keys[slotKey]
+	if not keys then
+		return ""
+	end
 	local last = UserInputService:GetLastInputType()
 	if last == Enum.UserInputType.Touch then
 		return ""
@@ -5700,7 +5873,7 @@ local function keyName(slotKey)
 		return keys.Gamepad.Name:gsub("Button", "")
 	end
 	local k = keys.Keyboard
-	local names = { One = "1", Two = "2", Three = "3" }
+	local names = { One = "1", Two = "2", Three = "3", MouseButton1 = "LMB" }
 	return names[k.Name] or k.Name
 end
 
@@ -5709,55 +5882,302 @@ local function animateJob(key, duration, step, done)
 	jobs[key] = VFXLib.animate(duration, step, done)
 end
 
-function TuskUI.toast(message, color)
-	toastLabel.Text = message
-	toastLabel.TextColor3 = color or Color3.fromRGB(255, 140, 120)
-	animateJob("toast", 1.2, function(a)
-		toastLabel.TextTransparency = a < 0.7 and 0 or (a - 0.7) / 0.3
-		toastLabel.TextStrokeTransparency = math.max(0.4, toastLabel.TextTransparency)
-	end)
+---------------------------------------------------------------------------
+-- Move icons, drawn from UI shapes so no image uploads are needed
+---------------------------------------------------------------------------
+local function iconKind(name)
+	name = name or ""
+	local function has(word)
+		return string.find(name, word, 1, true) ~= nil
+	end
+	if has("BARRAGE") then
+		return "barrage"
+	elseif has("TORNADO") then
+		return "tornado"
+	elseif has("VIBRATION") then
+		return "vibration"
+	elseif has("BALL") then
+		return "ball"
+	elseif has("PURSUIT") or has("STEP") or has("DIVE") then
+		return "dash"
+	elseif has("BREAK") then
+		return "star"
+	elseif has("WORMHOLE") or has("DIMENSION") then
+		return "portal"
+	elseif has("SPINNING") or has("ROTATION") or has("GOLDEN") then
+		return "spin"
+	elseif has("NAIL") then
+		return "nail"
+	end
+	return "spin"
+end
+
+-- Every icon part is tagged so recolouring (cooldown grey / theme) is one loop.
+local function iconPart(icon, props, isStroke)
+	local f = frame(icon, props)
+	f:SetAttribute("IconFill", not isStroke)
+	return f
+end
+
+local function ring(icon, size, thickness, pos)
+	local f = frame(icon, { AnchorPoint = Vector2.new(0.5, 0.5), Position = pos or UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(size, size), BackgroundTransparency = 1 })
+	corner(f, 999)
+	local s = stroke(f, WHITE, thickness)
+	s:SetAttribute("IconStroke", true)
+	return f
+end
+
+local function bar(icon, x, y, w, h, rot)
+	local f = iconPart(icon, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(x, y), Size = UDim2.fromScale(w, h), Rotation = rot or 0, BackgroundColor3 = WHITE })
+	corner(f, 3)
+	return f
+end
+
+local function drawIcon(icon, kind)
+	for _, c in ipairs(icon:GetChildren()) do
+		c:Destroy()
+	end
+	if kind == "nail" then
+		bar(icon, 0.45, 0.55, 0.12, 0.62, 45)
+		bar(icon, 0.68, 0.32, 0.2, 0.2, 45)
+	elseif kind == "barrage" then
+		for i = -1, 1 do
+			bar(icon, 0.5 + i * 0.2, 0.5 - i * 0.08, 0.09, 0.55, 35)
+		end
+	elseif kind == "spin" then
+		ring(icon, 0.8, 3)
+		ring(icon, 0.45, 2)
+		bar(icon, 0.5, 0.5, 0.16, 0.16, 45)
+	elseif kind == "portal" then
+		ring(icon, 0.85, 3)
+		ring(icon, 0.6, 2)
+		ring(icon, 0.35, 2)
+	elseif kind == "dash" then
+		for i = 0, 2 do
+			bar(icon, 0.28 + i * 0.22, 0.38, 0.08, 0.32, -40)
+			bar(icon, 0.28 + i * 0.22, 0.62, 0.08, 0.32, 40)
+		end
+	elseif kind == "ball" then
+		local b = bar(icon, 0.5, 0.5, 0.62, 0.62)
+		corner(b, 999)
+		ring(icon, 0.84, 2)
+		frame(icon, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.62, 0.06), BackgroundColor3 = DARK, Rotation = -25 })
+	elseif kind == "tornado" then
+		for i = 0, 3 do
+			bar(icon, 0.5 + (i % 2 == 0 and 0.04 or -0.04), 0.2 + i * 0.2, 0.85 - i * 0.18, 0.1, 0)
+		end
+	elseif kind == "vibration" then
+		local b = bar(icon, 0.5, 0.5, 0.36, 0.36)
+		corner(b, 999)
+		for _, side in ipairs({ -1, 1 }) do
+			for i = 0, 2 do
+				bar(icon, 0.5 + side * (0.3 + i * 0.07), 0.5 + (i % 2 == 0 and -0.07 or 0.07), 0.05, 0.22, side * 25 * (i % 2 == 0 and 1 or -1))
+			end
+		end
+	elseif kind == "star" then
+		for i = 0, 3 do
+			bar(icon, 0.5, 0.5, 0.08, i % 2 == 0 and 0.95 or 0.7, i * 45)
+		end
+		local c = bar(icon, 0.5, 0.5, 0.3, 0.3, 45)
+		corner(c, 999)
+	elseif kind == "slash" then
+		for i = -1, 1 do
+			bar(icon, 0.5 + i * 0.18, 0.5, 0.08, 0.8 - math.abs(i) * 0.2, 30)
+		end
+	end
+end
+
+local function colorIcon(icon, color)
+	for _, c in ipairs(icon:GetDescendants()) do
+		if c:IsA("Frame") and c:GetAttribute("IconFill") then
+			c.BackgroundColor3 = color
+		elseif c:IsA("UIStroke") and c:GetAttribute("IconStroke") then
+			c.Color = color
+		end
+	end
 end
 
 ---------------------------------------------------------------------------
--- Building
+-- Move cards
 ---------------------------------------------------------------------------
-local function buildSlot(index, parent)
+local function buildCard(parent, id, width, order)
 	local button = Instance.new("TextButton")
-	button.Name = "Slot" .. index
-	button.Size = UDim2.new(1 / 3, -6, 1, 0)
+	button.Name = "Move_" .. tostring(id)
+	button.LayoutOrder = order
+	button.Size = UDim2.fromOffset(width, CARD_H)
 	button.BackgroundColor3 = DARK
-	button.BackgroundTransparency = 0.15
+	button.BackgroundTransparency = 0.08
 	button.AutoButtonColor = false
 	button.Text = ""
+	button.ClipsDescendants = false
 	button.Parent = parent
-	corner(button, 8)
-	local edge = stroke(button, colors.Cyan, 2)
+	corner(button, 10)
+	gradient(button, Color3.fromRGB(200, 210, 230), Color3.fromRGB(120, 130, 150), 90)
+	local edge = stroke(button, WHITE, 2)
+	local edgeGradient = gradient(edge, theme.Primary, theme.Secondary, 45)
+	local scale = Instance.new("UIScale")
+	scale.Scale = 1
+	scale.Parent = button
 
-	local key = text(button, { Position = UDim2.fromOffset(6, 3), Size = UDim2.fromOffset(30, 16), TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = colors.Cyan })
-	local name = text(button, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.new(1, -8, 0, 28), TextSize = 13, TextWrapped = true, Text = "" })
-	local overlay = Instance.new("Frame")
-	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
-	overlay.BackgroundTransparency = 0.35
-	overlay.BorderSizePixel = 0
-	overlay.AnchorPoint = Vector2.new(0, 1)
-	overlay.Position = UDim2.fromScale(0, 1)
-	overlay.Size = UDim2.fromScale(1, 0)
-	overlay.ZIndex = 2
-	overlay.Parent = button
-	corner(overlay, 8)
-	local timer = text(button, { Size = UDim2.fromScale(1, 1), TextSize = 22, Text = "", ZIndex = 3 })
+	-- Glow behind the card (shown when an ability is ready / ultimate is ready).
+	local glow = frame(button, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, 8, 1, 8), BackgroundTransparency = 1, ZIndex = 0 })
+	corner(glow, 13)
+	local glowStroke = stroke(glow, theme.Primary, 4)
+	glowStroke.Transparency = 1
+	local accent = frame(button, { Size = UDim2.new(1, -16, 0, 3), Position = UDim2.fromOffset(8, 0), BackgroundColor3 = theme.Primary, ZIndex = 2 })
+	corner(accent, 2)
 
-	-- Press / release (works for mouse and touch; hold abilities charge while held).
+	local badge = frame(button, { Position = UDim2.fromOffset(5, 6), Size = UDim2.fromOffset(26, 18), BackgroundColor3 = theme.Primary, ZIndex = 4 })
+	corner(badge, 5)
+	local key = text(badge, { Size = UDim2.fromScale(1, 1), TextSize = 12, TextColor3 = DARK, TextStrokeTransparency = 1, Text = "", ZIndex = 5 })
+
+	local icon = frame(button, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 18), Size = UDim2.fromOffset(40, 40), BackgroundTransparency = 1, ZIndex = 3 })
+	local name = text(button, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -5), Size = UDim2.new(1, -8, 0, 26), TextScaled = true, TextWrapped = true, Text = "", ZIndex = 3 })
+	local nameLimit = Instance.new("UITextSizeConstraint")
+	nameLimit.MaxTextSize = 12
+	nameLimit.Parent = name
+
+	-- Cooldown shade: drains from the top down; countdown in the middle.
+	local shade = frame(button, { Size = UDim2.fromScale(1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.25, ZIndex = 6 })
+	corner(shade, 10)
+	local shadeEdge = frame(shade, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = theme.Primary, ZIndex = 7 })
+	local timer = text(button, { Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 22), TextSize = 26, TextStrokeTransparency = 0.2, Text = "", ZIndex = 8 })
+	local flash = frame(button, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = WHITE, BackgroundTransparency = 1, ZIndex = 9 })
+	corner(flash, 10)
+
+	-- Charge bar above the card (hold moves).
+	local chargeBack = frame(button, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -6), Size = UDim2.new(1, -6, 0, 7), BackgroundColor3 = DARK, Visible = false, ZIndex = 4 })
+	corner(chargeBack, 4)
+	stroke(chargeBack, WHITE, 1)
+	local chargeFill = frame(chargeBack, { Size = UDim2.fromScale(0, 1), BackgroundColor3 = theme.Primary, ZIndex = 5 })
+	corner(chargeFill, 4)
+	local chargeText = text(chargeBack, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -1), Size = UDim2.fromOffset(60, 14), TextSize = 11, Text = "", ZIndex = 5 })
+
+	local card = {
+		Button = button, Scale = scale, Edge = edge, EdgeGradient = edgeGradient, Glow = glow, GlowStroke = glowStroke, Accent = accent,
+		Badge = badge, Key = key, Icon = icon, Name = name, Shade = shade, ShadeEdge = shadeEdge, Timer = timer,
+		Flash = flash, ChargeBack = chargeBack, ChargeFill = chargeFill, ChargeText = chargeText,
+		CooldownEnd = 0, CooldownDur = 0, Pressed = false, Pop = 0,
+	}
 	button.MouseButton1Down:Connect(function()
-		callbacks.Ability(index, true)
+		card.Pressed = true
 	end)
 	button.MouseButton1Up:Connect(function()
-		callbacks.Ability(index, false)
+		card.Pressed = false
 	end)
-
-	slots[index] = { Button = button, Key = key, Name = name, Overlay = overlay, Timer = timer, Edge = edge }
+	button.MouseLeave:Connect(function()
+		card.Pressed = false
+	end)
+	button.MouseEnter:Connect(function()
+		card.Hover = true
+	end)
+	button.MouseLeave:Connect(function()
+		card.Hover = false
+	end)
+	return card
 end
 
+local function readyFlash(card)
+	animateJob("flash" .. card.Button.Name, 0.35, function(a)
+		card.Flash.BackgroundTransparency = 0.25 + a * 0.75
+		card.Pop = (1 - a) * 0.12
+	end, function()
+		card.Pop = 0
+	end)
+end
+
+---------------------------------------------------------------------------
+-- Toasts, banner, combo
+---------------------------------------------------------------------------
+function TuskUI.toast(message, color)
+	if not toastFrame then
+		return
+	end
+	color = color or Color3.fromRGB(255, 110, 100)
+	toastLabel.Text = message
+	toastAccent.BackgroundColor3 = color
+	toastLabel.TextColor3 = color:Lerp(WHITE, 0.45)
+	toastFrame.Size = UDim2.fromOffset(math.clamp(#message * 9 + 46, 160, 460), 32)
+	toastFrame.Visible = true
+	animateJob("toast", 1.4, function(a)
+		local slide = a < 0.12 and (1 - a / 0.12) or 0
+		local fade = a < 0.75 and 0 or (a - 0.75) / 0.25
+		toastFrame.Position = UDim2.new(0.5, 0, 1, -20 + slide * 14)
+		toastFrame.BackgroundTransparency = 0.15 + fade * 0.85
+		toastAccent.BackgroundTransparency = fade
+		toastLabel.TextTransparency = fade
+		toastLabel.TextStrokeTransparency = math.max(0.5, fade)
+	end, function()
+		toastFrame.Visible = false
+	end)
+end
+
+local function showBanner(title, subtitle, color, duration)
+	color = color or theme.Primary
+	duration = duration or 2.2
+	banner.Text = title
+	bannerSub.Text = subtitle or ""
+	bannerGradient.Color = ColorSequence.new(WHITE, color)
+	bannerBand.BackgroundColor3 = Color3.new(0, 0, 0)
+	for i, m in ipairs(menacing) do
+		m.TextColor3 = Color3.fromRGB(190, 120, 255):Lerp(color, 0.3)
+		m:SetAttribute("Seed", math.random() * 10 + i)
+	end
+	animateJob("banner", duration, function(a)
+		local slideIn = a < 0.1 and (1 - VFXLib.easeOut(a / 0.1)) or 0
+		local fade = a < 0.78 and 0 or (a - 0.78) / 0.22
+		bannerBand.Position = UDim2.new(0.5 - slideIn * 1.2, 0, 0.26, 0)
+		bannerBand.BackgroundTransparency = 0.35 + fade * 0.65
+		banner.Position = UDim2.new(0.5 + slideIn * 0.8, 0, 0.26, -8)
+		banner.TextTransparency = fade
+		banner.TextStrokeTransparency = math.max(0.1, fade)
+		banner.Rotation = -4 + (a < 0.14 and math.sin(a * 120) * 2 * (1 - a / 0.14) or 0)
+		bannerSub.TextTransparency = fade
+		bannerSub.TextStrokeTransparency = math.max(0.4, fade)
+		for i, m in ipairs(menacing) do
+			local seed = m:GetAttribute("Seed") or i
+			local appear = math.clamp((a - 0.05 * i) / 0.1, 0, 1)
+			m.TextTransparency = math.max(1 - appear, fade)
+			m.Position = UDim2.new(m:GetAttribute("X") or 0.5, math.sin(os.clock() * 25 + seed) * 2, 0.26, (m:GetAttribute("Y") or 0) - a * 30)
+		end
+	end, function()
+		bannerBand.BackgroundTransparency = 1
+		for _, m in ipairs(menacing) do
+			m.TextTransparency = 1
+		end
+	end)
+end
+
+local function bumpCombo()
+	local now = os.clock()
+	combo.Count = (now - combo.Last < 1.6) and combo.Count + 1 or 1
+	combo.Last = now
+	if combo.Count < 2 then
+		return
+	end
+	comboNumber.Text = tostring(combo.Count)
+	local col = combo.Count >= 15 and colors.Gold or (combo.Count >= 8 and theme.Primary or colors.Ice)
+	comboNumber.TextColor3 = col
+	comboDrain.BackgroundColor3 = col
+	comboFrame.Visible = true
+	animateJob("combo", 1.6, function(a)
+		local pop = a < 0.1 and (1 - a / 0.1) * 0.5 or 0
+		comboNumber.TextSize = 58 * (1 + pop)
+		comboNumber.Rotation = a < 0.1 and (0.1 - a) * 80 or 0
+		local fade = a < 0.8 and 0 or (a - 0.8) / 0.2
+		comboNumber.TextTransparency = fade
+		comboNumber.TextStrokeTransparency = math.max(0.15, fade)
+		comboWord.TextTransparency = fade
+		comboDrain.Size = UDim2.new(1 - a, 0, 0, 4)
+		comboDrain.BackgroundTransparency = fade
+	end, function()
+		comboFrame.Visible = false
+	end)
+end
+
+---------------------------------------------------------------------------
+-- Act menu (Studio test tool)
+---------------------------------------------------------------------------
 local function buildMenu()
 	menu = Instance.new("Frame")
 	menu.Name = "ActMenu"
@@ -5846,111 +6266,127 @@ local function buildMenu()
 	end
 end
 
+
+---------------------------------------------------------------------------
+-- Init
+---------------------------------------------------------------------------
 function TuskUI.init(cb)
 	callbacks = cb
 	gui = Instance.new("ScreenGui")
 	gui.Name = "TuskHUD"
 	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = false
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = player:WaitForChild("PlayerGui")
 
-	hud = Instance.new("Frame")
-	hud.Name = "HUD"
-	hud.AnchorPoint = Vector2.new(0.5, 1)
-	hud.Position = UDim2.new(0.5, 0, 1, -24)
-	hud.Size = UDim2.new(0.92, 0, 0, 150)
-	hud.BackgroundTransparency = 1
-	hud.Visible = false
-	hud.Parent = gui
-	local limit = Instance.new("UISizeConstraint")
-	limit.MaxSize = Vector2.new(420, 150)
-	limit.Parent = hud
+	local width = M1_W + CARD_W * 3 + ULT_W + GAP * 4
+	hud = frame(gui, { Name = "HUD", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -16), Size = UDim2.fromOffset(width, 156), BackgroundTransparency = 1, Visible = false })
+	hudScale = Instance.new("UIScale")
+	hudScale.Parent = hud
 
-	actLabel = text(hud, { Size = UDim2.new(1, 0, 0, 30), Font = TITLE_FONT, TextSize = 30, TextColor3 = colors.Cyan, TextXAlignment = Enum.TextXAlignment.Left, Text = "" })
-	taglineLabel = text(hud, { Position = UDim2.fromOffset(0, 28), Size = UDim2.new(1, 0, 0, 14), TextSize = 11, TextColor3 = Color3.fromRGB(170, 200, 230), TextXAlignment = Enum.TextXAlignment.Left, Text = "" })
+	-- Header: slanted colour band + name + tagline.
+	header = frame(hud, { Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1 })
+	actBand = frame(header, { Position = UDim2.fromOffset(-6, 6), Size = UDim2.fromOffset(230, 30), BackgroundColor3 = theme.Primary, Rotation = -3, ZIndex = 1 })
+	corner(actBand, 4)
+	local bandGradient = Instance.new("UIGradient")
+	bandGradient.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(0.7, 0.55), NumberSequenceKeypoint.new(1, 1) })
+	bandGradient.Parent = actBand
+	actLabel = text(header, { Position = UDim2.fromOffset(4, 0), Size = UDim2.fromOffset(320, 34), Font = TITLE_FONT, TextSize = 34, TextColor3 = WHITE, TextStrokeTransparency = 0, TextStrokeColor3 = DARK, TextXAlignment = Enum.TextXAlignment.Left, Text = "", ZIndex = 2 })
+	actGradient = gradient(actLabel, WHITE, theme.Primary, 90)
+	taglineLabel = text(header, { Position = UDim2.fromOffset(8, 32), Size = UDim2.fromOffset(320, 12), TextSize = 11, TextColor3 = Color3.fromRGB(190, 210, 235), TextXAlignment = Enum.TextXAlignment.Left, Text = "", ZIndex = 2 })
 
-	local slotRow = Instance.new("Frame")
-	slotRow.Position = UDim2.fromOffset(0, 46)
-	slotRow.Size = UDim2.new(1, 0, 0, 62)
-	slotRow.BackgroundTransparency = 1
-	slotRow.Parent = hud
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.Padding = UDim.new(0, 9)
-	layout.Parent = slotRow
-	for i = 1, 3 do
-		buildSlot(i, slotRow)
-	end
-
-	-- Ultimate bar (also a button).
-	local ult = Instance.new("TextButton")
-	ult.Name = "Ultimate"
-	ult.Position = UDim2.fromOffset(0, 114)
-	ult.Size = UDim2.new(1, -96, 0, 26)
-	ult.BackgroundColor3 = DARK
-	ult.BackgroundTransparency = 0.15
-	ult.AutoButtonColor = false
-	ult.Text = ""
-	ult.Parent = hud
-	corner(ult, 8)
-	stroke(ult, colors.Blue, 2)
-	ultFill = Instance.new("Frame")
-	ultFill.BorderSizePixel = 0
-	ultFill.BackgroundColor3 = colors.Blue
-	ultFill.Size = UDim2.fromScale(0, 1)
-	ultFill.Parent = ult
-	corner(ultFill, 8)
-	ultLabel = text(ult, { Size = UDim2.fromScale(1, 1), TextSize = 13, Text = "", ZIndex = 2 })
-	ult.Activated:Connect(function()
-		callbacks.Ultimate()
-	end)
-
-	-- Sneak chip (also a button).
+	-- Sneak chip (Johnny only), right side of the header.
 	sneakChip = Instance.new("TextButton")
 	sneakChip.Name = "Sneak"
 	sneakChip.AnchorPoint = Vector2.new(1, 0)
-	sneakChip.Position = UDim2.new(1, 0, 0, 114)
-	sneakChip.Size = UDim2.fromOffset(88, 26)
+	sneakChip.Position = UDim2.new(1, 0, 0, 8)
+	sneakChip.Size = UDim2.fromOffset(104, 26)
 	sneakChip.BackgroundColor3 = DARK
-	sneakChip.BackgroundTransparency = 0.15
-	sneakChip.Font = FONT
-	sneakChip.TextSize = 13
-	sneakChip.TextColor3 = Color3.fromRGB(150, 170, 200)
-	sneakChip.Text = "SNEAK"
-	sneakChip.Parent = hud
-	corner(sneakChip, 8)
-	stroke(sneakChip, Color3.fromRGB(60, 80, 120), 2)
+	sneakChip.BackgroundTransparency = 0.1
+	sneakChip.AutoButtonColor = false
+	sneakChip.Text = ""
+	sneakChip.Parent = header
+	corner(sneakChip, 13)
+	local sneakStroke = stroke(sneakChip, Color3.fromRGB(60, 80, 120), 2)
+	local sneakKey = frame(sneakChip, { Position = UDim2.fromOffset(4, 4), Size = UDim2.fromOffset(20, 18), BackgroundColor3 = Color3.fromRGB(60, 80, 120) })
+	corner(sneakKey, 9)
+	local sneakKeyText = text(sneakKey, { Size = UDim2.fromScale(1, 1), TextSize = 11, TextColor3 = WHITE, TextStrokeTransparency = 1, Text = "C" })
+	local sneakText = text(sneakChip, { Position = UDim2.fromOffset(28, 0), Size = UDim2.new(1, -32, 1, 0), TextSize = 13, TextColor3 = Color3.fromRGB(150, 170, 200), Text = "SNEAK" })
+	sneakChip:SetAttribute("Built", true)
 	sneakChip.Activated:Connect(function()
 		callbacks.Sneak()
 	end)
-	sneakHint = text(hud, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), Size = UDim2.fromOffset(200, 18), TextSize = 12, TextColor3 = colors.Cyan, TextXAlignment = Enum.TextXAlignment.Right, Text = "", Visible = false })
+	slots.SneakParts = { Stroke = sneakStroke, Key = sneakKey, KeyText = sneakKeyText, Text = sneakText }
+	sneakHint = text(hud, { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 0, -2), Size = UDim2.fromOffset(240, 16), TextSize = 12, TextColor3 = colors.Cyan, TextXAlignment = Enum.TextXAlignment.Right, Text = "", Visible = false })
 
-	-- Combo counter (right side of the screen).
-	comboLabel = text(gui, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -24, 0.42, 0), Size = UDim2.fromOffset(220, 60), Font = TITLE_FONT, TextSize = 48, TextColor3 = colors.Ice, TextXAlignment = Enum.TextXAlignment.Right, TextTransparency = 1, TextStrokeTransparency = 1, Text = "" })
+	-- Hotbar.
+	local row = frame(hud, { Position = UDim2.fromOffset(0, 52), Size = UDim2.new(1, 0, 0, CARD_H), BackgroundTransparency = 1 })
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.Padding = UDim.new(0, GAP)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	layout.Parent = row
+	slots.M1 = buildCard(row, "M1", M1_W, 0)
+	drawIcon(slots.M1.Icon, "slash")
+	for i = 1, 3 do
+		local card = buildCard(row, i, CARD_W, i)
+		card.Slot = i
+		card.Button.MouseButton1Down:Connect(function()
+			callbacks.Ability(i, true)
+		end)
+		card.Button.MouseButton1Up:Connect(function()
+			callbacks.Ability(i, false)
+		end)
+		slots[i] = card
+	end
+	local ult = buildCard(row, "Ult", ULT_W, 4)
+	slots.Ult = ult
+	-- Ultimate meter rises from the bottom of the card.
+	ult.Meter = frame(ult.Button, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 0), BackgroundColor3 = WHITE, BackgroundTransparency = 0.35, ZIndex = 1 })
+	corner(ult.Meter, 10)
+	ult.MeterGradient = gradient(ult.Meter, theme.Primary, theme.Secondary, 90)
+	ult.Percent = text(ult.Button, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), Size = UDim2.fromOffset(50, 16), TextSize = 13, TextXAlignment = Enum.TextXAlignment.Right, Text = "0%", ZIndex = 4 })
+	ult.Icon.Size = UDim2.fromOffset(46, 46)
+	drawIcon(ult.Icon, "star")
+	ult.Button.Activated:Connect(function()
+		callbacks.Ultimate()
+	end)
 
-	toastLabel = text(gui, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -185), Size = UDim2.fromOffset(400, 26), TextSize = 18, TextTransparency = 1, TextStrokeTransparency = 1, Text = "" })
-
-	-- Transformation banner.
-	banner = text(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.25), Size = UDim2.fromOffset(700, 80), Font = TITLE_FONT, TextSize = 72, TextColor3 = colors.Cyan, TextTransparency = 1, TextStrokeTransparency = 1, Text = "" })
-	bannerSub = text(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.25), Size = UDim2.fromOffset(500, 24), TextSize = 16, TextTransparency = 1, TextStrokeTransparency = 1, Text = "" })
-	bannerSub.Position = UDim2.new(0.5, 0, 0.25, 48)
-
-	awakenBar = Instance.new("Frame")
-	awakenBar.AnchorPoint = Vector2.new(0.5, 1)
-	awakenBar.Position = UDim2.new(0.5, 0, 1, -183)
-	awakenBar.Size = UDim2.fromOffset(240, 6)
-	awakenBar.BackgroundColor3 = DARK
-	awakenBar.Visible = false
-	awakenBar.Parent = gui
+	-- Awakened timer bar under the hotbar.
+	awakenBar = frame(hud, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 52 + CARD_H + 6), Size = UDim2.new(1, 0, 0, 5), BackgroundColor3 = DARK, Visible = false })
 	corner(awakenBar, 3)
-	awakenFill = Instance.new("Frame")
-	awakenFill.BorderSizePixel = 0
-	awakenFill.BackgroundColor3 = colors.Cyan
-	awakenFill.Size = UDim2.fromScale(1, 1)
-	awakenFill.Parent = awakenBar
+	awakenFill = frame(awakenBar, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = colors.Cyan })
 	corner(awakenFill, 3)
 
-	-- MOVESET button (opens the Act menu), under the VFX quality button.
+	-- Combo counter (right middle of the screen).
+	comboFrame = frame(gui, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -28, 0.42, 0), Size = UDim2.fromOffset(200, 90), BackgroundTransparency = 1, Visible = false })
+	comboNumber = text(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.fromOffset(200, 60), Font = TITLE_FONT, TextSize = 58, TextStrokeTransparency = 0.15, TextXAlignment = Enum.TextXAlignment.Right, Text = "" })
+	comboWord = text(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 58), Size = UDim2.fromOffset(200, 18), Font = TITLE_FONT, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Right, Text = "HIT COMBO!" })
+	comboDrain = frame(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 80), Size = UDim2.new(1, 0, 0, 4), BackgroundColor3 = colors.Ice })
+	corner(comboDrain, 2)
+
+	-- Toast pill above the hotbar.
+	local toastHolder = frame(gui, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -190), Size = UDim2.fromOffset(10, 10), BackgroundTransparency = 1 })
+	toastFrame = frame(toastHolder, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0), Size = UDim2.fromOffset(260, 32), BackgroundColor3 = DARK, BackgroundTransparency = 0.15, Visible = false })
+	corner(toastFrame, 16)
+	toastAccent = frame(toastFrame, { Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(16, 16), BackgroundColor3 = Color3.fromRGB(255, 110, 100), Rotation = 45 })
+	corner(toastAccent, 3)
+	toastLabel = text(toastFrame, { Position = UDim2.fromOffset(32, 0), Size = UDim2.new(1, -40, 1, 0), TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left, Text = "" })
+
+	-- Awakening banner: black slash band, gradient title, menacing ゴ letters.
+	bannerBand = frame(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.26), Size = UDim2.new(1.4, 0, 0, 110), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, Rotation = -4 })
+	banner = text(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.26), Size = UDim2.fromOffset(800, 84), Font = TITLE_FONT, TextSize = 78, TextColor3 = WHITE, TextTransparency = 1, TextStrokeTransparency = 1, Text = "", ZIndex = 3 })
+	bannerGradient = gradient(banner, WHITE, colors.Cyan, 90)
+	bannerSub = text(banner, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.fromOffset(600, 22), TextSize = 17, TextTransparency = 1, TextStrokeTransparency = 1, Text = "", ZIndex = 3 })
+	for i, spot in ipairs({ { 0.2, -20 }, { 0.27, 25 }, { 0.73, -25 }, { 0.8, 20 } }) do
+		local m = text(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(70, 70), TextSize = 56, Font = FONT, Text = "ゴ", TextTransparency = 1, TextStrokeTransparency = 0.6, TextStrokeColor3 = Color3.fromRGB(40, 0, 60), Rotation = (i % 2 == 0) and 12 or -12, ZIndex = 2 })
+		m:SetAttribute("X", spot[1])
+		m:SetAttribute("Y", spot[2])
+		menacing[i] = m
+	end
+
+	-- MOVESET button (opens the Act menu), Studio only in Awaken mode.
 	if TuskUI.menuAllowed() then
 		local moveset = Instance.new("TextButton")
 		moveset.AnchorPoint = Vector2.new(1, 0)
@@ -5969,21 +6405,27 @@ function TuskUI.init(cb)
 		buildMenu()
 	end
 
+	-- Scale the HUD down on small screens.
+	local function rescale()
+		local camera = workspace.CurrentCamera
+		local size = camera and camera.ViewportSize or Vector2.new(1280, 720)
+		hudScale.Scale = math.clamp(math.min(size.X / 760, size.Y / 560), 0.62, 1.15)
+	end
+	rescale()
+	if workspace.CurrentCamera then
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
+	end
+
 	-- Combo counter feeds on the attacker-only Damage event.
-	Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
-		if name ~= "Damage" or not hud.Visible then
-			return
+	Net.get("SpinFX").OnClientEvent:Connect(function(name)
+		if name == "Damage" and hud.Visible then
+			bumpCombo()
 		end
-		local now = os.clock()
-		combo.Count = (now - combo.Last < 1.6) and combo.Count + 1 or 1
-		combo.Last = now
-		if combo.Count >= 2 then
-			comboLabel.Text = combo.Count .. " HITS"
-			animateJob("combo", 1.6, function(a)
-				comboLabel.TextTransparency = a < 0.75 and 0 or (a - 0.75) / 0.25
-				comboLabel.TextStrokeTransparency = math.max(0.3, comboLabel.TextTransparency)
-				comboLabel.Rotation = a < 0.08 and (0.08 - a) * 60 or 0
-			end)
+	end)
+	-- M1 card squash on click.
+	UserInputService.InputBegan:Connect(function(input, processed)
+		if not processed and hud.Visible and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == TuskConfig.Keys.M1.Gamepad) then
+			slots.M1.KeyDownAt = os.clock()
 		end
 	end)
 end
@@ -6000,21 +6442,6 @@ function TuskUI.menuAllowed()
 	return true
 end
 
-local function showBanner(title, subtitle, color)
-	banner.Text = title
-	banner.TextColor3 = color or colors.Cyan
-	bannerSub.Text = subtitle or ""
-	animateJob("banner", 2, function(a)
-		local slide = a < 0.12 and (1 - a / 0.12) or 0
-		banner.Position = UDim2.new(0.5, slide * 200, 0.25, 0)
-		local fade = a < 0.75 and 0 or (a - 0.75) / 0.25
-		banner.TextTransparency = fade
-		banner.TextStrokeTransparency = math.max(0.2, fade)
-		bannerSub.TextTransparency = fade
-		bannerSub.TextStrokeTransparency = math.max(0.4, fade)
-	end)
-end
-
 -- Ultimate awakened Tusk to the next Act.
 function TuskUI.onEvolve(data)
 	if data.Character ~= player.Character then
@@ -6022,7 +6449,7 @@ function TuskUI.onEvolve(data)
 	end
 	local info = Registry.get(data.To)
 	if info then
-		showBanner(info.Name .. "!", "AWAKENED  ·  " .. info.Tagline:upper(), info.Theme.Primary)
+		showBanner(info.Name .. "!", "AWAKENED  ·  " .. info.Tagline:upper(), info.Theme.Primary, 2.6)
 	end
 end
 
@@ -6035,6 +6462,16 @@ end
 ---------------------------------------------------------------------------
 -- Per-frame refresh and server messages
 ---------------------------------------------------------------------------
+local function applyTheme(card)
+	card.EdgeGradient.Color = ColorSequence.new(theme.Primary, theme.Secondary)
+	card.Accent.BackgroundColor3 = theme.Primary
+	card.Badge.BackgroundColor3 = theme.Primary
+	card.GlowStroke.Color = theme.Primary
+	card.ShadeEdge.BackgroundColor3 = theme.Primary
+	card.ChargeFill.BackgroundColor3 = theme.Primary
+	colorIcon(card.Icon, theme.Primary:Lerp(WHITE, 0.35))
+end
+
 local function refreshAct(act)
 	shownAct = act
 	hud.Visible = act ~= nil
@@ -6042,13 +6479,71 @@ local function refreshAct(act)
 		return
 	end
 	local info = Registry.get(act)
+	theme = info.Theme
 	actLabel.Text = info.Name
-	actLabel.TextColor3 = info.Theme.Primary
+	actGradient.Color = ColorSequence.new(WHITE, theme.Primary:Lerp(WHITE, 0.2))
+	actBand.BackgroundColor3 = theme.Secondary
 	taglineLabel.Text = info.Tagline:upper()
-	for i, slot in ipairs(slots) do
-		slot.Name.Text = info.Abilities[i]
-		slot.Edge.Color = info.Theme.Primary
+	slots.M1.Name.Text = info.M1
+	for i = 1, 3 do
+		slots[i].Name.Text = info.Abilities[i]
+		slots[i].Kind = info.AbilityKinds and info.AbilityKinds[i] or "Press"
+		drawIcon(slots[i].Icon, iconKind(info.Abilities[i]))
 	end
+	slots.Ult.Name.Text = info.Ultimate
+	slots.Ult.MeterGradient.Color = ColorSequence.new(theme.Primary, theme.Secondary)
+	for _, card in ipairs({ slots.M1, slots[1], slots[2], slots[3], slots.Ult }) do
+		applyTheme(card)
+	end
+	awakenFill.BackgroundColor3 = theme.Primary
+	-- Slide the hotbar in.
+	animateJob("hudIn", 0.35, function(a)
+		hud.Position = UDim2.new(0.5, 0, 1, -16 + (1 - VFXLib.easeOut(a)) * 60)
+	end)
+end
+
+local function keyHeld(slotKey)
+	local keys = TuskConfig.Keys[slotKey]
+	if not keys or UserInputService:GetFocusedTextBox() then
+		return false
+	end
+	local k = keys.Keyboard
+	if typeof(k) == "EnumItem" and k.EnumType == Enum.KeyCode and UserInputService:IsKeyDown(k) then
+		return true
+	end
+	local ok, down = pcall(function()
+		return UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, keys.Gamepad)
+	end)
+	return ok and down
+end
+
+local function setKey(card, keyText)
+	card.Key.Text = keyText
+	card.Badge.Visible = keyText ~= ""
+	card.Badge.Size = UDim2.fromOffset(math.max(22, #keyText * 8 + 12), 18)
+end
+
+local function stepCard(card, now, dt, cooling)
+	-- Press squash + ready pop + hover.
+	local target = (card.Pressed and 0.9 or 1) + (card.Pop or 0) + (card.Hover and 0.03 or 0)
+	card.Scale.Scale = card.Scale.Scale + (target - card.Scale.Scale) * math.min(1, dt * 18)
+	-- Cooldown shade.
+	if cooling then
+		local left = card.CooldownEnd - now
+		card.Shade.Size = UDim2.fromScale(1, math.clamp(left / math.max(card.CooldownDur, 0.01), 0, 1))
+		card.Timer.Text = left >= 10 and tostring(math.ceil(left)) or string.format("%.1f", left)
+		colorIcon(card.Icon, GREY)
+		card.Name.TextColor3 = GREY
+		card.Badge.BackgroundColor3 = GREY
+	elseif card.WasCooling then
+		card.Shade.Size = UDim2.fromScale(1, 0)
+		card.Timer.Text = ""
+		colorIcon(card.Icon, theme.Primary:Lerp(WHITE, 0.35))
+		card.Name.TextColor3 = colors.Ice
+		card.Badge.BackgroundColor3 = theme.Primary
+		readyFlash(card)
+	end
+	card.WasCooling = cooling
 end
 
 function TuskUI.step(act)
@@ -6058,56 +6553,141 @@ function TuskUI.step(act)
 	if not act then
 		return
 	end
-	for i, slot in ipairs(slots) do
-		slot.Key.Text = keyName("Ability" .. i)
+	local now = os.clock()
+	local dt = math.clamp(now - (TuskUI.LastStep or now), 0, 0.1)
+	TuskUI.LastStep = now
+	local info = Registry.get(act)
+	local character = player.Character
+
+	-- M1 card.
+	setKey(slots.M1, keyName("M1"))
+	slots.M1.Pressed = (slots.M1.KeyDownAt and now - slots.M1.KeyDownAt < 0.1) or false
+	stepCard(slots.M1, now, dt, false)
+
+	-- Ability cards.
+	local chargeStart = character and character:GetAttribute("TuskCharge")
+	local chargeMove = character and character:GetAttribute("TuskChargeMove")
+	local actCfg = TuskConfig["Act" .. act]
+	for i = 1, 3 do
+		local card = slots[i]
+		setKey(card, keyName("Ability" .. i))
+		if keyHeld("Ability" .. i) then
+			card.Pressed = true
+			card.KeyPressed = true
+		elseif card.KeyPressed then
+			card.Pressed = false
+			card.KeyPressed = false
+		end
+		stepCard(card, now, dt, card.CooldownEnd > now)
+		-- Hold-move charge bar.
+		local cfg = chargeMove and actCfg and actCfg[chargeMove]
+		if chargeStart and card.Kind == "Hold" and cfg then
+			local held = workspace:GetServerTimeNow() - chargeStart
+			local full = cfg.FullChargeAt or (cfg.Stages and cfg.Stages[#cfg.Stages]) or cfg.MaxHold or 1.5
+			local k = math.clamp(held / full, 0, 1)
+			card.ChargeBack.Visible = true
+			card.ChargeFill.Size = UDim2.fromScale(k, 1)
+			if k >= 1 then
+				local pulse = (math.sin(now * 14) + 1) / 2
+				card.ChargeFill.BackgroundColor3 = theme.Primary:Lerp(WHITE, pulse)
+				card.ChargeText.Text = "FULL!"
+				card.GlowStroke.Transparency = 0.55 + pulse * 0.3
+			else
+				card.ChargeFill.BackgroundColor3 = theme.Primary
+				card.ChargeText.Text = cfg.Stages and ("STAGE " .. (function()
+					local stage = 0
+					for s, t in ipairs(cfg.Stages) do
+						if held >= t then
+							stage = s
+						end
+					end
+					return stage
+				end)()) or ""
+				card.GlowStroke.Transparency = 1
+			end
+		elseif card.ChargeBack.Visible then
+			card.ChargeBack.Visible = false
+			card.GlowStroke.Transparency = 1
+		end
 	end
+
+	-- Ultimate card.
+	local ult = slots.Ult
 	local max = TuskConfig.Ultimate.MaxMeter
 	local meter = player:GetAttribute("TuskUlt") or 0
+	ultShown = ultShown + (meter - ultShown) * math.min(1, dt * 8)
 	local ready = meter >= max
-	ultFill.Size = UDim2.fromScale(math.clamp(meter / max, 0, 1), 1)
-	local info = Registry.get(act)
-	local key = keyName("Ultimate")
-	-- Locked for a while after each awakening.
 	local since = player:GetAttribute("TuskActSince")
 	local wait = TuskConfig.Ultimate.MinSecondsPerAct or 0
 	local lockLeft = since and math.max(0, wait - (workspace:GetServerTimeNow() - since)) or 0
+	setKey(ult, keyName("Ultimate"))
+	ult.Meter.Size = UDim2.fromScale(1, math.clamp(ultShown / max, 0, 1))
 	if ready and lockLeft > 0 then
-		ultFill.BackgroundColor3 = Color3.fromRGB(90, 90, 120)
-		ultLabel.Text = info.Ultimate .. "  LOCKED " .. math.ceil(lockLeft) .. "s"
+		ult.Percent.Text = "LOCKED"
+		ult.Timer.Text = math.ceil(lockLeft) .. "s"
+		ult.MeterGradient.Color = ColorSequence.new(GREY, Color3.fromRGB(60, 62, 75))
+		ult.EdgeGradient.Color = ColorSequence.new(GREY, Color3.fromRGB(60, 62, 75))
+		ult.Pop = 0
+		ult.GlowStroke.Transparency = 1
+		ult.EdgeGradient.Rotation = 45
+		colorIcon(ult.Icon, GREY)
 	elseif ready then
-		local pulse = (math.sin(os.clock() * 6) + 1) / 2
-		ultFill.BackgroundColor3 = colors.Blue:Lerp(colors.Cyan, pulse)
-		ultLabel.Text = (key ~= "" and ("[" .. key .. "] ") or "") .. info.Ultimate .. " READY"
+		if not wasReady then
+			readyFlash(ult)
+			TuskUI.toast(info.Ultimate .. " READY!", theme.Primary)
+		end
+		local pulse = (math.sin(now * 6) + 1) / 2
+		ult.Percent.Text = "READY"
+		ult.Timer.Text = ""
+		ult.MeterGradient.Color = ColorSequence.new(theme.Primary:Lerp(WHITE, pulse * 0.5), theme.Secondary)
+		ult.GlowStroke.Transparency = 0.5 + pulse * 0.35
+		ult.EdgeGradient.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, theme.Secondary), ColorSequenceKeypoint.new(0.5, WHITE), ColorSequenceKeypoint.new(1, theme.Secondary) })
+		ult.EdgeGradient.Rotation = (now * 240) % 360 -- spinning shine on the border
+		ult.Pop = 0.03 + pulse * 0.04
+		colorIcon(ult.Icon, WHITE)
 	else
-		ultFill.BackgroundColor3 = colors.Blue
-		ultLabel.Text = info.Ultimate .. "  " .. math.floor(meter / max * 100) .. "%"
+		ult.EdgeGradient.Color = ColorSequence.new(theme.Primary, theme.Secondary)
+		if wasReady then
+			ult.Pop = 0
+		end
+		ult.Percent.Text = math.floor(ultShown / max * 100 + 0.5) .. "%"
+		ult.Timer.Text = ""
+		ult.MeterGradient.Color = ColorSequence.new(theme.Primary, theme.Secondary)
+		ult.GlowStroke.Transparency = 1
+		ult.EdgeGradient.Rotation = 45
+		colorIcon(ult.Icon, theme.Primary:Lerp(WHITE, 0.35))
 	end
-	local character = player.Character
+	wasReady = ready and lockLeft <= 0
+	if keyHeld("Ultimate") then
+		ult.Pressed = true
+		ult.KeyPressed = true
+	elseif ult.KeyPressed then
+		ult.Pressed = false
+		ult.KeyPressed = false
+	end
+	stepCard(ult, now, dt, false)
+
+	-- Sneak chip.
 	local sneaking = character and character:GetAttribute("TuskSneaking") == true
-	-- Tusk Sneak is Johnny's; Gyro has no sneak chip.
+	local sp = slots.SneakParts
 	sneakChip.Visible = Registry.characterOf(act) == "Johnny"
-	sneakChip.TextColor3 = sneaking and DARK or Color3.fromRGB(150, 170, 200)
-	sneakChip.BackgroundColor3 = sneaking and colors.Cyan or DARK
-	sneakHint.Visible = sneaking
+	sp.KeyText.Text = keyName("Sneak") ~= "" and keyName("Sneak") or "C"
+	sp.Stroke.Color = sneaking and theme.Primary or Color3.fromRGB(60, 80, 120)
+	sp.Key.BackgroundColor3 = sneaking and theme.Primary or Color3.fromRGB(60, 80, 120)
+	sp.Text.TextColor3 = sneaking and theme.Primary or Color3.fromRGB(150, 170, 200)
+	sp.Text.Text = sneaking and "SNEAKING" or "SNEAK"
+	sneakChip.BackgroundColor3 = sneaking and DARK2 or DARK
+	sneakHint.Visible = sneaking and sneakChip.Visible
 	sneakHint.Text = "M1 / TAP: SNEAK ATTACK"
 end
 
 local function cooldown(slot, duration)
-	local s = slots[slot]
-	if not s then
+	local card = slots[slot]
+	if not card then
 		return
 	end
-	animateJob("slot" .. slot, duration, function(a)
-		s.Overlay.Size = UDim2.fromScale(1, 1 - a)
-		s.Timer.Text = string.format("%.1f", duration * (1 - a))
-	end, function()
-		s.Overlay.Size = UDim2.fromScale(1, 0)
-		s.Timer.Text = ""
-		-- Ready flash.
-		VFXLib.animate(0.25, function(a)
-			s.Button.BackgroundColor3 = colors.Cyan:Lerp(DARK, a)
-		end)
-	end)
+	card.CooldownEnd = os.clock() + duration
+	card.CooldownDur = duration
 end
 
 local DENY_TEXT = {
@@ -6123,6 +6703,18 @@ local DENY_TEXT = {
 	TooSoon = "TUSK ISN'T READY TO AWAKEN YET",
 }
 
+-- Wobble a card (denied input).
+local function nudge(card)
+	if not card then
+		return
+	end
+	animateJob("nudge" .. card.Button.Name, 0.3, function(a)
+		card.Button.Rotation = math.sin(a * 40) * 5 * (1 - a)
+	end, function()
+		card.Button.Rotation = 0
+	end)
+end
+
 function TuskUI.onState(data)
 	local kind = data.Kind
 	if kind == "Cooldown" then
@@ -6133,23 +6725,18 @@ function TuskUI.onState(data)
 			msg = msg .. string.format("  %.1fs", data.Remaining)
 		end
 		TuskUI.toast(msg)
+		if data.Slot and slots[data.Slot] then
+			nudge(slots[data.Slot])
+		elseif data.Reason == "UltNotReady" or data.Reason == "TooSoon" then
+			nudge(slots.Ult)
+		end
 	elseif kind == "Interrupted" then
 		TuskUI.toast("INTERRUPTED!")
 	elseif kind == "SneakAttackCooldown" then
-		sneakChip.Text = "SNEAK"
+		slots.SneakParts.Text.Text = "SNEAK"
 	elseif kind == "Awakened" then
 		local info = shownAct and Registry.get(shownAct)
-		banner.Text = info and info.Ultimate or "AWAKENED"
-		bannerSub.Text = "ABILITIES EMPOWERED"
-		animateJob("banner", 1.8, function(a)
-			local slide = a < 0.12 and (1 - a / 0.12) or 0
-			banner.Position = UDim2.new(0.5, slide * 200, 0.25, 0)
-			local fade = a < 0.75 and 0 or (a - 0.75) / 0.25
-			banner.TextTransparency = fade
-			banner.TextStrokeTransparency = math.max(0.2, fade)
-			bannerSub.TextTransparency = fade
-			bannerSub.TextStrokeTransparency = math.max(0.4, fade)
-		end)
+		showBanner(info and info.Ultimate or "AWAKENED", "ABILITIES EMPOWERED", theme.Primary, 1.9)
 		awakenBar.Visible = true
 		animateJob("awaken", data.Duration, function(a)
 			awakenFill.Size = UDim2.fromScale(1 - a, 1)
@@ -6161,7 +6748,8 @@ function TuskUI.onState(data)
 		awakenBar.Visible = false
 	elseif kind == "Equipped" then
 		if data.Act and data.Act > 0 then
-			TuskUI.toast(Registry.get(data.Act).Name .. " EQUIPPED", colors.Cyan)
+			local info = Registry.get(data.Act)
+			TuskUI.toast(info.Name .. " EQUIPPED", info.Theme.Primary)
 		end
 	end
 end

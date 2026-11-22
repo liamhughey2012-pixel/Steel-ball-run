@@ -139,7 +139,7 @@ local function onUltimate(data)
 			Common.portal(pos, data.Center, i <= #data.Portals / 2 and 3 or 4, data.Windup + 0.4, pal, (i - 1) * (data.Windup * 0.6 / #data.Portals))
 		end
 		if root then
-			TuskVFX.CreateEnergyCharge({
+			local charge = TuskVFX.CreateEnergyCharge({
 				Follow = function()
 					return root.Parent and root.CFrame * CFrame.new(0, 3, 0) or nil
 				end,
@@ -149,6 +149,9 @@ local function onUltimate(data)
 				Duration = data.Windup,
 				Rings = 3,
 			})
+			task.delay(data.Windup, function()
+				charge:Release()
+			end)
 		end
 		if Common.isLocal(character) then
 			CameraFX.setFovHold(10)
