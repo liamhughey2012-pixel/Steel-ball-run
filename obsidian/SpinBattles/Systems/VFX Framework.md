@@ -4,7 +4,7 @@ updated: 2026-11-22
 ---
 # VFX Framework
 `VFXLib` (primitives, scheduler, budget) → `TuskVFX` (character-level effects) → per-Act choreography.
-TuskVFX: `CreateSpinRing`, `CreateMagicCircle`, `CreateEnergyCharge`, `CreateNailProjectile`, `CreateRotationalShockwave`, `CreateWormhole`, `CreateGoldenAura`, `CreateDistortion`, `CreateImpact`, `CreateTuskTransformation`, `CleanupEffect`.
+TuskVFX: `CreateSpinRing`, `CreateMagicCircle`, `CreateEnergyCharge`, `CreateNailProjectile`, `CreateRotationalShockwave`, `CreateWormhole`, `CreateGoldenAura`, `CreateDistortion`, `CreateImpact`, `CreateTuskTransformation`, `CreateImpactStar`, `CreateGroundCracks`, `CreateEnergyPillar`, `CreateCrescent`, `ScreenTint`, `IsNear`, `CleanupEffect`.
 - One RenderStepped scheduler drives all animation
 - Effect budget per quality (12 / 24 / 40 active)
 - Nails and Steel Balls are pooled

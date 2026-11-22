@@ -513,19 +513,6 @@ local function breakerSpirit(position, duration)
 	end)
 end
 
--- Pillar of green energy shooting up at the burst.
-local function energyPillar(position, radius)
-	local pillar = VFXLib.part({ Shape = Enum.PartType.Cylinder, Color = pal.Light, Transparency = 0.1, Size = Vector3.new(1, radius, radius), CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.pi / 2) })
-	VFXLib.animate(0.6, function(a)
-		local h = 2 + 60 * VFXLib.easeOut(a)
-		local d = radius * (1 - a * 0.6)
-		pillar.Size = Vector3.new(h, d, d)
-		pillar.CFrame = CFrame.new(position + Vector3.new(0, h / 2, 0)) * CFrame.Angles(0, 0, math.pi / 2)
-		pillar.Transparency = 0.1 + 0.9 * a
-	end, function()
-		pillar:Destroy()
-	end)
-end
 
 local function onUltimate(data)
 	local character = data.Character
@@ -631,7 +618,9 @@ local function onUltimate(data)
 		TuskVFX.CreateRotationalShockwave(CFrame.new(pos - Vector3.new(0, 1, 0)), { Radius = data.Radius * 1.6, Layers = 4, Color = pal.Main, Color2 = pal.Light, Ground = true, Particles = 3, Width = 1, Duration = 0.7 })
 		TuskVFX.CreateDistortion(pos, { Radius = 10, Duration = 0.5 })
 		TuskVFX.CreateRotationalShockwave(CFrame.new(pos + Vector3.new(0, 5, 0)) * CFrame.Angles(math.pi / 2, 0, 0), { Radius = data.Radius, Layers = 2, Color = pal.Light, Color2 = pal.Main, Particles = 0, Width = 0.6 })
-		energyPillar(pos - Vector3.new(0, 2, 0), data.Radius * 0.8)
+		TuskVFX.CreateEnergyPillar(pos - Vector3.new(0, 2, 0), { Radius = data.Radius * 0.8, Height = 70, Color = pal.Light, Color2 = pal.Main, Duration = 0.7 })
+		TuskVFX.CreateGroundCracks(pos, { Radius = data.Radius * 1.2, Color = pal.Main, Duration = 2.2 })
+		TuskVFX.CreateImpactStar(pos + Vector3.new(0, 1.5, 0), { Size = 16, Rays = 12, Color = pal.Main, Color2 = pal.Light, Duration = 0.45, Width = 1.8 })
 		VFXLib.burst(pos, { Count = 60, Color = pal.Light, Speed = 55, Lifetime = 0.7 })
 		VFXLib.flash(pos, pal.Light, 14, 60, 0.7)
 		VFXLib.sound(sounds.AwakeningBurst, pos, 1, 0.8)

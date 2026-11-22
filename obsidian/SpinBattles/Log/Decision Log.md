@@ -36,3 +36,5 @@ updated: 2026-11-22
 | 2026-11-22 | Gyro outfit removed (player keeps own clothes); hat rebuilt from the owner's pictures with goggles |
 | 2026-11-22 | Ball Breaker visuals: Golden Rectangle charge, Ball Breaker spirit, inward pulses, energy pillar |
 | 2026-11-22 | Animations: support AnimationConstraint joints, warn when no joints, hold poses slightly longer |
+| 2026-11-22 | Tusk Awakening rebuilt: screen darkens, stacked magic circles, 8 cyan nails orbit and fly out, pillar + ground cracks + starburst |
+| 2026-11-22 | VFX polish for Johnny and Gyro: crescent M1 slashes, impact stars on every hit (cyan/green by attacker), finisher and ultimate ground cracks |

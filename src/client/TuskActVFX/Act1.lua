@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
+local VFXQuality = require(Shared.VFXQuality)
 local VFXLib = require(script.Parent.Parent.VFXLib)
 local CameraFX = require(script.Parent.Parent.CameraFX)
 local TuskVFX = require(script.Parent.Parent.TuskVFX)
@@ -33,19 +34,8 @@ end
 
 -- Swipe arc in front of the character (a quick curved ring segment).
 local function swipe(root, side, color)
-	if not VFXLib.acquire() then
-		return
-	end
-	local cf = root.CFrame * CFrame.new(side * 0.4, 0.3, -2.4) * CFrame.Angles(0, 0, side * 0.5)
-	local ring = VFXLib.ring({ CFrame = cf, Radius = 1.6, Width = 0.22, Color = color, Segments = 10, Transparency = 0.1 })
-	VFXLib.animate(0.16, function(a)
-		ring:SetCFrame(cf * CFrame.Angles(0, side * (-1.2 + a * 2.4), 0))
-		ring:SetRadius(1.6 + a * 0.8)
-		ring:SetTransparency(0.1 + a * 0.9)
-	end, function()
-		ring:Destroy()
-		VFXLib.release()
-	end)
+	local cf = root.CFrame * CFrame.new(side * 0.3, 0.3, -1.2) * CFrame.Angles(0, 0, side * 0.5)
+	TuskVFX.CreateCrescent(cf, { Radius = 2.2, Width = 0.5, Color = color, Color2 = colors.Ice, Sweep = side * 1.8, Duration = 0.18 })
 end
 
 ---------------------------------------------------------------------------
@@ -230,35 +220,135 @@ end
 ---------------------------------------------------------------------------
 -- Ultimate: TUSK AWAKENING
 ---------------------------------------------------------------------------
+-- TUSK AWAKENING
+--   1. the world darkens and drains of colour around Johnny
+--   2. three magic circles stack up: feet, waist and above the head
+--   3. cyan nails wrapped in Spin whirls orbit him in a widening,
+--      accelerating helix while Tusk manifests behind him
+--   4. at the burst the nails fly outward, a cyan pillar erupts, the ground
+--      cracks and a starburst + impact frame hits everyone nearby
+local orbitNails = setmetatable({}, { __mode = "k" }) -- character -> nail visuals
+
+local function launchNails(character, root)
+	local nails = orbitNails[character]
+	orbitNails[character] = nil
+	if not nails then
+		return
+	end
+	for _, n in ipairs(nails) do
+		local from = n.Last
+		if from then
+			local dir = Vector3.new(from.Position.X - root.Position.X, 0.15, from.Position.Z - root.Position.Z)
+			dir = dir.Magnitude > 0.01 and dir.Unit or Vector3.new(0, 0, -1)
+			local startPos = from.Position
+			local travel = 26 + math.random() * 10
+			VFXLib.animate(0.32, function(a, dt)
+				local pos = startPos + dir * travel * VFXLib.easeOut(a)
+				n.Visual:Step(CFrame.lookAt(pos, pos + dir), dt)
+			end, function()
+				local tip = startPos + dir * travel
+				n.Visual:Destroy()
+				TuskVFX.CreateImpactStar(tip, { Size = 2.4, Color = colors.Cyan, Color2 = colors.Ice, Rays = 5 })
+				VFXLib.burst(tip, { Count = 5, Color = colors.Ice, Speed = 14, Lifetime = 0.3 })
+			end)
+		else
+			n.Visual:Destroy()
+		end
+	end
+end
+
 local function onUltimate(data)
 	local character = data.Character
 	local root = rootOf(character)
 	if not root then
 		return
 	end
+	local w = data.Windup or 1.7
 	if data.Phase == "Start" then
+		local near = isLocal(character) or TuskVFX.IsNear(root.Position, 120)
 		TuskAnimation.play(character, "Awakening")
 		VFXLib.sound(sounds.AwakeningBuild, root, 0.8, 1)
+		-- 1. darken
+		if near then
+			TuskVFX.ScreenTint(w, { Brightness = -0.18, Saturation = -0.45, Contrast = 0.2, Tint = Color3.fromRGB(200, 235, 255), Release = 0.15 })
+		end
+		-- 2. stacked circles (the feet circle comes from the transformation)
 		TuskVFX.CreateTuskTransformation(character, {
-			Duration = data.Windup,
+			Duration = w,
 			Color = colors.Cyan,
 			Color2 = colors.Blue,
 			OnManifest = function()
-				TuskStand.action(character, "Manifest", { Duration = 0.6 })
+				TuskStand.action(character, "Manifest", { Duration = 0.7 })
+				VFXLib.flash(root.Position + Vector3.new(0, 2, 2), colors.Cyan, 6, 22, 0.35)
 			end,
 		})
+		local feet = root.Position - Vector3.new(0, 2.9, 0)
+		TuskVFX.CreateMagicCircle(CFrame.new(feet + Vector3.new(0, 3, 0)), { Radius = 3.6, Color = colors.Ice, Color2 = colors.Cyan, Duration = w + 0.3, RotationSpeed = -2.6, Points = 4 })
+		TuskVFX.CreateMagicCircle(CFrame.new(feet + Vector3.new(0, 7.2, 0)), { Radius = 5.2, Color = colors.Blue, Color2 = colors.Ice, Duration = w + 0.3, RotationSpeed = 1.8, Points = 5 })
+		-- 3. orbiting nails
+		local count = VFXQuality.get().RingSegments > 12 and 8 or 4
+		local nails = {}
+		for i = 1, count do
+			nails[i] = {
+				Visual = TuskVFX.CreateNailProjectile({ Scale = 0.85, Glow = true, Whirls = 1, Color = colors.Blue, Color2 = colors.Cyan, SpinSpeed = 40 }),
+				Phase = (i - 1) / count * math.pi * 2,
+				Height = (i % 2 == 0) and 0.4 or 1.8,
+			}
+		end
+		orbitNails[character] = nails
+		local angle = 0
+		VFXLib.animate(w, function(a, dt)
+			if not root.Parent or orbitNails[character] ~= nails then
+				return -- character gone, or the burst already launched these nails
+			end
+			local speed = 3 + a * a * 14 -- accelerates into the burst
+			angle = angle + speed * (dt or 0)
+			local radius = 2.4 + a * 2.6
+			local center = root.Position
+			for _, n in ipairs(nails) do
+				local th = angle + n.Phase
+				local y = n.Height + math.sin(th * 2) * 0.6 + a * 1.2
+				local pos = center + Vector3.new(math.cos(th) * radius, y, math.sin(th) * radius)
+				-- Point along the orbit, tilted slightly inward.
+				local tangent = Vector3.new(-math.sin(th), 0.15, math.cos(th))
+				local cf = CFrame.lookAt(pos, pos + tangent - (pos - center).Unit * 0.25)
+				n.Last = cf
+				n.Visual:Step(cf, dt)
+			end
+		end, function()
+			launchNails(character, root)
+		end)
+		-- Building pulses as the orbit speeds up.
+		for stage = 1, 3 do
+			task.delay(w * stage / 3.6, function()
+				if root.Parent then
+					VFXLib.flash(root.Position, colors.Cyan, 3 + stage * 2, 16 + stage * 6, 0.25)
+					VFXLib.burst(root.Position, { Count = 10 * stage, Color = colors.Ice, Speed = 14 + stage * 6, Lifetime = 0.4 })
+					if isLocal(character) then
+						CameraFX.shake(0.15 * stage, 0.25)
+					end
+				end
+			end)
+		end
 		if isLocal(character) then
 			-- Camera transition: slow push-in during the buildup.
-			CameraFX.setFovHold(-12)
-			task.delay(data.Windup, function()
+			CameraFX.setFovHold(-14)
+			task.delay(w, function()
 				CameraFX.setFovHold(0)
-				CameraFX.fovPunch(16, 0.6)
+				CameraFX.fovPunch(18, 0.6)
 			end)
 		end
 	elseif data.Phase == "Burst" then
-		VFXLib.sound(sounds.AwakeningBurst, data.Position, 1, 1)
-		CameraFX.shakeAt(data.Position, 1.2, 90)
-		if isLocal(character) then
+		local pos = data.Position
+		local radius = data.Radius or 14
+		launchNails(character, root) -- in case the burst beats the windup timer
+		VFXLib.sound(sounds.AwakeningBurst, pos, 1, 1)
+		TuskVFX.CreateEnergyPillar(pos - Vector3.new(0, 3, 0), { Radius = 7, Height = 70, Color = colors.Ice, Color2 = colors.Cyan, Duration = 0.7 })
+		TuskVFX.CreateGroundCracks(pos, { Radius = radius, Color = colors.Cyan, Duration = 2 })
+		TuskVFX.CreateImpactStar(pos + Vector3.new(0, 1.5, 0), { Size = 14, Rays = 12, Color = colors.Cyan, Color2 = colors.Ice, Duration = 0.4, Width = 1.6 })
+		TuskVFX.CreateRotationalShockwave(CFrame.new(pos + Vector3.new(0, 3, 0)) * CFrame.Angles(math.pi / 2, 0, 0), { Radius = radius * 0.8, Layers = 2, Color = colors.Ice, Color2 = colors.Blue, Particles = 0, Width = 0.5 })
+		CameraFX.shakeAt(pos, 1.3, 100)
+		if isLocal(character) or TuskVFX.IsNear(pos, 70) then
 			CameraFX.speedLines(0.5, colors.Ice)
 			CameraFX.impactFrame(colors.Ice)
 		end

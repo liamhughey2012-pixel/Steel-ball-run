@@ -221,6 +221,9 @@ local function onEnd(data)
 	end
 	local s, style, charge = styleFor(data.Visual or {})
 	local color = s.ImpactColor or ((style == "Spinning" and charge >= 1) and colors.Gold or s.Color2)
+	if (s.ImpactSize or 1) >= 2 and data.Normal and data.Normal.Y > 0.6 then
+		TuskVFX.CreateGroundCracks(data.Position, { Radius = (s.ImpactRadius or 6) * 1.2, Color = color, Duration = 1.8 })
+	end
 	TuskVFX.CreateImpact(data.Position, data.Normal, {
 		Size = s.ImpactSize,
 		Layers = s.ImpactLayers,

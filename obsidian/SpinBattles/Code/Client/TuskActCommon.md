@@ -74,20 +74,9 @@ function Common.isLocal(character)
 end
 
 function Common.swipe(root, side, color, scale)
-	if not VFXLib.acquire() then
-		return
-	end
 	scale = scale or 1
-	local cf = root.CFrame * CFrame.new(side * 0.4, 0.3, -2.4) * CFrame.Angles(0, 0, side * 0.5)
-	local ring = VFXLib.ring({ CFrame = cf, Radius = 1.6 * scale, Width = 0.22 * scale, Color = color, Segments = 10, Transparency = 0.1 })
-	VFXLib.animate(0.16, function(a)
-		ring:SetCFrame(cf * CFrame.Angles(0, side * (-1.2 + a * 2.4), 0))
-		ring:SetRadius((1.6 + a * 0.8) * scale)
-		ring:SetTransparency(0.1 + a * 0.9)
-	end, function()
-		ring:Destroy()
-		VFXLib.release()
-	end)
+	local cf = root.CFrame * CFrame.new(side * 0.3, 0.3, -1.2) * CFrame.Angles(0, 0, side * 0.5)
+	TuskVFX.CreateCrescent(cf, { Radius = 2.2 * scale, Width = 0.5 * scale, Color = color, Color2 = Color3.new(1, 1, 1), Sweep = side * 1.8, Duration = 0.18 })
 end
 
 ---------------------------------------------------------------------------
@@ -172,6 +161,10 @@ function Common.finisher(data, palette, opts)
 		Width = opts.Width or 0.5,
 	})
 	TuskVFX.CreateImpact(pos, root and -root.CFrame.LookVector or Vector3.new(0, 1, 0), { Size = opts.Size or 1.2, Radius = 3, Layers = 2, Color = palette.Light, Color2 = palette.Main, Ground = false })
+	TuskVFX.CreateImpactStar(pos, { Size = 6 * (opts.Size or 1.2), Rays = 9, Color = palette.Main, Color2 = palette.Light, Duration = 0.3 })
+	if data.Hit then
+		TuskVFX.CreateGroundCracks(pos, { Radius = (data.Radius or 7) * 0.8, Color = palette.Main, Duration = 1.3 })
+	end
 	VFXLib.sound(sounds.Finisher, pos, 0.8, opts.Pitch or 1)
 	CameraFX.shakeAt(pos, opts.Shake or 0.6, 50)
 end
@@ -191,6 +184,8 @@ function Common.evolve(data)
 	TuskVFX.CreateRotationalShockwave(CFrame.new(ground), { Radius = 16, Layers = 3, Color = palette.Main, Color2 = palette.Light, Ground = true, Particles = 2, Width = 0.7, Duration = 0.6 })
 	VFXLib.burst(root.Position, { Count = 40, Color = palette.Light, Speed = 40, Lifetime = 0.6 })
 	VFXLib.flash(root.Position, palette.Main, 9, 30, 0.6)
+	TuskVFX.CreateEnergyPillar(ground, { Radius = 5, Height = 45, Color = palette.Light, Color2 = palette.Main, Duration = 0.6 })
+	TuskVFX.CreateImpactStar(root.Position, { Size = 10, Rays = 10, Color = palette.Main, Color2 = palette.Light, Duration = 0.35 })
 	VFXLib.sound(sounds.AwakeningBurst, root.Position, 0.9, 1 + data.To * 0.05)
 	TuskStand.action(character, "Manifest", { Duration = 0.7 })
 	if Common.isLocal(character) then

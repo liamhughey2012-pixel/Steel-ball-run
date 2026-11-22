@@ -45,6 +45,11 @@ Back to [[Where To Put Code]]
 	  CreateDistortion(position, opts)     refractive heat-haze sphere (High quality)
 	  CreateImpact(position, normal, opts) staged impact: flash, shockwave, sparks, dust
 	  CreateTuskTransformation(character, opts)  cinematic Act transformation
+	  CreateImpactStar(position, opts)     tapered light rays bursting from a hit
+	  CreateGroundCracks(position, opts)   glowing cracks torn into the ground
+	  CreateEnergyPillar(position, opts)   column of energy shooting upward
+	  CreateCrescent(cframe, opts)         tapered crescent slash that sweeps and fades
+	  ScreenTint(duration, opts)           darken / tint the screen, then release
 	  CleanupEffect(handle)
 ]]
 
@@ -562,6 +567,9 @@ function TuskVFX.CreateImpact(position, normal, opts)
 		flash:Destroy()
 	end)
 	VFXLib.flash(position, color, 3 + size * 2, 10 + size * 6, 0.3)
+	if opts.Star ~= false then
+		TuskVFX.CreateImpactStar(position, { Size = 2.6 * size, Color = color, Color2 = colors.Ice, Duration = 0.2 + size * 0.05 })
+	end
 	-- 2. primary shockwave around the surface normal
 	local axis = CFrame.lookAt(position, position + normal) * CFrame.Angles(-math.pi / 2, 0, 0)
 	TuskVFX.CreateRotationalShockwave(axis, {
@@ -857,6 +865,276 @@ function TuskVFX.CreateTuskTransformation(character, opts)
 			opts.OnBurst()
 		end
 	end)
+end
+
+---------------------------------------------------------------------------
+-- Impact star: tapered rays of light bursting out of a hit point.
+---------------------------------------------------------------------------
+--[[ opts: Size (ray length), Rays, Color, Color2, Duration, Width ]]
+function TuskVFX.CreateImpactStar(position, opts)
+	opts = opts or {}
+	if not VFXLib.acquire() then
+		return
+	end
+	local size = opts.Size or 4
+	local rays = opts.Rays or (q().RingSegments > 12 and 10 or 6)
+	local duration = opts.Duration or 0.28
+	local width = opts.Width or size * 0.16
+	local carrier = VFXLib.anchor(CFrame.new(position))
+	local center = Instance.new("Attachment")
+	center.Parent = carrier
+	local tips = {}
+	local beams = {}
+	local color = ColorSequence.new(opts.Color2 or Color3.new(1, 1, 1), opts.Color or colors.Cyan)
+	for i = 1, rays do
+		-- Random direction, biased so most rays splay sideways (reads as a star).
+		local dir = Vector3.new(math.random() * 2 - 1, (math.random() * 2 - 1) * 0.7, math.random() * 2 - 1)
+		if dir.Magnitude < 0.05 then
+			dir = Vector3.new(1, 0, 0)
+		end
+		local tip = Instance.new("Attachment")
+		tip.Parent = carrier
+		tips[i] = { Attachment = tip, Dir = dir.Unit, Length = size * (0.55 + math.random() * 0.6) }
+		local b = Instance.new("Beam")
+		b.Attachment0 = center
+		b.Attachment1 = tip
+		b.Color = color
+		b.LightEmission = 1
+		b.LightInfluence = 0
+		b.FaceCamera = true
+		b.Segments = 1
+		b.Width0 = width * (0.7 + math.random() * 0.6)
+		b.Width1 = 0
+		b.Parent = carrier
+		beams[i] = b
+	end
+	VFXLib.animate(duration, function(a)
+		local grow = VFXLib.easeOut(math.min(a / 0.3, 1))
+		for _, t in ipairs(tips) do
+			t.Attachment.Position = t.Dir * t.Length * grow
+		end
+		local fade = NumberSequence.new(math.clamp((a - 0.35) / 0.65, 0, 1))
+		for _, b in ipairs(beams) do
+			b.Transparency = fade
+		end
+	end, function()
+		carrier:Destroy()
+		VFXLib.release()
+	end)
+end
+
+---------------------------------------------------------------------------
+-- Ground cracks: jagged dark fissures with a glowing seam, fading out.
+---------------------------------------------------------------------------
+--[[ opts: Radius, Count, Color (glow), Duration, Ignore (instances) ]]
+function TuskVFX.CreateGroundCracks(position, opts)
+	opts = opts or {}
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ignore = { VFXLib.Folder }
+	for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+		if player.Character then
+			table.insert(ignore, player.Character)
+		end
+	end
+	for _, extra in ipairs(opts.Ignore or {}) do
+		table.insert(ignore, extra)
+	end
+	params.FilterDescendantsInstances = ignore
+	local hit = workspace:Raycast(position + Vector3.new(0, 3, 0), Vector3.new(0, -14, 0), params)
+	if not hit or hit.Normal.Y < 0.6 then
+		return -- no flat ground under the impact
+	end
+	local ground = hit.Position + Vector3.new(0, 0.03, 0)
+	local radius = opts.Radius or 8
+	local count = opts.Count or (q().RingSegments > 12 and 9 or 5)
+	local glowColor = opts.Color or colors.Cyan
+	local duration = opts.Duration or 1.6
+	local pieces = {}
+	for i = 1, count do
+		local angle = (i / count) * math.pi * 2 + (math.random() - 0.5) * 0.6
+		local point = ground + Vector3.new(math.cos(angle), 0, math.sin(angle)) * radius * 0.12
+		local length = radius * (0.6 + math.random() * 0.4)
+		local steps = 4
+		local width = 0.55
+		for _ = 1, steps do
+			angle = angle + (math.random() - 0.5) * 0.9
+			local seg = length / steps
+			local nextPoint = point + Vector3.new(math.cos(angle), 0, math.sin(angle)) * seg
+			local cf = CFrame.lookAt(point:Lerp(nextPoint, 0.5), nextPoint)
+			local crack = VFXLib.part({ Material = Enum.Material.Slate, Color = Color3.fromRGB(40, 32, 28), Size = Vector3.new(width, 0.08, seg + 0.2), CFrame = cf })
+			local seam = VFXLib.part({ Color = glowColor, Size = Vector3.new(width * 0.35, 0.1, seg + 0.1), CFrame = cf * CFrame.new(0, 0.02, 0), Transparency = 0.1 })
+			table.insert(pieces, { Part = crack, Base = 0 })
+			table.insert(pieces, { Part = seam, Base = 0.1, Seam = true })
+			point = nextPoint
+			width = width * 0.72
+		end
+	end
+	-- Chunks of debris kicked up from the cracks.
+	VFXLib.burst(ground, {
+		Count = math.floor(radius * 1.5),
+		Texture = VFXLib.Textures.Smoke,
+		Color = Color3.fromRGB(150, 128, 100),
+		LightEmission = 0,
+		Speed = radius * 1.2,
+		Lifetime = 0.9,
+		Drag = 3,
+		Direction = Vector3.new(0, 1, 0),
+		Spread = 80,
+		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 3) }),
+		TransparencySeq = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 1) }),
+	})
+	VFXLib.animate(duration, function(a)
+		for _, piece in ipairs(pieces) do
+			if piece.Seam then
+				-- The seam glows hot, then cools faster than the crack fades.
+				piece.Part.Transparency = math.min(1, piece.Base + a * 1.4)
+			else
+				piece.Part.Transparency = math.clamp((a - 0.6) / 0.4, 0, 1)
+			end
+		end
+	end, function()
+		for _, piece in ipairs(pieces) do
+			piece.Part:Destroy()
+		end
+	end)
+end
+
+---------------------------------------------------------------------------
+-- Energy pillar: a column of light that shoots up and thins out.
+---------------------------------------------------------------------------
+--[[ opts: Radius, Height, Color, Color2 (outer sheath), Duration ]]
+function TuskVFX.CreateEnergyPillar(position, opts)
+	opts = opts or {}
+	local radius = opts.Radius or 6
+	local height = opts.Height or 60
+	local duration = opts.Duration or 0.65
+	local upright = CFrame.Angles(0, 0, math.pi / 2)
+	local core = VFXLib.part({ Shape = Enum.PartType.Cylinder, Color = opts.Color or colors.Ice, Transparency = 0.05, Size = Vector3.new(1, radius, radius), CFrame = CFrame.new(position) * upright })
+	local sheath
+	if q().RingSegments > 12 then
+		sheath = VFXLib.part({ Shape = Enum.PartType.Cylinder, Color = opts.Color2 or colors.Cyan, Material = Enum.Material.ForceField, Transparency = 0.2, Size = Vector3.new(1, radius * 1.6, radius * 1.6), CFrame = CFrame.new(position) * upright })
+	end
+	VFXLib.animate(duration, function(a)
+		local h = 2 + height * VFXLib.easeOut(a)
+		local d = radius * (1 - a * 0.7)
+		local cf = CFrame.new(position + Vector3.new(0, h / 2, 0)) * upright
+		core.Size = Vector3.new(h, d, d)
+		core.CFrame = cf
+		core.Transparency = 0.05 + 0.95 * a
+		if sheath then
+			sheath.Size = Vector3.new(h * 0.9, d * 1.7, d * 1.7)
+			sheath.CFrame = cf * CFrame.Angles(a * 6, 0, 0)
+			sheath.Transparency = 0.2 + 0.8 * a
+		end
+	end, function()
+		core:Destroy()
+		if sheath then
+			sheath:Destroy()
+		end
+	end)
+end
+
+---------------------------------------------------------------------------
+-- Crescent slash: a tapered arc (thin at both tips, thick in the middle)
+-- that sweeps across and fades. Lies in cframe's local XZ plane.
+---------------------------------------------------------------------------
+--[[ opts: Radius, Width, Arc (radians), Sweep (radians turned while alive),
+     Color, Color2 (inner edge), Duration ]]
+function TuskVFX.CreateCrescent(cframe, opts)
+	opts = opts or {}
+	if not VFXLib.acquire() then
+		return
+	end
+	local radius = opts.Radius or 2.4
+	local width = opts.Width or 0.45
+	local arc = opts.Arc or math.rad(150)
+	local sweep = opts.Sweep or 1.6
+	local duration = opts.Duration or 0.2
+	local points = q().RingSegments > 12 and 12 or 7
+	local carrier = VFXLib.anchor(cframe)
+	local attachments = {}
+	for i = 0, points do
+		local th = -arc / 2 + arc * i / points
+		local a = Instance.new("Attachment")
+		a.Position = Vector3.new(math.sin(th) * radius, 0, -math.cos(th) * radius)
+		a.Parent = carrier
+		attachments[i] = a
+	end
+	local beams = {}
+	local color = ColorSequence.new(opts.Color2 or Color3.new(1, 1, 1), opts.Color or colors.Cyan)
+	for i = 1, points do
+		local b = Instance.new("Beam")
+		b.Attachment0 = attachments[i - 1]
+		b.Attachment1 = attachments[i]
+		b.Color = color
+		b.LightEmission = 1
+		b.LightInfluence = 0
+		b.FaceCamera = true
+		b.Segments = 1
+		-- sin profile: 0 at the tips, full width in the middle
+		b.Width0 = width * math.sin(math.pi * (i - 1) / points)
+		b.Width1 = width * math.sin(math.pi * i / points)
+		b.Parent = carrier
+		beams[i] = b
+	end
+	VFXLib.animate(duration, function(a)
+		local e = VFXLib.easeOut(a)
+		carrier.CFrame = cframe * CFrame.Angles(0, sweep * (0.5 - e), 0)
+		local grow = 1 + e * 0.25
+		for i = 0, points do
+			local th = -arc / 2 + arc * i / points
+			attachments[i].Position = Vector3.new(math.sin(th) * radius * grow, 0, -math.cos(th) * radius * grow)
+		end
+		local fade = NumberSequence.new(math.clamp((a - 0.25) / 0.75, 0, 1))
+		for _, b in ipairs(beams) do
+			b.Transparency = fade
+		end
+	end, function()
+		carrier:Destroy()
+		VFXLib.release()
+	end)
+end
+
+---------------------------------------------------------------------------
+-- Screen tint: darken/tint the world for a cinematic moment, then release.
+---------------------------------------------------------------------------
+--[[ opts: Brightness (-0.2), Saturation (-0.3), Contrast (0.15),
+     Tint (Color3), Release (seconds to hold after duration), FadeOut ]]
+function TuskVFX.ScreenTint(duration, opts)
+	opts = opts or {}
+	local cc = Instance.new("ColorCorrectionEffect")
+	cc.Name = "SpinScreenTint"
+	cc.Parent = game:GetService("Lighting")
+	local brightness = opts.Brightness or -0.2
+	local saturation = opts.Saturation or -0.3
+	local contrast = opts.Contrast or 0.15
+	local tint = opts.Tint or Color3.new(1, 1, 1)
+	VFXLib.animate(math.max(duration, 0.05), function(a)
+		local k = math.min(a * 3, 1)
+		cc.Brightness = brightness * k
+		cc.Saturation = saturation * k
+		cc.Contrast = contrast * k
+		cc.TintColor = Color3.new(1, 1, 1):Lerp(tint, k)
+	end)
+	task.delay(duration + (opts.Release or 0.2), function()
+		VFXLib.animate(opts.FadeOut or 0.5, function(a)
+			local k = 1 - a
+			cc.Brightness = brightness * k
+			cc.Saturation = saturation * k
+			cc.Contrast = contrast * k
+			cc.TintColor = Color3.new(1, 1, 1):Lerp(tint, k)
+		end, function()
+			cc:Destroy()
+		end)
+	end)
+	return cc
+end
+
+-- True if the local camera is within `range` studs of a position.
+function TuskVFX.IsNear(position, range)
+	local camera = workspace.CurrentCamera
+	return camera ~= nil and (camera.CFrame.Position - position).Magnitude < (range or 80)
 end
 
 return TuskVFX

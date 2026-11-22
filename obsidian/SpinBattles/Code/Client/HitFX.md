@@ -39,6 +39,8 @@ local Net = require(Shared.Net)
 local VFXLib = require(script.Parent.VFXLib)
 local CameraFX = require(script.Parent.CameraFX)
 
+local TuskVFX = require(script.Parent.TuskVFX)
+
 local HitFX = {}
 local localPlayer = Players.LocalPlayer
 local colors = {
@@ -64,6 +66,15 @@ local function onHit(data)
 	end, function()
 		highlight:Destroy()
 	end)
+	-- Starburst coloured by who landed it: cyan for Johnny, green for Gyro.
+	local source = tostring(data.Source or "")
+	local starColor = (source:sub(1, 4) == "Gyro") and Color3.fromRGB(120, 225, 95) or Color3.fromRGB(90, 230, 255)
+	if data.Perfect then
+		starColor = colors.Gold
+	end
+	if data.Position and not data.Blocked then
+		TuskVFX.CreateImpactStar(data.Position, { Size = 2.2 + (data.Level or 1) * 0.9, Rays = 6 + (data.Level or 1), Color = starColor, Color2 = Color3.new(1, 1, 1), Duration = 0.18 + (data.Level or 1) * 0.03 })
+	end
 	if data.Blocked then
 		VFXLib.burst(data.Position, { Count = 12, Color = Color3.fromRGB(150, 210, 255), Speed = 25, Lifetime = 0.3 })
 	end

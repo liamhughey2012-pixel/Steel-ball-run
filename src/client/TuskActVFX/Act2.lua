@@ -74,9 +74,11 @@ local function onUltimate(data)
 		TuskVFX.CreateDistortion(pos, { Radius = 10, Duration = 0.5 })
 		VFXLib.burst(pos, { Count = 50, Color = pal.Light, Speed = 60, Lifetime = 0.7 })
 		VFXLib.flash(pos, pal.Main, 12, 50, 0.7)
+		TuskVFX.CreateGroundCracks(pos, { Radius = data.Radius, Color = pal.Main, Duration = 2 })
+		TuskVFX.CreateImpactStar(pos + Vector3.new(0, 1.5, 0), { Size = 14, Rays = 12, Color = pal.Main, Color2 = pal.Light, Duration = 0.4, Width = 1.6 })
 		VFXLib.sound(sounds.AwakeningBurst, pos, 1, 0.95)
 		CameraFX.shakeAt(pos, 1.3, 100)
-		if Common.isLocal(character) then
+		if Common.isLocal(character) or TuskVFX.IsNear(pos, 70) then
 			CameraFX.speedLines(0.45, pal.Light)
 			CameraFX.impactFrame(pal.Light)
 		end

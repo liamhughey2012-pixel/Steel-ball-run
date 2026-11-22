@@ -165,9 +165,12 @@ local function onUltimate(data)
 			TuskVFX.CreateRotationalShockwave(CFrame.new(pos + Vector3.new(0, 4, 0)) * CFrame.Angles(math.pi / 2, 0, 0), { Radius = data.Radius, Layers = 2, Color = pal.Light, Color2 = pal.Second, Particles = 0, Width = 0.6 })
 		end)
 		VFXLib.flash(pos, pal.Main, 14, 60, 0.8)
+		TuskVFX.CreateGroundCracks(pos, { Radius = data.Radius, Color = pal.Main, Duration = 2.2 })
+		TuskVFX.CreateEnergyPillar(pos - Vector3.new(0, 3, 0), { Radius = 8, Height = 80, Color = pal.Light, Color2 = pal.Second, Duration = 0.8 })
+		TuskVFX.CreateImpactStar(pos + Vector3.new(0, 1.5, 0), { Size = 16, Rays = 12, Color = pal.Main, Color2 = pal.Light, Duration = 0.45, Width = 1.8 })
 		VFXLib.sound(sounds.AwakeningBurst, pos, 1, 0.85)
 		CameraFX.shakeAt(pos, 1.5, 110)
-		if Common.isLocal(character) then
+		if Common.isLocal(character) or TuskVFX.IsNear(pos, 70) then
 			CameraFX.speedLines(0.5, pal.Light)
 			CameraFX.impactFrame(pal.Light)
 		end
