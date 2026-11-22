@@ -65,6 +65,10 @@ TuskConfig.Ultimate = {
 -- faces the wrong way (degrees, e.g. Vector3.new(0, 180, 0)).
 -- Any Scripts inside a loaded model are removed for safety.
 ---------------------------------------------------------------------------
+-- Blocky (classic Roblox) look for the Tusk Stands and the Scary Monsters
+-- raptor: boxes instead of rounded shapes. false = smooth rounded models.
+TuskConfig.BlockyModels = true
+
 TuskConfig.StandModels = {
 	[1] = {
 		AssetId = 0, -- set 8768080824 to use the "Tusk1" store model instead

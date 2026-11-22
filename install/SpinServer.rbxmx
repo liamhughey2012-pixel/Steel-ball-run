@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Script" referent="RBX32"><Properties><string name="Name">SpinServer</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Script" referent="RBX33"><Properties><string name="Name">SpinServer</string><ProtectedString name="Source"><![CDATA[--[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
 	Boots every server system: characters (Johnny/Tusk, Gyro/Steel Balls,
 	Diego/Scary Monsters),
@@ -22,7 +22,7 @@ GyroOutfit.init()
 DiegoOutfit.init()
 NPCService.init()
 TestDummies.init()
-]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX13"><Properties><string name="Name">CombatAdapter</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX14"><Properties><string name="Name">CombatAdapter</string><ProtectedString name="Source"><![CDATA[--[[
 	CombatAdapter  (ServerScriptService.SpinServer.CombatAdapter)
 
 	THE ONE PLACE the Spin system touches combat. If SPIN BATTLEGROUNDS
@@ -263,7 +263,7 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 end
 
 return Adapter
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX14"><Properties><string name="Name">CooldownService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX15"><Properties><string name="Name">CooldownService</string><ProtectedString name="Source"><![CDATA[--[[
 	CooldownService  (ServerScriptService.SpinServer.CooldownService)
 	Server-owned cooldowns. Clients only ever display what the server says.
 	Reusable by any ability: CooldownService.start(player, "AbilityKey", seconds)
@@ -307,7 +307,7 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return CooldownService
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX15"><Properties><string name="Name">DiegoOutfit</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX16"><Properties><string name="Name">DiegoOutfit</string><ProtectedString name="Source"><![CDATA[--[[
 	DiegoOutfit  (ServerScriptService.SpinServer.DiegoOutfit)
 
 	Gives a character Diego Brando's half-dinosaur look while they play Diego
@@ -323,6 +323,9 @@ return CooldownService
 ]]
 
 local Players = game:GetService("Players")
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local Blockify = require(Shared.Blockify)
 
 local DiegoOutfit = {}
 DiegoOutfit.DiegoAct = 6
@@ -466,6 +469,14 @@ function DiegoOutfit.apply(character)
 	cap(head, outfit)
 	hair(head, outfit)
 	tail(character, outfit)
+	-- The dinosaur tail is Scary Monsters' and follows its blocky look.
+	if Blockify.enabled(TuskConfig) then
+		for _, p in ipairs(outfit:GetChildren()) do
+			if p.Name:sub(1, 4) == "Tail" then
+				Blockify.apply(p)
+			end
+		end
+	end
 end
 
 function DiegoOutfit.remove(character)
@@ -515,7 +526,7 @@ function DiegoOutfit.init()
 end
 
 return DiegoOutfit
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX16"><Properties><string name="Name">GyroOutfit</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX17"><Properties><string name="Name">GyroOutfit</string><ProtectedString name="Source"><![CDATA[--[[
 	GyroOutfit  (ServerScriptService.SpinServer.GyroOutfit)
 
 	Gives a character Gyro Zeppeli's hat and hair while they play Gyro
@@ -705,7 +716,7 @@ function GyroOutfit.init()
 end
 
 return GyroOutfit
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX17"><Properties><string name="Name">NPCService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX18"><Properties><string name="Name">NPCService</string><ProtectedString name="Source"><![CDATA[--[[
 	NPCService  (ServerScriptService.SpinServer.NPCService)
 
 	Turns the markers in workspace.SBRMap.NPCSpawns (made by SBRMapBuilder)
@@ -919,7 +930,7 @@ function NPCService.init()
 end
 
 return NPCService
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX18"><Properties><string name="Name">ProjectileService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX19"><Properties><string name="Name">ProjectileService</string><ProtectedString name="Source"><![CDATA[--[[
 	ProjectileService  (ServerScriptService.SpinServer.ProjectileService)
 
 	Server-simulated projectiles. The server owns position, collision and
@@ -1114,7 +1125,7 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return ProjectileService
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX19"><Properties><string name="Name">StandAssetLoader</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX20"><Properties><string name="Name">StandAssetLoader</string><ProtectedString name="Source"><![CDATA[--[[
 	StandAssetLoader  (ServerScriptService.SpinServer.StandAssetLoader)
 
 	Loads the Stand models listed in TuskConfig.StandModels (by asset id)
@@ -1198,7 +1209,7 @@ function StandAssetLoader.init()
 end
 
 return StandAssetLoader
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX20"><Properties><string name="Name">TestDummies</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX21"><Properties><string name="Name">TestDummies</string><ProtectedString name="Source"><![CDATA[--[[
 	TestDummies  (ServerScriptService.SpinServer.TestDummies)
 	Studio-only practice targets so Spin can be tested solo.
 	Never runs in a live server (guarded by RunService:IsStudio()).
@@ -1257,7 +1268,7 @@ function TestDummies.init()
 end
 
 return TestDummies
-]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX27"><Properties><string name="Name">TuskActs</string></Properties><Item class="ModuleScript" referent="RBX21"><Properties><string name="Name">DiegoBrando</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX28"><Properties><string name="Name">TuskActs</string></Properties><Item class="ModuleScript" referent="RBX22"><Properties><string name="Name">DiegoBrando</string><ProtectedString name="Source"><![CDATA[--[[
 	DiegoBrando  (ServerScriptService.SpinServer.TuskActs.DiegoBrando)
 
 	Diego Brando: SCARY MONSTERS (dinosaur Stand). Registered as "Act" 6 so it
@@ -1585,7 +1596,7 @@ function Diego.Cleanup(S, player, state)
 end
 
 return Diego
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX22"><Properties><string name="Name">GyroZeppeli</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX23"><Properties><string name="Name">GyroZeppeli</string><ProtectedString name="Source"><![CDATA[--[[
 	GyroZeppeli  (ServerScriptService.SpinServer.TuskActs.GyroZeppeli)
 
 	Gyro Zeppeli: Steel Ball moveset (registered as "Act" 5 so it reuses the
@@ -1903,7 +1914,7 @@ function Gyro.Cleanup(S, player, state)
 end
 
 return Gyro
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX23"><Properties><string name="Name">TuskAct1</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX24"><Properties><string name="Name">TuskAct1</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAct1  (ServerScriptService.SpinServer.TuskActs.TuskAct1)
 
 	Server logic for Tusk Act 1, "the beginning of Spin".
@@ -2257,7 +2268,7 @@ function Act1.Cleanup(S, player, state)
 end
 
 return Act1
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX24"><Properties><string name="Name">TuskAct2</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">TuskAct2</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAct2  (ServerScriptService.SpinServer.TuskActs.TuskAct2)
 
 	Tusk Act 2: wormhole combat.
@@ -2524,7 +2535,7 @@ function Act2.Cleanup(S, player, state)
 end
 
 return Act2
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">TuskAct3</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX26"><Properties><string name="Name">TuskAct3</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAct3  (ServerScriptService.SpinServer.TuskActs.TuskAct3)
 
 	Tusk Act 3: master of spatial movement.
@@ -2709,7 +2720,7 @@ function Act3.Cleanup(S, player, state)
 end
 
 return Act3
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX26"><Properties><string name="Name">TuskAct4</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX27"><Properties><string name="Name">TuskAct4</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAct4  (ServerScriptService.SpinServer.TuskActs.TuskAct4)
 
 	Tusk Act 4: Infinite Rotation. Gold and deep blue, heavy and majestic.
@@ -2976,7 +2987,7 @@ function Act4.Cleanup(S, player, state)
 end
 
 return Act4
-]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX28"><Properties><string name="Name">TuskHitbox</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX29"><Properties><string name="Name">TuskHitbox</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskHitbox  (ServerScriptService.SpinServer.TuskHitbox)
 	Server-side spatial queries for melee and area attacks.
 	Returns unique characters (models with a Humanoid), nearest first.
@@ -3051,7 +3062,7 @@ function TuskHitbox.lineOfSight(fromPos, toPos, ignore)
 end
 
 return TuskHitbox
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX29"><Properties><string name="Name">TuskMoves</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX30"><Properties><string name="Name">TuskMoves</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskMoves  (ServerScriptService.SpinServer.TuskMoves)
 
 	Shared server building blocks for every Tusk Act, so each Act module
@@ -3307,7 +3318,7 @@ end
 
 TuskMoves.Config = TuskConfig
 return TuskMoves
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX30"><Properties><string name="Name">TuskService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX31"><Properties><string name="Name">TuskService</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskService  (ServerScriptService.SpinServer.TuskService)
 
 	Server brain for Tusk (the "TuskController" of the design doc):
@@ -3837,7 +3848,7 @@ function TuskService.init()
 end
 
 return TuskService
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX31"><Properties><string name="Name">TuskSneakService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX32"><Properties><string name="Name">TuskSneakService</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskSneakService  (ServerScriptService.SpinServer.TuskSneakService)
 
 	Tusk Sneak (every Act): a crouched, slowed stalking state, plus the

@@ -16,13 +16,74 @@ pre{background:var(--code);border:1px solid var(--line);border-radius:8px;paddin
 .empty{color:var(--muted);margin:0}.card,.head>div{min-width:0;overflow-wrap:anywhere}pre{max-width:100%}code{word-break:break-all}.tip{border-left:4px solid var(--accent);background:var(--panel);padding:10px 14px;border-radius:0 10px 10px 0}
 </style></head><body><main>
 <h1>Spin Battlegrounds: copy-paste scripts</h1>
-<p class="lead">58 steps. Create each object <b>in this order</b>, with the exact name and type, then press <b>Copy code</b> and paste it into the script.</p>
+<p class="lead">59 steps. Create each object <b>in this order</b>, with the exact name and type, then press <b>Copy code</b> and paste it into the script.</p>
 <div class="tip">How: right-click the place in Explorer › <b>Insert Object</b> › choose the type › rename it exactly. Scripts that go "inside" another script: right-click that script and insert there. <b>Folder</b> steps have no code.</div>
 <section class="card" id="s1">
 <div class="head"><span class="num">1</span><div><h2>SpinShared <span class="badge folder">Folder</span></h2>
 <p class="loc">Put it in: <b>ReplicatedStorage</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s2">
-<div class="head"><span class="num">2</span><div><h2>Maid <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="2">Copy code</button><details><summary>Show code (42 lines)</summary><pre id="c2">--[[
+<div class="head"><span class="num">2</span><div><h2>Blockify <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="2">Copy code</button><details><summary>Show code (60 lines)</summary><pre id="c2">--[[
+	Blockify  (ReplicatedStorage.SpinShared.Blockify)
+
+	Turns a part-built model into a blocky (classic Roblox) look:
+	  * egg/sphere shapes (SpecialMesh Sphere, Ball parts) become boxes
+	  * cylinders become square rods
+	Sizes are trimmed so the boxes keep roughly the same silhouette as the
+	round shapes they replace. Part centres don&#x27;t move, so welds, rigs and
+	animations keep working.
+	Used by the Tusk Stands and the Scary Monsters raptor when
+	TuskConfig.BlockyModels is true. A part with the attribute KeepRound
+	is left alone.
+]]
+
+local Blockify = {}
+
+local ROUND = 0.82 -- box edge vs. sphere diameter (similar volume / silhouette)
+local ROD = 0.88 -- square rod vs. cylinder diameter
+
+local function convert(part)
+	if part:GetAttribute(&quot;KeepRound&quot;) then
+		return
+	end
+	local mesh = part:FindFirstChildOfClass(&quot;SpecialMesh&quot;)
+	if mesh and mesh.MeshType == Enum.MeshType.Sphere then
+		mesh:Destroy()
+		part.Size = part.Size * ROUND
+		return
+	end
+	if part:IsA(&quot;Part&quot;) then
+		if part.Shape == Enum.PartType.Ball then
+			part.Shape = Enum.PartType.Block
+			part.Size = part.Size * ROUND
+		elseif part.Shape == Enum.PartType.Cylinder then
+			-- Cylinder length runs along X; the round sides become square.
+			part.Shape = Enum.PartType.Block
+			part.Size = Vector3.new(part.Size.X, part.Size.Y * ROD, part.Size.Z * ROD)
+		end
+	end
+end
+
+function Blockify.apply(model)
+	if model:IsA(&quot;BasePart&quot;) then
+		convert(model)
+	end
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA(&quot;BasePart&quot;) then
+			convert(d)
+		end
+	end
+	return model
+end
+
+-- True when the game wants blocky models (TuskConfig.BlockyModels, default on).
+function Blockify.enabled(config)
+	return not (config and config.BlockyModels == false)
+end
+
+return Blockify
+</pre></details></section><section class="card" id="s3">
+<div class="head"><span class="num">3</span><div><h2>Maid <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="3">Copy code</button><details><summary>Show code (42 lines)</summary><pre id="c3">--[[
 	Maid  (ReplicatedStorage.SpinShared.Maid)
 	Tracks connections, instances and cleanup functions so effects always end.
 ]]
@@ -63,9 +124,9 @@ end
 Maid.Destroy = Maid.Clean
 
 return Maid
-</pre></details></section><section class="card" id="s3">
-<div class="head"><span class="num">3</span><div><h2>NailModel <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="3">Copy code</button><details><summary>Show code (100 lines)</summary><pre id="c3">--[[
+</pre></details></section><section class="card" id="s4">
+<div class="head"><span class="num">4</span><div><h2>NailModel <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="4">Copy code</button><details><summary>Show code (100 lines)</summary><pre id="c4">--[[
 	NailModel  (ReplicatedStorage.SpinShared.NailModel)
 
 	Procedural fingernail-bullet used by every Tusk nail attack: a metal
@@ -164,9 +225,9 @@ function NailModel.build(length)
 end
 
 return NailModel
-</pre></details></section><section class="card" id="s4">
-<div class="head"><span class="num">4</span><div><h2>Net <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="4">Copy code</button><details><summary>Show code (52 lines)</summary><pre id="c4">--[[
+</pre></details></section><section class="card" id="s5">
+<div class="head"><span class="num">5</span><div><h2>Net <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="5">Copy code</button><details><summary>Show code (52 lines)</summary><pre id="c5">--[[
 	Net  (ReplicatedStorage.SpinShared.Net)
 
 	Creates (server) or waits for (client) the RemoteEvents used by the
@@ -217,9 +278,9 @@ function Net.get(name)
 end
 
 return Net
-</pre></details></section><section class="card" id="s5">
-<div class="head"><span class="num">5</span><div><h2>RaptorModel <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="5">Copy code</button><details><summary>Show code (315 lines)</summary><pre id="c5">--[[
+</pre></details></section><section class="card" id="s6">
+<div class="head"><span class="num">6</span><div><h2>RaptorModel <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="6">Copy code</button><details><summary>Show code (324 lines)</summary><pre id="c6">--[[
 	RaptorModel  (ReplicatedStorage.SpinShared.RaptorModel)
 
 	Scary Monsters&#x27; raptor, built from parts (from the owner&#x27;s references):
@@ -232,6 +293,7 @@ return Net
 
 	RaptorModel.build(scale, opts) -&gt; rig
 	  opts.Lite = true   fewer details (teeth, crown, markings) for crowds
+	  opts.Blocky = false  keep rounded shapes (default: TuskConfig.BlockyModels)
 	  rig.Model          the Model (all parts anchored, no collision)
 	  rig:Pose(groundCF, s)  place every part. groundCF = point on the ground
 	                         under the hips, facing the way the raptor looks.
@@ -243,6 +305,9 @@ return Net
 	  rig:Destroy()
 	Size: about 8 studs tall at the head and 15 long at scale 1.
 ]]
+
+local TuskConfig = require(script.Parent.TuskConfig)
+local Blockify = require(script.Parent.Blockify)
 
 local RaptorModel = {}
 
@@ -432,6 +497,11 @@ function RaptorModel.build(scale, opts)
 		end
 	end
 
+	-- Blocky (classic Roblox) look: boxes instead of rounded shapes.
+	if opts.Blocky ~= false and Blockify.enabled(TuskConfig) then
+		Blockify.apply(model)
+	end
+
 	local rig = { Model = model, Scale = scale, Entries = entries }
 
 	local function bonesFor(ground, s)
@@ -533,9 +603,9 @@ function RaptorModel.build(scale, opts)
 end
 
 return RaptorModel
-</pre></details></section><section class="card" id="s6">
-<div class="head"><span class="num">6</span><div><h2>SpinConfig <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="6">Copy code</button><details><summary>Show code (151 lines)</summary><pre id="c6">--[[
+</pre></details></section><section class="card" id="s7">
+<div class="head"><span class="num">7</span><div><h2>SpinConfig <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="7">Copy code</button><details><summary>Show code (151 lines)</summary><pre id="c7">--[[
 	SpinConfig  (ReplicatedStorage.SpinShared.SpinConfig)
 
 	Steel Ball colours and Studio test-dummy settings. (The old Golden Spin
@@ -685,9 +755,9 @@ function SpinConfig.getLevel(chargeTime, tolerance)
 end
 
 return SpinConfig
-</pre></details></section><section class="card" id="s7">
-<div class="head"><span class="num">7</span><div><h2>SteelBallModel <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="7">Copy code</button><details><summary>Show code (199 lines)</summary><pre id="c7">--[[
+</pre></details></section><section class="card" id="s8">
+<div class="head"><span class="num">8</span><div><h2>SteelBallModel <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="8">Copy code</button><details><summary>Show code (199 lines)</summary><pre id="c8">--[[
 	SteelBallModel  (ReplicatedStorage.SpinShared.SteelBallModel)
 
 	Procedurally builds the Steel Ball from the owner&#x27;s reference images:
@@ -885,9 +955,9 @@ function SteelBallModel.build(diameter, detailed)
 end
 
 return SteelBallModel
-</pre></details></section><section class="card" id="s8">
-<div class="head"><span class="num">8</span><div><h2>TuskActRegistry <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="8">Copy code</button><details><summary>Show code (116 lines)</summary><pre id="c8">--[[
+</pre></details></section><section class="card" id="s9">
+<div class="head"><span class="num">9</span><div><h2>TuskActRegistry <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="9">Copy code</button><details><summary>Show code (116 lines)</summary><pre id="c9">--[[
 	TuskActRegistry  (ReplicatedStorage.SpinShared.TuskActRegistry)
 
 	The list of Tusk Acts: names, slot labels, themes and whether each
@@ -1002,9 +1072,9 @@ function TuskActRegistry.isImplemented(act)
 end
 
 return TuskActRegistry
-</pre></details></section><section class="card" id="s9">
-<div class="head"><span class="num">9</span><div><h2>TuskConfig <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="9">Copy code</button><details><summary>Show code (411 lines)</summary><pre id="c9">--[[
+</pre></details></section><section class="card" id="s10">
+<div class="head"><span class="num">10</span><div><h2>TuskConfig <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="10">Copy code</button><details><summary>Show code (415 lines)</summary><pre id="c10">--[[
 	TuskConfig  (ReplicatedStorage.SpinShared.TuskConfig)
 
 	Every tunable number for Tusk. The server uses it for damage, timing,
@@ -1070,6 +1140,10 @@ TuskConfig.Ultimate = {
 -- faces the wrong way (degrees, e.g. Vector3.new(0, 180, 0)).
 -- Any Scripts inside a loaded model are removed for safety.
 ---------------------------------------------------------------------------
+-- Blocky (classic Roblox) look for the Tusk Stands and the Scary Monsters
+-- raptor: boxes instead of rounded shapes. false = smooth rounded models.
+TuskConfig.BlockyModels = true
+
 TuskConfig.StandModels = {
 	[1] = {
 		AssetId = 0, -- set 8768080824 to use the &quot;Tusk1&quot; store model instead
@@ -1414,9 +1488,9 @@ TuskConfig.Colors = {
 }
 
 return TuskConfig
-</pre></details></section><section class="card" id="s10">
-<div class="head"><span class="num">10</span><div><h2>TuskStandModels <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="10">Copy code</button><details><summary>Show code (972 lines)</summary><pre id="c10">--[[
+</pre></details></section><section class="card" id="s11">
+<div class="head"><span class="num">11</span><div><h2>TuskStandModels <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="11">Copy code</button><details><summary>Show code (978 lines)</summary><pre id="c11">--[[
 	TuskStandModels  (ReplicatedStorage.SpinShared.TuskStandModels)
 
 	Builds the Tusk Stand for each Act. Built on each client (visual only),
@@ -1441,6 +1515,7 @@ return TuskConfig
 ]]
 
 local TuskConfig = require(script.Parent.TuskConfig)
+local Blockify = require(script.Parent.Blockify)
 
 local TuskStandModels = {}
 
@@ -2383,13 +2458,18 @@ function TuskStandModels.build(act, scale)
 	if not builder then
 		return nil
 	end
-	return builder(scale)
+	local built, rig = builder(scale)
+	-- Blocky (classic Roblox) look for the procedural Stands; custom models are left as they are.
+	if built and Blockify.enabled(TuskConfig) then
+		Blockify.apply(built)
+	end
+	return built, rig
 end
 
 return TuskStandModels
-</pre></details></section><section class="card" id="s11">
-<div class="head"><span class="num">11</span><div><h2>VFXQuality <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="11">Copy code</button><details><summary>Show code (74 lines)</summary><pre id="c11">--[[
+</pre></details></section><section class="card" id="s12">
+<div class="head"><span class="num">12</span><div><h2>VFXQuality <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="12">Copy code</button><details><summary>Show code (74 lines)</summary><pre id="c12">--[[
 	VFXQuality  (ReplicatedStorage.SpinShared.VFXQuality)
 
 	Per-player visual quality. Purely client-side: it never changes gameplay.
@@ -2462,9 +2542,9 @@ function VFXQuality.cycle()
 end
 
 return VFXQuality
-</pre></details></section><section class="card" id="s12">
-<div class="head"><span class="num">12</span><div><h2>WreckingBallModel <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="12">Copy code</button><details><summary>Show code (180 lines)</summary><pre id="c12">--[[
+</pre></details></section><section class="card" id="s13">
+<div class="head"><span class="num">13</span><div><h2>WreckingBallModel <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="13">Copy code</button><details><summary>Show code (180 lines)</summary><pre id="c13">--[[
 	WreckingBallModel  (ReplicatedStorage.SpinShared.WreckingBallModel)
 
 	Procedurally builds a Wrecking Ball from the owner&#x27;s reference image:
@@ -2643,9 +2723,9 @@ function WreckingBallModel.build(diameter, withGrooves)
 end
 
 return WreckingBallModel
-</pre></details></section><section class="card" id="s13">
-<div class="head"><span class="num">13</span><div><h2>SpinServer <span class="badge server">Script</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService</b></p></div></div><button class="copy" data-i="13">Copy code</button><details><summary>Show code (25 lines)</summary><pre id="c13">--[[
+</pre></details></section><section class="card" id="s14">
+<div class="head"><span class="num">14</span><div><h2>SpinServer <span class="badge server">Script</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService</b></p></div></div><button class="copy" data-i="14">Copy code</button><details><summary>Show code (25 lines)</summary><pre id="c14">--[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
 	Boots every server system: characters (Johnny/Tusk, Gyro/Steel Balls,
 	Diego/Scary Monsters),
@@ -2669,9 +2749,9 @@ GyroOutfit.init()
 DiegoOutfit.init()
 NPCService.init()
 TestDummies.init()
-</pre></details></section><section class="card" id="s14">
-<div class="head"><span class="num">14</span><div><h2>CombatAdapter <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="14">Copy code</button><details><summary>Show code (242 lines)</summary><pre id="c14">--[[
+</pre></details></section><section class="card" id="s15">
+<div class="head"><span class="num">15</span><div><h2>CombatAdapter <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="15">Copy code</button><details><summary>Show code (242 lines)</summary><pre id="c15">--[[
 	CombatAdapter  (ServerScriptService.SpinServer.CombatAdapter)
 
 	THE ONE PLACE the Spin system touches combat. If SPIN BATTLEGROUNDS
@@ -2912,9 +2992,9 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 end
 
 return Adapter
-</pre></details></section><section class="card" id="s15">
-<div class="head"><span class="num">15</span><div><h2>CooldownService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="15">Copy code</button><details><summary>Show code (45 lines)</summary><pre id="c15">--[[
+</pre></details></section><section class="card" id="s16">
+<div class="head"><span class="num">16</span><div><h2>CooldownService <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="16">Copy code</button><details><summary>Show code (45 lines)</summary><pre id="c16">--[[
 	CooldownService  (ServerScriptService.SpinServer.CooldownService)
 	Server-owned cooldowns. Clients only ever display what the server says.
 	Reusable by any ability: CooldownService.start(player, &quot;AbilityKey&quot;, seconds)
@@ -2958,9 +3038,9 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return CooldownService
-</pre></details></section><section class="card" id="s16">
-<div class="head"><span class="num">16</span><div><h2>DiegoOutfit <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="16">Copy code</button><details><summary>Show code (209 lines)</summary><pre id="c16">--[[
+</pre></details></section><section class="card" id="s17">
+<div class="head"><span class="num">17</span><div><h2>DiegoOutfit <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="17">Copy code</button><details><summary>Show code (220 lines)</summary><pre id="c17">--[[
 	DiegoOutfit  (ServerScriptService.SpinServer.DiegoOutfit)
 
 	Gives a character Diego Brando&#x27;s half-dinosaur look while they play Diego
@@ -2976,6 +3056,9 @@ return CooldownService
 ]]
 
 local Players = game:GetService(&quot;Players&quot;)
+local Shared = game:GetService(&quot;ReplicatedStorage&quot;):WaitForChild(&quot;SpinShared&quot;)
+local TuskConfig = require(Shared.TuskConfig)
+local Blockify = require(Shared.Blockify)
 
 local DiegoOutfit = {}
 DiegoOutfit.DiegoAct = 6
@@ -3119,6 +3202,14 @@ function DiegoOutfit.apply(character)
 	cap(head, outfit)
 	hair(head, outfit)
 	tail(character, outfit)
+	-- The dinosaur tail is Scary Monsters&#x27; and follows its blocky look.
+	if Blockify.enabled(TuskConfig) then
+		for _, p in ipairs(outfit:GetChildren()) do
+			if p.Name:sub(1, 4) == &quot;Tail&quot; then
+				Blockify.apply(p)
+			end
+		end
+	end
 end
 
 function DiegoOutfit.remove(character)
@@ -3168,9 +3259,9 @@ function DiegoOutfit.init()
 end
 
 return DiegoOutfit
-</pre></details></section><section class="card" id="s17">
-<div class="head"><span class="num">17</span><div><h2>GyroOutfit <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="17">Copy code</button><details><summary>Show code (191 lines)</summary><pre id="c17">--[[
+</pre></details></section><section class="card" id="s18">
+<div class="head"><span class="num">18</span><div><h2>GyroOutfit <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="18">Copy code</button><details><summary>Show code (191 lines)</summary><pre id="c18">--[[
 	GyroOutfit  (ServerScriptService.SpinServer.GyroOutfit)
 
 	Gives a character Gyro Zeppeli&#x27;s hat and hair while they play Gyro
@@ -3360,9 +3451,9 @@ function GyroOutfit.init()
 end
 
 return GyroOutfit
-</pre></details></section><section class="card" id="s18">
-<div class="head"><span class="num">18</span><div><h2>NPCService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="18">Copy code</button><details><summary>Show code (215 lines)</summary><pre id="c18">--[[
+</pre></details></section><section class="card" id="s19">
+<div class="head"><span class="num">19</span><div><h2>NPCService <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="19">Copy code</button><details><summary>Show code (215 lines)</summary><pre id="c19">--[[
 	NPCService  (ServerScriptService.SpinServer.NPCService)
 
 	Turns the markers in workspace.SBRMap.NPCSpawns (made by SBRMapBuilder)
@@ -3576,9 +3667,9 @@ function NPCService.init()
 end
 
 return NPCService
-</pre></details></section><section class="card" id="s19">
-<div class="head"><span class="num">19</span><div><h2>ProjectileService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="19">Copy code</button><details><summary>Show code (196 lines)</summary><pre id="c19">--[[
+</pre></details></section><section class="card" id="s20">
+<div class="head"><span class="num">20</span><div><h2>ProjectileService <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="20">Copy code</button><details><summary>Show code (196 lines)</summary><pre id="c20">--[[
 	ProjectileService  (ServerScriptService.SpinServer.ProjectileService)
 
 	Server-simulated projectiles. The server owns position, collision and
@@ -3773,9 +3864,9 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return ProjectileService
-</pre></details></section><section class="card" id="s20">
-<div class="head"><span class="num">20</span><div><h2>StandAssetLoader <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="20">Copy code</button><details><summary>Show code (85 lines)</summary><pre id="c20">--[[
+</pre></details></section><section class="card" id="s21">
+<div class="head"><span class="num">21</span><div><h2>StandAssetLoader <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="21">Copy code</button><details><summary>Show code (85 lines)</summary><pre id="c21">--[[
 	StandAssetLoader  (ServerScriptService.SpinServer.StandAssetLoader)
 
 	Loads the Stand models listed in TuskConfig.StandModels (by asset id)
@@ -3859,9 +3950,9 @@ function StandAssetLoader.init()
 end
 
 return StandAssetLoader
-</pre></details></section><section class="card" id="s21">
-<div class="head"><span class="num">21</span><div><h2>TestDummies <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="21">Copy code</button><details><summary>Show code (60 lines)</summary><pre id="c21">--[[
+</pre></details></section><section class="card" id="s22">
+<div class="head"><span class="num">22</span><div><h2>TestDummies <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="22">Copy code</button><details><summary>Show code (60 lines)</summary><pre id="c22">--[[
 	TestDummies  (ServerScriptService.SpinServer.TestDummies)
 	Studio-only practice targets so Spin can be tested solo.
 	Never runs in a live server (guarded by RunService:IsStudio()).
@@ -3920,11 +4011,11 @@ function TestDummies.init()
 end
 
 return TestDummies
-</pre></details></section><section class="card" id="s22">
-<div class="head"><span class="num">22</span><div><h2>TuskActs <span class="badge folder">Folder</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s23">
-<div class="head"><span class="num">23</span><div><h2>DiegoBrando <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="23">Copy code</button><details><summary>Show code (329 lines)</summary><pre id="c23">--[[
+</pre></details></section><section class="card" id="s23">
+<div class="head"><span class="num">23</span><div><h2>TuskActs <span class="badge folder">Folder</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s24">
+<div class="head"><span class="num">24</span><div><h2>DiegoBrando <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="24">Copy code</button><details><summary>Show code (329 lines)</summary><pre id="c24">--[[
 	DiegoBrando  (ServerScriptService.SpinServer.TuskActs.DiegoBrando)
 
 	Diego Brando: SCARY MONSTERS (dinosaur Stand). Registered as &quot;Act&quot; 6 so it
@@ -4252,9 +4343,9 @@ function Diego.Cleanup(S, player, state)
 end
 
 return Diego
-</pre></details></section><section class="card" id="s24">
-<div class="head"><span class="num">24</span><div><h2>GyroZeppeli <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="24">Copy code</button><details><summary>Show code (319 lines)</summary><pre id="c24">--[[
+</pre></details></section><section class="card" id="s25">
+<div class="head"><span class="num">25</span><div><h2>GyroZeppeli <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="25">Copy code</button><details><summary>Show code (319 lines)</summary><pre id="c25">--[[
 	GyroZeppeli  (ServerScriptService.SpinServer.TuskActs.GyroZeppeli)
 
 	Gyro Zeppeli: Steel Ball moveset (registered as &quot;Act&quot; 5 so it reuses the
@@ -4572,9 +4663,9 @@ function Gyro.Cleanup(S, player, state)
 end
 
 return Gyro
-</pre></details></section><section class="card" id="s25">
-<div class="head"><span class="num">25</span><div><h2>TuskAct1 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="25">Copy code</button><details><summary>Show code (355 lines)</summary><pre id="c25">--[[
+</pre></details></section><section class="card" id="s26">
+<div class="head"><span class="num">26</span><div><h2>TuskAct1 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="26">Copy code</button><details><summary>Show code (355 lines)</summary><pre id="c26">--[[
 	TuskAct1  (ServerScriptService.SpinServer.TuskActs.TuskAct1)
 
 	Server logic for Tusk Act 1, &quot;the beginning of Spin&quot;.
@@ -4928,9 +5019,9 @@ function Act1.Cleanup(S, player, state)
 end
 
 return Act1
-</pre></details></section><section class="card" id="s26">
-<div class="head"><span class="num">26</span><div><h2>TuskAct2 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="26">Copy code</button><details><summary>Show code (268 lines)</summary><pre id="c26">--[[
+</pre></details></section><section class="card" id="s27">
+<div class="head"><span class="num">27</span><div><h2>TuskAct2 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="27">Copy code</button><details><summary>Show code (268 lines)</summary><pre id="c27">--[[
 	TuskAct2  (ServerScriptService.SpinServer.TuskActs.TuskAct2)
 
 	Tusk Act 2: wormhole combat.
@@ -5197,9 +5288,9 @@ function Act2.Cleanup(S, player, state)
 end
 
 return Act2
-</pre></details></section><section class="card" id="s27">
-<div class="head"><span class="num">27</span><div><h2>TuskAct3 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="27">Copy code</button><details><summary>Show code (186 lines)</summary><pre id="c27">--[[
+</pre></details></section><section class="card" id="s28">
+<div class="head"><span class="num">28</span><div><h2>TuskAct3 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="28">Copy code</button><details><summary>Show code (186 lines)</summary><pre id="c28">--[[
 	TuskAct3  (ServerScriptService.SpinServer.TuskActs.TuskAct3)
 
 	Tusk Act 3: master of spatial movement.
@@ -5384,9 +5475,9 @@ function Act3.Cleanup(S, player, state)
 end
 
 return Act3
-</pre></details></section><section class="card" id="s28">
-<div class="head"><span class="num">28</span><div><h2>TuskAct4 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="28">Copy code</button><details><summary>Show code (268 lines)</summary><pre id="c28">--[[
+</pre></details></section><section class="card" id="s29">
+<div class="head"><span class="num">29</span><div><h2>TuskAct4 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="29">Copy code</button><details><summary>Show code (268 lines)</summary><pre id="c29">--[[
 	TuskAct4  (ServerScriptService.SpinServer.TuskActs.TuskAct4)
 
 	Tusk Act 4: Infinite Rotation. Gold and deep blue, heavy and majestic.
@@ -5653,9 +5744,9 @@ function Act4.Cleanup(S, player, state)
 end
 
 return Act4
-</pre></details></section><section class="card" id="s29">
-<div class="head"><span class="num">29</span><div><h2>TuskHitbox <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="29">Copy code</button><details><summary>Show code (76 lines)</summary><pre id="c29">--[[
+</pre></details></section><section class="card" id="s30">
+<div class="head"><span class="num">30</span><div><h2>TuskHitbox <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="30">Copy code</button><details><summary>Show code (76 lines)</summary><pre id="c30">--[[
 	TuskHitbox  (ServerScriptService.SpinServer.TuskHitbox)
 	Server-side spatial queries for melee and area attacks.
 	Returns unique characters (models with a Humanoid), nearest first.
@@ -5730,9 +5821,9 @@ function TuskHitbox.lineOfSight(fromPos, toPos, ignore)
 end
 
 return TuskHitbox
-</pre></details></section><section class="card" id="s30">
-<div class="head"><span class="num">30</span><div><h2>TuskMoves <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="30">Copy code</button><details><summary>Show code (257 lines)</summary><pre id="c30">--[[
+</pre></details></section><section class="card" id="s31">
+<div class="head"><span class="num">31</span><div><h2>TuskMoves <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="31">Copy code</button><details><summary>Show code (257 lines)</summary><pre id="c31">--[[
 	TuskMoves  (ServerScriptService.SpinServer.TuskMoves)
 
 	Shared server building blocks for every Tusk Act, so each Act module
@@ -5988,9 +6079,9 @@ end
 
 TuskMoves.Config = TuskConfig
 return TuskMoves
-</pre></details></section><section class="card" id="s31">
-<div class="head"><span class="num">31</span><div><h2>TuskService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="31">Copy code</button><details><summary>Show code (531 lines)</summary><pre id="c31">--[[
+</pre></details></section><section class="card" id="s32">
+<div class="head"><span class="num">32</span><div><h2>TuskService <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="32">Copy code</button><details><summary>Show code (531 lines)</summary><pre id="c32">--[[
 	TuskService  (ServerScriptService.SpinServer.TuskService)
 
 	Server brain for Tusk (the &quot;TuskController&quot; of the design doc):
@@ -6520,9 +6611,9 @@ function TuskService.init()
 end
 
 return TuskService
-</pre></details></section><section class="card" id="s32">
-<div class="head"><span class="num">32</span><div><h2>TuskSneakService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="32">Copy code</button><details><summary>Show code (258 lines)</summary><pre id="c32">--[[
+</pre></details></section><section class="card" id="s33">
+<div class="head"><span class="num">33</span><div><h2>TuskSneakService <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="33">Copy code</button><details><summary>Show code (258 lines)</summary><pre id="c33">--[[
 	TuskSneakService  (ServerScriptService.SpinServer.TuskSneakService)
 
 	Tusk Sneak (every Act): a crouched, slowed stalking state, plus the
@@ -6779,9 +6870,9 @@ function TuskSneakService.burrowStrike(player, state, target, a, source)
 end
 
 return TuskSneakService
-</pre></details></section><section class="card" id="s33">
-<div class="head"><span class="num">33</span><div><h2>SpinClient <span class="badge client">LocalScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts</b></p></div></div><button class="copy" data-i="33">Copy code</button><details><summary>Show code (24 lines)</summary><pre id="c33">--[[
+</pre></details></section><section class="card" id="s34">
+<div class="head"><span class="num">34</span><div><h2>SpinClient <span class="badge client">LocalScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts</b></p></div></div><button class="copy" data-i="34">Copy code</button><details><summary>Show code (24 lines)</summary><pre id="c34">--[[
 	SpinClient  (StarterPlayer.StarterPlayerScripts.SpinClient — LocalScript)
 	Boots every client system: hit feedback, settings, Stands, characters,
 	HUD, character card, NPC bubbles and map ambience.
@@ -6804,9 +6895,9 @@ TuskSneakController.init()
 TuskController.init()
 WorldClient.init()
 CharacterCard.init()
-</pre></details></section><section class="card" id="s34">
-<div class="head"><span class="num">34</span><div><h2>CameraFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="34">Copy code</button><details><summary>Show code (174 lines)</summary><pre id="c34">--[[
+</pre></details></section><section class="card" id="s35">
+<div class="head"><span class="num">35</span><div><h2>CameraFX <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="35">Copy code</button><details><summary>Show code (174 lines)</summary><pre id="c35">--[[
 	CameraFX  (StarterPlayerScripts.SpinClient.CameraFX)
 	Screen-space feedback: camera shake, FOV punch, anime speed lines and
 	short impact frames. All of it respects VFXQuality and cleans up.
@@ -6979,9 +7070,9 @@ function CameraFX.impactFrame(tint)
 end
 
 return CameraFX
-</pre></details></section><section class="card" id="s35">
-<div class="head"><span class="num">35</span><div><h2>HitFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="35">Copy code</button><details><summary>Show code (107 lines)</summary><pre id="c35">--[[
+</pre></details></section><section class="card" id="s36">
+<div class="head"><span class="num">36</span><div><h2>HitFX <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="36">Copy code</button><details><summary>Show code (107 lines)</summary><pre id="c36">--[[
 	HitFX  (StarterPlayerScripts.SpinClient.HitFX)
 	Feedback for every hit in the game (any character):
 	  * victim flash (white, or blue when blocked) + camera shake for the victim
@@ -7087,9 +7178,9 @@ function HitFX.init()
 end
 
 return HitFX
-</pre></details></section><section class="card" id="s36">
-<div class="head"><span class="num">36</span><div><h2>JointCache <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="36">Copy code</button><details><summary>Show code (50 lines)</summary><pre id="c36">--[[
+</pre></details></section><section class="card" id="s37">
+<div class="head"><span class="num">37</span><div><h2>JointCache <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="37">Copy code</button><details><summary>Show code (50 lines)</summary><pre id="c37">--[[
 	JointCache  (StarterPlayerScripts.SpinClient.JointCache)
 	Reads and writes a joint&#x27;s offset for the pose system, and remembers
 	each joint&#x27;s original offset the first time it is touched.
@@ -7138,9 +7229,9 @@ function JointCache.original(j)
 end
 
 return JointCache
-</pre></details></section><section class="card" id="s37">
-<div class="head"><span class="num">37</span><div><h2>TuskActCommon <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="37">Copy code</button><details><summary>Show code (211 lines)</summary><pre id="c37">--[[
+</pre></details></section><section class="card" id="s38">
+<div class="head"><span class="num">38</span><div><h2>TuskActCommon <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="38">Copy code</button><details><summary>Show code (211 lines)</summary><pre id="c38">--[[
 	TuskActCommon  (StarterPlayerScripts.SpinClient.TuskActCommon)
 
 	Shared client choreography used by every Act&#x27;s visual module:
@@ -7350,11 +7441,11 @@ function Common.actName(act)
 end
 
 return Common
-</pre></details></section><section class="card" id="s38">
-<div class="head"><span class="num">38</span><div><h2>TuskActVFX <span class="badge folder">Folder</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s39">
-<div class="head"><span class="num">39</span><div><h2>Act1 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="39">Copy code</button><details><summary>Show code (376 lines)</summary><pre id="c39">--[[
+</pre></details></section><section class="card" id="s39">
+<div class="head"><span class="num">39</span><div><h2>TuskActVFX <span class="badge folder">Folder</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s40">
+<div class="head"><span class="num">40</span><div><h2>Act1 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="40">Copy code</button><details><summary>Show code (376 lines)</summary><pre id="c40">--[[
 	TuskActVFX.Act1  (StarterPlayerScripts.SpinClient.TuskActVFX.Act1)
 
 	Client choreography for Tusk Act 1: poses, Stand motion, effects and
@@ -7729,9 +7820,9 @@ function Act1.step()
 end
 
 return Act1
-</pre></details></section><section class="card" id="s40">
-<div class="head"><span class="num">40</span><div><h2>Act2 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="40">Copy code</button><details><summary>Show code (106 lines)</summary><pre id="c40">--[[
+</pre></details></section><section class="card" id="s41">
+<div class="head"><span class="num">41</span><div><h2>Act2 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="41">Copy code</button><details><summary>Show code (106 lines)</summary><pre id="c41">--[[
 	TuskActVFX.Act2  (StarterPlayerScripts.SpinClient.TuskActVFX.Act2)
 	Client choreography for Tusk Act 2 (wormhole combat): cyan + violet
 	portals, spatial distortion, rotating nails through wormholes.
@@ -7836,9 +7927,9 @@ function Act2.handle(name, data)
 end
 
 return Act2
-</pre></details></section><section class="card" id="s41">
-<div class="head"><span class="num">41</span><div><h2>Act3 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="41">Copy code</button><details><summary>Show code (173 lines)</summary><pre id="c41">--[[
+</pre></details></section><section class="card" id="s42">
+<div class="head"><span class="num">42</span><div><h2>Act3 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="42">Copy code</button><details><summary>Show code (173 lines)</summary><pre id="c42">--[[
 	TuskActVFX.Act3  (StarterPlayerScripts.SpinClient.TuskActVFX.Act3)
 	Client choreography for Tusk Act 3 (spatial movement): deep-blue
 	layered portals, blue distortion afterimages, a tearing dimensional break.
@@ -8010,9 +8101,9 @@ function Act3.handle(name, data)
 end
 
 return Act3
-</pre></details></section><section class="card" id="s42">
-<div class="head"><span class="num">42</span><div><h2>Act4 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="42">Copy code</button><details><summary>Show code (304 lines)</summary><pre id="c42">--[[
+</pre></details></section><section class="card" id="s43">
+<div class="head"><span class="num">43</span><div><h2>Act4 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="43">Copy code</button><details><summary>Show code (304 lines)</summary><pre id="c43">--[[
 	TuskActVFX.Act4  (StarterPlayerScripts.SpinClient.TuskActVFX.Act4)
 	Client choreography for Tusk Act 4 (Infinite Rotation): gold and deep
 	blue, giant rotational rings, golden afterimages, distorted air, and the
@@ -8315,9 +8406,9 @@ function Act4.step()
 end
 
 return Act4
-</pre></details></section><section class="card" id="s43">
-<div class="head"><span class="num">43</span><div><h2>Diego <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="43">Copy code</button><details><summary>Show code (710 lines)</summary><pre id="c43">--[[
+</pre></details></section><section class="card" id="s44">
+<div class="head"><span class="num">44</span><div><h2>Diego <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="44">Copy code</button><details><summary>Show code (710 lines)</summary><pre id="c44">--[[
 	TuskActVFX.Diego  (StarterPlayerScripts.SpinClient.TuskActVFX.Diego)
 
 	Client visuals for Diego Brando / SCARY MONSTERS:
@@ -9026,9 +9117,9 @@ function Diego.step(dt)
 end
 
 return Diego
-</pre></details></section><section class="card" id="s44">
-<div class="head"><span class="num">44</span><div><h2>Gyro <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="44">Copy code</button><details><summary>Show code (1142 lines)</summary><pre id="c44">--[[
+</pre></details></section><section class="card" id="s45">
+<div class="head"><span class="num">45</span><div><h2>Gyro <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="45">Copy code</button><details><summary>Show code (1142 lines)</summary><pre id="c45">--[[
 	TuskActVFX.Gyro  (StarterPlayerScripts.SpinClient.TuskActVFX.Gyro)
 
 	Client visuals for Gyro Zeppeli (Steel Ball moveset):
@@ -10169,9 +10260,9 @@ Net.get(&quot;SpinFX&quot;).OnClientEvent:Connect(function(name, data)
 end)
 
 return Gyro
-</pre></details></section><section class="card" id="s45">
-<div class="head"><span class="num">45</span><div><h2>TuskAnimation <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="45">Copy code</button><details><summary>Show code (559 lines)</summary><pre id="c45">--[[
+</pre></details></section><section class="card" id="s46">
+<div class="head"><span class="num">46</span><div><h2>TuskAnimation <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="46">Copy code</button><details><summary>Show code (559 lines)</summary><pre id="c46">--[[
 	TuskAnimation  (StarterPlayerScripts.SpinClient.TuskAnimation)
 	(&quot;TuskAnimationController&quot; in the design doc)
 
@@ -10729,9 +10820,9 @@ Players.LocalPlayer.CharacterRemoving:Connect(function(character)
 end)
 
 return TuskAnimation
-</pre></details></section><section class="card" id="s46">
-<div class="head"><span class="num">46</span><div><h2>TuskController <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="46">Copy code</button><details><summary>Show code (243 lines)</summary><pre id="c46">--[[
+</pre></details></section><section class="card" id="s47">
+<div class="head"><span class="num">47</span><div><h2>TuskController <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="47">Copy code</button><details><summary>Show code (243 lines)</summary><pre id="c47">--[[
 	TuskController  (StarterPlayerScripts.SpinClient.TuskController)
 	(&quot;TuskAbilityController&quot; in the design doc)
 
@@ -10973,9 +11064,9 @@ function TuskController.init()
 end
 
 return TuskController
-</pre></details></section><section class="card" id="s47">
-<div class="head"><span class="num">47</span><div><h2>TuskProjectiles <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="47">Copy code</button><details><summary>Show code (270 lines)</summary><pre id="c47">--[[
+</pre></details></section><section class="card" id="s48">
+<div class="head"><span class="num">48</span><div><h2>TuskProjectiles <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="48">Copy code</button><details><summary>Show code (270 lines)</summary><pre id="c48">--[[
 	TuskProjectiles  (StarterPlayerScripts.SpinClient.TuskProjectiles)
 
 	Draws every server &quot;TuskNail&quot; projectile (ProjectileService events on
@@ -11244,9 +11335,9 @@ function TuskProjectiles.init()
 end
 
 return TuskProjectiles
-</pre></details></section><section class="card" id="s48">
-<div class="head"><span class="num">48</span><div><h2>TuskSneakController <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="48">Copy code</button><details><summary>Show code (280 lines)</summary><pre id="c48">--[[
+</pre></details></section><section class="card" id="s49">
+<div class="head"><span class="num">49</span><div><h2>TuskSneakController <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="49">Copy code</button><details><summary>Show code (280 lines)</summary><pre id="c49">--[[
 	TuskSneakController  (StarterPlayerScripts.SpinClient.TuskSneakController)
 
 	Client side of Tusk Sneak and the Sneak Attack, for every Act.
@@ -11525,9 +11616,9 @@ function TuskSneakController.init()
 end
 
 return TuskSneakController
-</pre></details></section><section class="card" id="s49">
-<div class="head"><span class="num">49</span><div><h2>TuskStand <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="49">Copy code</button><details><summary>Show code (269 lines)</summary><pre id="c49">--[[
+</pre></details></section><section class="card" id="s50">
+<div class="head"><span class="num">50</span><div><h2>TuskStand <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="50">Copy code</button><details><summary>Show code (269 lines)</summary><pre id="c50">--[[
 	TuskStand  (StarterPlayerScripts.SpinClient.TuskStand)
 
 	Builds and animates the Tusk Stand for every player whose character
@@ -11795,9 +11886,9 @@ function TuskStand.init()
 end
 
 return TuskStand
-</pre></details></section><section class="card" id="s50">
-<div class="head"><span class="num">50</span><div><h2>TuskVFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="50">Copy code</button><details><summary>Show code (1115 lines)</summary><pre id="c50">--[[
+</pre></details></section><section class="card" id="s51">
+<div class="head"><span class="num">51</span><div><h2>TuskVFX <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="51">Copy code</button><details><summary>Show code (1115 lines)</summary><pre id="c51">--[[
 	TuskVFX  (StarterPlayerScripts.SpinClient.TuskVFX)
 
 	Reusable procedural VFX framework for every Tusk Act (built on VFXLib).
@@ -12911,11 +13002,11 @@ function TuskVFX.IsNear(position, range)
 end
 
 return TuskVFX
-</pre></details></section><section class="card" id="s51">
-<div class="head"><span class="num">51</span><div><h2>UI <span class="badge folder">Folder</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s52">
-<div class="head"><span class="num">52</span><div><h2>CharacterCard <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="52">Copy code</button><details><summary>Show code (513 lines)</summary><pre id="c52">--[[
+</pre></details></section><section class="card" id="s52">
+<div class="head"><span class="num">52</span><div><h2>UI <span class="badge folder">Folder</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s53">
+<div class="head"><span class="num">53</span><div><h2>CharacterCard <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="53">Copy code</button><details><summary>Show code (513 lines)</summary><pre id="c53">--[[
 	CharacterCard  (StarterPlayerScripts.SpinClient.UI.CharacterCard)
 
 	Top-left character card:
@@ -13427,9 +13518,9 @@ function CharacterCard.step()
 end
 
 return CharacterCard
-</pre></details></section><section class="card" id="s53">
-<div class="head"><span class="num">53</span><div><h2>SettingsUI <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="53">Copy code</button><details><summary>Show code (70 lines)</summary><pre id="c53">--[[
+</pre></details></section><section class="card" id="s54">
+<div class="head"><span class="num">54</span><div><h2>SettingsUI <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="54">Copy code</button><details><summary>Show code (70 lines)</summary><pre id="c54">--[[
 	SettingsUI  (StarterPlayerScripts.SpinClient.UI.SettingsUI)
 	The small &quot;VFX: MEDIUM&quot; button (top right) that cycles Low / Medium / High.
 	Phones start on Low to keep the frame rate smooth.
@@ -13498,9 +13589,9 @@ function SettingsUI.init()
 end
 
 return SettingsUI
-</pre></details></section><section class="card" id="s54">
-<div class="head"><span class="num">54</span><div><h2>TuskUI <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="54">Copy code</button><details><summary>Show code (1038 lines)</summary><pre id="c54">--[[
+</pre></details></section><section class="card" id="s55">
+<div class="head"><span class="num">55</span><div><h2>TuskUI <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="55">Copy code</button><details><summary>Show code (1038 lines)</summary><pre id="c55">--[[
 	TuskUI  (StarterPlayerScripts.SpinClient.UI.TuskUI)
 
 	Battlegrounds-style move HUD (shown while Johnny or Gyro is equipped):
@@ -14537,9 +14628,9 @@ function TuskUI.onState(data)
 end
 
 return TuskUI
-</pre></details></section><section class="card" id="s55">
-<div class="head"><span class="num">55</span><div><h2>VFXLib <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="55">Copy code</button><details><summary>Show code (361 lines)</summary><pre id="c55">--[[
+</pre></details></section><section class="card" id="s56">
+<div class="head"><span class="num">56</span><div><h2>VFXLib <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="56">Copy code</button><details><summary>Show code (361 lines)</summary><pre id="c56">--[[
 	VFXLib  (StarterPlayerScripts.SpinClient.VFXLib)
 
 	Reusable procedural VFX building blocks. Built for Spin first, and meant
@@ -14899,9 +14990,9 @@ function VFXLib.sound(soundId, parentOrPosition, volume, pitch, looped)
 end
 
 return VFXLib
-</pre></details></section><section class="card" id="s56">
-<div class="head"><span class="num">56</span><div><h2>WorldClient <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="56">Copy code</button><details><summary>Show code (232 lines)</summary><pre id="c56">--[[
+</pre></details></section><section class="card" id="s57">
+<div class="head"><span class="num">57</span><div><h2>WorldClient <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="57">Copy code</button><details><summary>Show code (232 lines)</summary><pre id="c57">--[[
 	WorldClient  (StarterPlayerScripts.SpinClient.WorldClient)
 	Client side of the SBR map:
 	  * NPC speech bubbles (from NPCService &quot;NPCSay&quot;), shown within 60 studs
@@ -15132,11 +15223,11 @@ function WorldClient.init()
 end
 
 return WorldClient
-</pre></details></section><section class="card" id="s57">
-<div class="head"><span class="num">57</span><div><h2>SpinTools <span class="badge folder">Folder</span></h2>
-<p class="loc">Put it in: <b>ServerStorage</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s58">
-<div class="head"><span class="num">58</span><div><h2>SBRMapBuilder <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerStorage › SpinTools</b></p></div></div><button class="copy" data-i="58">Copy code</button><details><summary>Show code (1564 lines)</summary><pre id="c58">--[[
+</pre></details></section><section class="card" id="s58">
+<div class="head"><span class="num">58</span><div><h2>SpinTools <span class="badge folder">Folder</span></h2>
+<p class="loc">Put it in: <b>ServerStorage</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s59">
+<div class="head"><span class="num">59</span><div><h2>SBRMapBuilder <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerStorage › SpinTools</b></p></div></div><button class="copy" data-i="59">Copy code</button><details><summary>Show code (1564 lines)</summary><pre id="c59">--[[
 	SBRMapBuilder  (ServerStorage.SpinTools.SBRMapBuilder — ModuleScript)
 
 	One-time Studio tool that builds an original Steel Ball Run-style

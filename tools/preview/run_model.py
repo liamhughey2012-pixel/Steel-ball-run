@@ -10,12 +10,14 @@ TuskConfigSrc, ModelsSrc = ...
 """) if False else None
 cfg=open(src+"TuskConfig.lua").read()
 mdl=open(src+"TuskStandModels.lua").read()
-lua.globals().CFG_SRC=cfg; lua.globals().MDL_SRC=mdl
+blk=open(src+"Blockify.lua").read()
+lua.globals().CFG_SRC=cfg; lua.globals().MDL_SRC=mdl; lua.globals().BLK_SRC=blk
 lua.execute("""
 local TuskConfig = load(CFG_SRC)()
 local env = setmetatable({}, {__index=_G})
-env.script = { Parent = { TuskConfig = "CFG", FindFirstChild = function() return nil end } }
-env.require = function(x) return TuskConfig end
+local Blockify = load(BLK_SRC)()
+env.script = { Parent = { TuskConfig = "CFG", Blockify = "BLK", FindFirstChild = function() return nil end } }
+env.require = function(x) if x == "BLK" then return Blockify end return TuskConfig end
 local chunk = load(MDL_SRC, "models", "t", env)
 Models = chunk()
 """)

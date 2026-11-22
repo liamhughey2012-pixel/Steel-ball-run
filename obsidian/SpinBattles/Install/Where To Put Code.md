@@ -49,17 +49,18 @@ ServerStorage
 Used by both the server and players.
 | # | Script | Type | Put it in |
 |---|---|---|---|
-| 1 | [[Maid]] | ModuleScript | `ReplicatedStorage › SpinShared` |
-| 2 | [[NailModel]] | ModuleScript | `ReplicatedStorage › SpinShared` |
-| 3 | [[Net]] | ModuleScript | `ReplicatedStorage › SpinShared` |
-| 4 | [[RaptorModel]] | ModuleScript | `ReplicatedStorage › SpinShared` |
-| 5 | [[SpinConfig]] | ModuleScript | `ReplicatedStorage › SpinShared` |
-| 6 | [[SteelBallModel]] | ModuleScript | `ReplicatedStorage › SpinShared` |
-| 7 | [[TuskActRegistry]] | ModuleScript | `ReplicatedStorage › SpinShared` |
-| 8 | [[TuskConfig]] | ModuleScript | `ReplicatedStorage › SpinShared` |
-| 9 | [[TuskStandModels]] | ModuleScript | `ReplicatedStorage › SpinShared` |
-| 10 | [[VFXQuality]] | ModuleScript | `ReplicatedStorage › SpinShared` |
-| 11 | [[WreckingBallModel]] | ModuleScript | `ReplicatedStorage › SpinShared` |
+| 1 | [[Blockify]] | ModuleScript | `ReplicatedStorage › SpinShared` |
+| 2 | [[Maid]] | ModuleScript | `ReplicatedStorage › SpinShared` |
+| 3 | [[NailModel]] | ModuleScript | `ReplicatedStorage › SpinShared` |
+| 4 | [[Net]] | ModuleScript | `ReplicatedStorage › SpinShared` |
+| 5 | [[RaptorModel]] | ModuleScript | `ReplicatedStorage › SpinShared` |
+| 6 | [[SpinConfig]] | ModuleScript | `ReplicatedStorage › SpinShared` |
+| 7 | [[SteelBallModel]] | ModuleScript | `ReplicatedStorage › SpinShared` |
+| 8 | [[TuskActRegistry]] | ModuleScript | `ReplicatedStorage › SpinShared` |
+| 9 | [[TuskConfig]] | ModuleScript | `ReplicatedStorage › SpinShared` |
+| 10 | [[TuskStandModels]] | ModuleScript | `ReplicatedStorage › SpinShared` |
+| 11 | [[VFXQuality]] | ModuleScript | `ReplicatedStorage › SpinShared` |
+| 12 | [[WreckingBallModel]] | ModuleScript | `ReplicatedStorage › SpinShared` |
 
 ## Server: ServerScriptService › SpinServer
 Damage, cooldowns, projectiles, Tusk, Sneak, NPCs. Players can't see or change these.

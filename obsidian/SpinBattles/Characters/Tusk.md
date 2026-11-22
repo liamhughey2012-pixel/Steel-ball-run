@@ -31,3 +31,7 @@ Client: `TuskController` (input) → `TuskActVFX/ActN` (choreography), `TuskStan
 ## Johnny's animations (procedural)
 M1: right flick → left flick → finger-gun shot → overhead slam. Nail Shot: finger gun with recoil. Barrage: rapid alternating flicks. Underground Pursuit / Sneak Attack: dive into the ground. Nail Dimension: arms spread. Dimensional Step: lunge. Spatial Pursuit: sweep. Dimensional Break: crouch then two-hand push. Golden Spin Nail: spin wind-up. Golden Pursuit: dash punch.
 Real uploaded animations can replace any of these in `TuskConfig.AnimationIds`.
+
+## Blocky look
+All four Stands use a blocky (classic Roblox) look: every rounded piece is a box or square rod (`SpinShared.Blockify`). Turn it off with `TuskConfig.BlockyModels = false`. Custom Stand models from SpinAssets are never changed.
+![[blocky_models_preview.png]]

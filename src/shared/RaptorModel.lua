@@ -11,6 +11,7 @@
 
 	RaptorModel.build(scale, opts) -> rig
 	  opts.Lite = true   fewer details (teeth, crown, markings) for crowds
+	  opts.Blocky = false  keep rounded shapes (default: TuskConfig.BlockyModels)
 	  rig.Model          the Model (all parts anchored, no collision)
 	  rig:Pose(groundCF, s)  place every part. groundCF = point on the ground
 	                         under the hips, facing the way the raptor looks.
@@ -22,6 +23,9 @@
 	  rig:Destroy()
 	Size: about 8 studs tall at the head and 15 long at scale 1.
 ]]
+
+local TuskConfig = require(script.Parent.TuskConfig)
+local Blockify = require(script.Parent.Blockify)
 
 local RaptorModel = {}
 
@@ -209,6 +213,11 @@ function RaptorModel.build(scale, opts)
 		for c = -1, 1 do
 			add("Forearm" .. s, "Claw", Vector3.new(0.12, 0.55, 0.14), C.Yellow, CFrame.new(c * 0.15, -1.2, -0.12) * CFrame.Angles(0.6, 0, 0), { NoShadow = true })
 		end
+	end
+
+	-- Blocky (classic Roblox) look: boxes instead of rounded shapes.
+	if opts.Blocky ~= false and Blockify.enabled(TuskConfig) then
+		Blockify.apply(model)
 	end
 
 	local rig = { Model = model, Scale = scale, Entries = entries }

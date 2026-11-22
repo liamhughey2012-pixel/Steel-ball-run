@@ -49,6 +49,7 @@ Back to [[Where To Put Code]]
 ]]
 
 local TuskConfig = require(script.Parent.TuskConfig)
+local Blockify = require(script.Parent.Blockify)
 
 local TuskStandModels = {}
 
@@ -991,7 +992,12 @@ function TuskStandModels.build(act, scale)
 	if not builder then
 		return nil
 	end
-	return builder(scale)
+	local built, rig = builder(scale)
+	-- Blocky (classic Roblox) look for the procedural Stands; custom models are left as they are.
+	if built and Blockify.enabled(TuskConfig) then
+		Blockify.apply(built)
+	end
+	return built, rig
 end
 
 return TuskStandModels

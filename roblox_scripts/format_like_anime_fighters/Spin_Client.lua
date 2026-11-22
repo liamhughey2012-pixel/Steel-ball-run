@@ -1010,6 +1010,71 @@ return Act4
 end
 
 -- ======================================================================
+-- MODULE: Blockify
+-- ======================================================================
+__modules["Blockify"] = function()
+--[[
+	Blockify  (ReplicatedStorage.SpinShared.Blockify)
+
+	Turns a part-built model into a blocky (classic Roblox) look:
+	  * egg/sphere shapes (SpecialMesh Sphere, Ball parts) become boxes
+	  * cylinders become square rods
+	Sizes are trimmed so the boxes keep roughly the same silhouette as the
+	round shapes they replace. Part centres don't move, so welds, rigs and
+	animations keep working.
+	Used by the Tusk Stands and the Scary Monsters raptor when
+	TuskConfig.BlockyModels is true. A part with the attribute KeepRound
+	is left alone.
+]]
+
+local Blockify = {}
+
+local ROUND = 0.82 -- box edge vs. sphere diameter (similar volume / silhouette)
+local ROD = 0.88 -- square rod vs. cylinder diameter
+
+local function convert(part)
+	if part:GetAttribute("KeepRound") then
+		return
+	end
+	local mesh = part:FindFirstChildOfClass("SpecialMesh")
+	if mesh and mesh.MeshType == Enum.MeshType.Sphere then
+		mesh:Destroy()
+		part.Size = part.Size * ROUND
+		return
+	end
+	if part:IsA("Part") then
+		if part.Shape == Enum.PartType.Ball then
+			part.Shape = Enum.PartType.Block
+			part.Size = part.Size * ROUND
+		elseif part.Shape == Enum.PartType.Cylinder then
+			-- Cylinder length runs along X; the round sides become square.
+			part.Shape = Enum.PartType.Block
+			part.Size = Vector3.new(part.Size.X, part.Size.Y * ROD, part.Size.Z * ROD)
+		end
+	end
+end
+
+function Blockify.apply(model)
+	if model:IsA("BasePart") then
+		convert(model)
+	end
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			convert(d)
+		end
+	end
+	return model
+end
+
+-- True when the game wants blocky models (TuskConfig.BlockyModels, default on).
+function Blockify.enabled(config)
+	return not (config and config.BlockyModels == false)
+end
+
+return Blockify
+end
+
+-- ======================================================================
 -- MODULE: CameraFX
 -- ======================================================================
 __modules["CameraFX"] = function()
@@ -3961,6 +4026,7 @@ __modules["RaptorModel"] = function()
 
 	RaptorModel.build(scale, opts) -> rig
 	  opts.Lite = true   fewer details (teeth, crown, markings) for crowds
+	  opts.Blocky = false  keep rounded shapes (default: TuskConfig.BlockyModels)
 	  rig.Model          the Model (all parts anchored, no collision)
 	  rig:Pose(groundCF, s)  place every part. groundCF = point on the ground
 	                         under the hips, facing the way the raptor looks.
@@ -3972,6 +4038,9 @@ __modules["RaptorModel"] = function()
 	  rig:Destroy()
 	Size: about 8 studs tall at the head and 15 long at scale 1.
 ]]
+
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local Blockify = __require("Blockify")
 
 local RaptorModel = {}
 
@@ -4159,6 +4228,11 @@ function RaptorModel.build(scale, opts)
 		for c = -1, 1 do
 			add("Forearm" .. s, "Claw", Vector3.new(0.12, 0.55, 0.14), C.Yellow, CFrame.new(c * 0.15, -1.2, -0.12) * CFrame.Angles(0.6, 0, 0), { NoShadow = true })
 		end
+	end
+
+	-- Blocky (classic Roblox) look: boxes instead of rounded shapes.
+	if opts.Blocky ~= false and Blockify.enabled(TuskConfig) then
+		Blockify.apply(model)
 	end
 
 	local rig = { Model = model, Scale = scale, Entries = entries }
@@ -6554,6 +6628,7 @@ __modules["TuskStandModels"] = function()
 ]]
 
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local Blockify = __require("Blockify")
 
 local TuskStandModels = {}
 
@@ -7496,7 +7571,12 @@ function TuskStandModels.build(act, scale)
 	if not builder then
 		return nil
 	end
-	return builder(scale)
+	local built, rig = builder(scale)
+	-- Blocky (classic Roblox) look for the procedural Stands; custom models are left as they are.
+	if built and Blockify.enabled(TuskConfig) then
+		Blockify.apply(built)
+	end
+	return built, rig
 end
 
 return TuskStandModels

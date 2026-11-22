@@ -27,3 +27,6 @@ Server moves: `TuskActs/DiegoBrando`. Visuals: `TuskActVFX/Diego`. Raptor: `Spin
 - Transformed, the player's body is hidden and the raptor runs, sways its tail, snaps its jaws, rakes with its claws and whips its tail on each move.
 - HUD: the SCARY MONSTERS card shows "ACTIVE 7s" with a draining bar while transformed.
 - Hit sparks are blue for Diego.
+
+## Blocky look
+The raptor (and Diego's dino tail) are blocky like the Tusk Stands: boxes instead of rounded shapes (`TuskConfig.BlockyModels`, on by default). See [[Tusk]] for the comparison sheet.

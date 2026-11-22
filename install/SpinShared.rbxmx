@@ -1,4 +1,63 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Folder" referent="RBX12"><Properties><string name="Name">SpinShared</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">Maid</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Folder" referent="RBX13"><Properties><string name="Name">SpinShared</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">Blockify</string><ProtectedString name="Source"><![CDATA[--[[
+	Blockify  (ReplicatedStorage.SpinShared.Blockify)
+
+	Turns a part-built model into a blocky (classic Roblox) look:
+	  * egg/sphere shapes (SpecialMesh Sphere, Ball parts) become boxes
+	  * cylinders become square rods
+	Sizes are trimmed so the boxes keep roughly the same silhouette as the
+	round shapes they replace. Part centres don't move, so welds, rigs and
+	animations keep working.
+	Used by the Tusk Stands and the Scary Monsters raptor when
+	TuskConfig.BlockyModels is true. A part with the attribute KeepRound
+	is left alone.
+]]
+
+local Blockify = {}
+
+local ROUND = 0.82 -- box edge vs. sphere diameter (similar volume / silhouette)
+local ROD = 0.88 -- square rod vs. cylinder diameter
+
+local function convert(part)
+	if part:GetAttribute("KeepRound") then
+		return
+	end
+	local mesh = part:FindFirstChildOfClass("SpecialMesh")
+	if mesh and mesh.MeshType == Enum.MeshType.Sphere then
+		mesh:Destroy()
+		part.Size = part.Size * ROUND
+		return
+	end
+	if part:IsA("Part") then
+		if part.Shape == Enum.PartType.Ball then
+			part.Shape = Enum.PartType.Block
+			part.Size = part.Size * ROUND
+		elseif part.Shape == Enum.PartType.Cylinder then
+			-- Cylinder length runs along X; the round sides become square.
+			part.Shape = Enum.PartType.Block
+			part.Size = Vector3.new(part.Size.X, part.Size.Y * ROD, part.Size.Z * ROD)
+		end
+	end
+end
+
+function Blockify.apply(model)
+	if model:IsA("BasePart") then
+		convert(model)
+	end
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			convert(d)
+		end
+	end
+	return model
+end
+
+-- True when the game wants blocky models (TuskConfig.BlockyModels, default on).
+function Blockify.enabled(config)
+	return not (config and config.BlockyModels == false)
+end
+
+return Blockify
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX2"><Properties><string name="Name">Maid</string><ProtectedString name="Source"><![CDATA[--[[
 	Maid  (ReplicatedStorage.SpinShared.Maid)
 	Tracks connections, instances and cleanup functions so effects always end.
 ]]
@@ -39,7 +98,7 @@ end
 Maid.Destroy = Maid.Clean
 
 return Maid
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX2"><Properties><string name="Name">NailModel</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX3"><Properties><string name="Name">NailModel</string><ProtectedString name="Source"><![CDATA[--[[
 	NailModel  (ReplicatedStorage.SpinShared.NailModel)
 
 	Procedural fingernail-bullet used by every Tusk nail attack: a metal
@@ -138,7 +197,7 @@ function NailModel.build(length)
 end
 
 return NailModel
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX3"><Properties><string name="Name">Net</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX4"><Properties><string name="Name">Net</string><ProtectedString name="Source"><![CDATA[--[[
 	Net  (ReplicatedStorage.SpinShared.Net)
 
 	Creates (server) or waits for (client) the RemoteEvents used by the
@@ -189,7 +248,7 @@ function Net.get(name)
 end
 
 return Net
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX4"><Properties><string name="Name">RaptorModel</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX5"><Properties><string name="Name">RaptorModel</string><ProtectedString name="Source"><![CDATA[--[[
 	RaptorModel  (ReplicatedStorage.SpinShared.RaptorModel)
 
 	Scary Monsters' raptor, built from parts (from the owner's references):
@@ -202,6 +261,7 @@ return Net
 
 	RaptorModel.build(scale, opts) -> rig
 	  opts.Lite = true   fewer details (teeth, crown, markings) for crowds
+	  opts.Blocky = false  keep rounded shapes (default: TuskConfig.BlockyModels)
 	  rig.Model          the Model (all parts anchored, no collision)
 	  rig:Pose(groundCF, s)  place every part. groundCF = point on the ground
 	                         under the hips, facing the way the raptor looks.
@@ -213,6 +273,9 @@ return Net
 	  rig:Destroy()
 	Size: about 8 studs tall at the head and 15 long at scale 1.
 ]]
+
+local TuskConfig = require(script.Parent.TuskConfig)
+local Blockify = require(script.Parent.Blockify)
 
 local RaptorModel = {}
 
@@ -402,6 +465,11 @@ function RaptorModel.build(scale, opts)
 		end
 	end
 
+	-- Blocky (classic Roblox) look: boxes instead of rounded shapes.
+	if opts.Blocky ~= false and Blockify.enabled(TuskConfig) then
+		Blockify.apply(model)
+	end
+
 	local rig = { Model = model, Scale = scale, Entries = entries }
 
 	local function bonesFor(ground, s)
@@ -503,7 +571,7 @@ function RaptorModel.build(scale, opts)
 end
 
 return RaptorModel
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX5"><Properties><string name="Name">SpinConfig</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX6"><Properties><string name="Name">SpinConfig</string><ProtectedString name="Source"><![CDATA[--[[
 	SpinConfig  (ReplicatedStorage.SpinShared.SpinConfig)
 
 	Steel Ball colours and Studio test-dummy settings. (The old Golden Spin
@@ -653,7 +721,7 @@ function SpinConfig.getLevel(chargeTime, tolerance)
 end
 
 return SpinConfig
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX6"><Properties><string name="Name">SteelBallModel</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX7"><Properties><string name="Name">SteelBallModel</string><ProtectedString name="Source"><![CDATA[--[[
 	SteelBallModel  (ReplicatedStorage.SpinShared.SteelBallModel)
 
 	Procedurally builds the Steel Ball from the owner's reference images:
@@ -851,7 +919,7 @@ function SteelBallModel.build(diameter, detailed)
 end
 
 return SteelBallModel
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX7"><Properties><string name="Name">TuskActRegistry</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX8"><Properties><string name="Name">TuskActRegistry</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActRegistry  (ReplicatedStorage.SpinShared.TuskActRegistry)
 
 	The list of Tusk Acts: names, slot labels, themes and whether each
@@ -966,7 +1034,7 @@ function TuskActRegistry.isImplemented(act)
 end
 
 return TuskActRegistry
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX8"><Properties><string name="Name">TuskConfig</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX9"><Properties><string name="Name">TuskConfig</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskConfig  (ReplicatedStorage.SpinShared.TuskConfig)
 
 	Every tunable number for Tusk. The server uses it for damage, timing,
@@ -1032,6 +1100,10 @@ TuskConfig.Ultimate = {
 -- faces the wrong way (degrees, e.g. Vector3.new(0, 180, 0)).
 -- Any Scripts inside a loaded model are removed for safety.
 ---------------------------------------------------------------------------
+-- Blocky (classic Roblox) look for the Tusk Stands and the Scary Monsters
+-- raptor: boxes instead of rounded shapes. false = smooth rounded models.
+TuskConfig.BlockyModels = true
+
 TuskConfig.StandModels = {
 	[1] = {
 		AssetId = 0, -- set 8768080824 to use the "Tusk1" store model instead
@@ -1376,7 +1448,7 @@ TuskConfig.Colors = {
 }
 
 return TuskConfig
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX9"><Properties><string name="Name">TuskStandModels</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX10"><Properties><string name="Name">TuskStandModels</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskStandModels  (ReplicatedStorage.SpinShared.TuskStandModels)
 
 	Builds the Tusk Stand for each Act. Built on each client (visual only),
@@ -1401,6 +1473,7 @@ return TuskConfig
 ]]
 
 local TuskConfig = require(script.Parent.TuskConfig)
+local Blockify = require(script.Parent.Blockify)
 
 local TuskStandModels = {}
 
@@ -2343,11 +2416,16 @@ function TuskStandModels.build(act, scale)
 	if not builder then
 		return nil
 	end
-	return builder(scale)
+	local built, rig = builder(scale)
+	-- Blocky (classic Roblox) look for the procedural Stands; custom models are left as they are.
+	if built and Blockify.enabled(TuskConfig) then
+		Blockify.apply(built)
+	end
+	return built, rig
 end
 
 return TuskStandModels
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX10"><Properties><string name="Name">VFXQuality</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX11"><Properties><string name="Name">VFXQuality</string><ProtectedString name="Source"><![CDATA[--[[
 	VFXQuality  (ReplicatedStorage.SpinShared.VFXQuality)
 
 	Per-player visual quality. Purely client-side: it never changes gameplay.
@@ -2420,7 +2498,7 @@ function VFXQuality.cycle()
 end
 
 return VFXQuality
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX11"><Properties><string name="Name">WreckingBallModel</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX12"><Properties><string name="Name">WreckingBallModel</string><ProtectedString name="Source"><![CDATA[--[[
 	WreckingBallModel  (ReplicatedStorage.SpinShared.WreckingBallModel)
 
 	Procedurally builds a Wrecking Ball from the owner's reference image:

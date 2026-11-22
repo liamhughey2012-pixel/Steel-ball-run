@@ -9,7 +9,72 @@ Names must match exactly (capital letters too).
 
 _Empty folder: nothing to paste._
 
-## 2. Maid  (ModuleScript)
+## 2. Blockify  (ModuleScript)
+**Put it in:** `ReplicatedStorage › SpinShared`
+
+```lua
+--[[
+	Blockify  (ReplicatedStorage.SpinShared.Blockify)
+
+	Turns a part-built model into a blocky (classic Roblox) look:
+	  * egg/sphere shapes (SpecialMesh Sphere, Ball parts) become boxes
+	  * cylinders become square rods
+	Sizes are trimmed so the boxes keep roughly the same silhouette as the
+	round shapes they replace. Part centres don't move, so welds, rigs and
+	animations keep working.
+	Used by the Tusk Stands and the Scary Monsters raptor when
+	TuskConfig.BlockyModels is true. A part with the attribute KeepRound
+	is left alone.
+]]
+
+local Blockify = {}
+
+local ROUND = 0.82 -- box edge vs. sphere diameter (similar volume / silhouette)
+local ROD = 0.88 -- square rod vs. cylinder diameter
+
+local function convert(part)
+	if part:GetAttribute("KeepRound") then
+		return
+	end
+	local mesh = part:FindFirstChildOfClass("SpecialMesh")
+	if mesh and mesh.MeshType == Enum.MeshType.Sphere then
+		mesh:Destroy()
+		part.Size = part.Size * ROUND
+		return
+	end
+	if part:IsA("Part") then
+		if part.Shape == Enum.PartType.Ball then
+			part.Shape = Enum.PartType.Block
+			part.Size = part.Size * ROUND
+		elseif part.Shape == Enum.PartType.Cylinder then
+			-- Cylinder length runs along X; the round sides become square.
+			part.Shape = Enum.PartType.Block
+			part.Size = Vector3.new(part.Size.X, part.Size.Y * ROD, part.Size.Z * ROD)
+		end
+	end
+end
+
+function Blockify.apply(model)
+	if model:IsA("BasePart") then
+		convert(model)
+	end
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			convert(d)
+		end
+	end
+	return model
+end
+
+-- True when the game wants blocky models (TuskConfig.BlockyModels, default on).
+function Blockify.enabled(config)
+	return not (config and config.BlockyModels == false)
+end
+
+return Blockify
+```
+
+## 3. Maid  (ModuleScript)
 **Put it in:** `ReplicatedStorage › SpinShared`
 
 ```lua
@@ -56,7 +121,7 @@ Maid.Destroy = Maid.Clean
 return Maid
 ```
 
-## 3. NailModel  (ModuleScript)
+## 4. NailModel  (ModuleScript)
 **Put it in:** `ReplicatedStorage › SpinShared`
 
 ```lua
@@ -161,7 +226,7 @@ end
 return NailModel
 ```
 
-## 4. Net  (ModuleScript)
+## 5. Net  (ModuleScript)
 **Put it in:** `ReplicatedStorage › SpinShared`
 
 ```lua
@@ -218,7 +283,7 @@ end
 return Net
 ```
 
-## 5. RaptorModel  (ModuleScript)
+## 6. RaptorModel  (ModuleScript)
 **Put it in:** `ReplicatedStorage › SpinShared`
 
 ```lua
@@ -235,6 +300,7 @@ return Net
 
 	RaptorModel.build(scale, opts) -> rig
 	  opts.Lite = true   fewer details (teeth, crown, markings) for crowds
+	  opts.Blocky = false  keep rounded shapes (default: TuskConfig.BlockyModels)
 	  rig.Model          the Model (all parts anchored, no collision)
 	  rig:Pose(groundCF, s)  place every part. groundCF = point on the ground
 	                         under the hips, facing the way the raptor looks.
@@ -246,6 +312,9 @@ return Net
 	  rig:Destroy()
 	Size: about 8 studs tall at the head and 15 long at scale 1.
 ]]
+
+local TuskConfig = require(script.Parent.TuskConfig)
+local Blockify = require(script.Parent.Blockify)
 
 local RaptorModel = {}
 
@@ -435,6 +504,11 @@ function RaptorModel.build(scale, opts)
 		end
 	end
 
+	-- Blocky (classic Roblox) look: boxes instead of rounded shapes.
+	if opts.Blocky ~= false and Blockify.enabled(TuskConfig) then
+		Blockify.apply(model)
+	end
+
 	local rig = { Model = model, Scale = scale, Entries = entries }
 
 	local function bonesFor(ground, s)
@@ -538,7 +612,7 @@ end
 return RaptorModel
 ```
 
-## 6. SpinConfig  (ModuleScript)
+## 7. SpinConfig  (ModuleScript)
 **Put it in:** `ReplicatedStorage › SpinShared`
 
 ```lua
@@ -694,7 +768,7 @@ end
 return SpinConfig
 ```
 
-## 7. SteelBallModel  (ModuleScript)
+## 8. SteelBallModel  (ModuleScript)
 **Put it in:** `ReplicatedStorage › SpinShared`
 
 ```lua
@@ -898,7 +972,7 @@ end
 return SteelBallModel
 ```
 
-## 8. TuskActRegistry  (ModuleScript)
+## 9. TuskActRegistry  (ModuleScript)
 **Put it in:** `ReplicatedStorage › SpinShared`
 
 ```lua
@@ -1019,7 +1093,7 @@ end
 return TuskActRegistry
 ```
 
-## 9. TuskConfig  (ModuleScript)
+## 10. TuskConfig  (ModuleScript)
 **Put it in:** `ReplicatedStorage › SpinShared`
 
 ```lua
@@ -1089,6 +1163,10 @@ TuskConfig.Ultimate = {
 -- faces the wrong way (degrees, e.g. Vector3.new(0, 180, 0)).
 -- Any Scripts inside a loaded model are removed for safety.
 ---------------------------------------------------------------------------
+-- Blocky (classic Roblox) look for the Tusk Stands and the Scary Monsters
+-- raptor: boxes instead of rounded shapes. false = smooth rounded models.
+TuskConfig.BlockyModels = true
+
 TuskConfig.StandModels = {
 	[1] = {
 		AssetId = 0, -- set 8768080824 to use the "Tusk1" store model instead
@@ -1435,7 +1513,7 @@ TuskConfig.Colors = {
 return TuskConfig
 ```
 
-## 10. TuskStandModels  (ModuleScript)
+## 11. TuskStandModels  (ModuleScript)
 **Put it in:** `ReplicatedStorage › SpinShared`
 
 ```lua
@@ -1464,6 +1542,7 @@ return TuskConfig
 ]]
 
 local TuskConfig = require(script.Parent.TuskConfig)
+local Blockify = require(script.Parent.Blockify)
 
 local TuskStandModels = {}
 
@@ -2406,13 +2485,18 @@ function TuskStandModels.build(act, scale)
 	if not builder then
 		return nil
 	end
-	return builder(scale)
+	local built, rig = builder(scale)
+	-- Blocky (classic Roblox) look for the procedural Stands; custom models are left as they are.
+	if built and Blockify.enabled(TuskConfig) then
+		Blockify.apply(built)
+	end
+	return built, rig
 end
 
 return TuskStandModels
 ```
 
-## 11. VFXQuality  (ModuleScript)
+## 12. VFXQuality  (ModuleScript)
 **Put it in:** `ReplicatedStorage › SpinShared`
 
 ```lua
@@ -2491,7 +2575,7 @@ end
 return VFXQuality
 ```
 
-## 12. WreckingBallModel  (ModuleScript)
+## 13. WreckingBallModel  (ModuleScript)
 **Put it in:** `ReplicatedStorage › SpinShared`
 
 ```lua
@@ -2676,7 +2760,7 @@ end
 return WreckingBallModel
 ```
 
-## 13. SpinServer  (Script)
+## 14. SpinServer  (Script)
 **Put it in:** `ServerScriptService`
 
 ```lua
@@ -2706,7 +2790,7 @@ NPCService.init()
 TestDummies.init()
 ```
 
-## 14. CombatAdapter  (ModuleScript)
+## 15. CombatAdapter  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -2953,7 +3037,7 @@ end
 return Adapter
 ```
 
-## 15. CooldownService  (ModuleScript)
+## 16. CooldownService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -3003,7 +3087,7 @@ end)
 return CooldownService
 ```
 
-## 16. DiegoOutfit  (ModuleScript)
+## 17. DiegoOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -3023,6 +3107,9 @@ return CooldownService
 ]]
 
 local Players = game:GetService("Players")
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local Blockify = require(Shared.Blockify)
 
 local DiegoOutfit = {}
 DiegoOutfit.DiegoAct = 6
@@ -3166,6 +3253,14 @@ function DiegoOutfit.apply(character)
 	cap(head, outfit)
 	hair(head, outfit)
 	tail(character, outfit)
+	-- The dinosaur tail is Scary Monsters' and follows its blocky look.
+	if Blockify.enabled(TuskConfig) then
+		for _, p in ipairs(outfit:GetChildren()) do
+			if p.Name:sub(1, 4) == "Tail" then
+				Blockify.apply(p)
+			end
+		end
+	end
 end
 
 function DiegoOutfit.remove(character)
@@ -3217,7 +3312,7 @@ end
 return DiegoOutfit
 ```
 
-## 17. GyroOutfit  (ModuleScript)
+## 18. GyroOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -3413,7 +3508,7 @@ end
 return GyroOutfit
 ```
 
-## 18. NPCService  (ModuleScript)
+## 19. NPCService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -3633,7 +3728,7 @@ end
 return NPCService
 ```
 
-## 19. ProjectileService  (ModuleScript)
+## 20. ProjectileService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -3834,7 +3929,7 @@ end)
 return ProjectileService
 ```
 
-## 20. StandAssetLoader  (ModuleScript)
+## 21. StandAssetLoader  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -3924,7 +4019,7 @@ end
 return StandAssetLoader
 ```
 
-## 21. TestDummies  (ModuleScript)
+## 22. TestDummies  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -3989,12 +4084,12 @@ end
 return TestDummies
 ```
 
-## 22. TuskActs  (Folder)
+## 23. TuskActs  (Folder)
 **Put it in:** `ServerScriptService › SpinServer`
 
 _Empty folder: nothing to paste._
 
-## 23. DiegoBrando  (ModuleScript)
+## 24. DiegoBrando  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -4328,7 +4423,7 @@ end
 return Diego
 ```
 
-## 24. GyroZeppeli  (ModuleScript)
+## 25. GyroZeppeli  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -4652,7 +4747,7 @@ end
 return Gyro
 ```
 
-## 25. TuskAct1  (ModuleScript)
+## 26. TuskAct1  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -5012,7 +5107,7 @@ end
 return Act1
 ```
 
-## 26. TuskAct2  (ModuleScript)
+## 27. TuskAct2  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -5285,7 +5380,7 @@ end
 return Act2
 ```
 
-## 27. TuskAct3  (ModuleScript)
+## 28. TuskAct3  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -5476,7 +5571,7 @@ end
 return Act3
 ```
 
-## 28. TuskAct4  (ModuleScript)
+## 29. TuskAct4  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -5749,7 +5844,7 @@ end
 return Act4
 ```
 
-## 29. TuskHitbox  (ModuleScript)
+## 30. TuskHitbox  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5830,7 +5925,7 @@ end
 return TuskHitbox
 ```
 
-## 30. TuskMoves  (ModuleScript)
+## 31. TuskMoves  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6092,7 +6187,7 @@ TuskMoves.Config = TuskConfig
 return TuskMoves
 ```
 
-## 31. TuskService  (ModuleScript)
+## 32. TuskService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6628,7 +6723,7 @@ end
 return TuskService
 ```
 
-## 32. TuskSneakService  (ModuleScript)
+## 33. TuskSneakService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6891,7 +6986,7 @@ end
 return TuskSneakService
 ```
 
-## 33. SpinClient  (LocalScript)
+## 34. SpinClient  (LocalScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts`
 
 ```lua
@@ -6920,7 +7015,7 @@ WorldClient.init()
 CharacterCard.init()
 ```
 
-## 34. CameraFX  (ModuleScript)
+## 35. CameraFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -7099,7 +7194,7 @@ end
 return CameraFX
 ```
 
-## 35. HitFX  (ModuleScript)
+## 36. HitFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -7211,7 +7306,7 @@ end
 return HitFX
 ```
 
-## 36. JointCache  (ModuleScript)
+## 37. JointCache  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -7266,7 +7361,7 @@ end
 return JointCache
 ```
 
-## 37. TuskActCommon  (ModuleScript)
+## 38. TuskActCommon  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -7482,12 +7577,12 @@ end
 return Common
 ```
 
-## 38. TuskActVFX  (Folder)
+## 39. TuskActVFX  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 39. Act1  (ModuleScript)
+## 40. Act1  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -7868,7 +7963,7 @@ end
 return Act1
 ```
 
-## 40. Act2  (ModuleScript)
+## 41. Act2  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -7979,7 +8074,7 @@ end
 return Act2
 ```
 
-## 41. Act3  (ModuleScript)
+## 42. Act3  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -8157,7 +8252,7 @@ end
 return Act3
 ```
 
-## 42. Act4  (ModuleScript)
+## 43. Act4  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -8466,7 +8561,7 @@ end
 return Act4
 ```
 
-## 43. Diego  (ModuleScript)
+## 44. Diego  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -9181,7 +9276,7 @@ end
 return Diego
 ```
 
-## 44. Gyro  (ModuleScript)
+## 45. Gyro  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -10328,7 +10423,7 @@ end)
 return Gyro
 ```
 
-## 45. TuskAnimation  (ModuleScript)
+## 46. TuskAnimation  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -10892,7 +10987,7 @@ end)
 return TuskAnimation
 ```
 
-## 46. TuskController  (ModuleScript)
+## 47. TuskController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -11140,7 +11235,7 @@ end
 return TuskController
 ```
 
-## 47. TuskProjectiles  (ModuleScript)
+## 48. TuskProjectiles  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -11415,7 +11510,7 @@ end
 return TuskProjectiles
 ```
 
-## 48. TuskSneakController  (ModuleScript)
+## 49. TuskSneakController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -11700,7 +11795,7 @@ end
 return TuskSneakController
 ```
 
-## 49. TuskStand  (ModuleScript)
+## 50. TuskStand  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -11974,7 +12069,7 @@ end
 return TuskStand
 ```
 
-## 50. TuskVFX  (ModuleScript)
+## 51. TuskVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -13094,12 +13189,12 @@ end
 return TuskVFX
 ```
 
-## 51. UI  (Folder)
+## 52. UI  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 52. CharacterCard  (ModuleScript)
+## 53. CharacterCard  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -13617,7 +13712,7 @@ end
 return CharacterCard
 ```
 
-## 53. SettingsUI  (ModuleScript)
+## 54. SettingsUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -13692,7 +13787,7 @@ end
 return SettingsUI
 ```
 
-## 54. TuskUI  (ModuleScript)
+## 55. TuskUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -14735,7 +14830,7 @@ end
 return TuskUI
 ```
 
-## 55. VFXLib  (ModuleScript)
+## 56. VFXLib  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -15101,7 +15196,7 @@ end
 return VFXLib
 ```
 
-## 56. WorldClient  (ModuleScript)
+## 57. WorldClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -15338,12 +15433,12 @@ end
 return WorldClient
 ```
 
-## 57. SpinTools  (Folder)
+## 58. SpinTools  (Folder)
 **Put it in:** `ServerStorage`
 
 _Empty folder: nothing to paste._
 
-## 58. SBRMapBuilder  (ModuleScript)
+## 59. SBRMapBuilder  (ModuleScript)
 **Put it in:** `ServerStorage › SpinTools`
 
 ```lua

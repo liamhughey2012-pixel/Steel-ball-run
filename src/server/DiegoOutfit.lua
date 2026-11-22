@@ -14,6 +14,9 @@
 ]]
 
 local Players = game:GetService("Players")
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local Blockify = require(Shared.Blockify)
 
 local DiegoOutfit = {}
 DiegoOutfit.DiegoAct = 6
@@ -157,6 +160,14 @@ function DiegoOutfit.apply(character)
 	cap(head, outfit)
 	hair(head, outfit)
 	tail(character, outfit)
+	-- The dinosaur tail is Scary Monsters' and follows its blocky look.
+	if Blockify.enabled(TuskConfig) then
+		for _, p in ipairs(outfit:GetChildren()) do
+			if p.Name:sub(1, 4) == "Tail" then
+				Blockify.apply(p)
+			end
+		end
+	end
 end
 
 function DiegoOutfit.remove(character)
