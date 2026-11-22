@@ -9230,7 +9230,7 @@ return TuskVFX
 <div class="head"><span class="num">47</span><div><h2>UI <span class="badge folder">Folder</span></h2>
 <p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s48">
 <div class="head"><span class="num">48</span><div><h2>CharacterCard <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="48">Copy code</button><details><summary>Show code (488 lines)</summary><pre id="c48">--[[
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="48">Copy code</button><details><summary>Show code (490 lines)</summary><pre id="c48">--[[
 	CharacterCard  (StarterPlayerScripts.SpinClient.UI.CharacterCard)
 
 	Top-left character card:
@@ -9263,6 +9263,8 @@ local GOLD = Color3.fromRGB(255, 205, 90)
 
 local gui, card, portrait, viewport, standLabel, pips, hpFill, hpText, scale, arrow
 local dropdown, dropdownList, actRows, rosterRows
+-- Declared up here so init() can call them (they are defined further down).
+local buildDropdown, refreshDropdown
 local shownAct
 local open = false
 local Net = require(Shared.Net)
@@ -9513,7 +9515,7 @@ local function chip(parent, text, color, textColor)
 	return c
 end
 
-local function buildDropdown()
+function buildDropdown()
 	dropdown = Instance.new(&quot;Frame&quot;)
 	dropdown.Name = &quot;CharacterList&quot;
 	dropdown.Position = UDim2.fromOffset(12, 112)
@@ -9618,7 +9620,7 @@ local function buildDropdown()
 	end
 end
 
-local function refreshDropdown(act)
+function refreshDropdown(act)
 	if not dropdown then
 		return
 	end

@@ -9435,6 +9435,8 @@ local GOLD = Color3.fromRGB(255, 205, 90)
 
 local gui, card, portrait, viewport, standLabel, pips, hpFill, hpText, scale, arrow
 local dropdown, dropdownList, actRows, rosterRows
+-- Declared up here so init() can call them (they are defined further down).
+local buildDropdown, refreshDropdown
 local shownAct
 local open = false
 local Net = require(Shared.Net)
@@ -9685,7 +9687,7 @@ local function chip(parent, text, color, textColor)
 	return c
 end
 
-local function buildDropdown()
+function buildDropdown()
 	dropdown = Instance.new("Frame")
 	dropdown.Name = "CharacterList"
 	dropdown.Position = UDim2.fromOffset(12, 112)
@@ -9790,7 +9792,7 @@ local function buildDropdown()
 	end
 end
 
-local function refreshDropdown(act)
+function refreshDropdown(act)
 	if not dropdown then
 		return
 	end
