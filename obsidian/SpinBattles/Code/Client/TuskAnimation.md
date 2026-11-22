@@ -120,6 +120,7 @@ TuskAnimation.Actions = {
 	SpinningNailRelease = { { 0, "ChargeNail" }, { 0.06, "PointRecoil" }, { 0.4, "Point" } },
 	Awakening = { { 0, "Rest" }, { 0.35, "AwakenCrouch" }, { 1.2, "AwakenCrouch" }, { 1.45, "AwakenRise" }, { 2.2, "AwakenRise" } },
 	Emerge = { { 0, "Sneak" }, { 0.12, "Emerge" }, { 0.5, "Emerge" } },
+	Throw = { { 0, "Rest" }, { 0.14, "SlamWindup" }, { 0.24, "Point" }, { 0.5, "Point" } },
 }
 
 local states = setmetatable({}, { __mode = "k" }) -- character -> { Hold, ActionJob, Tracks }

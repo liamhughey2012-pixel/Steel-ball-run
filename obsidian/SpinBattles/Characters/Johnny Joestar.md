@@ -7,6 +7,6 @@ Top-left card: portrait, **JOHNNY JOESTAR** name plate, current Stand ("STAND ·
 
 - Settings: `TuskConfig.Character` (Name, Title, PortraitImage)
 - Portrait: a live 3D view of your avatar by default. To use a drawn portrait, upload the image and paste `rbxassetid://...` into `PortraitImage`.
-- **Dropdown:** tap the card to open the character list. Johnny Joestar expands into Tusk Acts 1–4 with their moves; your current Act says "YOU ARE HERE". Gyro Zeppeli is listed as IN DEVELOPMENT.
+- **Dropdown:** tap the card to open the character list. Johnny Joestar expands into Tusk Acts 1–4 with their moves; your current Act says "YOU ARE HERE". Gyro Zeppeli is playable too: press SELECT on his row to switch. The card shows whoever you are playing.
 - Roster settings: `TuskConfig.Roster`
 - Code: `CharacterCard` (client)

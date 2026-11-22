@@ -36,3 +36,8 @@ updated: 2026-11-22
 - [ ] Top left shows JOHNNY JOESTAR, your avatar, the Stand name, 4 pips, health
 ## Map 2
 - [ ] Train, station, mine, oasis, horses, windmill spinning, vultures, tumbleweeds
+## Gyro Zeppeli
+- [ ] Card ▼ → GYRO ZEPPELI → SELECT: card says GYRO ZEPPELI / STEEL BALL USER, HUD shows his moves, green ball spins in his hand
+- [ ] M1 ×4, 1 throw + return, 2 wrecking balls slow dummies, 3 spin vibration stuns, G Ball Breaker vortex pulls and bursts
+- [ ] Switch back to Johnny: Tusk Act 1 returns
+- [ ] R does nothing now (Golden Spin removed)

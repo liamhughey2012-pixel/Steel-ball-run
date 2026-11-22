@@ -259,7 +259,7 @@ function TuskUI.init(cb)
 	hud = Instance.new("Frame")
 	hud.Name = "HUD"
 	hud.AnchorPoint = Vector2.new(0.5, 1)
-	hud.Position = UDim2.new(0.5, 0, 1, -92) -- sits above the Golden Spin panel
+	hud.Position = UDim2.new(0.5, 0, 1, -24)
 	hud.Size = UDim2.new(0.92, 0, 0, 150)
 	hud.BackgroundTransparency = 1
 	hud.Visible = false
@@ -330,7 +330,7 @@ function TuskUI.init(cb)
 	-- Combo counter (right side of the screen).
 	comboLabel = text(gui, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -24, 0.42, 0), Size = UDim2.fromOffset(220, 60), Font = TITLE_FONT, TextSize = 48, TextColor3 = colors.Ice, TextXAlignment = Enum.TextXAlignment.Right, TextTransparency = 1, TextStrokeTransparency = 1, Text = "" })
 
-	toastLabel = text(gui, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -250), Size = UDim2.fromOffset(400, 26), TextSize = 18, TextTransparency = 1, TextStrokeTransparency = 1, Text = "" })
+	toastLabel = text(gui, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -185), Size = UDim2.fromOffset(400, 26), TextSize = 18, TextTransparency = 1, TextStrokeTransparency = 1, Text = "" })
 
 	-- Transformation banner.
 	banner = text(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.25), Size = UDim2.fromOffset(700, 80), Font = TITLE_FONT, TextSize = 72, TextColor3 = colors.Cyan, TextTransparency = 1, TextStrokeTransparency = 1, Text = "" })
@@ -339,7 +339,7 @@ function TuskUI.init(cb)
 
 	awakenBar = Instance.new("Frame")
 	awakenBar.AnchorPoint = Vector2.new(0.5, 1)
-	awakenBar.Position = UDim2.new(0.5, 0, 1, -248)
+	awakenBar.Position = UDim2.new(0.5, 0, 1, -183)
 	awakenBar.Size = UDim2.fromOffset(240, 6)
 	awakenBar.BackgroundColor3 = DARK
 	awakenBar.Visible = false
@@ -486,6 +486,8 @@ function TuskUI.step(act)
 	end
 	local character = player.Character
 	local sneaking = character and character:GetAttribute("TuskSneaking") == true
+	-- Tusk Sneak is Johnny's; Gyro has no sneak chip.
+	sneakChip.Visible = Registry.characterOf(act) == "Johnny"
 	sneakChip.TextColor3 = sneaking and DARK or Color3.fromRGB(150, 170, 200)
 	sneakChip.BackgroundColor3 = sneaking and colors.Cyan or DARK
 	sneakHint.Visible = sneaking

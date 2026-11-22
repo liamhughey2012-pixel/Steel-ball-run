@@ -199,8 +199,8 @@ function TuskController.init()
 	local FX = Net.get("TuskFX")
 
 	local actsFolder = script.Parent:WaitForChild("TuskActVFX")
-	for act in pairs(Registry.Acts) do
-		local m = actsFolder:FindFirstChild("Act" .. act)
+	for act, info in pairs(Registry.Acts) do
+		local m = actsFolder:FindFirstChild(info.ClientModule or ("Act" .. act))
 		if m then
 			actVFX[act] = require(m)
 		end
@@ -240,7 +240,7 @@ function TuskController.init()
 		return Enum.ContextActionResult.Sink
 	end, false, TuskConfig.Keys.ActMenu.Keyboard, TuskConfig.Keys.ActMenu.Gamepad)
 
-	RunService.RenderStepped:Connect(function()
+	RunService.RenderStepped:Connect(function(dt)
 		local act = currentAct()
 		if act and not bound then
 			bindAll()
@@ -253,7 +253,7 @@ function TuskController.init()
 		end
 		for _, m in pairs(actVFX) do
 			if m.step then
-				m.step()
+				m.step(dt)
 			end
 		end
 		TuskUI.step(act)

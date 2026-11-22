@@ -29,7 +29,7 @@ local player = Players.LocalPlayer
 local DARK = Color3.fromRGB(14, 12, 20)
 local GOLD = Color3.fromRGB(255, 205, 90)
 
-local gui, card, portrait, viewport, standLabel, pips, hpFill, hpText, scale, arrow
+local gui, card, portrait, viewport, nameLabel, standLabel, pips, hpFill, hpText, scale, arrow
 local dropdown, dropdownList, actRows, rosterRows
 -- Declared up here so init() can call them (they are defined further down).
 local buildDropdown, refreshDropdown
@@ -187,7 +187,7 @@ function CharacterCard.init()
 		viewport.Parent = frame
 	end
 
-	label(card, {
+	nameLabel = label(card, {
 		Position = UDim2.fromOffset(98, 6),
 		Size = UDim2.new(1, -130, 0, 28),
 		Font = Enum.Font.Bangers,
@@ -392,13 +392,19 @@ function refreshDropdown(act)
 	if not dropdown then
 		return
 	end
-	local johnny = rosterRows.Johnny
-	if johnny then
-		local playing = act ~= nil
-		johnny.Status.Text = playing and "PLAYING" or "SELECT"
-		johnny.Status.BackgroundColor3 = playing and Color3.fromRGB(40, 120, 70) or Color3.fromRGB(40, 90, 200)
-		johnny.Status.TextColor3 = Color3.new(1, 1, 1)
-		johnny.Status.Active = not playing
+	-- Each character row: PLAYING (green) or SELECT (blue).
+	local current = act and Registry.characterOf(act)
+	for id, row in pairs(rosterRows) do
+		if row.Entry.Available then
+			local playing = current == id
+			row.Status.Text = playing and "PLAYING" or "SELECT"
+			row.Status.BackgroundColor3 = playing and Color3.fromRGB(40, 120, 70) or Color3.fromRGB(40, 90, 200)
+			row.Status.TextColor3 = Color3.new(1, 1, 1)
+			row.Status.Active = not playing
+		end
+	end
+	if current ~= "Johnny" then
+		act = nil -- Tusk Act rows only light up while playing Johnny
 	end
 	for i, r in pairs(actRows) do
 		if act == i then
@@ -472,12 +478,29 @@ function CharacterCard.step()
 		local evolved = shownAct ~= nil and act ~= nil and act > shownAct
 		shownAct = act
 		local info = act and Registry.get(act)
-		standLabel.Text = info and ("STAND  ·  " .. info.Name) or TuskConfig.Character.Title
+		local isGyro = act ~= nil and Registry.characterOf(act) == "Gyro"
+		-- Name plate follows the character (from TuskConfig.Roster).
+		local who = isGyro and "Gyro" or "Johnny"
+		for _, entry in ipairs(TuskConfig.Roster or {}) do
+			if entry.Id == who then
+				nameLabel.Text = entry.Name
+			end
+		end
+		if isGyro then
+			standLabel.Text = "STEEL BALL USER"
+		else
+			standLabel.Text = info and ("STAND  ·  " .. info.Name) or TuskConfig.Character.Title
+		end
 		standLabel.TextColor3 = info and info.Theme.Primary or Color3.fromRGB(200, 220, 255)
+		-- Act pips are Tusk's progression; hidden for Gyro.
 		for i, pip in ipairs(pips) do
+			pip.Visible = not isGyro
 			local on = act ~= nil and i <= act
 			local theme = Registry.get(i) and Registry.get(i).Theme.Primary or GOLD
 			pip.BackgroundColor3 = on and theme or Color3.fromRGB(60, 60, 80)
+		end
+		if isGyro then
+			evolved = false
 		end
 		if evolved and info then
 			CharacterCard.pop(info.Theme.Primary)

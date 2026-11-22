@@ -1,13 +1,8 @@
 ---
-tags: [character, spin]
-status: built
+tags: [character, spin, removed]
+status: removed
 updated: 2026-11-22
 ---
-# Golden Spin (Steel Ball throw)
-Hold **R** to charge, release to throw the green Steel Ball.
-| Level | Charge | Dmg | Cooldown |
-|---|---|---|---|
-| QUICK | 0–0.6 s | 7 | 2.5 s |
-| POWER | 0.6 s+ | 13 | 4.5 s |
-| PERFECT | release at 1.35–1.57 s | 22 | 7 s |
-Overcharging drops to POWER. Code: `SpinService`, `SpinVFX`, `SpinController`, `SpinConfig`.
+# Golden Spin (removed)
+The universal R-key Steel Ball throw was removed at the owner's request. The Steel Ball now belongs to [[Gyro Zeppeli]].
+Its hit flashes and damage numbers moved to `HitFX`, and the VFX quality button moved to `SettingsUI`.

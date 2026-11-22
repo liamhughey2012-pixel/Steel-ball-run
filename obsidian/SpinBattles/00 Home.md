@@ -17,7 +17,7 @@ A Steel Ball Run-inspired Roblox Battlegrounds game. This vault is the project's
 - [[Tusk]]: [[Tusk Act 1]] → [[Tusk Act 2]] → [[Tusk Act 3]] → [[Tusk Act 4]] (each ultimate awakens the next Act)
 - [[Johnny Joestar]] (character card)
 - [[Tusk Sneak]] (built)
-- [[Golden Spin]] (built, Steel Ball throw)
+- [[Gyro Zeppeli]] (Steel Balls) · [[Golden Spin]] (removed)
 
 ## World
 - [[SBR Map]] · [[NPCs]]

@@ -1,0 +1,90 @@
+--[[
+	HitFX  (StarterPlayerScripts.SpinClient.HitFX)
+	Feedback for every hit in the game (any character):
+	  * victim flash (white, or blue when blocked) + camera shake for the victim
+	  * floating damage numbers for the attacker
+	Driven by the shared "Hit" / "Damage" events from CombatAdapter.
+]]
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local Net = require(Shared.Net)
+local VFXLib = require(script.Parent.VFXLib)
+local CameraFX = require(script.Parent.CameraFX)
+
+local HitFX = {}
+local localPlayer = Players.LocalPlayer
+local colors = {
+	Gold = Color3.fromRGB(255, 196, 56),
+	Perfect = Color3.fromRGB(255, 250, 210),
+	GoldLight = Color3.fromRGB(255, 238, 160),
+}
+
+local function onHit(data)
+	if not data.Victim then
+		return
+	end
+	local highlight = Instance.new("Highlight")
+	highlight.Adornee = data.Victim
+	highlight.FillColor = data.Blocked and Color3.fromRGB(140, 200, 255) or Color3.new(1, 1, 1)
+	highlight.OutlineColor = data.Blocked and Color3.fromRGB(80, 160, 255) or colors.Gold
+	highlight.FillTransparency = 0.3
+	highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+	highlight.Parent = VFXLib.Folder
+	VFXLib.animate(0.18, function(a)
+		highlight.FillTransparency = 0.3 + 0.7 * a
+		highlight.OutlineTransparency = a
+	end, function()
+		highlight:Destroy()
+	end)
+	if data.Blocked then
+		VFXLib.burst(data.Position, { Count = 12, Color = Color3.fromRGB(150, 210, 255), Speed = 25, Lifetime = 0.3 })
+	end
+	if localPlayer.Character and data.Victim == localPlayer.Character then
+		CameraFX.shake(0.4 + (data.Level or 1) * 0.2, 0.3)
+		if data.Perfect then
+			CameraFX.impactFrame(colors.GoldLight)
+		end
+	end
+end
+
+-- Floating damage number, only for the attacker.
+local function onDamage(data)
+	local carrier = VFXLib.anchor(CFrame.new(data.Position + Vector3.new(math.random() - 0.5, 2, math.random() - 0.5)), 1.2)
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromOffset(160, 60)
+	billboard.AlwaysOnTop = true
+	billboard.LightInfluence = 0
+	billboard.Parent = carrier
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.GothamBlack
+	label.TextScaled = true
+	label.Text = data.Blocked and ("BLOCKED " .. data.Amount) or (tostring(data.Amount) .. (data.Perfect and "!" or ""))
+	label.TextColor3 = data.Blocked and Color3.fromRGB(170, 200, 230) or (data.Perfect and colors.Perfect or colors.Gold)
+	label.TextStrokeTransparency = 0
+	label.TextStrokeColor3 = Color3.fromRGB(60, 25, 0)
+	label.Parent = billboard
+	local start = carrier.Position
+	VFXLib.animate(1, function(a)
+		carrier.Position = start + Vector3.new(0, a * 3, 0)
+		label.TextTransparency = math.max(0, (a - 0.6) / 0.4)
+		label.TextStrokeTransparency = label.TextTransparency
+		local pop = a < 0.1 and (1 + (0.1 - a) * 4) or 1
+		billboard.Size = UDim2.fromOffset(160 * pop * (data.Perfect and 1.3 or 1), 60 * pop * (data.Perfect and 1.3 or 1))
+	end)
+end
+
+function HitFX.init()
+	Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+		if name == "Hit" then
+			onHit(data)
+		elseif name == "Damage" then
+			onDamage(data)
+		end
+	end)
+end
+
+return HitFX

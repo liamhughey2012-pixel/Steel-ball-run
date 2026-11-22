@@ -108,7 +108,7 @@ TuskConfig.StandModels = {
 ---------------------------------------------------------------------------
 TuskConfig.Roster = {
 	{ Id = "Johnny", Name = "JOHNNY JOESTAR", Stand = "TUSK (ACT 1-4)", Available = true, Color = Color3.fromRGB(90, 230, 255) },
-	{ Id = "Gyro", Name = "GYRO ZEPPELI", Stand = "STEEL BALLS", Available = false, Color = Color3.fromRGB(110, 200, 80), Note = "Golden Spin (R) already works for everyone" },
+	{ Id = "Gyro", Name = "GYRO ZEPPELI", Stand = "STEEL BALLS", Available = true, Color = Color3.fromRGB(110, 210, 90) },
 }
 
 ---------------------------------------------------------------------------
@@ -287,6 +287,30 @@ TuskConfig.Act4 = {
 	Ultimate = { -- INFINITE ROTATION (Act 4 stays Act 4)
 		Windup = 2.6, ProjectileRadius = 4, Speed = 95, Range = 180, Damage = 32,
 		BlastRadius = 18, BlastDamage = 14, Stun = 0.8, Knockback = 80, Launch = 40,
+	},
+}
+
+---------------------------------------------------------------------------
+-- GYRO ZEPPELI — Steel Ball moveset (a separate character, "Act" 5 internally)
+---------------------------------------------------------------------------
+TuskConfig.Gyro = {
+	M1 = {
+		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,
+		HitboxSize = Vector3.new(5, 5, 5.5), HitboxForward = 3.2, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 4 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.5, Knockback = 45, Launch = 12, ShockwaveRadius = 8, AoeRadius = 7 },
+		},
+	},
+	SteelBallThrow = { Cooldown = 5, Startup = 0.22, Damage = 10, ReturnDamage = 5, Speed = 140, ReturnSpeed = 120, Radius = 1.1, Range = 120, Stun = 0.4, Knockback = 18 },
+	WreckingBalls = { Cooldown = 9, Startup = 0.18, Count = 5, SpreadDegrees = 22, Damage = 3, Speed = 160, Radius = 0.6, Range = 70, Stun = 0.2, Knockback = 6, SlowMultiplier = 0.55, SlowTime = 2 },
+	SpinVibration = { Cooldown = 8, Windup = 0.2, Damage = 9, Stun = 0.9, Knockback = 10, Launch = 16, HitboxSize = Vector3.new(5, 6, 6), HitboxForward = 3 },
+	Ultimate = { -- BALL BREAKER
+		Windup = 1.8, Speed = 85, Radius = 3, Range = 170, Damage = 14,
+		VortexRadius = 14, VortexTime = 2.4, PullStrength = 22, TickDamage = 2, TickInterval = 0.3,
+		BurstDamage = 14, BurstKnockback = 70, Launch = 30, Stun = 0.7,
 	},
 }
 

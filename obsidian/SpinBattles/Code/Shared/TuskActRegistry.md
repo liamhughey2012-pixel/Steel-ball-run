@@ -84,7 +84,31 @@ TuskActRegistry.Acts = {
 		Ultimate = "INFINITE ROTATION",
 		Next = nil, -- final form
 	},
+	-- Gyro Zeppeli: a separate character that reuses the same ability system.
+	[5] = {
+		Name = "GYRO ZEPPELI",
+		Character = "Gyro",
+		Tagline = "Steel Ball master",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(120, 220, 95), Secondary = Color3.fromRGB(40, 120, 50) },
+		M1 = "STEEL BALL COMBO",
+		Abilities = { "STEEL BALL THROW", "WRECKING BALLS", "SPIN VIBRATION" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "BALL BREAKER",
+		Next = nil,
+		Module = "GyroZeppeli", -- server moves
+		ClientModule = "Gyro", -- client visuals (TuskActVFX.Gyro)
+	},
 }
+
+-- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
+function TuskActRegistry.characterOf(act)
+	local info = TuskActRegistry.Acts[act]
+	return info and info.Character or "Johnny"
+end
+
+-- The Act a character starts on.
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

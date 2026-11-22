@@ -23,30 +23,32 @@ def rewrite(name, code):
     code = code.replace('script.Parent:FindFirstChild("Assets")', 'game:GetService("ReplicatedStorage"):FindFirstChild("SpinAssets")')
     if name == "TuskService":
         old = '''	local actsFolder = script.Parent:WaitForChild("TuskActs")
-	for act in pairs(Registry.Acts) do
-		local moduleScript = actsFolder:FindFirstChild("TuskAct" .. act)
+	for act, info in pairs(Registry.Acts) do
+		local moduleScript = actsFolder:FindFirstChild(info.Module or ("TuskAct" .. act))
 		if moduleScript and Registry.isImplemented(act) then
 			actModules[act] = require(moduleScript)
 		end
 	end'''
         assert old in code, "TuskService patch"
-        code = code.replace(old, '''	for act in pairs(Registry.Acts) do
-		if Registry.isImplemented(act) and __hasModule("TuskAct" .. act) then
-			actModules[act] = __require("TuskAct" .. act)
+        code = code.replace(old, '''	for act, info in pairs(Registry.Acts) do
+		local name = info.Module or ("TuskAct" .. act)
+		if Registry.isImplemented(act) and __hasModule(name) then
+			actModules[act] = __require(name)
 		end
 	end''')
     if name == "TuskController":
         old = '''	local actsFolder = script.Parent:WaitForChild("TuskActVFX")
-	for act in pairs(Registry.Acts) do
-		local m = actsFolder:FindFirstChild("Act" .. act)
+	for act, info in pairs(Registry.Acts) do
+		local m = actsFolder:FindFirstChild(info.ClientModule or ("Act" .. act))
 		if m then
 			actVFX[act] = require(m)
 		end
 	end'''
         assert old in code, "TuskController patch"
-        code = code.replace(old, '''	for act in pairs(Registry.Acts) do
-		if __hasModule("Act" .. act) then
-			actVFX[act] = __require("Act" .. act)
+        code = code.replace(old, '''	for act, info in pairs(Registry.Acts) do
+		local name = info.ClientModule or ("Act" .. act)
+		if __hasModule(name) then
+			actVFX[act] = __require(name)
 		end
 	end''')
     # Static requires: require(<path ending in .Name>) -> __require("Name")
@@ -91,7 +93,8 @@ SERVER_HEADER = '''--[[
 	Spin_Server  (Script)
 	PUT IT IN: ServerScriptService
 
-	Spin Battlegrounds server: Golden Spin, Tusk Act 1, Tusk Sneak, combat,
+	Spin Battlegrounds server: Johnny Joestar (Tusk Acts 1-4 + Tusk Sneak),
+	Gyro Zeppeli (Steel Balls), combat,
 	cooldowns, projectiles, NPCs, Studio practice dummies, and the SBR map
 	(built automatically when the server starts).
 
@@ -110,14 +113,12 @@ local MAP_ORIGIN = Vector3.new(0, 0, 0) -- move the map away from an existing on
 
 '''
 SERVER_MAIN = '''local ProjectileService = __require("ProjectileService")
-local SpinService = __require("SpinService")
 local TuskService = __require("TuskService")
 local NPCService = __require("NPCService")
 local TestDummies = __require("TestDummies")
 __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
-SpinService.init()
 TuskService.init()
 if BUILD_MAP_ON_START and not workspace:FindFirstChild("SBRMap") then
 	local ok, err = pcall(function()
@@ -136,7 +137,7 @@ CLIENT_HEADER = '''--[[
 	PUT IT IN: StarterPlayer > StarterPlayerScripts
 
 	Spin Battlegrounds client: controls (PC, controller, mobile), all VFX,
-	the Tusk Stand, poses, HUD, Act menu, NPC speech bubbles, desert dust.
+	Tusk Stands, Gyro's Steel Balls, HUD, character card, NPC bubbles, dust.
 
 	Needs these ModuleScripts in ReplicatedStorage: SpinConfig, TuskConfig.
 	Works with the Script Spin_Server in ServerScriptService.
@@ -148,9 +149,8 @@ if game:GetService("RunService"):IsServer() then
 end
 
 '''
-CLIENT_MAIN = '''__require("SpinMeter").init()
-__require("SpinVFX").init()
-__require("SpinController").init()
+CLIENT_MAIN = '''__require("SettingsUI").init()
+__require("HitFX").init()
 __require("TuskStand").init()
 __require("TuskProjectiles").init()
 __require("TuskSneakController").init()

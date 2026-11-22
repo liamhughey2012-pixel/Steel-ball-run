@@ -187,6 +187,21 @@ function TuskService.fireNail(player, state, spec)
 	})
 end
 
+-- Server projectile with a Steel Ball visual (Gyro).
+function TuskService.fireBall(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "GyroBall",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Throw", Scale = spec.Scale },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
 -- Charge helpers (hold abilities): sets the replicated TuskCharge attribute.
 function TuskService.beginCharge(player, state, move, slot, multiplier)
 	local character, humanoid = Adapter.getAlive(player)
@@ -346,11 +361,19 @@ local function onRequest(player, action, a, b, c)
 		return
 	end
 	if action == "Character" then
-		-- Character dropdown: Johnny Joestar = Tusk (starts at Act 1).
+		-- Character dropdown: "Johnny" (Tusk, starts at Act 1) or "Gyro" (Steel Balls).
 		local st = states[player]
-		if a == "Johnny" and st and not st.Act then
-			TuskService.select(player, TuskConfig.Progression.DefaultAct, true)
+		local start = typeof(a) == "string" and Registry.StartAct[a]
+		if not st or not start then
+			return
 		end
+		if st.Act and Registry.characterOf(st.Act) == a then
+			return -- already playing that character
+		end
+		if TuskService.isBusy(st) or st.Charging or st.Burrowed then
+			return
+		end
+		TuskService.select(player, start, true)
 		return
 	end
 	local state = states[player]
@@ -359,8 +382,11 @@ local function onRequest(player, action, a, b, c)
 	end
 	local module = actModules[state.Act]
 
+	local isJohnny = Registry.characterOf(state.Act) == "Johnny"
 	if action == "Sneak" then
-		Sneak.toggle(player, state, a == true)
+		if isJohnny then -- Tusk Sneak is Johnny's
+			Sneak.toggle(player, state, a == true)
+		end
 		return
 	end
 	if state.Burrowed then
@@ -417,7 +443,8 @@ local function onCharacter(player, character)
 	end
 	local progression = TuskConfig.Progression
 	if state.Act and progression.Mode == "Awaken" and progression.ResetOnDeath then
-		state.Act = progression.DefaultAct -- back to Act 1 after dying
+		-- Back to the character's first Act after dying (Johnny -> Act 1; Gyro stays Gyro).
+		state.Act = Registry.StartAct[Registry.characterOf(state.Act)] or progression.DefaultAct
 		TuskService.markActStart(player, state)
 	end
 	if state.Act then
@@ -476,8 +503,8 @@ end
 
 function TuskService.init()
 	local actsFolder = script.Parent:WaitForChild("TuskActs")
-	for act in pairs(Registry.Acts) do
-		local moduleScript = actsFolder:FindFirstChild("TuskAct" .. act)
+	for act, info in pairs(Registry.Acts) do
+		local moduleScript = actsFolder:FindFirstChild(info.Module or ("TuskAct" .. act))
 		if moduleScript and Registry.isImplemented(act) then
 			actModules[act] = require(moduleScript)
 		end

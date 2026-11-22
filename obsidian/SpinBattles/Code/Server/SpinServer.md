@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService` |
 | **Exact name** | `SpinServer` (capitals matter) |
 
-**What it does:** Boots every server system: Golden Spin, Tusk, NPCs and Studio test dummies.
+**What it does:** Boots every server system: characters (Johnny/Tusk, Gyro/Steel Balls), custom Stand models, NPCs and Studio test dummies.
 
 ## How to add it
 1. In Studio's Explorer, find **ServerScriptService** (ServerScriptService).
@@ -26,21 +26,20 @@ Back to [[Where To Put Code]]
 ```lua
 --[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
-	Boots every server system: Golden Spin, Tusk, NPCs and Studio test dummies.
+	Boots every server system: characters (Johnny/Tusk, Gyro/Steel Balls),
+	custom Stand models, NPCs and Studio test dummies.
 ]]
 
 local ProjectileService = require(script.ProjectileService)
-local SpinService = require(script.SpinService)
 local TuskService = require(script.TuskService)
 local NPCService = require(script.NPCService)
 local TestDummies = require(script.TestDummies)
 local StandAssetLoader = require(script.StandAssetLoader)
 
--- Shared projectile budget (Tusk's barrage fires several nails at once).
+-- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
 
 StandAssetLoader.init()
-SpinService.init()
 TuskService.init()
 NPCService.init()
 TestDummies.init()

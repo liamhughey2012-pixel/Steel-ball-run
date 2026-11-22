@@ -1,7 +1,9 @@
 --[[
 	SpinConfig  (ReplicatedStorage.SpinShared.SpinConfig)
 
-	Every tunable value for the Golden Spin / Steel Ball system.
+	Steel Ball colours and Studio test-dummy settings. (The old Golden Spin
+	R ability was removed; Gyro Zeppeli's Steel Ball moves live in
+	TuskConfig.Gyro.) The other values below are no longer used.
 	The server reads this for damage, timing and validation; the client reads
 	it for the charge meter and visuals. Change numbers here, not in code.
 

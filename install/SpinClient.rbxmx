@@ -1,11 +1,11 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="LocalScript" referent="RBX52"><Properties><string name="Name">SpinClient</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="LocalScript" referent="RBX51"><Properties><string name="Name">SpinClient</string><ProtectedString name="Source"><![CDATA[--[[
 	SpinClient  (StarterPlayer.StarterPlayerScripts.SpinClient — LocalScript)
-	Boots every client system: Golden Spin, Tusk, NPC bubbles and map ambience.
+	Boots every client system: hit feedback, settings, Stands, characters,
+	HUD, character card, NPC bubbles and map ambience.
 ]]
 
-local SpinMeter = require(script.UI.SpinMeter)
-local SpinVFX = require(script.SpinVFX)
-local SpinController = require(script.SpinController)
+local SettingsUI = require(script.UI.SettingsUI)
+local HitFX = require(script.HitFX)
 local TuskStand = require(script.TuskStand)
 local TuskProjectiles = require(script.TuskProjectiles)
 local TuskSneakController = require(script.TuskSneakController)
@@ -13,9 +13,8 @@ local TuskController = require(script.TuskController)
 local WorldClient = require(script.WorldClient)
 local CharacterCard = require(script.UI.CharacterCard)
 
-SpinMeter.init()
-SpinVFX.init()
-SpinController.init()
+SettingsUI.init()
+HitFX.init()
 TuskStand.init()
 TuskProjectiles.init()
 TuskSneakController.init()
@@ -195,770 +194,28 @@ function CameraFX.impactFrame(tint)
 end
 
 return CameraFX
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX30"><Properties><string name="Name">JointCache</string><ProtectedString name="Source"><![CDATA[--[[
-	JointCache  (StarterPlayerScripts.SpinClient.JointCache)
-	Remembers each Motor6D's original C0 the first time any pose system
-	touches it, so Spin poses and Tusk poses can both restore the true
-	rest pose instead of each other's leftovers.
-]]
-
-local JointCache = {}
-local originals = setmetatable({}, { __mode = "k" })
-
-function JointCache.original(motor)
-	local c0 = originals[motor]
-	if not c0 then
-		c0 = motor.C0
-		originals[motor] = c0
-	end
-	return c0
-end
-
-return JointCache
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX31"><Properties><string name="Name">ProceduralPose</string><ProtectedString name="Source"><![CDATA[--[[
-	ProceduralPose  (StarterPlayerScripts.SpinClient.ProceduralPose)
-
-	Animation-free arm posing for the Spin throw: tweens the right shoulder
-	Motor6D's C0 on top of whatever Animator is playing, then restores it.
-	Works on R15 and R6. C0 edits made on a client do not replicate, so
-	SpinVFX calls this on EVERY client for EVERY charging character (driven
-	by the replicated SpinChargeStart attribute). Everyone sees the pose.
-
-	When real animations are uploaded, set ProceduralPose.Enabled = false
-	and play the Animation tracks from SpinController instead.
-
-	Pitch angles (degrees, rotation about the shoulder's side axis):
-	  0 = arm down, 90 = arm straight forward, 180 = arm straight up.
-]]
-
-local ProceduralPose = {}
-
-ProceduralPose.Enabled = true
-ProceduralPose.Poses = {
-	Charge = { Pitch = 195, Roll = -12 }, -- wound up over the shoulder, behind the head
-	Throw = { Pitch = 80, Roll = 0 }, -- whipped forward at release
-}
-
-local jobs = setmetatable({}, { __mode = "k" })
-
-local VFXLib = require(script.Parent.VFXLib)
-local JointCache = require(script.Parent.JointCache)
-
-local function getShoulder(character)
-	local upper = character:FindFirstChild("RightUpperArm")
-	if upper then
-		return upper:FindFirstChild("RightShoulder"), "R15"
-	end
-	local torso = character:FindFirstChild("Torso")
-	if torso then
-		return torso:FindFirstChild("Right Shoulder"), "R6"
-	end
-	return nil
-end
-
-local function poseOffset(rig, pose)
-	local pitch = math.rad(pose.Pitch)
-	local roll = math.rad(pose.Roll or 0)
-	if rig == "R15" then
-		return CFrame.Angles(pitch, 0, roll)
-	end
-	-- R6 shoulder C0 is rotated so its local Z is the torso's side axis.
-	return CFrame.Angles(roll, 0, pitch)
-end
-
-local function tweenC0(motor, target, duration)
-	VFXLib.cancel(jobs[motor])
-	local from = motor.C0
-	jobs[motor] = VFXLib.animate(duration, function(a)
-		if motor.Parent then
-			motor.C0 = from:Lerp(target, VFXLib.easeOut(a))
-		end
-	end)
-end
-
-function ProceduralPose.play(character, poseName, duration)
-	if not ProceduralPose.Enabled or not character then
-		return
-	end
-	local motor, rig = getShoulder(character)
-	local pose = ProceduralPose.Poses[poseName]
-	if not motor or not pose then
-		return
-	end
-	tweenC0(motor, JointCache.original(motor) * poseOffset(rig, pose), duration or 0.15)
-end
-
-function ProceduralPose.reset(character, duration)
-	if not character then
-		return
-	end
-	local motor = getShoulder(character)
-	if motor then
-		tweenC0(motor, JointCache.original(motor), duration or 0.25)
-	end
-end
-
--- Hand part the held ball is welded to, plus the grip offset.
-function ProceduralPose.getHand(character)
-	local hand = character:FindFirstChild("RightHand")
-	if hand then
-		return hand, CFrame.new(0, -0.45, -0.1)
-	end
-	local arm = character:FindFirstChild("Right Arm")
-	if arm then
-		return arm, CFrame.new(0, -1.1, -0.1)
-	end
-	return nil
-end
-
-return ProceduralPose
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX32"><Properties><string name="Name">SpinController</string><ProtectedString name="Source"><![CDATA[--[[
-	SpinController  (StarterPlayerScripts.SpinClient.SpinController)
-
-	Local input for the Golden Spin. Hold to charge, release to throw.
-	  PC:         hold R (aims at the mouse)
-	  Controller: hold RT (aims where the camera looks)
-	  Mobile:     hold the on-screen SPIN button (aims where the camera looks)
-
-	Sends only "Start", "Release" + aim direction, or "Cancel".
-	The server decides everything else and answers with SpinState.
-]]
-
-local ContextActionService = game:GetService("ContextActionService")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-
-local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
-local SpinConfig = require(Shared.SpinConfig)
-local Net = require(Shared.Net)
-local CameraFX = require(script.Parent.CameraFX)
-local VFXLib = require(script.Parent.VFXLib)
-local SpinMeter = require(script.Parent.UI.SpinMeter)
-
-local SpinController = {}
-
-local player = Players.LocalPlayer
-local Request
-local charging = false
-local chargeStart = 0
-
-local function aliveCharacter()
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if humanoid and root and humanoid.Health > 0 then
-		return character, root
-	end
-	return nil
-end
-
-local function usesCameraAim()
-	local last = UserInputService:GetLastInputType()
-	return last == Enum.UserInputType.Touch or string.find(last.Name, "Gamepad") ~= nil
-end
-
-local function aimDirection()
-	local character, root = aliveCharacter()
-	local camera = workspace.CurrentCamera
-	if not character or not camera then
-		return nil
-	end
-	local origin = (root.CFrame * SpinConfig.Projectile.SpawnOffset).Position
-	if usesCameraAim() then
-		return camera.CFrame.LookVector
-	end
-	local mouse = UserInputService:GetMouseLocation()
-	local ray = camera:ViewportPointToRay(mouse.X, mouse.Y)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { character, VFXLib.Folder }
-	local hit = workspace:Raycast(ray.Origin, ray.Direction * 600, params)
-	local target = hit and hit.Position or (ray.Origin + ray.Direction * 600)
-	local direction = target - origin
-	if direction.Magnitude < 1 then
-		return root.CFrame.LookVector
-	end
-	return direction.Unit
-end
-
-local function stopLocal()
-	charging = false
-	SpinMeter.hideCharge()
-	CameraFX.setFovHold(0)
-end
-
-local function begin()
-	if charging or not aliveCharacter() then
-		return
-	end
-	charging = true
-	chargeStart = os.clock()
-	Request:FireServer("Start")
-	SpinMeter.showCharge()
-	CameraFX.setFovHold(-3)
-end
-
-local function finish()
-	if not charging then
-		return
-	end
-	stopLocal()
-	Request:FireServer("Release", aimDirection())
-end
-
-local function cancel()
-	if not charging then
-		return
-	end
-	stopLocal()
-	Request:FireServer("Cancel")
-end
-
-local function onState(data)
-	local status = data.Status
-	if status == "Denied" then
-		stopLocal()
-		if data.Reason == "Cooldown" then
-			SpinMeter.flashDenied(string.format("COOLDOWN %.1fs", data.Remaining or 0))
-		else
-			SpinMeter.flashDenied("STUNNED")
-		end
-	elseif status == "Cancelled" then
-		stopLocal()
-		if data.Reason == "Interrupted" then
-			SpinMeter.flashDenied("INTERRUPTED!")
-		end
-		SpinMeter.startCooldown(data.Cooldown or 0)
-	elseif status == "Released" then
-		if charging then
-			stopLocal() -- server auto-released at max hold
-		end
-		local level = SpinConfig.Levels[data.Level]
-		if data.Perfect then
-			SpinMeter.popup("PERFECT SPIN!", SpinConfig.Colors.Perfect, true)
-		else
-			SpinMeter.popup(level.Name, SpinConfig.Colors.GoldLight, false)
-		end
-		SpinMeter.startCooldown(data.Cooldown or 0)
-	end
-end
-
-function SpinController.init()
-	Request = Net.get("SpinRequest")
-	local FX = Net.get("SpinFX")
-	FX.OnClientEvent:Connect(function(name, data)
-		if name == "SpinState" then
-			onState(data)
-		end
-	end)
-
-	local input = SpinConfig.Input
-	ContextActionService:BindAction(input.ActionName, function(_, state)
-		if state == Enum.UserInputState.Begin then
-			begin()
-		elseif state == Enum.UserInputState.End then
-			finish()
-		elseif state == Enum.UserInputState.Cancel then
-			cancel()
-		end
-		return Enum.ContextActionResult.Sink
-	end, true, input.Keyboard, input.Gamepad)
-	ContextActionService:SetTitle(input.ActionName, input.MobileButtonTitle)
-	ContextActionService:SetPosition(input.ActionName, input.MobileButtonPosition)
-
-	RunService.RenderStepped:Connect(function()
-		if charging then
-			SpinMeter.updateCharge(os.clock() - chargeStart)
-		end
-	end)
-
-	player.CharacterAdded:Connect(function()
-		stopLocal()
-	end)
-end
-
-return SpinController
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX33"><Properties><string name="Name">SpinVFX</string><ProtectedString name="Source"><![CDATA[--[[
-	SpinVFX  (StarterPlayerScripts.SpinClient.SpinVFX)
-
-	Draws everything the Golden Spin does, for every player, on every client:
-	  * Charge: Steel Ball spinning in the hand, golden rings that multiply
-	    per level, rising particles, ground dust, perfect-window flash
-	  * Release: muzzle shockwave, throw pose
-	  * Projectile: spinning ball, tilted rotating rings, spiral + streak
-	    trails, afterimages (High)
-	  * Impact / Hit: layered shockwaves, sparks, dust, light, shake,
-	    impact frame on Perfect, floating damage numbers for the attacker
-
-	Visual only. The server decides every hit and every number.
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX30"><Properties><string name="Name">HitFX</string><ProtectedString name="Source"><![CDATA[--[[
+	HitFX  (StarterPlayerScripts.SpinClient.HitFX)
+	Feedback for every hit in the game (any character):
+	  * victim flash (white, or blue when blocked) + camera shake for the victim
+	  * floating damage numbers for the attacker
+	Driven by the shared "Hit" / "Damage" events from CombatAdapter.
 ]]
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
-local SpinConfig = require(Shared.SpinConfig)
-local VFXQuality = require(Shared.VFXQuality)
-local SteelBallModel = require(Shared.SteelBallModel)
 local Net = require(Shared.Net)
 local VFXLib = require(script.Parent.VFXLib)
 local CameraFX = require(script.Parent.CameraFX)
-local ProceduralPose = require(script.Parent.ProceduralPose)
 
-local SpinVFX = {}
-
+local HitFX = {}
 local localPlayer = Players.LocalPlayer
-local colors = SpinConfig.Colors
-local sounds = SpinConfig.Sounds
-
-local chargeStates = {} -- [character] = state
-local projectiles = {} -- [id] = visual
-local ballPool = {}
-
----------------------------------------------------------------------------
--- Ball pool (projectile balls are reused instead of rebuilt every throw)
----------------------------------------------------------------------------
-local function takeBall(scale)
-	local ball = table.remove(ballPool)
-	if not ball then
-		ball = SteelBallModel.build(1, VFXQuality.get().Grooves)
-		local core = ball.PrimaryPart
-		core.Anchored = true
-		-- Spiral trail: attachments rotate with the ball, so the ribbon twists.
-		local trail = Instance.new("Trail")
-		trail.Name = "SpiralTrail"
-		trail.Attachment0 = core:FindFirstChild("TrailTop")
-		trail.Attachment1 = core:FindFirstChild("TrailBottom")
-		trail.Color = ColorSequence.new(colors.SpinLine, colors.SpinGlow)
-		trail.LightEmission = 1
-		trail.LightInfluence = 0
-		trail.Lifetime = 0.18
-		trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
-		trail.FaceCamera = false
-		trail.Parent = core
-	end
-	ball:ScaleTo(scale)
-	return ball
-end
-
-local function returnBall(ball)
-	ball.Parent = nil
-	if #ballPool < 8 then
-		table.insert(ballPool, ball)
-	else
-		ball:Destroy()
-	end
-end
-
-VFXQuality.Changed:Connect(function()
-	for _, ball in ipairs(ballPool) do
-		ball:Destroy()
-	end
-	ballPool = {}
-end)
-
----------------------------------------------------------------------------
--- Charge visuals
----------------------------------------------------------------------------
-local function createCharge(character)
-	local hand, grip = ProceduralPose.getHand(character)
-	if not hand then
-		return nil
-	end
-	local quality = VFXQuality.get()
-	local ball = SteelBallModel.build(1, quality.Grooves)
-	local core = ball.PrimaryPart
-	core.Anchored = false
-	ball:PivotTo(hand.CFrame * grip)
-	local weld = Instance.new("Weld")
-	weld.Part0 = hand
-	weld.Part1 = core
-	weld.C0 = grip
-	weld.Parent = core
-	ball.Parent = VFXLib.Folder
-
-	local rings = {}
-	for i = 1, 3 do
-		rings[i] = VFXLib.ring({
-			Radius = 0.75 + i * 0.28,
-			Width = 0.1,
-			Color = colors.SpinLine,
-			Transparency = 1,
-		})
-	end
-
-	local emitter = Instance.new("ParticleEmitter")
-	emitter.Texture = VFXLib.Textures.Sparkle
-	emitter.Color = ColorSequence.new(colors.SpinGlow, colors.GoldLight)
-	emitter.LightEmission = 1
-	emitter.LightInfluence = 0
-	emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) })
-	emitter.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
-	emitter.Lifetime = NumberRange.new(0.3, 0.6)
-	emitter.Speed = NumberRange.new(2, 5)
-	emitter.SpreadAngle = Vector2.new(180, 180)
-	emitter.Acceleration = Vector3.new(0, 6, 0)
-	emitter.Rate = 0
-	emitter.Parent = core:FindFirstChild("Center") or core
-
-	local highlight = Instance.new("Highlight")
-	highlight.FillTransparency = 1
-	highlight.OutlineColor = colors.Gold
-	highlight.OutlineTransparency = 1
-	highlight.DepthMode = Enum.HighlightDepthMode.Occluded
-	highlight.Adornee = character
-	highlight.Parent = VFXLib.Folder
-
-	ProceduralPose.play(character, "Charge", 0.18)
-
-	return {
-		Character = character,
-		Ball = ball,
-		Core = core,
-		Weld = weld,
-		Grip = grip,
-		Rings = rings,
-		Emitter = emitter,
-		Highlight = highlight,
-		Sound = VFXLib.sound(sounds.Charge, core, 0.45, 0.8, true),
-		Angle = 0,
-		Level = 0,
-		InPerfect = false,
-		NextDust = 0,
-	}
-end
-
-local function destroyCharge(state, released)
-	state.Ball:Destroy()
-	for _, ring in ipairs(state.Rings) do
-		ring:Destroy()
-	end
-	state.Highlight:Destroy()
-	if state.Sound then
-		state.Sound:Destroy()
-	end
-	if not released then
-		ProceduralPose.reset(state.Character, 0.25)
-	end
-end
-
-local function updateCharge(state, startTime, dt, now)
-	local chargeTime = workspace:GetServerTimeNow() - startTime
-	local level, perfect = SpinConfig.getLevel(chargeTime)
-	local quality = VFXQuality.get()
-	local core = state.Core
-
-	-- Ball spin speeds up with each level.
-	state.Angle = state.Angle + dt * (10 + level * 7)
-	state.Weld.C0 = state.Grip * CFrame.Angles(state.Angle, state.Angle * 0.35, 0)
-
-	-- Rings: one per level, each on its own tilted, precessing axis.
-	local center = core.Position
-	for i, ring in ipairs(state.Rings) do
-		if i <= level then
-			local tilt = 0.5 + i * 0.7
-			ring:SetCFrame(CFrame.new(center) * CFrame.Angles(tilt + now * 0.8 * i, now * (3 + i), tilt * 0.5))
-			ring:SetTransparency(perfect and 0 or 0.25)
-			ring:SetWidth(perfect and 0.18 or 0.1)
-			ring:SetColor(perfect and colors.Gold or colors.SpinLine)
-		else
-			ring:SetTransparency(1)
-		end
-	end
-
-	state.Emitter.Rate = (perfect and 60 or level * 14) * quality.Particles
-	if state.Sound then
-		state.Sound.PlaybackSpeed = 0.8 + math.min(chargeTime, 2) * 0.3
-	end
-
-	-- Level up pulse.
-	if level > state.Level then
-		if state.Level > 0 then
-			VFXLib.shockwave(CFrame.new(center), { Radius = 3 + level, Width = 0.2, Duration = 0.3, Color = colors.Gold })
-			VFXLib.burst(center, { Count = 10 * level, Color = colors.GoldLight, Speed = 10, Lifetime = 0.4, Size = NumberSequence.new(0.25, 0) })
-			VFXLib.sound(sounds.LevelUp, core, 0.5, 0.9 + level * 0.15)
-		end
-	end
-	state.Level = level
-
-	-- Perfect window: bright outline flash + chime.
-	if perfect and not state.InPerfect then
-		state.Highlight.OutlineTransparency = 0
-		VFXLib.burst(center, { Count = 24, Color = colors.Perfect, Speed = 16, Lifetime = 0.35 })
-		VFXLib.flash(center, colors.GoldLight, 5, 14, 0.25)
-		VFXLib.sound(sounds.Perfect, core, 0.7, 1)
-	elseif not perfect and state.InPerfect then
-		state.Highlight.OutlineTransparency = 1
-	end
-	state.InPerfect = perfect
-
-	-- Ground dust swirl at Power level and above.
-	if level >= 2 and now >= state.NextDust then
-		state.NextDust = now + 0.3
-		local root = state.Character:FindFirstChild("HumanoidRootPart")
-		if root then
-			VFXLib.shockwave(CFrame.new(root.Position - Vector3.new(0, 2.8, 0)), {
-				StartRadius = 1.5,
-				Radius = 5 + level,
-				Width = 0.25,
-				Duration = 0.5,
-				Color = colors.Gold,
-				Spin = 2,
-			})
-		end
-	end
-end
-
-local function chargeLoop(dt)
-	local now = os.clock()
-	local seen = {}
-	for _, player in ipairs(Players:GetPlayers()) do
-		local character = player.Character
-		local startTime = character and character:GetAttribute("SpinChargeStart")
-		if startTime then
-			seen[character] = true
-			local state = chargeStates[character]
-			if not state then
-				state = createCharge(character)
-				chargeStates[character] = state
-			end
-			if state then
-				updateCharge(state, startTime, dt, now)
-			end
-		end
-	end
-	for character, state in pairs(chargeStates) do
-		if not seen[character] then
-			chargeStates[character] = nil
-			destroyCharge(state, state.Released)
-		end
-	end
-end
-
----------------------------------------------------------------------------
--- Release / projectile / impact
----------------------------------------------------------------------------
-local function ringAxisAlong(position, direction)
-	-- Ring axis (UpVector) along the travel direction.
-	return CFrame.lookAt(position, position + direction) * CFrame.Angles(math.pi / 2, 0, 0)
-end
-
-local function onRelease(data)
-	local character = data.Character
-	local state = character and chargeStates[character]
-	if state then
-		state.Released = true
-	end
-	if character then
-		ProceduralPose.play(character, "Throw", 0.06)
-		task.delay(0.3, function()
-			ProceduralPose.reset(character, 0.3)
-		end)
-	end
-
-	local level = SpinConfig.Levels[data.Level]
-	local axis = ringAxisAlong(data.Origin, data.Direction)
-	VFXLib.shockwave(axis, { Radius = 2 + data.Level * 1.5, Width = 0.35, Duration = 0.3, Color = colors.Gold })
-	VFXLib.burst(data.Origin, {
-		Count = 12 * data.Level,
-		Color = colors.Gold,
-		Speed = 25,
-		Spread = 25,
-		Direction = data.Direction,
-		Lifetime = 0.35,
-	})
-	VFXLib.sound(sounds.Release, data.Origin, 0.7, 1.15 - data.Level * 0.1)
-
-	if data.Perfect then
-		for i = 1, 3 do
-			task.delay(i * 0.04, function()
-				VFXLib.shockwave(axis * CFrame.new(0, -i * 1.2, 0), {
-					Radius = 3 + i * 1.5,
-					Width = 0.3,
-					Duration = 0.35,
-					Color = colors.Perfect,
-				})
-			end)
-		end
-		VFXLib.flash(data.Origin, colors.GoldLight, 8, 24, 0.35)
-	end
-
-	if character and character == localPlayer.Character then
-		CameraFX.shake(level.CameraShake * 0.6, 0.25)
-		if data.Perfect then
-			CameraFX.speedLines(0.35, colors.GoldLight)
-			CameraFX.fovPunch(10, 0.4)
-		else
-			CameraFX.fovPunch(3 + data.Level * 2, 0.3)
-		end
-	end
-end
-
-local function spawnProjectile(data)
-	local visualData = data.Visual or {}
-	local levelIndex = visualData.Level or 1
-	local level = SpinConfig.Levels[levelIndex]
-	local perfect = visualData.Perfect == true
-
-	local ball = takeBall(level.BallScale)
-	local core = ball.PrimaryPart
-	local start = CFrame.lookAt(data.Origin, data.Origin + data.Direction)
-	ball:PivotTo(start)
-	ball.Parent = VFXLib.Folder
-	local spiral = core:FindFirstChild("SpiralTrail")
-	if spiral then
-		spiral:Clear()
-	end
-
-	-- Flat golden streak trail on a carrier that doesn't spin.
-	local carrier = VFXLib.anchor(start)
-	local a0 = Instance.new("Attachment")
-	a0.Position = Vector3.new(-level.TrailWidth / 2, 0, 0)
-	a0.Parent = carrier
-	local a1 = Instance.new("Attachment")
-	a1.Position = Vector3.new(level.TrailWidth / 2, 0, 0)
-	a1.Parent = carrier
-	local streak = Instance.new("Trail")
-	streak.Attachment0 = a0
-	streak.Attachment1 = a1
-	streak.Color = ColorSequence.new(perfect and colors.Perfect or colors.GoldLight, colors.Gold)
-	streak.LightEmission = 1
-	streak.LightInfluence = 0
-	streak.Lifetime = 0.25 + levelIndex * 0.08
-	streak.WidthScale = NumberSequence.new(1, 0)
-	streak.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) })
-	streak.FaceCamera = true
-	streak.Parent = carrier
-
-	local rings = {}
-	for i = 1, level.Rings do
-		rings[i] = VFXLib.ring({
-			Radius = level.BallScale * 0.7 + i * 0.25,
-			Width = 0.12 + (perfect and 0.06 or 0),
-			Color = perfect and colors.Gold or colors.SpinLine,
-		})
-	end
-
-	local visual = {
-		Id = data.Id,
-		Ball = ball,
-		Core = core,
-		Carrier = carrier,
-		Streak = streak,
-		Rings = rings,
-		Origin = data.Origin,
-		Direction = data.Direction,
-		Speed = data.Speed,
-		Range = data.Range,
-		ServerTime = data.ServerTime,
-		Level = levelIndex,
-		Perfect = perfect,
-		Spin = 0,
-		NextGhost = 0,
-		Expire = os.clock() + data.Range / data.Speed + 1.5,
-	}
-	projectiles[data.Id] = visual
-end
-
-local function removeProjectile(visual)
-	projectiles[visual.Id] = nil
-	returnBall(visual.Ball)
-	for _, ring in ipairs(visual.Rings) do
-		ring:Destroy()
-	end
-	visual.Streak.Enabled = false -- let the streak fade out on its own
-	game:GetService("Debris"):AddItem(visual.Carrier, visual.Streak.Lifetime + 0.1)
-end
-
-local function projectileLoop(dt)
-	local now = os.clock()
-	local serverNow = workspace:GetServerTimeNow()
-	for _, v in pairs(projectiles) do
-		local distance = math.min(v.Speed * (serverNow - v.ServerTime), v.Range)
-		local position = v.Origin + v.Direction * distance
-		v.Spin = v.Spin + dt * (18 + v.Level * 6)
-		local facing = CFrame.lookAt(position, position + v.Direction)
-		v.Ball:PivotTo(facing * CFrame.Angles(-v.Spin, 0, v.Spin * 0.15))
-		v.Carrier.CFrame = facing
-		for i, ring in ipairs(v.Rings) do
-			local tilt = 0.35 * i
-			ring:SetCFrame(ringAxisAlong(position, v.Direction) * CFrame.Angles(tilt * math.sin(now * 6 + i), v.Spin * (0.4 + i * 0.2), tilt))
-		end
-		if now >= v.NextGhost then
-			v.NextGhost = now + 0.05
-			VFXLib.afterimage(v.Core.CFrame, SpinConfig.Levels[v.Level].BallScale, v.Perfect and colors.Perfect or colors.Gold)
-		end
-		if now > v.Expire then
-			removeProjectile(v) -- safety: server end event never arrived
-		end
-	end
-end
-
-local function impact(position, normal, levelIndex, perfect, ownerIsLocal)
-	local level = SpinConfig.Levels[levelIndex]
-	local axis = CFrame.lookAt(position, position + normal) * CFrame.Angles(-math.pi / 2, 0, 0)
-	local color = perfect and colors.Perfect or colors.Gold
-
-	for i = 1, levelIndex do
-		task.delay((i - 1) * 0.05, function()
-			VFXLib.shockwave(axis, {
-				Radius = level.ShockwaveRadius * (1 - (i - 1) * 0.28),
-				Width = 0.5 + levelIndex * 0.15,
-				Duration = 0.4 + i * 0.05,
-				Color = i == 1 and color or colors.Orange,
-				Spin = 1.5 * i,
-			})
-		end)
-	end
-	if normal.Y > 0.5 then
-		VFXLib.groundDisc(position, normal, { Radius = level.ShockwaveRadius * 0.6, Color = colors.Gold, Duration = 0.35 })
-	end
-	VFXLib.burst(position, { Count = 18 * levelIndex, Color = colors.GoldLight, Speed = 30, Lifetime = 0.5 })
-	-- Metal sparks that fall with gravity.
-	VFXLib.burst(position, {
-		Count = 14 * levelIndex,
-		Color = colors.Orange,
-		Speed = 45,
-		Lifetime = 0.6,
-		Drag = 1,
-		Acceleration = Vector3.new(0, -70, 0),
-		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.18), NumberSequenceKeypoint.new(1, 0) }),
-		Direction = normal,
-		Spread = 70,
-	})
-	-- Desert dust.
-	VFXLib.burst(position, {
-		Count = 6 * levelIndex,
-		Texture = VFXLib.Textures.Smoke,
-		Color = Color3.fromRGB(196, 168, 120),
-		LightEmission = 0,
-		Speed = 8,
-		Lifetime = 1.1,
-		Drag = 3,
-		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 5) }),
-		TransparencySeq = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 1) }),
-	})
-	VFXLib.flash(position, colors.Gold, 3 + levelIndex * 2, 12 + levelIndex * 6, 0.35)
-	VFXLib.sound(sounds.Impact, position, 0.6 + levelIndex * 0.15, 1.1 - levelIndex * 0.1)
-	CameraFX.shakeAt(position, level.CameraShake * 2, 60 + levelIndex * 20)
-	if perfect and ownerIsLocal then
-		CameraFX.impactFrame(colors.GoldLight)
-	end
-end
-
-local function endProjectile(data)
-	local visual = projectiles[data.Id]
-	local levelIndex = (data.Visual and data.Visual.Level) or (visual and visual.Level) or 1
-	local perfect = data.Visual and data.Visual.Perfect == true
-	if visual then
-		visual.Ball:PivotTo(CFrame.new(data.Position))
-		removeProjectile(visual)
-	end
-	-- Impact frame only for the thrower, and only when the ball hit someone.
-	local ownerIsLocal = data.HitCharacter and data.OwnerId == localPlayer.UserId
-	impact(data.Position, data.Normal, levelIndex, perfect, ownerIsLocal)
-end
+local colors = {
+	Gold = Color3.fromRGB(255, 196, 56),
+	Perfect = Color3.fromRGB(255, 250, 210),
+	GoldLight = Color3.fromRGB(255, 238, 160),
+}
 
 local function onHit(data)
 	if not data.Victim then
@@ -1016,29 +273,38 @@ local function onDamage(data)
 	end)
 end
 
-function SpinVFX.init()
-	local FX = Net.get("SpinFX")
-	FX.OnClientEvent:Connect(function(name, data)
-		if name == "SpinRelease" then
-			onRelease(data)
-		elseif name == "ProjectileSpawn" and data.Kind == "SteelBall" then
-			spawnProjectile(data)
-		elseif name == "ProjectileEnd" and data.Kind == "SteelBall" then
-			endProjectile(data)
-		elseif name == "Hit" then
+function HitFX.init()
+	Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+		if name == "Hit" then
 			onHit(data)
 		elseif name == "Damage" then
 			onDamage(data)
 		end
 	end)
-	RunService.RenderStepped:Connect(function(dt)
-		chargeLoop(dt)
-		projectileLoop(dt)
-	end)
 end
 
-return SpinVFX
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX34"><Properties><string name="Name">TuskActCommon</string><ProtectedString name="Source"><![CDATA[--[[
+return HitFX
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX31"><Properties><string name="Name">JointCache</string><ProtectedString name="Source"><![CDATA[--[[
+	JointCache  (StarterPlayerScripts.SpinClient.JointCache)
+	Remembers each Motor6D's original C0 the first time any pose system
+	touches it, so Spin poses and Tusk poses can both restore the true
+	rest pose instead of each other's leftovers.
+]]
+
+local JointCache = {}
+local originals = setmetatable({}, { __mode = "k" })
+
+function JointCache.original(motor)
+	local c0 = originals[motor]
+	if not c0 then
+		c0 = motor.C0
+		originals[motor] = c0
+	end
+	return c0
+end
+
+return JointCache
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX32"><Properties><string name="Name">TuskActCommon</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActCommon  (StarterPlayerScripts.SpinClient.TuskActCommon)
 
 	Shared client choreography used by every Act's visual module:
@@ -1072,6 +338,7 @@ Common.Palettes = {
 	[2] = { Main = Color3.fromRGB(80, 210, 255), Second = Color3.fromRGB(110, 70, 255), Light = colors.Ice },
 	[3] = { Main = Color3.fromRGB(70, 130, 255), Second = Color3.fromRGB(30, 20, 120), Light = Color3.fromRGB(190, 210, 255) },
 	[4] = { Main = colors.Gold, Second = colors.DeepBlue, Light = colors.GoldLight },
+	[5] = { Main = Color3.fromRGB(120, 225, 95), Second = Color3.fromRGB(40, 120, 50), Light = Color3.fromRGB(225, 255, 205) }, -- Gyro
 }
 
 function Common.palette(act)
@@ -1251,7 +518,7 @@ function Common.actName(act)
 end
 
 return Common
-]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX39"><Properties><string name="Name">TuskActVFX</string></Properties><Item class="ModuleScript" referent="RBX35"><Properties><string name="Name">Act1</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX38"><Properties><string name="Name">TuskActVFX</string></Properties><Item class="ModuleScript" referent="RBX33"><Properties><string name="Name">Act1</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Act1  (StarterPlayerScripts.SpinClient.TuskActVFX.Act1)
 
 	Client choreography for Tusk Act 1: poses, Stand motion, effects and
@@ -1536,7 +803,7 @@ function Act1.step()
 end
 
 return Act1
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX36"><Properties><string name="Name">Act2</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX34"><Properties><string name="Name">Act2</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Act2  (StarterPlayerScripts.SpinClient.TuskActVFX.Act2)
 	Client choreography for Tusk Act 2 (wormhole combat): cyan + violet
 	portals, spatial distortion, rotating nails through wormholes.
@@ -1639,7 +906,7 @@ function Act2.handle(name, data)
 end
 
 return Act2
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX37"><Properties><string name="Name">Act3</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX35"><Properties><string name="Name">Act3</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Act3  (StarterPlayerScripts.SpinClient.TuskActVFX.Act3)
 	Client choreography for Tusk Act 3 (spatial movement): deep-blue
 	layered portals, blue distortion afterimages, a tearing dimensional break.
@@ -1804,7 +1071,7 @@ function Act3.handle(name, data)
 end
 
 return Act3
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX38"><Properties><string name="Name">Act4</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX36"><Properties><string name="Name">Act4</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Act4  (StarterPlayerScripts.SpinClient.TuskActVFX.Act4)
 	Client choreography for Tusk Act 4 (Infinite Rotation): gold and deep
 	blue, giant rotational rings, golden afterimages, distorted air, and the
@@ -2107,7 +1374,452 @@ function Act4.step()
 end
 
 return Act4
-]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX40"><Properties><string name="Name">TuskAnimation</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX37"><Properties><string name="Name">Gyro</string><ProtectedString name="Source"><![CDATA[--[[
+	TuskActVFX.Gyro  (StarterPlayerScripts.SpinClient.TuskActVFX.Gyro)
+
+	Client visuals for Gyro Zeppeli (Steel Ball moveset):
+	  * the green Steel Ball always spinning in Gyro's right hand
+	    (hidden while it's thrown, back when it returns)
+	  * thrown / returning ball with white-green spin rings and a trail
+	  * orange Wrecking Ball studs
+	  * Spin Vibration ripples, and shaking sparks on anyone hit by the Spin
+	  * BALL BREAKER: spiral build-up, giant ball, spinning vortex, burst
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local VFXQuality = require(Shared.VFXQuality)
+local Net = require(Shared.Net)
+local SteelBallModel = require(Shared.SteelBallModel)
+local WreckingBallModel = require(Shared.WreckingBallModel)
+local VFXLib = require(script.Parent.Parent.VFXLib)
+local CameraFX = require(script.Parent.Parent.CameraFX)
+local TuskVFX = require(script.Parent.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
+local Common = require(script.Parent.Parent.TuskActCommon)
+
+local Gyro = {}
+local pal = Common.palette(5)
+local sounds = TuskConfig.Sounds
+local localPlayer = Players.LocalPlayer
+local GYRO_ACT = 5
+
+local held = {} -- [character] = { Ball, Weld, Grip, Angle, HiddenUntil }
+local shakes = {} -- [character] = attachment with sparkles
+local balls = {} -- [projectile id] = visual
+
+local function handOf(character)
+	local hand = character:FindFirstChild("RightHand")
+	if hand then
+		return hand, CFrame.new(0, -0.5, -0.15)
+	end
+	local arm = character:FindFirstChild("Right Arm")
+	if arm then
+		return arm, CFrame.new(0, -1.15, -0.15)
+	end
+	return nil
+end
+
+local function setHidden(entry, hidden)
+	for _, d in ipairs(entry.Ball:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.LocalTransparencyModifier = hidden and 1 or 0
+		end
+	end
+	entry.Hidden = hidden
+end
+
+---------------------------------------------------------------------------
+-- Ball always in Gyro's hand
+---------------------------------------------------------------------------
+local function updateHeld(dt)
+	local seen = {}
+	local now = os.clock()
+	for _, player in ipairs(Players:GetPlayers()) do
+		local character = player.Character
+		if character and character:GetAttribute("TuskAct") == GYRO_ACT then
+			local hand, grip = handOf(character)
+			if hand then
+				seen[character] = true
+				local entry = held[character]
+				if not entry then
+					local ball = SteelBallModel.build(0.9, VFXQuality.get().Grooves)
+					local core = ball.PrimaryPart
+					core.Anchored = false
+					ball:PivotTo(hand.CFrame * grip)
+					local weld = Instance.new("Weld")
+					weld.Part0 = hand
+					weld.Part1 = core
+					weld.C0 = grip
+					weld.Parent = core
+					ball.Parent = VFXLib.Folder
+					entry = { Ball = ball, Weld = weld, Grip = grip, Angle = 0, HiddenUntil = 0, Spin = 8 }
+					held[character] = entry
+				end
+				entry.Angle = entry.Angle + dt * entry.Spin
+				entry.Weld.C0 = entry.Grip * CFrame.Angles(entry.Angle, entry.Angle * 0.3, 0)
+				local hide = now < entry.HiddenUntil
+				if hide ~= (entry.Hidden == true) then
+					setHidden(entry, hide)
+				end
+			end
+		end
+	end
+	for character, entry in pairs(held) do
+		if not seen[character] then
+			held[character] = nil
+			entry.Ball:Destroy()
+		end
+	end
+end
+
+-- Sparkly "shaking" on anyone the Spin is vibrating.
+local function updateShakes()
+	local seen = {}
+	local candidates = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player.Character then
+			table.insert(candidates, player.Character)
+		end
+	end
+	local dummies = workspace:FindFirstChild("SpinTestDummies")
+	if dummies then
+		for _, d in ipairs(dummies:GetChildren()) do
+			table.insert(candidates, d)
+		end
+	end
+	for _, model in ipairs(candidates) do
+		if model:IsA("Model") and model:GetAttribute("GyroSpinShake") then
+			local root = model:FindFirstChild("HumanoidRootPart")
+			if root then
+				seen[model] = true
+				if not shakes[model] then
+					local a = Instance.new("Attachment")
+					a.Name = "GyroSpinShake"
+					a.Parent = root
+					local e = Instance.new("ParticleEmitter")
+					e.Texture = VFXLib.Textures.Sparkle
+					e.Color = ColorSequence.new(pal.Light, pal.Main)
+					e.LightEmission = 1
+					e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0) })
+					e.Lifetime = NumberRange.new(0.2, 0.35)
+					e.Speed = NumberRange.new(4, 8)
+					e.SpreadAngle = Vector2.new(180, 180)
+					e.Rate = 30 * VFXQuality.get().Particles
+					e.Parent = a
+					shakes[model] = a
+				end
+			end
+		end
+	end
+	for model, a in pairs(shakes) do
+		if not seen[model] then
+			shakes[model] = nil
+			a:Destroy()
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Ball projectiles (server Kind "GyroBall")
+---------------------------------------------------------------------------
+local function spawnBall(data)
+	local style = data.Visual and data.Visual.Style or "Throw"
+	local ball
+	local rings = {}
+	if style == "Wrecking" then
+		ball = WreckingBallModel.build(0.7, false)
+	else
+		local size = style == "Breaker" and (data.Visual.Scale or 6) or 1.1
+		ball = SteelBallModel.build(size, VFXQuality.get().Grooves)
+		local ringCount = style == "Breaker" and 3 or 2
+		for i = 1, ringCount do
+			rings[i] = VFXLib.ring({ Radius = size * 0.6 + i * (style == "Breaker" and 0.8 or 0.25), Width = style == "Breaker" and 0.35 or 0.1, Color = i % 2 == 1 and pal.Light or pal.Main, Transparency = 0.1 })
+		end
+	end
+	ball.PrimaryPart.Anchored = true
+	ball.Parent = VFXLib.Folder
+	local core = ball.PrimaryPart
+	local a0 = Instance.new("Attachment")
+	a0.Position = Vector3.new(0, 0.3, 0)
+	a0.Parent = core
+	local a1 = Instance.new("Attachment")
+	a1.Position = Vector3.new(0, -0.3, 0)
+	a1.Parent = core
+	local trail = Instance.new("Trail")
+	trail.Attachment0 = a0
+	trail.Attachment1 = a1
+	trail.Color = style == "Wrecking" and ColorSequence.new(Color3.fromRGB(255, 160, 60)) or ColorSequence.new(pal.Light, pal.Main)
+	trail.LightEmission = 1
+	trail.Lifetime = style == "Breaker" and 0.5 or 0.25
+	trail.WidthScale = NumberSequence.new(1, 0)
+	trail.Transparency = NumberSequence.new(0.1, 1)
+	trail.Parent = core
+	balls[data.Id] = {
+		Model = ball,
+		Rings = rings,
+		Style = style,
+		Origin = data.Origin,
+		Direction = data.Direction,
+		Speed = data.Speed,
+		Range = data.Range,
+		ServerTime = data.ServerTime,
+		Spin = 0,
+		Expire = os.clock() + data.Range / data.Speed + 1.5,
+		NextGhost = 0,
+	}
+	VFXLib.sound(sounds.NailFire, data.Origin, 0.5, style == "Wrecking" and 1.3 or 0.8)
+	if style ~= "Return" then
+		VFXLib.burst(data.Origin, { Count = 8, Color = pal.Light, Speed = 14, Spread = 30, Direction = data.Direction, Lifetime = 0.25 })
+	end
+end
+
+local function removeBall(v)
+	for _, ring in ipairs(v.Rings) do
+		ring:Destroy()
+	end
+	v.Model:Destroy()
+end
+
+local function endBall(data)
+	local v = balls[data.Id]
+	if v then
+		balls[data.Id] = nil
+		removeBall(v)
+	end
+	local style = data.Visual and data.Visual.Style or "Throw"
+	if style == "Breaker" then
+		return -- the vortex event takes over
+	end
+	if style == "Wrecking" then
+		VFXLib.burst(data.Position, { Count = 10, Color = Color3.fromRGB(255, 170, 70), Speed = 25, Lifetime = 0.3, Acceleration = Vector3.new(0, -50, 0) })
+		VFXLib.sound(sounds.NailImpact, data.Position, 0.4, 1.3)
+	elseif style == "Throw" then
+		TuskVFX.CreateImpact(data.Position, data.Normal, { Size = 1, Radius = 3.5, Layers = 2, Color = pal.Main, Color2 = pal.Light, Sound = sounds.NailImpact, Pitch = 0.8 })
+		CameraFX.shakeAt(data.Position, 0.3, 50)
+	end
+end
+
+local function stepBalls(dt)
+	local serverNow = workspace:GetServerTimeNow()
+	local now = os.clock()
+	for id, v in pairs(balls) do
+		local distance = math.min(v.Speed * (serverNow - v.ServerTime), v.Range)
+		local pos = v.Origin + v.Direction * distance
+		v.Spin = v.Spin + dt * (v.Style == "Breaker" and 10 or 25)
+		local facing = CFrame.lookAt(pos, pos + v.Direction)
+		v.Model:PivotTo(facing * CFrame.Angles(-v.Spin, 0, v.Spin * 0.2))
+		local axis = facing * CFrame.Angles(math.pi / 2, 0, 0)
+		for i, ring in ipairs(v.Rings) do
+			ring:SetCFrame(axis * CFrame.Angles(0.5 * i * math.sin(v.Spin * 0.2), v.Spin * (0.4 + i * 0.2) * (i % 2 == 0 and -1 or 1), 0.3 * i))
+		end
+		if v.Style == "Breaker" and now >= v.NextGhost then
+			v.NextGhost = now + 0.05
+			VFXLib.afterimage(facing, 4, pal.Main)
+		end
+		if now > v.Expire then
+			balls[id] = nil
+			removeBall(v)
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Moves
+---------------------------------------------------------------------------
+local function onAbility(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	local entry = character and held[character]
+	if data.Move == "SteelBallThrow" then
+		if data.Phase == "Startup" and root then
+			TuskAnimation.play(character, "Throw")
+			if entry then
+				entry.Spin = 30
+				task.delay(data.Startup, function()
+					entry.HiddenUntil = os.clock() + 4 -- until it's caught again
+					entry.Spin = 8
+				end)
+			end
+		elseif data.Phase == "Caught" and entry then
+			entry.HiddenUntil = 0
+			if root then
+				VFXLib.burst(root.Position + Vector3.new(0, 1, 0), { Count = 8, Color = pal.Light, Speed = 6, Lifetime = 0.25 })
+			end
+		end
+	elseif data.Move == "WreckingBalls" and data.Phase == "Startup" and root then
+		TuskAnimation.play(character, "Throw")
+		local hand = (root.CFrame * CFrame.new(0.9, 0.6, -1.6)).Position
+		VFXLib.burst(hand, { Count = 14, Color = Color3.fromRGB(255, 170, 70), Speed = 8, Lifetime = 0.2 })
+		VFXLib.flash(hand, Color3.fromRGB(255, 180, 90), 3, 10, 0.2)
+	elseif data.Move == "SpinVibration" then
+		if data.Phase == "Startup" and root then
+			TuskAnimation.play(character, "M1_3")
+			if entry then
+				entry.Spin = 45
+				task.delay(0.6, function()
+					entry.Spin = 8
+				end)
+			end
+		elseif data.Phase == "Hit" then
+			-- Spiral ripples spreading from the ball.
+			for i = 1, 3 do
+				task.delay(i * 0.06, function()
+					local axis = CFrame.new(data.Position) * CFrame.Angles(math.pi / 2, 0, 0)
+					TuskVFX.CreateRotationalShockwave(axis, { Radius = 2 + i * 1.5, Layers = 1, Color = pal.Light, Color2 = pal.Main, Particles = 0.4, Width = 0.25, Duration = 0.3, Spin = 5 })
+				end)
+			end
+			VFXLib.sound(sounds.Hit, data.Position, 0.6, 0.7)
+			if data.Hit and Common.isLocal(character) then
+				CameraFX.shake(0.4, 0.3)
+			end
+		end
+	end
+end
+
+-- Logarithmic spiral of beams (the Spin's "golden ratio" spiral, in green/white).
+local function spiral(cframe, size, duration)
+	local carrier = VFXLib.anchor(cframe)
+	local prev
+	local points = VFXQuality.get().RingSegments
+	for i = 0, points do
+		local t = i / points
+		local angle = t * math.pi * 4
+		local r = size * 0.08 * math.exp(t * 2.5)
+		local a = Instance.new("Attachment")
+		a.Position = Vector3.new(math.cos(angle) * r, math.sin(angle) * r, 0)
+		a.Parent = carrier
+		if prev then
+			local b = Instance.new("Beam")
+			b.Attachment0 = prev
+			b.Attachment1 = a
+			b.FaceCamera = true
+			b.LightEmission = 1
+			b.Width0 = 0.18
+			b.Width1 = 0.18
+			b.Color = ColorSequence.new(pal.Light:Lerp(pal.Main, t))
+			b.Parent = carrier
+		end
+		prev = a
+	end
+	VFXLib.animate(duration, function(a, dt)
+		carrier.CFrame = carrier.CFrame * CFrame.Angles(0, 0, (dt or 0) * (2 + a * 8))
+	end, function()
+		carrier:Destroy()
+	end)
+end
+
+local function onUltimate(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Phase == "Start" and root then
+		TuskAnimation.play(character, "Awakening")
+		VFXLib.sound(sounds.AwakeningBuild, root, 0.9, 0.9)
+		local entry = held[character]
+		if entry then
+			entry.Spin = 60
+		end
+		spiral(root.CFrame * CFrame.new(0, 2, -3), 6, data.Windup)
+		TuskVFX.CreateMagicCircle(CFrame.new(root.Position - Vector3.new(0, 2.9, 0)), { Radius = 8, Color = pal.Main, Color2 = pal.Light, Duration = data.Windup + 0.3, RotationSpeed = 2, Points = 5 })
+		TuskVFX.CreateEnergyCharge({
+			Follow = function()
+				return root.Parent and root.CFrame * CFrame.new(0.9, 0.8, -1.8) or nil
+			end,
+			Color = pal.Main,
+			Color2 = pal.Light,
+			MaxRadius = 1.6,
+			Duration = data.Windup,
+			Rings = 3,
+		})
+		if Common.isLocal(character) then
+			CameraFX.setFovHold(-10)
+		end
+	elseif data.Phase == "Release" then
+		local entry = character and held[character]
+		if entry then
+			entry.Spin = 8
+		end
+		if character then
+			TuskAnimation.play(character, "Throw")
+		end
+		VFXLib.flash(data.Position, pal.Light, 10, 40, 0.5)
+		if Common.isLocal(character) then
+			CameraFX.setFovHold(0)
+			CameraFX.fovPunch(16, 0.6)
+			CameraFX.speedLines(0.45, pal.Light)
+		end
+	elseif data.Phase == "Vortex" then
+		local pos = data.Position
+		local ground = CFrame.new(pos - Vector3.new(0, 1, 0))
+		for i = 1, 3 do
+			TuskVFX.CreateSpinRing({ CFrame = ground * CFrame.new(0, i * 1.6, 0), Tilt = CFrame.Angles(0.15 * i, 0, 0), Radius = data.Radius * (1.05 - i * 0.2), Width = 0.4, Color = i % 2 == 1 and pal.Main or pal.Light, RotationSpeed = (5 + i * 2) * (i % 2 == 0 and -1 or 1), Duration = data.Duration })
+		end
+		TuskVFX.CreateMagicCircle(ground, { Radius = data.Radius, Color = pal.Main, Color2 = pal.Light, Duration = data.Duration, RotationSpeed = 3, Points = 6 })
+		TuskVFX.CreateEnergyCharge({ CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)), Color = pal.Main, Color2 = pal.Light, MaxRadius = 3, Duration = data.Duration, Rings = 3 })
+		spiral(CFrame.new(pos + Vector3.new(0, 0.5, 0)) * CFrame.Angles(-math.pi / 2, 0, 0), data.Radius * 0.8, data.Duration)
+		VFXLib.sound(sounds.ChargeLoop, pos, 0.8, 0.6)
+	elseif data.Phase == "Burst" then
+		local pos = data.Position
+		TuskVFX.CreateRotationalShockwave(CFrame.new(pos - Vector3.new(0, 1, 0)), { Radius = data.Radius * 1.6, Layers = 4, Color = pal.Main, Color2 = pal.Light, Ground = true, Particles = 3, Width = 1, Duration = 0.7 })
+		TuskVFX.CreateDistortion(pos, { Radius = 10, Duration = 0.5 })
+		VFXLib.flash(pos, pal.Light, 14, 60, 0.7)
+		VFXLib.sound(sounds.AwakeningBurst, pos, 1, 0.8)
+		CameraFX.shakeAt(pos, 1.5, 110)
+		if Common.isLocal(character) then
+			CameraFX.impactFrame(pal.Light)
+		end
+	end
+end
+
+function Gyro.handle(name, data)
+	if name == "M1" then
+		Common.m1(data, pal)
+	elseif name == "M1Finisher" then
+		Common.finisher(data, pal)
+		local entry = data.Character and held[data.Character]
+		if entry then
+			entry.Spin = 50
+			task.delay(0.4, function()
+				entry.Spin = 8
+			end)
+		end
+	elseif name == "Ability" then
+		onAbility(data)
+	elseif name == "Ultimate" then
+		onUltimate(data)
+	end
+end
+
+local shakeTimer = 0
+function Gyro.step(dt)
+	dt = dt or 1 / 60
+	updateHeld(dt)
+	stepBalls(dt)
+	shakeTimer = shakeTimer + dt
+	if shakeTimer > 0.25 then
+		shakeTimer = 0
+		updateShakes()
+	end
+end
+
+-- Ball projectiles come through the shared SpinFX channel.
+Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+	if typeof(data) ~= "table" or data.Kind ~= "GyroBall" then
+		return
+	end
+	if name == "ProjectileSpawn" then
+		spawnBall(data)
+	elseif name == "ProjectileEnd" then
+		endBall(data)
+	end
+end)
+
+return Gyro
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX39"><Properties><string name="Name">TuskAnimation</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAnimation  (StarterPlayerScripts.SpinClient.TuskAnimation)
 	("TuskAnimationController" in the design doc)
 
@@ -2203,6 +1915,7 @@ TuskAnimation.Actions = {
 	SpinningNailRelease = { { 0, "ChargeNail" }, { 0.06, "PointRecoil" }, { 0.4, "Point" } },
 	Awakening = { { 0, "Rest" }, { 0.35, "AwakenCrouch" }, { 1.2, "AwakenCrouch" }, { 1.45, "AwakenRise" }, { 2.2, "AwakenRise" } },
 	Emerge = { { 0, "Sneak" }, { 0.12, "Emerge" }, { 0.5, "Emerge" } },
+	Throw = { { 0, "Rest" }, { 0.14, "SlamWindup" }, { 0.24, "Point" }, { 0.5, "Point" } },
 }
 
 local states = setmetatable({}, { __mode = "k" }) -- character -> { Hold, ActionJob, Tracks }
@@ -2437,7 +2150,7 @@ Players.LocalPlayer.CharacterRemoving:Connect(function(character)
 end)
 
 return TuskAnimation
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX41"><Properties><string name="Name">TuskController</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX40"><Properties><string name="Name">TuskController</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskController  (StarterPlayerScripts.SpinClient.TuskController)
 	("TuskAbilityController" in the design doc)
 
@@ -2612,8 +2325,8 @@ function TuskController.init()
 	local FX = Net.get("TuskFX")
 
 	local actsFolder = script.Parent:WaitForChild("TuskActVFX")
-	for act in pairs(Registry.Acts) do
-		local m = actsFolder:FindFirstChild("Act" .. act)
+	for act, info in pairs(Registry.Acts) do
+		local m = actsFolder:FindFirstChild(info.ClientModule or ("Act" .. act))
 		if m then
 			actVFX[act] = require(m)
 		end
@@ -2653,7 +2366,7 @@ function TuskController.init()
 		return Enum.ContextActionResult.Sink
 	end, false, TuskConfig.Keys.ActMenu.Keyboard, TuskConfig.Keys.ActMenu.Gamepad)
 
-	RunService.RenderStepped:Connect(function()
+	RunService.RenderStepped:Connect(function(dt)
 		local act = currentAct()
 		if act and not bound then
 			bindAll()
@@ -2666,7 +2379,7 @@ function TuskController.init()
 		end
 		for _, m in pairs(actVFX) do
 			if m.step then
-				m.step()
+				m.step(dt)
 			end
 		end
 		TuskUI.step(act)
@@ -2679,7 +2392,7 @@ function TuskController.init()
 end
 
 return TuskController
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX42"><Properties><string name="Name">TuskProjectiles</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX41"><Properties><string name="Name">TuskProjectiles</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskProjectiles  (StarterPlayerScripts.SpinClient.TuskProjectiles)
 
 	Draws every server "TuskNail" projectile (ProjectileService events on
@@ -2945,7 +2658,7 @@ function TuskProjectiles.init()
 end
 
 return TuskProjectiles
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX43"><Properties><string name="Name">TuskSneakController</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX42"><Properties><string name="Name">TuskSneakController</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskSneakController  (StarterPlayerScripts.SpinClient.TuskSneakController)
 
 	Client side of Tusk Sneak and the Sneak Attack, for every Act.
@@ -3221,7 +2934,7 @@ function TuskSneakController.init()
 end
 
 return TuskSneakController
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX44"><Properties><string name="Name">TuskStand</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX43"><Properties><string name="Name">TuskStand</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskStand  (StarterPlayerScripts.SpinClient.TuskStand)
 
 	Builds and animates the Tusk Stand for every player whose character
@@ -3489,7 +3202,7 @@ function TuskStand.init()
 end
 
 return TuskStand
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX45"><Properties><string name="Name">TuskVFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX44"><Properties><string name="Name">TuskVFX</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskVFX  (StarterPlayerScripts.SpinClient.TuskVFX)
 
 	Reusable procedural VFX framework for every Tusk Act (built on VFXLib).
@@ -4325,7 +4038,7 @@ function TuskVFX.CreateTuskTransformation(character, opts)
 end
 
 return TuskVFX
-]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX49"><Properties><string name="Name">UI</string></Properties><Item class="ModuleScript" referent="RBX46"><Properties><string name="Name">CharacterCard</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX48"><Properties><string name="Name">UI</string></Properties><Item class="ModuleScript" referent="RBX45"><Properties><string name="Name">CharacterCard</string><ProtectedString name="Source"><![CDATA[--[[
 	CharacterCard  (StarterPlayerScripts.SpinClient.UI.CharacterCard)
 
 	Top-left character card:
@@ -4356,7 +4069,7 @@ local player = Players.LocalPlayer
 local DARK = Color3.fromRGB(14, 12, 20)
 local GOLD = Color3.fromRGB(255, 205, 90)
 
-local gui, card, portrait, viewport, standLabel, pips, hpFill, hpText, scale, arrow
+local gui, card, portrait, viewport, nameLabel, standLabel, pips, hpFill, hpText, scale, arrow
 local dropdown, dropdownList, actRows, rosterRows
 -- Declared up here so init() can call them (they are defined further down).
 local buildDropdown, refreshDropdown
@@ -4514,7 +4227,7 @@ function CharacterCard.init()
 		viewport.Parent = frame
 	end
 
-	label(card, {
+	nameLabel = label(card, {
 		Position = UDim2.fromOffset(98, 6),
 		Size = UDim2.new(1, -130, 0, 28),
 		Font = Enum.Font.Bangers,
@@ -4719,13 +4432,19 @@ function refreshDropdown(act)
 	if not dropdown then
 		return
 	end
-	local johnny = rosterRows.Johnny
-	if johnny then
-		local playing = act ~= nil
-		johnny.Status.Text = playing and "PLAYING" or "SELECT"
-		johnny.Status.BackgroundColor3 = playing and Color3.fromRGB(40, 120, 70) or Color3.fromRGB(40, 90, 200)
-		johnny.Status.TextColor3 = Color3.new(1, 1, 1)
-		johnny.Status.Active = not playing
+	-- Each character row: PLAYING (green) or SELECT (blue).
+	local current = act and Registry.characterOf(act)
+	for id, row in pairs(rosterRows) do
+		if row.Entry.Available then
+			local playing = current == id
+			row.Status.Text = playing and "PLAYING" or "SELECT"
+			row.Status.BackgroundColor3 = playing and Color3.fromRGB(40, 120, 70) or Color3.fromRGB(40, 90, 200)
+			row.Status.TextColor3 = Color3.new(1, 1, 1)
+			row.Status.Active = not playing
+		end
+	end
+	if current ~= "Johnny" then
+		act = nil -- Tusk Act rows only light up while playing Johnny
 	end
 	for i, r in pairs(actRows) do
 		if act == i then
@@ -4799,12 +4518,29 @@ function CharacterCard.step()
 		local evolved = shownAct ~= nil and act ~= nil and act > shownAct
 		shownAct = act
 		local info = act and Registry.get(act)
-		standLabel.Text = info and ("STAND  ·  " .. info.Name) or TuskConfig.Character.Title
+		local isGyro = act ~= nil and Registry.characterOf(act) == "Gyro"
+		-- Name plate follows the character (from TuskConfig.Roster).
+		local who = isGyro and "Gyro" or "Johnny"
+		for _, entry in ipairs(TuskConfig.Roster or {}) do
+			if entry.Id == who then
+				nameLabel.Text = entry.Name
+			end
+		end
+		if isGyro then
+			standLabel.Text = "STEEL BALL USER"
+		else
+			standLabel.Text = info and ("STAND  ·  " .. info.Name) or TuskConfig.Character.Title
+		end
 		standLabel.TextColor3 = info and info.Theme.Primary or Color3.fromRGB(200, 220, 255)
+		-- Act pips are Tusk's progression; hidden for Gyro.
 		for i, pip in ipairs(pips) do
+			pip.Visible = not isGyro
 			local on = act ~= nil and i <= act
 			local theme = Registry.get(i) and Registry.get(i).Theme.Primary or GOLD
 			pip.BackgroundColor3 = on and theme or Color3.fromRGB(60, 60, 80)
+		end
+		if isGyro then
+			evolved = false
 		end
 		if evolved and info then
 			CharacterCard.pop(info.Theme.Primary)
@@ -4814,37 +4550,22 @@ function CharacterCard.step()
 end
 
 return CharacterCard
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX47"><Properties><string name="Name">SpinMeter</string><ProtectedString name="Source"><![CDATA[--[[
-	SpinMeter  (StarterPlayerScripts.SpinClient.UI.SpinMeter)
-
-	Golden Spin HUD:
-	  * charge bar with Power tick, gold PERFECT zone and overcharge zone
-	  * live level name ("QUICK SPIN" / "POWER SPIN" / "PERFECT SPIN")
-	  * cooldown bar + key hint (R / RT / hidden on touch)
-	  * centre-screen popup on release ("PERFECT SPIN!")
-	  * VFX quality toggle (top right)
-	Built in code so it can be dropped into any place. Later phases will
-	merge this into the full ability-slot HUD.
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX46"><Properties><string name="Name">SettingsUI</string><ProtectedString name="Source"><![CDATA[--[[
+	SettingsUI  (StarterPlayerScripts.SpinClient.UI.SettingsUI)
+	The small "VFX: MEDIUM" button (top right) that cycles Low / Medium / High.
+	Phones start on Low to keep the frame rate smooth.
 ]]
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
-local SpinConfig = require(Shared.SpinConfig)
 local VFXQuality = require(Shared.VFXQuality)
-local VFXLib = require(script.Parent.Parent.VFXLib)
 
-local SpinMeter = {}
-
-local colors = SpinConfig.Colors
-local charge = SpinConfig.Charge
-local MAX_T = charge.PerfectWindowStart + charge.PerfectWindowDuration + 0.6
+local SettingsUI = {}
 local DARK = Color3.fromRGB(22, 16, 10)
 local FONT = Enum.Font.GothamBlack
-
-local gui, chargeFrame, fill, levelLabel, cooldownFill, cooldownLabel, keyHint, popupLabel, popupScale
-local cooldownJob, popupJob, chargeFadeJob
+local colors = { GoldLight = Color3.fromRGB(255, 238, 160), Gold = Color3.fromRGB(255, 196, 56) }
 
 local function corner(parent, radius)
 	local c = Instance.new("UICorner")
@@ -4861,158 +4582,11 @@ local function stroke(parent, color, thickness)
 	return s
 end
 
-local function label(parent, props)
-	local l = Instance.new("TextLabel")
-	l.BackgroundTransparency = 1
-	l.Font = FONT
-	l.TextColor3 = colors.GoldLight
-	l.TextStrokeTransparency = 0.4
-	l.TextStrokeColor3 = Color3.new(0, 0, 0)
-	for k, v in pairs(props) do
-		l[k] = v
-	end
-	l.Parent = parent
-	return l
-end
-
-local function keyText()
-	local last = UserInputService:GetLastInputType()
-	if last == Enum.UserInputType.Touch then
-		return ""
-	end
-	if string.find(last.Name, "Gamepad") then
-		return "RT"
-	end
-	return SpinConfig.Input.Keyboard.Name
-end
-
-function SpinMeter.init()
-	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-	gui = Instance.new("ScreenGui")
-	gui.Name = "SpinHUD"
+function SettingsUI.init()
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "SpinSettings"
 	gui.ResetOnSpawn = false
-	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	gui.Parent = playerGui
-
-	-- Bottom-centre panel.
-	local panel = Instance.new("Frame")
-	panel.Name = "SpinPanel"
-	panel.AnchorPoint = Vector2.new(0.5, 1)
-	panel.Position = UDim2.new(0.5, 0, 1, -24)
-	panel.Size = UDim2.fromOffset(320, 58)
-	panel.BackgroundTransparency = 1
-	panel.Parent = gui
-
-	local sizeLimit = Instance.new("UISizeConstraint")
-	sizeLimit.MaxSize = Vector2.new(320, 58)
-	sizeLimit.Parent = panel
-
-	-- Charge bar (hidden until charging).
-	chargeFrame = Instance.new("Frame")
-	chargeFrame.Name = "Charge"
-	chargeFrame.Size = UDim2.new(1, 0, 0, 16)
-	chargeFrame.BackgroundColor3 = DARK
-	chargeFrame.BackgroundTransparency = 0.15
-	chargeFrame.Visible = false
-	chargeFrame.Parent = panel
-	corner(chargeFrame, 8)
-	stroke(chargeFrame, colors.Gold, 2)
-
-	local function zone(name, from, to, color, transparency)
-		local z = Instance.new("Frame")
-		z.Name = name
-		z.BorderSizePixel = 0
-		z.Position = UDim2.fromScale(from / MAX_T, 0)
-		z.Size = UDim2.fromScale((to - from) / MAX_T, 1)
-		z.BackgroundColor3 = color
-		z.BackgroundTransparency = transparency
-		z.ZIndex = 1
-		z.Parent = chargeFrame
-		return z
-	end
-	local windowEnd = charge.PerfectWindowStart + charge.PerfectWindowDuration
-	zone("PerfectZone", charge.PerfectWindowStart, windowEnd, colors.Perfect, 0.35)
-	zone("Overcharge", windowEnd, MAX_T, Color3.fromRGB(120, 30, 20), 0.55)
-	zone("PowerTick", SpinConfig.Levels[2].ChargeTime, SpinConfig.Levels[2].ChargeTime + 0.025, colors.GoldLight, 0.2)
-
-	fill = Instance.new("Frame")
-	fill.Name = "Fill"
-	fill.BorderSizePixel = 0
-	fill.Size = UDim2.fromScale(0, 1)
-	fill.BackgroundColor3 = colors.Orange
-	fill.ZIndex = 2
-	fill.Parent = chargeFrame
-	corner(fill, 8)
-
-	levelLabel = label(chargeFrame, {
-		Name = "Level",
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 0, -2),
-		Size = UDim2.new(1, 0, 0, 20),
-		TextSize = 18,
-		Text = "",
-	})
-
-	-- Cooldown row.
-	local row = Instance.new("Frame")
-	row.Name = "Cooldown"
-	row.Position = UDim2.new(0, 0, 1, -22)
-	row.Size = UDim2.new(1, 0, 0, 22)
-	row.BackgroundColor3 = DARK
-	row.BackgroundTransparency = 0.25
-	row.Parent = panel
-	corner(row, 6)
-	stroke(row, colors.BallDark, 1.5)
-
-	cooldownFill = Instance.new("Frame")
-	cooldownFill.BorderSizePixel = 0
-	cooldownFill.BackgroundColor3 = colors.Gold
-	cooldownFill.BackgroundTransparency = 0.6
-	cooldownFill.Size = UDim2.fromScale(0, 1)
-	cooldownFill.Parent = row
-	corner(cooldownFill, 6)
-
-	keyHint = label(row, {
-		Position = UDim2.fromOffset(8, 0),
-		Size = UDim2.new(0, 40, 1, 0),
-		TextSize = 14,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = keyText(),
-	})
-	label(row, {
-		Position = UDim2.fromOffset(44, 0),
-		Size = UDim2.new(0.5, 0, 1, 0),
-		TextSize = 14,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "GOLDEN SPIN",
-	})
-	cooldownLabel = label(row, {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -8, 0, 0),
-		Size = UDim2.new(0.4, 0, 1, 0),
-		TextSize = 14,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		Text = "READY",
-	})
-
-	UserInputService.LastInputTypeChanged:Connect(function()
-		keyHint.Text = keyText()
-	end)
-
-	-- Centre popup.
-	popupLabel = label(gui, {
-		Name = "Popup",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.32),
-		Size = UDim2.fromOffset(500, 70),
-		Font = Enum.Font.Bangers,
-		TextSize = 56,
-		TextTransparency = 1,
-		TextStrokeTransparency = 1,
-		Text = "",
-	})
-	popupScale = Instance.new("UIScale")
-	popupScale.Parent = popupLabel
+	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
 	-- VFX quality toggle (top right, small).
 	local qualityButton = Instance.new("TextButton")
@@ -5044,85 +4618,8 @@ function SpinMeter.init()
 	end
 end
 
-function SpinMeter.showCharge()
-	VFXLib.cancel(chargeFadeJob)
-	chargeFrame.Visible = true
-	chargeFrame.BackgroundTransparency = 0.15
-	fill.Size = UDim2.fromScale(0, 1)
-end
-
-function SpinMeter.updateCharge(chargeTime)
-	local level, perfect = SpinConfig.getLevel(chargeTime)
-	local windowEnd = charge.PerfectWindowStart + charge.PerfectWindowDuration
-	local over = chargeTime > windowEnd
-	fill.Size = UDim2.fromScale(math.clamp(chargeTime / MAX_T, 0, 1), 1)
-	if perfect then
-		fill.BackgroundColor3 = colors.Perfect
-		levelLabel.Text = "PERFECT SPIN — RELEASE!"
-		levelLabel.TextColor3 = colors.Perfect
-	elseif over then
-		fill.BackgroundColor3 = Color3.fromRGB(170, 80, 40)
-		levelLabel.Text = "OVERCHARGED"
-		levelLabel.TextColor3 = Color3.fromRGB(230, 120, 90)
-	else
-		fill.BackgroundColor3 = level == 2 and colors.Gold or colors.Orange
-		levelLabel.Text = SpinConfig.Levels[level].Name
-		levelLabel.TextColor3 = colors.GoldLight
-	end
-end
-
-function SpinMeter.hideCharge()
-	VFXLib.cancel(chargeFadeJob)
-	chargeFadeJob = VFXLib.animate(0.15, function(a)
-		chargeFrame.BackgroundTransparency = 0.15 + a * 0.85
-	end, function()
-		chargeFrame.Visible = false
-		levelLabel.Text = ""
-	end)
-end
-
-function SpinMeter.startCooldown(seconds)
-	VFXLib.cancel(cooldownJob)
-	if seconds <= 0 then
-		cooldownFill.Size = UDim2.fromScale(0, 1)
-		cooldownLabel.Text = "READY"
-		return
-	end
-	cooldownJob = VFXLib.animate(seconds, function(a)
-		cooldownFill.Size = UDim2.fromScale(1 - a, 1)
-		cooldownLabel.Text = string.format("%.1fs", seconds * (1 - a))
-	end, function()
-		cooldownFill.Size = UDim2.fromScale(0, 1)
-		cooldownLabel.Text = "READY"
-	end)
-end
-
-function SpinMeter.popup(text, color, big)
-	VFXLib.cancel(popupJob)
-	popupLabel.Text = text
-	popupLabel.TextColor3 = color or colors.GoldLight
-	local peak = big and 1.25 or 0.9
-	popupJob = VFXLib.animate(big and 1.1 or 0.8, function(a)
-		if a < 0.12 then
-			popupScale.Scale = peak * (1.6 - a / 0.12 * 0.6)
-		else
-			popupScale.Scale = peak
-		end
-		local fade = math.clamp((a - 0.65) / 0.35, 0, 1)
-		popupLabel.TextTransparency = fade
-		popupLabel.TextStrokeTransparency = math.max(fade, 0.2)
-	end, function()
-		popupLabel.TextTransparency = 1
-		popupLabel.TextStrokeTransparency = 1
-	end)
-end
-
-function SpinMeter.flashDenied(text)
-	SpinMeter.popup(text, Color3.fromRGB(230, 120, 90), false)
-end
-
-return SpinMeter
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX48"><Properties><string name="Name">TuskUI</string><ProtectedString name="Source"><![CDATA[--[[
+return SettingsUI
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX47"><Properties><string name="Name">TuskUI</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskUI  (StarterPlayerScripts.SpinClient.UI.TuskUI)
 	("TuskUIController" in the design doc)
 
@@ -5357,7 +4854,7 @@ function TuskUI.init(cb)
 	hud = Instance.new("Frame")
 	hud.Name = "HUD"
 	hud.AnchorPoint = Vector2.new(0.5, 1)
-	hud.Position = UDim2.new(0.5, 0, 1, -92) -- sits above the Golden Spin panel
+	hud.Position = UDim2.new(0.5, 0, 1, -24)
 	hud.Size = UDim2.new(0.92, 0, 0, 150)
 	hud.BackgroundTransparency = 1
 	hud.Visible = false
@@ -5428,7 +4925,7 @@ function TuskUI.init(cb)
 	-- Combo counter (right side of the screen).
 	comboLabel = text(gui, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -24, 0.42, 0), Size = UDim2.fromOffset(220, 60), Font = TITLE_FONT, TextSize = 48, TextColor3 = colors.Ice, TextXAlignment = Enum.TextXAlignment.Right, TextTransparency = 1, TextStrokeTransparency = 1, Text = "" })
 
-	toastLabel = text(gui, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -250), Size = UDim2.fromOffset(400, 26), TextSize = 18, TextTransparency = 1, TextStrokeTransparency = 1, Text = "" })
+	toastLabel = text(gui, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -185), Size = UDim2.fromOffset(400, 26), TextSize = 18, TextTransparency = 1, TextStrokeTransparency = 1, Text = "" })
 
 	-- Transformation banner.
 	banner = text(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.25), Size = UDim2.fromOffset(700, 80), Font = TITLE_FONT, TextSize = 72, TextColor3 = colors.Cyan, TextTransparency = 1, TextStrokeTransparency = 1, Text = "" })
@@ -5437,7 +4934,7 @@ function TuskUI.init(cb)
 
 	awakenBar = Instance.new("Frame")
 	awakenBar.AnchorPoint = Vector2.new(0.5, 1)
-	awakenBar.Position = UDim2.new(0.5, 0, 1, -248)
+	awakenBar.Position = UDim2.new(0.5, 0, 1, -183)
 	awakenBar.Size = UDim2.fromOffset(240, 6)
 	awakenBar.BackgroundColor3 = DARK
 	awakenBar.Visible = false
@@ -5584,6 +5081,8 @@ function TuskUI.step(act)
 	end
 	local character = player.Character
 	local sneaking = character and character:GetAttribute("TuskSneaking") == true
+	-- Tusk Sneak is Johnny's; Gyro has no sneak chip.
+	sneakChip.Visible = Registry.characterOf(act) == "Johnny"
 	sneakChip.TextColor3 = sneaking and DARK or Color3.fromRGB(150, 170, 200)
 	sneakChip.BackgroundColor3 = sneaking and colors.Cyan or DARK
 	sneakHint.Visible = sneaking
@@ -5665,7 +5164,7 @@ function TuskUI.onState(data)
 end
 
 return TuskUI
-]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX50"><Properties><string name="Name">VFXLib</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX49"><Properties><string name="Name">VFXLib</string><ProtectedString name="Source"><![CDATA[--[[
 	VFXLib  (StarterPlayerScripts.SpinClient.VFXLib)
 
 	Reusable procedural VFX building blocks. Built for Spin first, and meant
@@ -6025,7 +5524,7 @@ function VFXLib.sound(soundId, parentOrPosition, volume, pitch, looped)
 end
 
 return VFXLib
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX51"><Properties><string name="Name">WorldClient</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX50"><Properties><string name="Name">WorldClient</string><ProtectedString name="Source"><![CDATA[--[[
 	WorldClient  (StarterPlayerScripts.SpinClient.WorldClient)
 	Client side of the SBR map:
 	  * NPC speech bubbles (from NPCService "NPCSay"), shown within 60 studs

@@ -16,7 +16,7 @@ pre{background:var(--code);border:1px solid var(--line);border-radius:8px;paddin
 .empty{color:var(--muted);margin:0}.card,.head>div{min-width:0;overflow-wrap:anywhere}pre{max-width:100%}code{word-break:break-all}.tip{border-left:4px solid var(--accent);background:var(--panel);padding:10px 14px;border-radius:0 10px 10px 0}
 </style></head><body><main>
 <h1>Spin Battlegrounds: copy-paste scripts</h1>
-<p class="lead">54 steps. Create each object <b>in this order</b>, with the exact name and type, then press <b>Copy code</b> and paste it into the script.</p>
+<p class="lead">53 steps. Create each object <b>in this order</b>, with the exact name and type, then press <b>Copy code</b> and paste it into the script.</p>
 <div class="tip">How: right-click the place in Explorer › <b>Insert Object</b> › choose the type › rename it exactly. Scripts that go "inside" another script: right-click that script and insert there. <b>Folder</b> steps have no code.</div>
 <section class="card" id="s1">
 <div class="head"><span class="num">1</span><div><h2>SpinShared <span class="badge folder">Folder</span></h2>
@@ -219,10 +219,12 @@ end
 return Net
 </pre></details></section><section class="card" id="s5">
 <div class="head"><span class="num">5</span><div><h2>SpinConfig <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="5">Copy code</button><details><summary>Show code (149 lines)</summary><pre id="c5">--[[
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="5">Copy code</button><details><summary>Show code (151 lines)</summary><pre id="c5">--[[
 	SpinConfig  (ReplicatedStorage.SpinShared.SpinConfig)
 
-	Every tunable value for the Golden Spin / Steel Ball system.
+	Steel Ball colours and Studio test-dummy settings. (The old Golden Spin
+	R ability was removed; Gyro Zeppeli&#x27;s Steel Ball moves live in
+	TuskConfig.Gyro.) The other values below are no longer used.
 	The server reads this for damage, timing and validation; the client reads
 	it for the charge meter and visuals. Change numbers here, not in code.
 
@@ -569,7 +571,7 @@ end
 return SteelBallModel
 </pre></details></section><section class="card" id="s7">
 <div class="head"><span class="num">7</span><div><h2>TuskActRegistry <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="7">Copy code</button><details><summary>Show code (73 lines)</summary><pre id="c7">--[[
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="7">Copy code</button><details><summary>Show code (97 lines)</summary><pre id="c7">--[[
 	TuskActRegistry  (ReplicatedStorage.SpinShared.TuskActRegistry)
 
 	The list of Tusk Acts: names, slot labels, themes and whether each
@@ -629,7 +631,31 @@ TuskActRegistry.Acts = {
 		Ultimate = &quot;INFINITE ROTATION&quot;,
 		Next = nil, -- final form
 	},
+	-- Gyro Zeppeli: a separate character that reuses the same ability system.
+	[5] = {
+		Name = &quot;GYRO ZEPPELI&quot;,
+		Character = &quot;Gyro&quot;,
+		Tagline = &quot;Steel Ball master&quot;,
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(120, 220, 95), Secondary = Color3.fromRGB(40, 120, 50) },
+		M1 = &quot;STEEL BALL COMBO&quot;,
+		Abilities = { &quot;STEEL BALL THROW&quot;, &quot;WRECKING BALLS&quot;, &quot;SPIN VIBRATION&quot; },
+		AbilityKinds = { &quot;Press&quot;, &quot;Press&quot;, &quot;Press&quot; },
+		Ultimate = &quot;BALL BREAKER&quot;,
+		Next = nil,
+		Module = &quot;GyroZeppeli&quot;, -- server moves
+		ClientModule = &quot;Gyro&quot;, -- client visuals (TuskActVFX.Gyro)
+	},
 }
+
+-- Which character an Act belongs to (&quot;Johnny&quot; for Tusk Acts 1-4).
+function TuskActRegistry.characterOf(act)
+	local info = TuskActRegistry.Acts[act]
+	return info and info.Character or &quot;Johnny&quot;
+end
+
+-- The Act a character starts on.
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -643,7 +669,7 @@ end
 return TuskActRegistry
 </pre></details></section><section class="card" id="s8">
 <div class="head"><span class="num">8</span><div><h2>TuskConfig <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="8">Copy code</button><details><summary>Show code (324 lines)</summary><pre id="c8">--[[
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="8">Copy code</button><details><summary>Show code (348 lines)</summary><pre id="c8">--[[
 	TuskConfig  (ReplicatedStorage.SpinShared.TuskConfig)
 
 	Every tunable number for Tusk. The server uses it for damage, timing,
@@ -727,7 +753,7 @@ TuskConfig.StandModels = {
 ---------------------------------------------------------------------------
 TuskConfig.Roster = {
 	{ Id = &quot;Johnny&quot;, Name = &quot;JOHNNY JOESTAR&quot;, Stand = &quot;TUSK (ACT 1-4)&quot;, Available = true, Color = Color3.fromRGB(90, 230, 255) },
-	{ Id = &quot;Gyro&quot;, Name = &quot;GYRO ZEPPELI&quot;, Stand = &quot;STEEL BALLS&quot;, Available = false, Color = Color3.fromRGB(110, 200, 80), Note = &quot;Golden Spin (R) already works for everyone&quot; },
+	{ Id = &quot;Gyro&quot;, Name = &quot;GYRO ZEPPELI&quot;, Stand = &quot;STEEL BALLS&quot;, Available = true, Color = Color3.fromRGB(110, 210, 90) },
 }
 
 ---------------------------------------------------------------------------
@@ -906,6 +932,30 @@ TuskConfig.Act4 = {
 	Ultimate = { -- INFINITE ROTATION (Act 4 stays Act 4)
 		Windup = 2.6, ProjectileRadius = 4, Speed = 95, Range = 180, Damage = 32,
 		BlastRadius = 18, BlastDamage = 14, Stun = 0.8, Knockback = 80, Launch = 40,
+	},
+}
+
+---------------------------------------------------------------------------
+-- GYRO ZEPPELI — Steel Ball moveset (a separate character, &quot;Act&quot; 5 internally)
+---------------------------------------------------------------------------
+TuskConfig.Gyro = {
+	M1 = {
+		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,
+		HitboxSize = Vector3.new(5, 5, 5.5), HitboxForward = 3.2, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 4 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.5, Knockback = 45, Launch = 12, ShockwaveRadius = 8, AoeRadius = 7 },
+		},
+	},
+	SteelBallThrow = { Cooldown = 5, Startup = 0.22, Damage = 10, ReturnDamage = 5, Speed = 140, ReturnSpeed = 120, Radius = 1.1, Range = 120, Stun = 0.4, Knockback = 18 },
+	WreckingBalls = { Cooldown = 9, Startup = 0.18, Count = 5, SpreadDegrees = 22, Damage = 3, Speed = 160, Radius = 0.6, Range = 70, Stun = 0.2, Knockback = 6, SlowMultiplier = 0.55, SlowTime = 2 },
+	SpinVibration = { Cooldown = 8, Windup = 0.2, Damage = 9, Stun = 0.9, Knockback = 10, Launch = 16, HitboxSize = Vector3.new(5, 6, 6), HitboxForward = 3 },
+	Ultimate = { -- BALL BREAKER
+		Windup = 1.8, Speed = 85, Radius = 3, Range = 170, Damage = 14,
+		VortexRadius = 14, VortexTime = 2.4, PullStrength = 22, TickDamage = 2, TickInterval = 0.3,
+		BurstDamage = 14, BurstKnockback = 70, Launch = 30, Stun = 0.7,
 	},
 }
 
@@ -2197,23 +2247,22 @@ end
 return WreckingBallModel
 </pre></details></section><section class="card" id="s12">
 <div class="head"><span class="num">12</span><div><h2>SpinServer <span class="badge server">Script</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService</b></p></div></div><button class="copy" data-i="12">Copy code</button><details><summary>Show code (21 lines)</summary><pre id="c12">--[[
+<p class="loc">Put it in: <b>ServerScriptService</b></p></div></div><button class="copy" data-i="12">Copy code</button><details><summary>Show code (20 lines)</summary><pre id="c12">--[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
-	Boots every server system: Golden Spin, Tusk, NPCs and Studio test dummies.
+	Boots every server system: characters (Johnny/Tusk, Gyro/Steel Balls),
+	custom Stand models, NPCs and Studio test dummies.
 ]]
 
 local ProjectileService = require(script.ProjectileService)
-local SpinService = require(script.SpinService)
 local TuskService = require(script.TuskService)
 local NPCService = require(script.NPCService)
 local TestDummies = require(script.TestDummies)
 local StandAssetLoader = require(script.StandAssetLoader)
 
--- Shared projectile budget (Tusk&#x27;s barrage fires several nails at once).
+-- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
 
 StandAssetLoader.init()
-SpinService.init()
 TuskService.init()
 NPCService.init()
 TestDummies.init()
@@ -2917,273 +2966,8 @@ end)
 
 return ProjectileService
 </pre></details></section><section class="card" id="s17">
-<div class="head"><span class="num">17</span><div><h2>SpinService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="17">Copy code</button><details><summary>Show code (264 lines)</summary><pre id="c17">--[[
-	SpinService  (ServerScriptService.SpinServer.SpinService)
-
-	Server authority for the charge-based Golden Spin throw.
-
-	Flow:
-	  client &quot;Start&quot;            -&gt; validate, mark charging, slow the player,
-	                               set character attribute SpinChargeStart
-	                               (every client reads it to draw the charge)
-	  client &quot;Release&quot;, aimDir  -&gt; server measures charge time itself,
-	                               picks the level, starts the cooldown,
-	                               fires a server projectile
-	  &quot;Cancel&quot; / stun / death   -&gt; charge ends, short cooldown
-
-	The client never sends damage, level, position or timing. It only sends
-	&quot;I pressed&quot; / &quot;I let go&quot; and an aim direction, which is sanitised.
-]]
-
-local Players = game:GetService(&quot;Players&quot;)
-
-local Shared = game:GetService(&quot;ReplicatedStorage&quot;).SpinShared
-local SpinConfig = require(Shared.SpinConfig)
-local Net = require(Shared.Net)
-local Adapter = require(script.Parent.CombatAdapter)
-local Cooldowns = require(script.Parent.CooldownService)
-local Projectiles = require(script.Parent.ProjectileService)
-
-local Request = Net.get(&quot;SpinRequest&quot;)
-local FX = Net.get(&quot;SpinFX&quot;)
-
-local SpinService = {}
-
-local COOLDOWN_KEY = &quot;GoldenSpin&quot;
-local RATE_LIMIT = 10 -- requests per second per player
-
-local states = {} -- [player] = { Charging, Start, Token, Humanoid, Character }
-local rate = {} -- [player] = { WindowStart, Count }
-
-local function rateLimited(player)
-	local r = rate[player]
-	local now = os.clock()
-	if not r or now - r.WindowStart &gt;= 1 then
-		rate[player] = { WindowStart = now, Count = 1 }
-		return false
-	end
-	r.Count = r.Count + 1
-	return r.Count &gt; RATE_LIMIT
-end
-
-local function tell(player, status, data)
-	data = data or {}
-	data.Status = status
-	FX:FireClient(player, &quot;SpinState&quot;, data)
-end
-
-local function sanitizeAim(aim, root)
-	local fallback = root.CFrame.LookVector
-	if typeof(aim) ~= &quot;Vector3&quot; then
-		return fallback
-	end
-	if aim.X ~= aim.X or aim.Y ~= aim.Y or aim.Z ~= aim.Z then
-		return fallback -- NaN
-	end
-	if aim.Magnitude &lt; 1e-3 or aim.Magnitude &gt; 1e4 then
-		return fallback
-	end
-	local unit = aim.Unit
-	local maxPitch = SpinConfig.Projectile.MaxAimPitch
-	local y = math.clamp(unit.Y, -maxPitch, maxPitch)
-	local flat = Vector3.new(unit.X, 0, unit.Z)
-	if flat.Magnitude &lt; 1e-3 then
-		flat = Vector3.new(fallback.X, 0, fallback.Z)
-	end
-	flat = flat.Unit * math.sqrt(1 - y * y)
-	return Vector3.new(flat.X, y, flat.Z).Unit
-end
-
--- Throw origin is computed by the server and line-of-sight checked, so a
--- player standing against a wall can&#x27;t spawn the ball on the other side.
-local function throwOrigin(character, root)
-	local desired = (root.CFrame * SpinConfig.Projectile.SpawnOffset).Position
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { character }
-	local offset = desired - root.Position
-	if workspace:Raycast(root.Position, offset, params) then
-		return root.Position
-	end
-	return desired
-end
-
-local function endCharge(player)
-	local state = states[player]
-	if not state then
-		return nil
-	end
-	states[player] = nil
-	if state.Humanoid and state.Humanoid.Parent then
-		Adapter.setMoveModifier(state.Humanoid, &quot;SpinCharge&quot;, nil)
-	end
-	if state.Character and state.Character.Parent then
-		state.Character:SetAttribute(&quot;SpinChargeStart&quot;, nil)
-	end
-	return state
-end
-
-function SpinService.cancel(player, reason)
-	local state = endCharge(player)
-	if state then
-		Cooldowns.start(player, COOLDOWN_KEY, SpinConfig.Charge.CancelCooldown)
-		tell(player, &quot;Cancelled&quot;, { Reason = reason, Cooldown = SpinConfig.Charge.CancelCooldown })
-	end
-end
-
-function SpinService.start(player)
-	if states[player] then
-		return
-	end
-	if not Adapter.canAct(player) then
-		tell(player, &quot;Denied&quot;, { Reason = &quot;Stunned&quot; })
-		return
-	end
-	local remaining = Cooldowns.remaining(player, COOLDOWN_KEY)
-	if remaining &gt; 0 then
-		tell(player, &quot;Denied&quot;, { Reason = &quot;Cooldown&quot;, Remaining = remaining })
-		return
-	end
-	local character, humanoid = Adapter.getAlive(player)
-
-	local token = {}
-	states[player] = {
-		Start = os.clock(),
-		Token = token,
-		Humanoid = humanoid,
-		Character = character,
-	}
-	Adapter.setMoveModifier(humanoid, &quot;SpinCharge&quot;, SpinConfig.Charge.WalkSpeedMultiplier)
-	character:SetAttribute(&quot;SpinChargeStart&quot;, workspace:GetServerTimeNow())
-	tell(player, &quot;Charging&quot;)
-
-	-- Getting stunned while charging interrupts it: that&#x27;s the counterplay.
-	local stunConn
-	stunConn = character:GetAttributeChangedSignal(Adapter.Settings.StunAttribute):Connect(function()
-		if Adapter.isStunned(character) and states[player] and states[player].Token == token then
-			SpinService.cancel(player, &quot;Interrupted&quot;)
-		end
-		if not states[player] or states[player].Token ~= token then
-			stunConn:Disconnect()
-		end
-	end)
-
-	task.delay(SpinConfig.Charge.MaxHoldTime, function()
-		local state = states[player]
-		if state and state.Token == token then
-			SpinService.release(player, nil) -- auto-release forward
-		end
-		if stunConn.Connected then
-			stunConn:Disconnect()
-		end
-	end)
-end
-
-function SpinService.release(player, aim)
-	local state = states[player]
-	if not state then
-		return
-	end
-	local chargeTime = os.clock() - state.Start
-	endCharge(player)
-
-	if not Adapter.canAct(player) then
-		return
-	end
-	local character, _, root = Adapter.getAlive(player)
-
-	local levelIndex, perfect = SpinConfig.getLevel(chargeTime, SpinConfig.Charge.ServerTimingTolerance)
-	local level = SpinConfig.Levels[levelIndex]
-	local direction = sanitizeAim(aim, root)
-	local origin = throwOrigin(character, root)
-
-	Cooldowns.start(player, COOLDOWN_KEY, level.Cooldown)
-
-	local id = Projectiles.fire(player, {
-		Kind = &quot;SteelBall&quot;,
-		Origin = origin,
-		Direction = direction,
-		Speed = level.Speed,
-		Radius = level.Radius,
-		Range = level.Range,
-		Visual = { Level = levelIndex, Perfect = perfect },
-		OnHit = function(target, position)
-			Adapter.dealHit(player, target, {
-				Damage = level.Damage,
-				Stun = level.Stun,
-				Knockback = level.Knockback,
-				Direction = direction,
-				Position = position,
-				Level = levelIndex,
-				Perfect = perfect,
-				Source = &quot;GoldenSpin&quot;,
-			})
-		end,
-	})
-
-	FX:FireAllClients(&quot;SpinRelease&quot;, {
-		Character = character,
-		Origin = origin,
-		Direction = direction,
-		Level = levelIndex,
-		Perfect = perfect,
-	})
-	tell(player, &quot;Released&quot;, {
-		Level = levelIndex,
-		Perfect = perfect,
-		Cooldown = level.Cooldown,
-		Fired = id ~= nil,
-	})
-end
-
-function SpinService.init()
-	Request.OnServerEvent:Connect(function(player, action, aim)
-		if rateLimited(player) then
-			return
-		end
-		if action == &quot;Start&quot; then
-			SpinService.start(player)
-		elseif action == &quot;Release&quot; then
-			SpinService.release(player, aim)
-		elseif action == &quot;Cancel&quot; then
-			SpinService.cancel(player, &quot;Manual&quot;)
-		end
-	end)
-
-	local function onCharacter(player, character)
-		endCharge(player)
-		local humanoid = character:WaitForChild(&quot;Humanoid&quot;, 10)
-		if humanoid then
-			humanoid.Died:Connect(function()
-				endCharge(player)
-			end)
-		end
-	end
-
-	local function onPlayer(player)
-		player.CharacterAdded:Connect(function(character)
-			onCharacter(player, character)
-		end)
-		if player.Character then
-			task.spawn(onCharacter, player, player.Character)
-		end
-	end
-
-	Players.PlayerAdded:Connect(onPlayer)
-	for _, player in ipairs(Players:GetPlayers()) do
-		onPlayer(player)
-	end
-	Players.PlayerRemoving:Connect(function(player)
-		endCharge(player)
-		rate[player] = nil
-	end)
-end
-
-return SpinService
-</pre></details></section><section class="card" id="s18">
-<div class="head"><span class="num">18</span><div><h2>StandAssetLoader <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="18">Copy code</button><details><summary>Show code (85 lines)</summary><pre id="c18">--[[
+<div class="head"><span class="num">17</span><div><h2>StandAssetLoader <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="17">Copy code</button><details><summary>Show code (85 lines)</summary><pre id="c17">--[[
 	StandAssetLoader  (ServerScriptService.SpinServer.StandAssetLoader)
 
 	Loads the Stand models listed in TuskConfig.StandModels (by asset id)
@@ -3267,9 +3051,9 @@ function StandAssetLoader.init()
 end
 
 return StandAssetLoader
-</pre></details></section><section class="card" id="s19">
-<div class="head"><span class="num">19</span><div><h2>TestDummies <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="19">Copy code</button><details><summary>Show code (60 lines)</summary><pre id="c19">--[[
+</pre></details></section><section class="card" id="s18">
+<div class="head"><span class="num">18</span><div><h2>TestDummies <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="18">Copy code</button><details><summary>Show code (60 lines)</summary><pre id="c18">--[[
 	TestDummies  (ServerScriptService.SpinServer.TestDummies)
 	Studio-only practice targets so Spin can be tested solo.
 	Never runs in a live server (guarded by RunService:IsStudio()).
@@ -3328,9 +3112,273 @@ function TestDummies.init()
 end
 
 return TestDummies
-</pre></details></section><section class="card" id="s20">
-<div class="head"><span class="num">20</span><div><h2>TuskActs <span class="badge folder">Folder</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s21">
+</pre></details></section><section class="card" id="s19">
+<div class="head"><span class="num">19</span><div><h2>TuskActs <span class="badge folder">Folder</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s20">
+<div class="head"><span class="num">20</span><div><h2>GyroZeppeli <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="20">Copy code</button><details><summary>Show code (263 lines)</summary><pre id="c20">--[[
+	GyroZeppeli  (ServerScriptService.SpinServer.TuskActs.GyroZeppeli)
+
+	Gyro Zeppeli: Steel Ball moveset (registered as &quot;Act&quot; 5 so it reuses the
+	Tusk ability system: cooldowns, HUD, ultimate meter, input).
+	  M1        STEEL BALL COMBO: jab, hook, kick, spinning-ball smash (area)
+	  Ability 1 STEEL BALL THROW: the ball flies out, then returns to Gyro&#x27;s hand
+	            (it can hit on the way back)
+	  Ability 2 WRECKING BALLS: the studs fly off in a spread; hits shake the
+	            target&#x27;s body and slow them for a moment
+	  Ability 3 SPIN VIBRATION: press the spinning ball into the enemy in front:
+	            paralysis (long stun) and a small launch
+	  Ultimate  BALL BREAKER: spiral build-up, a huge ball opens a spinning
+	            vortex that pulls enemies in, then bursts
+	Numbers: TuskConfig.Gyro. All damage goes through S.hit (CombatAdapter).
+]]
+
+local Shared = game:GetService(&quot;ReplicatedStorage&quot;).SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+local Moves = require(script.Parent.Parent.TuskMoves)
+
+local Gyro = {}
+local cfg = TuskConfig.Gyro
+local HAND = CFrame.new(0.9, 0.6, -1.6)
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function ready(S, player, state, name, slot)
+	return not S.isBusy(state) and not state.Charging and S.cooldownReady(player, state, name, slot)
+end
+
+function Gyro.M1(S, player, state, aim)
+	Moves.m1(S, player, state, aim, cfg.M1, 5)
+end
+
+-- Short body &quot;shake&quot; slow from the Spin (stackable, always removed).
+local function spinSlow(S, target, multiplier, seconds)
+	local humanoid = target:FindFirstChildOfClass(&quot;Humanoid&quot;)
+	if not humanoid then
+		return
+	end
+	local key = &quot;GyroSpin&quot;
+	S.Adapter.setMoveModifier(humanoid, key, multiplier)
+	target:SetAttribute(&quot;GyroSpinShake&quot;, true)
+	local token = {}
+	target:SetAttribute(&quot;GyroSpinToken&quot;, tostring(token))
+	task.delay(seconds, function()
+		if humanoid.Parent and target:GetAttribute(&quot;GyroSpinToken&quot;) == tostring(token) then
+			S.Adapter.setMoveModifier(humanoid, key, nil)
+			target:SetAttribute(&quot;GyroSpinShake&quot;, nil)
+		end
+	end)
+end
+
+local function steelBallThrow(S, player, state, aim)
+	local c = cfg.SteelBallThrow
+	if not ready(S, player, state, &quot;SteelBallThrow&quot;, 1) then
+		return
+	end
+	S.startCooldown(player, state, &quot;SteelBallThrow&quot;, c.Cooldown, 1)
+	S.lock(state, c.Startup + 0.25)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx(&quot;Ability&quot;, { Character = character, Act = 5, Move = &quot;SteelBallThrow&quot;, Phase = &quot;Startup&quot;, Startup = c.Startup, Direction = direction })
+	task.delay(c.Startup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local hitOut = {}
+		S.fireBall(player, state, {
+			Origin = S.origin(char, r, HAND),
+			Direction = direction,
+			Speed = c.Speed,
+			Radius = c.Radius,
+			Range = c.Range,
+			Style = &quot;Throw&quot;,
+			OnHit = function(target, position)
+				hitOut[target] = true
+				S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = direction, Position = position, Source = &quot;GyroSteelBall&quot; })
+			end,
+			OnEnd = function(position)
+				-- The ball spins its way back to Gyro&#x27;s hand.
+				local _, _, rr = alive(S, player)
+				if not rr or state.Life ~= life then
+					S.fx(&quot;Ability&quot;, { Character = char, Act = 5, Move = &quot;SteelBallThrow&quot;, Phase = &quot;Caught&quot; })
+					return
+				end
+				local back = rr.Position + Vector3.new(0, 1, 0) - position
+				if back.Magnitude &lt; 2 then
+					S.fx(&quot;Ability&quot;, { Character = char, Act = 5, Move = &quot;SteelBallThrow&quot;, Phase = &quot;Caught&quot; })
+					return
+				end
+				S.fireBall(player, state, {
+					Origin = position,
+					Direction = back.Unit,
+					Speed = c.ReturnSpeed,
+					Radius = c.Radius,
+					Range = back.Magnitude,
+					Style = &quot;Return&quot;,
+					OnHit = function(target, pos)
+						if not hitOut[target] then
+							S.hit(player, target, { Damage = c.ReturnDamage, Stun = 0.3, Knockback = 8, Direction = back.Unit, Position = pos, Source = &quot;GyroSteelBall&quot; })
+						end
+					end,
+					OnEnd = function()
+						S.fx(&quot;Ability&quot;, { Character = char, Act = 5, Move = &quot;SteelBallThrow&quot;, Phase = &quot;Caught&quot; })
+					end,
+				})
+			end,
+		})
+	end)
+end
+
+local FAN = { 0, -1, 1, -0.5, 0.5 }
+
+local function wreckingBalls(S, player, state, aim)
+	local c = cfg.WreckingBalls
+	if not ready(S, player, state, &quot;WreckingBalls&quot;, 2) then
+		return
+	end
+	S.startCooldown(player, state, &quot;WreckingBalls&quot;, c.Cooldown, 2)
+	S.lock(state, c.Startup + 0.3)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx(&quot;Ability&quot;, { Character = character, Act = 5, Move = &quot;WreckingBalls&quot;, Phase = &quot;Startup&quot;, Startup = c.Startup, Direction = direction })
+	task.delay(c.Startup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local origin = S.origin(char, r, HAND)
+		local look = CFrame.lookAt(Vector3.new(), direction)
+		for i = 1, c.Count do
+			local spread = math.rad(c.SpreadDegrees) * (FAN[(i - 1) % #FAN + 1])
+			local dir = (look * CFrame.Angles((i % 2 == 0 and 0.04 or -0.03), spread, 0)).LookVector
+			S.fireBall(player, state, {
+				Origin = origin,
+				Direction = dir,
+				Speed = c.Speed,
+				Radius = c.Radius,
+				Range = c.Range,
+				Style = &quot;Wrecking&quot;,
+				OnHit = function(target, position)
+					if S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = dir, Position = position, Source = &quot;GyroWreckingBall&quot; }) then
+						spinSlow(S, target, c.SlowMultiplier, c.SlowTime)
+					end
+				end,
+			})
+		end
+	end)
+end
+
+local function spinVibration(S, player, state, aim)
+	local c = cfg.SpinVibration
+	if not ready(S, player, state, &quot;SpinVibration&quot;, 3) then
+		return
+	end
+	S.startCooldown(player, state, &quot;SpinVibration&quot;, c.Cooldown, 3)
+	S.lock(state, c.Windup + 0.4)
+	local character = alive(S, player)
+	local life = state.Life
+	S.fx(&quot;Ability&quot;, { Character = character, Act = 5, Move = &quot;SpinVibration&quot;, Phase = &quot;Startup&quot;, Windup = c.Windup })
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local _, _, r = alive(S, player)
+		local cf = r.CFrame * CFrame.new(0, 0, -c.HitboxForward)
+		local count, hitSet = Moves.boxHit(S, player, cf, c.HitboxSize, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Launch = c.Launch, Source = &quot;GyroSpinVibration&quot; }, 2)
+		for target in pairs(hitSet) do
+			spinSlow(S, target, 0.4, 1.5)
+		end
+		S.fx(&quot;Ability&quot;, { Character = character, Act = 5, Move = &quot;SpinVibration&quot;, Phase = &quot;Hit&quot;, Position = cf.Position, Hit = count &gt; 0 })
+	end)
+end
+
+function Gyro.Ability(S, player, state, slot, phase, aim)
+	if phase ~= &quot;Press&quot; then
+		return
+	end
+	if slot == 1 then
+		steelBallThrow(S, player, state, aim)
+	elseif slot == 2 then
+		wreckingBalls(S, player, state, aim)
+	elseif slot == 3 then
+		spinVibration(S, player, state, aim)
+	end
+end
+
+-- BALL BREAKER
+function Gyro.Ultimate(S, player, state, aim)
+	local u = cfg.Ultimate
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.lock(state, u.Windup + 0.5)
+	character:SetAttribute(&quot;Armored&quot;, true)
+	S.fx(&quot;Ultimate&quot;, { Character = character, Act = 5, Phase = &quot;Start&quot;, Windup = u.Windup, Direction = direction })
+	task.delay(u.Windup, function()
+		if character.Parent then
+			character:SetAttribute(&quot;Armored&quot;, nil)
+		end
+		if state.Life ~= life or not alive(S, player) then
+			return
+		end
+		local _, _, r = alive(S, player)
+		S.fx(&quot;Ultimate&quot;, { Character = character, Act = 5, Phase = &quot;Release&quot;, Position = r.Position, Direction = direction })
+		S.fireBall(player, state, {
+			Origin = S.origin(character, r, CFrame.new(0, 1.5, -3)),
+			Direction = direction,
+			Speed = u.Speed,
+			Radius = u.Radius,
+			Range = u.Range,
+			Style = &quot;Breaker&quot;,
+			Scale = u.Radius * 2,
+			OnHit = function(target, position)
+				S.hit(player, target, { Damage = u.Damage, Stun = 0.5, Knockback = 10, Direction = direction, Position = position, Source = &quot;GyroBallBreaker&quot; })
+			end,
+			OnEnd = function(position)
+				-- The spinning vortex: pulls enemies in, then bursts.
+				S.fx(&quot;Ultimate&quot;, { Character = character, Act = 5, Phase = &quot;Vortex&quot;, Position = position, Radius = u.VortexRadius, Duration = u.VortexTime })
+				local ticks = math.floor(u.VortexTime / u.TickInterval)
+				for i = 1, ticks do
+					task.delay(i * u.TickInterval, function()
+						for _, target in ipairs(S.Hitbox.inRadius(player.Character, position, u.VortexRadius, 8)) do
+							local tr = target:FindFirstChild(&quot;HumanoidRootPart&quot;)
+							if tr and S.Adapter.canBeHit(player, target) then
+								local inward = position - tr.Position
+								S.Adapter.applyKnockback(target, inward, u.PullStrength, 2)
+								S.hit(player, target, { Damage = u.TickDamage, Stun = 0.25, Knockback = 0, Direction = inward, Position = tr.Position, Source = &quot;GyroBallBreaker&quot; })
+							end
+						end
+					end)
+				end
+				task.delay(u.VortexTime + 0.05, function()
+					Moves.aoe(S, player, position, u.VortexRadius + 2, { Damage = u.BurstDamage, Stun = u.Stun, Knockback = u.BurstKnockback, Launch = u.Launch, Source = &quot;GyroBallBreaker&quot; }, 8)
+					S.fx(&quot;Ultimate&quot;, { Character = character, Act = 5, Phase = &quot;Burst&quot;, Position = position, Radius = u.VortexRadius + 2 })
+				end)
+			end,
+		})
+		S.finishUltimate(player, state)
+	end)
+end
+
+function Gyro.Cleanup(S, player, state)
+	if state.Character then
+		state.Character:SetAttribute(&quot;Armored&quot;, nil)
+	end
+end
+
+return Gyro
+</pre></details></section><section class="card" id="s21">
 <div class="head"><span class="num">21</span><div><h2>TuskAct1 <span class="badge module">ModuleScript</span></h2>
 <p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="21">Copy code</button><details><summary>Show code (355 lines)</summary><pre id="c21">--[[
 	TuskAct1  (ServerScriptService.SpinServer.TuskActs.TuskAct1)
@@ -4748,7 +4796,7 @@ TuskMoves.Config = TuskConfig
 return TuskMoves
 </pre></details></section><section class="card" id="s27">
 <div class="head"><span class="num">27</span><div><h2>TuskService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="27">Copy code</button><details><summary>Show code (504 lines)</summary><pre id="c27">--[[
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="27">Copy code</button><details><summary>Show code (531 lines)</summary><pre id="c27">--[[
 	TuskService  (ServerScriptService.SpinServer.TuskService)
 
 	Server brain for Tusk (the &quot;TuskController&quot; of the design doc):
@@ -4937,6 +4985,21 @@ function TuskService.fireNail(player, state, spec)
 	})
 end
 
+-- Server projectile with a Steel Ball visual (Gyro).
+function TuskService.fireBall(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = &quot;GyroBall&quot;,
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or &quot;Throw&quot;, Scale = spec.Scale },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
 -- Charge helpers (hold abilities): sets the replicated TuskCharge attribute.
 function TuskService.beginCharge(player, state, move, slot, multiplier)
 	local character, humanoid = Adapter.getAlive(player)
@@ -5096,11 +5159,19 @@ local function onRequest(player, action, a, b, c)
 		return
 	end
 	if action == &quot;Character&quot; then
-		-- Character dropdown: Johnny Joestar = Tusk (starts at Act 1).
+		-- Character dropdown: &quot;Johnny&quot; (Tusk, starts at Act 1) or &quot;Gyro&quot; (Steel Balls).
 		local st = states[player]
-		if a == &quot;Johnny&quot; and st and not st.Act then
-			TuskService.select(player, TuskConfig.Progression.DefaultAct, true)
+		local start = typeof(a) == &quot;string&quot; and Registry.StartAct[a]
+		if not st or not start then
+			return
 		end
+		if st.Act and Registry.characterOf(st.Act) == a then
+			return -- already playing that character
+		end
+		if TuskService.isBusy(st) or st.Charging or st.Burrowed then
+			return
+		end
+		TuskService.select(player, start, true)
 		return
 	end
 	local state = states[player]
@@ -5109,8 +5180,11 @@ local function onRequest(player, action, a, b, c)
 	end
 	local module = actModules[state.Act]
 
+	local isJohnny = Registry.characterOf(state.Act) == &quot;Johnny&quot;
 	if action == &quot;Sneak&quot; then
-		Sneak.toggle(player, state, a == true)
+		if isJohnny then -- Tusk Sneak is Johnny&#x27;s
+			Sneak.toggle(player, state, a == true)
+		end
 		return
 	end
 	if state.Burrowed then
@@ -5167,7 +5241,8 @@ local function onCharacter(player, character)
 	end
 	local progression = TuskConfig.Progression
 	if state.Act and progression.Mode == &quot;Awaken&quot; and progression.ResetOnDeath then
-		state.Act = progression.DefaultAct -- back to Act 1 after dying
+		-- Back to the character&#x27;s first Act after dying (Johnny -&gt; Act 1; Gyro stays Gyro).
+		state.Act = Registry.StartAct[Registry.characterOf(state.Act)] or progression.DefaultAct
 		TuskService.markActStart(player, state)
 	end
 	if state.Act then
@@ -5226,8 +5301,8 @@ end
 
 function TuskService.init()
 	local actsFolder = script.Parent:WaitForChild(&quot;TuskActs&quot;)
-	for act in pairs(Registry.Acts) do
-		local moduleScript = actsFolder:FindFirstChild(&quot;TuskAct&quot; .. act)
+	for act, info in pairs(Registry.Acts) do
+		local moduleScript = actsFolder:FindFirstChild(info.Module or (&quot;TuskAct&quot; .. act))
 		if moduleScript and Registry.isImplemented(act) then
 			actModules[act] = require(moduleScript)
 		end
@@ -5512,14 +5587,14 @@ end
 return TuskSneakService
 </pre></details></section><section class="card" id="s29">
 <div class="head"><span class="num">29</span><div><h2>SpinClient <span class="badge client">LocalScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts</b></p></div></div><button class="copy" data-i="29">Copy code</button><details><summary>Show code (25 lines)</summary><pre id="c29">--[[
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts</b></p></div></div><button class="copy" data-i="29">Copy code</button><details><summary>Show code (24 lines)</summary><pre id="c29">--[[
 	SpinClient  (StarterPlayer.StarterPlayerScripts.SpinClient — LocalScript)
-	Boots every client system: Golden Spin, Tusk, NPC bubbles and map ambience.
+	Boots every client system: hit feedback, settings, Stands, characters,
+	HUD, character card, NPC bubbles and map ambience.
 ]]
 
-local SpinMeter = require(script.UI.SpinMeter)
-local SpinVFX = require(script.SpinVFX)
-local SpinController = require(script.SpinController)
+local SettingsUI = require(script.UI.SettingsUI)
+local HitFX = require(script.HitFX)
 local TuskStand = require(script.TuskStand)
 local TuskProjectiles = require(script.TuskProjectiles)
 local TuskSneakController = require(script.TuskSneakController)
@@ -5527,9 +5602,8 @@ local TuskController = require(script.TuskController)
 local WorldClient = require(script.WorldClient)
 local CharacterCard = require(script.UI.CharacterCard)
 
-SpinMeter.init()
-SpinVFX.init()
-SpinController.init()
+SettingsUI.init()
+HitFX.init()
 TuskStand.init()
 TuskProjectiles.init()
 TuskSneakController.init()
@@ -5712,777 +5786,29 @@ end
 
 return CameraFX
 </pre></details></section><section class="card" id="s31">
-<div class="head"><span class="num">31</span><div><h2>JointCache <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="31">Copy code</button><details><summary>Show code (21 lines)</summary><pre id="c31">--[[
-	JointCache  (StarterPlayerScripts.SpinClient.JointCache)
-	Remembers each Motor6D&#x27;s original C0 the first time any pose system
-	touches it, so Spin poses and Tusk poses can both restore the true
-	rest pose instead of each other&#x27;s leftovers.
-]]
-
-local JointCache = {}
-local originals = setmetatable({}, { __mode = &quot;k&quot; })
-
-function JointCache.original(motor)
-	local c0 = originals[motor]
-	if not c0 then
-		c0 = motor.C0
-		originals[motor] = c0
-	end
-	return c0
-end
-
-return JointCache
-</pre></details></section><section class="card" id="s32">
-<div class="head"><span class="num">32</span><div><h2>ProceduralPose <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="32">Copy code</button><details><summary>Show code (98 lines)</summary><pre id="c32">--[[
-	ProceduralPose  (StarterPlayerScripts.SpinClient.ProceduralPose)
-
-	Animation-free arm posing for the Spin throw: tweens the right shoulder
-	Motor6D&#x27;s C0 on top of whatever Animator is playing, then restores it.
-	Works on R15 and R6. C0 edits made on a client do not replicate, so
-	SpinVFX calls this on EVERY client for EVERY charging character (driven
-	by the replicated SpinChargeStart attribute). Everyone sees the pose.
-
-	When real animations are uploaded, set ProceduralPose.Enabled = false
-	and play the Animation tracks from SpinController instead.
-
-	Pitch angles (degrees, rotation about the shoulder&#x27;s side axis):
-	  0 = arm down, 90 = arm straight forward, 180 = arm straight up.
-]]
-
-local ProceduralPose = {}
-
-ProceduralPose.Enabled = true
-ProceduralPose.Poses = {
-	Charge = { Pitch = 195, Roll = -12 }, -- wound up over the shoulder, behind the head
-	Throw = { Pitch = 80, Roll = 0 }, -- whipped forward at release
-}
-
-local jobs = setmetatable({}, { __mode = &quot;k&quot; })
-
-local VFXLib = require(script.Parent.VFXLib)
-local JointCache = require(script.Parent.JointCache)
-
-local function getShoulder(character)
-	local upper = character:FindFirstChild(&quot;RightUpperArm&quot;)
-	if upper then
-		return upper:FindFirstChild(&quot;RightShoulder&quot;), &quot;R15&quot;
-	end
-	local torso = character:FindFirstChild(&quot;Torso&quot;)
-	if torso then
-		return torso:FindFirstChild(&quot;Right Shoulder&quot;), &quot;R6&quot;
-	end
-	return nil
-end
-
-local function poseOffset(rig, pose)
-	local pitch = math.rad(pose.Pitch)
-	local roll = math.rad(pose.Roll or 0)
-	if rig == &quot;R15&quot; then
-		return CFrame.Angles(pitch, 0, roll)
-	end
-	-- R6 shoulder C0 is rotated so its local Z is the torso&#x27;s side axis.
-	return CFrame.Angles(roll, 0, pitch)
-end
-
-local function tweenC0(motor, target, duration)
-	VFXLib.cancel(jobs[motor])
-	local from = motor.C0
-	jobs[motor] = VFXLib.animate(duration, function(a)
-		if motor.Parent then
-			motor.C0 = from:Lerp(target, VFXLib.easeOut(a))
-		end
-	end)
-end
-
-function ProceduralPose.play(character, poseName, duration)
-	if not ProceduralPose.Enabled or not character then
-		return
-	end
-	local motor, rig = getShoulder(character)
-	local pose = ProceduralPose.Poses[poseName]
-	if not motor or not pose then
-		return
-	end
-	tweenC0(motor, JointCache.original(motor) * poseOffset(rig, pose), duration or 0.15)
-end
-
-function ProceduralPose.reset(character, duration)
-	if not character then
-		return
-	end
-	local motor = getShoulder(character)
-	if motor then
-		tweenC0(motor, JointCache.original(motor), duration or 0.25)
-	end
-end
-
--- Hand part the held ball is welded to, plus the grip offset.
-function ProceduralPose.getHand(character)
-	local hand = character:FindFirstChild(&quot;RightHand&quot;)
-	if hand then
-		return hand, CFrame.new(0, -0.45, -0.1)
-	end
-	local arm = character:FindFirstChild(&quot;Right Arm&quot;)
-	if arm then
-		return arm, CFrame.new(0, -1.1, -0.1)
-	end
-	return nil
-end
-
-return ProceduralPose
-</pre></details></section><section class="card" id="s33">
-<div class="head"><span class="num">33</span><div><h2>SpinController <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="33">Copy code</button><details><summary>Show code (168 lines)</summary><pre id="c33">--[[
-	SpinController  (StarterPlayerScripts.SpinClient.SpinController)
-
-	Local input for the Golden Spin. Hold to charge, release to throw.
-	  PC:         hold R (aims at the mouse)
-	  Controller: hold RT (aims where the camera looks)
-	  Mobile:     hold the on-screen SPIN button (aims where the camera looks)
-
-	Sends only &quot;Start&quot;, &quot;Release&quot; + aim direction, or &quot;Cancel&quot;.
-	The server decides everything else and answers with SpinState.
-]]
-
-local ContextActionService = game:GetService(&quot;ContextActionService&quot;)
-local Players = game:GetService(&quot;Players&quot;)
-local RunService = game:GetService(&quot;RunService&quot;)
-local UserInputService = game:GetService(&quot;UserInputService&quot;)
-
-local Shared = game:GetService(&quot;ReplicatedStorage&quot;):WaitForChild(&quot;SpinShared&quot;)
-local SpinConfig = require(Shared.SpinConfig)
-local Net = require(Shared.Net)
-local CameraFX = require(script.Parent.CameraFX)
-local VFXLib = require(script.Parent.VFXLib)
-local SpinMeter = require(script.Parent.UI.SpinMeter)
-
-local SpinController = {}
-
-local player = Players.LocalPlayer
-local Request
-local charging = false
-local chargeStart = 0
-
-local function aliveCharacter()
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass(&quot;Humanoid&quot;)
-	local root = character and character:FindFirstChild(&quot;HumanoidRootPart&quot;)
-	if humanoid and root and humanoid.Health &gt; 0 then
-		return character, root
-	end
-	return nil
-end
-
-local function usesCameraAim()
-	local last = UserInputService:GetLastInputType()
-	return last == Enum.UserInputType.Touch or string.find(last.Name, &quot;Gamepad&quot;) ~= nil
-end
-
-local function aimDirection()
-	local character, root = aliveCharacter()
-	local camera = workspace.CurrentCamera
-	if not character or not camera then
-		return nil
-	end
-	local origin = (root.CFrame * SpinConfig.Projectile.SpawnOffset).Position
-	if usesCameraAim() then
-		return camera.CFrame.LookVector
-	end
-	local mouse = UserInputService:GetMouseLocation()
-	local ray = camera:ViewportPointToRay(mouse.X, mouse.Y)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { character, VFXLib.Folder }
-	local hit = workspace:Raycast(ray.Origin, ray.Direction * 600, params)
-	local target = hit and hit.Position or (ray.Origin + ray.Direction * 600)
-	local direction = target - origin
-	if direction.Magnitude &lt; 1 then
-		return root.CFrame.LookVector
-	end
-	return direction.Unit
-end
-
-local function stopLocal()
-	charging = false
-	SpinMeter.hideCharge()
-	CameraFX.setFovHold(0)
-end
-
-local function begin()
-	if charging or not aliveCharacter() then
-		return
-	end
-	charging = true
-	chargeStart = os.clock()
-	Request:FireServer(&quot;Start&quot;)
-	SpinMeter.showCharge()
-	CameraFX.setFovHold(-3)
-end
-
-local function finish()
-	if not charging then
-		return
-	end
-	stopLocal()
-	Request:FireServer(&quot;Release&quot;, aimDirection())
-end
-
-local function cancel()
-	if not charging then
-		return
-	end
-	stopLocal()
-	Request:FireServer(&quot;Cancel&quot;)
-end
-
-local function onState(data)
-	local status = data.Status
-	if status == &quot;Denied&quot; then
-		stopLocal()
-		if data.Reason == &quot;Cooldown&quot; then
-			SpinMeter.flashDenied(string.format(&quot;COOLDOWN %.1fs&quot;, data.Remaining or 0))
-		else
-			SpinMeter.flashDenied(&quot;STUNNED&quot;)
-		end
-	elseif status == &quot;Cancelled&quot; then
-		stopLocal()
-		if data.Reason == &quot;Interrupted&quot; then
-			SpinMeter.flashDenied(&quot;INTERRUPTED!&quot;)
-		end
-		SpinMeter.startCooldown(data.Cooldown or 0)
-	elseif status == &quot;Released&quot; then
-		if charging then
-			stopLocal() -- server auto-released at max hold
-		end
-		local level = SpinConfig.Levels[data.Level]
-		if data.Perfect then
-			SpinMeter.popup(&quot;PERFECT SPIN!&quot;, SpinConfig.Colors.Perfect, true)
-		else
-			SpinMeter.popup(level.Name, SpinConfig.Colors.GoldLight, false)
-		end
-		SpinMeter.startCooldown(data.Cooldown or 0)
-	end
-end
-
-function SpinController.init()
-	Request = Net.get(&quot;SpinRequest&quot;)
-	local FX = Net.get(&quot;SpinFX&quot;)
-	FX.OnClientEvent:Connect(function(name, data)
-		if name == &quot;SpinState&quot; then
-			onState(data)
-		end
-	end)
-
-	local input = SpinConfig.Input
-	ContextActionService:BindAction(input.ActionName, function(_, state)
-		if state == Enum.UserInputState.Begin then
-			begin()
-		elseif state == Enum.UserInputState.End then
-			finish()
-		elseif state == Enum.UserInputState.Cancel then
-			cancel()
-		end
-		return Enum.ContextActionResult.Sink
-	end, true, input.Keyboard, input.Gamepad)
-	ContextActionService:SetTitle(input.ActionName, input.MobileButtonTitle)
-	ContextActionService:SetPosition(input.ActionName, input.MobileButtonPosition)
-
-	RunService.RenderStepped:Connect(function()
-		if charging then
-			SpinMeter.updateCharge(os.clock() - chargeStart)
-		end
-	end)
-
-	player.CharacterAdded:Connect(function()
-		stopLocal()
-	end)
-end
-
-return SpinController
-</pre></details></section><section class="card" id="s34">
-<div class="head"><span class="num">34</span><div><h2>SpinVFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="34">Copy code</button><details><summary>Show code (560 lines)</summary><pre id="c34">--[[
-	SpinVFX  (StarterPlayerScripts.SpinClient.SpinVFX)
-
-	Draws everything the Golden Spin does, for every player, on every client:
-	  * Charge: Steel Ball spinning in the hand, golden rings that multiply
-	    per level, rising particles, ground dust, perfect-window flash
-	  * Release: muzzle shockwave, throw pose
-	  * Projectile: spinning ball, tilted rotating rings, spiral + streak
-	    trails, afterimages (High)
-	  * Impact / Hit: layered shockwaves, sparks, dust, light, shake,
-	    impact frame on Perfect, floating damage numbers for the attacker
-
-	Visual only. The server decides every hit and every number.
+<div class="head"><span class="num">31</span><div><h2>HitFX <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="31">Copy code</button><details><summary>Show code (91 lines)</summary><pre id="c31">--[[
+	HitFX  (StarterPlayerScripts.SpinClient.HitFX)
+	Feedback for every hit in the game (any character):
+	  * victim flash (white, or blue when blocked) + camera shake for the victim
+	  * floating damage numbers for the attacker
+	Driven by the shared &quot;Hit&quot; / &quot;Damage&quot; events from CombatAdapter.
 ]]
 
 local Players = game:GetService(&quot;Players&quot;)
-local RunService = game:GetService(&quot;RunService&quot;)
 
 local Shared = game:GetService(&quot;ReplicatedStorage&quot;):WaitForChild(&quot;SpinShared&quot;)
-local SpinConfig = require(Shared.SpinConfig)
-local VFXQuality = require(Shared.VFXQuality)
-local SteelBallModel = require(Shared.SteelBallModel)
 local Net = require(Shared.Net)
 local VFXLib = require(script.Parent.VFXLib)
 local CameraFX = require(script.Parent.CameraFX)
-local ProceduralPose = require(script.Parent.ProceduralPose)
 
-local SpinVFX = {}
-
+local HitFX = {}
 local localPlayer = Players.LocalPlayer
-local colors = SpinConfig.Colors
-local sounds = SpinConfig.Sounds
-
-local chargeStates = {} -- [character] = state
-local projectiles = {} -- [id] = visual
-local ballPool = {}
-
----------------------------------------------------------------------------
--- Ball pool (projectile balls are reused instead of rebuilt every throw)
----------------------------------------------------------------------------
-local function takeBall(scale)
-	local ball = table.remove(ballPool)
-	if not ball then
-		ball = SteelBallModel.build(1, VFXQuality.get().Grooves)
-		local core = ball.PrimaryPart
-		core.Anchored = true
-		-- Spiral trail: attachments rotate with the ball, so the ribbon twists.
-		local trail = Instance.new(&quot;Trail&quot;)
-		trail.Name = &quot;SpiralTrail&quot;
-		trail.Attachment0 = core:FindFirstChild(&quot;TrailTop&quot;)
-		trail.Attachment1 = core:FindFirstChild(&quot;TrailBottom&quot;)
-		trail.Color = ColorSequence.new(colors.SpinLine, colors.SpinGlow)
-		trail.LightEmission = 1
-		trail.LightInfluence = 0
-		trail.Lifetime = 0.18
-		trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
-		trail.FaceCamera = false
-		trail.Parent = core
-	end
-	ball:ScaleTo(scale)
-	return ball
-end
-
-local function returnBall(ball)
-	ball.Parent = nil
-	if #ballPool &lt; 8 then
-		table.insert(ballPool, ball)
-	else
-		ball:Destroy()
-	end
-end
-
-VFXQuality.Changed:Connect(function()
-	for _, ball in ipairs(ballPool) do
-		ball:Destroy()
-	end
-	ballPool = {}
-end)
-
----------------------------------------------------------------------------
--- Charge visuals
----------------------------------------------------------------------------
-local function createCharge(character)
-	local hand, grip = ProceduralPose.getHand(character)
-	if not hand then
-		return nil
-	end
-	local quality = VFXQuality.get()
-	local ball = SteelBallModel.build(1, quality.Grooves)
-	local core = ball.PrimaryPart
-	core.Anchored = false
-	ball:PivotTo(hand.CFrame * grip)
-	local weld = Instance.new(&quot;Weld&quot;)
-	weld.Part0 = hand
-	weld.Part1 = core
-	weld.C0 = grip
-	weld.Parent = core
-	ball.Parent = VFXLib.Folder
-
-	local rings = {}
-	for i = 1, 3 do
-		rings[i] = VFXLib.ring({
-			Radius = 0.75 + i * 0.28,
-			Width = 0.1,
-			Color = colors.SpinLine,
-			Transparency = 1,
-		})
-	end
-
-	local emitter = Instance.new(&quot;ParticleEmitter&quot;)
-	emitter.Texture = VFXLib.Textures.Sparkle
-	emitter.Color = ColorSequence.new(colors.SpinGlow, colors.GoldLight)
-	emitter.LightEmission = 1
-	emitter.LightInfluence = 0
-	emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) })
-	emitter.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
-	emitter.Lifetime = NumberRange.new(0.3, 0.6)
-	emitter.Speed = NumberRange.new(2, 5)
-	emitter.SpreadAngle = Vector2.new(180, 180)
-	emitter.Acceleration = Vector3.new(0, 6, 0)
-	emitter.Rate = 0
-	emitter.Parent = core:FindFirstChild(&quot;Center&quot;) or core
-
-	local highlight = Instance.new(&quot;Highlight&quot;)
-	highlight.FillTransparency = 1
-	highlight.OutlineColor = colors.Gold
-	highlight.OutlineTransparency = 1
-	highlight.DepthMode = Enum.HighlightDepthMode.Occluded
-	highlight.Adornee = character
-	highlight.Parent = VFXLib.Folder
-
-	ProceduralPose.play(character, &quot;Charge&quot;, 0.18)
-
-	return {
-		Character = character,
-		Ball = ball,
-		Core = core,
-		Weld = weld,
-		Grip = grip,
-		Rings = rings,
-		Emitter = emitter,
-		Highlight = highlight,
-		Sound = VFXLib.sound(sounds.Charge, core, 0.45, 0.8, true),
-		Angle = 0,
-		Level = 0,
-		InPerfect = false,
-		NextDust = 0,
-	}
-end
-
-local function destroyCharge(state, released)
-	state.Ball:Destroy()
-	for _, ring in ipairs(state.Rings) do
-		ring:Destroy()
-	end
-	state.Highlight:Destroy()
-	if state.Sound then
-		state.Sound:Destroy()
-	end
-	if not released then
-		ProceduralPose.reset(state.Character, 0.25)
-	end
-end
-
-local function updateCharge(state, startTime, dt, now)
-	local chargeTime = workspace:GetServerTimeNow() - startTime
-	local level, perfect = SpinConfig.getLevel(chargeTime)
-	local quality = VFXQuality.get()
-	local core = state.Core
-
-	-- Ball spin speeds up with each level.
-	state.Angle = state.Angle + dt * (10 + level * 7)
-	state.Weld.C0 = state.Grip * CFrame.Angles(state.Angle, state.Angle * 0.35, 0)
-
-	-- Rings: one per level, each on its own tilted, precessing axis.
-	local center = core.Position
-	for i, ring in ipairs(state.Rings) do
-		if i &lt;= level then
-			local tilt = 0.5 + i * 0.7
-			ring:SetCFrame(CFrame.new(center) * CFrame.Angles(tilt + now * 0.8 * i, now * (3 + i), tilt * 0.5))
-			ring:SetTransparency(perfect and 0 or 0.25)
-			ring:SetWidth(perfect and 0.18 or 0.1)
-			ring:SetColor(perfect and colors.Gold or colors.SpinLine)
-		else
-			ring:SetTransparency(1)
-		end
-	end
-
-	state.Emitter.Rate = (perfect and 60 or level * 14) * quality.Particles
-	if state.Sound then
-		state.Sound.PlaybackSpeed = 0.8 + math.min(chargeTime, 2) * 0.3
-	end
-
-	-- Level up pulse.
-	if level &gt; state.Level then
-		if state.Level &gt; 0 then
-			VFXLib.shockwave(CFrame.new(center), { Radius = 3 + level, Width = 0.2, Duration = 0.3, Color = colors.Gold })
-			VFXLib.burst(center, { Count = 10 * level, Color = colors.GoldLight, Speed = 10, Lifetime = 0.4, Size = NumberSequence.new(0.25, 0) })
-			VFXLib.sound(sounds.LevelUp, core, 0.5, 0.9 + level * 0.15)
-		end
-	end
-	state.Level = level
-
-	-- Perfect window: bright outline flash + chime.
-	if perfect and not state.InPerfect then
-		state.Highlight.OutlineTransparency = 0
-		VFXLib.burst(center, { Count = 24, Color = colors.Perfect, Speed = 16, Lifetime = 0.35 })
-		VFXLib.flash(center, colors.GoldLight, 5, 14, 0.25)
-		VFXLib.sound(sounds.Perfect, core, 0.7, 1)
-	elseif not perfect and state.InPerfect then
-		state.Highlight.OutlineTransparency = 1
-	end
-	state.InPerfect = perfect
-
-	-- Ground dust swirl at Power level and above.
-	if level &gt;= 2 and now &gt;= state.NextDust then
-		state.NextDust = now + 0.3
-		local root = state.Character:FindFirstChild(&quot;HumanoidRootPart&quot;)
-		if root then
-			VFXLib.shockwave(CFrame.new(root.Position - Vector3.new(0, 2.8, 0)), {
-				StartRadius = 1.5,
-				Radius = 5 + level,
-				Width = 0.25,
-				Duration = 0.5,
-				Color = colors.Gold,
-				Spin = 2,
-			})
-		end
-	end
-end
-
-local function chargeLoop(dt)
-	local now = os.clock()
-	local seen = {}
-	for _, player in ipairs(Players:GetPlayers()) do
-		local character = player.Character
-		local startTime = character and character:GetAttribute(&quot;SpinChargeStart&quot;)
-		if startTime then
-			seen[character] = true
-			local state = chargeStates[character]
-			if not state then
-				state = createCharge(character)
-				chargeStates[character] = state
-			end
-			if state then
-				updateCharge(state, startTime, dt, now)
-			end
-		end
-	end
-	for character, state in pairs(chargeStates) do
-		if not seen[character] then
-			chargeStates[character] = nil
-			destroyCharge(state, state.Released)
-		end
-	end
-end
-
----------------------------------------------------------------------------
--- Release / projectile / impact
----------------------------------------------------------------------------
-local function ringAxisAlong(position, direction)
-	-- Ring axis (UpVector) along the travel direction.
-	return CFrame.lookAt(position, position + direction) * CFrame.Angles(math.pi / 2, 0, 0)
-end
-
-local function onRelease(data)
-	local character = data.Character
-	local state = character and chargeStates[character]
-	if state then
-		state.Released = true
-	end
-	if character then
-		ProceduralPose.play(character, &quot;Throw&quot;, 0.06)
-		task.delay(0.3, function()
-			ProceduralPose.reset(character, 0.3)
-		end)
-	end
-
-	local level = SpinConfig.Levels[data.Level]
-	local axis = ringAxisAlong(data.Origin, data.Direction)
-	VFXLib.shockwave(axis, { Radius = 2 + data.Level * 1.5, Width = 0.35, Duration = 0.3, Color = colors.Gold })
-	VFXLib.burst(data.Origin, {
-		Count = 12 * data.Level,
-		Color = colors.Gold,
-		Speed = 25,
-		Spread = 25,
-		Direction = data.Direction,
-		Lifetime = 0.35,
-	})
-	VFXLib.sound(sounds.Release, data.Origin, 0.7, 1.15 - data.Level * 0.1)
-
-	if data.Perfect then
-		for i = 1, 3 do
-			task.delay(i * 0.04, function()
-				VFXLib.shockwave(axis * CFrame.new(0, -i * 1.2, 0), {
-					Radius = 3 + i * 1.5,
-					Width = 0.3,
-					Duration = 0.35,
-					Color = colors.Perfect,
-				})
-			end)
-		end
-		VFXLib.flash(data.Origin, colors.GoldLight, 8, 24, 0.35)
-	end
-
-	if character and character == localPlayer.Character then
-		CameraFX.shake(level.CameraShake * 0.6, 0.25)
-		if data.Perfect then
-			CameraFX.speedLines(0.35, colors.GoldLight)
-			CameraFX.fovPunch(10, 0.4)
-		else
-			CameraFX.fovPunch(3 + data.Level * 2, 0.3)
-		end
-	end
-end
-
-local function spawnProjectile(data)
-	local visualData = data.Visual or {}
-	local levelIndex = visualData.Level or 1
-	local level = SpinConfig.Levels[levelIndex]
-	local perfect = visualData.Perfect == true
-
-	local ball = takeBall(level.BallScale)
-	local core = ball.PrimaryPart
-	local start = CFrame.lookAt(data.Origin, data.Origin + data.Direction)
-	ball:PivotTo(start)
-	ball.Parent = VFXLib.Folder
-	local spiral = core:FindFirstChild(&quot;SpiralTrail&quot;)
-	if spiral then
-		spiral:Clear()
-	end
-
-	-- Flat golden streak trail on a carrier that doesn&#x27;t spin.
-	local carrier = VFXLib.anchor(start)
-	local a0 = Instance.new(&quot;Attachment&quot;)
-	a0.Position = Vector3.new(-level.TrailWidth / 2, 0, 0)
-	a0.Parent = carrier
-	local a1 = Instance.new(&quot;Attachment&quot;)
-	a1.Position = Vector3.new(level.TrailWidth / 2, 0, 0)
-	a1.Parent = carrier
-	local streak = Instance.new(&quot;Trail&quot;)
-	streak.Attachment0 = a0
-	streak.Attachment1 = a1
-	streak.Color = ColorSequence.new(perfect and colors.Perfect or colors.GoldLight, colors.Gold)
-	streak.LightEmission = 1
-	streak.LightInfluence = 0
-	streak.Lifetime = 0.25 + levelIndex * 0.08
-	streak.WidthScale = NumberSequence.new(1, 0)
-	streak.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) })
-	streak.FaceCamera = true
-	streak.Parent = carrier
-
-	local rings = {}
-	for i = 1, level.Rings do
-		rings[i] = VFXLib.ring({
-			Radius = level.BallScale * 0.7 + i * 0.25,
-			Width = 0.12 + (perfect and 0.06 or 0),
-			Color = perfect and colors.Gold or colors.SpinLine,
-		})
-	end
-
-	local visual = {
-		Id = data.Id,
-		Ball = ball,
-		Core = core,
-		Carrier = carrier,
-		Streak = streak,
-		Rings = rings,
-		Origin = data.Origin,
-		Direction = data.Direction,
-		Speed = data.Speed,
-		Range = data.Range,
-		ServerTime = data.ServerTime,
-		Level = levelIndex,
-		Perfect = perfect,
-		Spin = 0,
-		NextGhost = 0,
-		Expire = os.clock() + data.Range / data.Speed + 1.5,
-	}
-	projectiles[data.Id] = visual
-end
-
-local function removeProjectile(visual)
-	projectiles[visual.Id] = nil
-	returnBall(visual.Ball)
-	for _, ring in ipairs(visual.Rings) do
-		ring:Destroy()
-	end
-	visual.Streak.Enabled = false -- let the streak fade out on its own
-	game:GetService(&quot;Debris&quot;):AddItem(visual.Carrier, visual.Streak.Lifetime + 0.1)
-end
-
-local function projectileLoop(dt)
-	local now = os.clock()
-	local serverNow = workspace:GetServerTimeNow()
-	for _, v in pairs(projectiles) do
-		local distance = math.min(v.Speed * (serverNow - v.ServerTime), v.Range)
-		local position = v.Origin + v.Direction * distance
-		v.Spin = v.Spin + dt * (18 + v.Level * 6)
-		local facing = CFrame.lookAt(position, position + v.Direction)
-		v.Ball:PivotTo(facing * CFrame.Angles(-v.Spin, 0, v.Spin * 0.15))
-		v.Carrier.CFrame = facing
-		for i, ring in ipairs(v.Rings) do
-			local tilt = 0.35 * i
-			ring:SetCFrame(ringAxisAlong(position, v.Direction) * CFrame.Angles(tilt * math.sin(now * 6 + i), v.Spin * (0.4 + i * 0.2), tilt))
-		end
-		if now &gt;= v.NextGhost then
-			v.NextGhost = now + 0.05
-			VFXLib.afterimage(v.Core.CFrame, SpinConfig.Levels[v.Level].BallScale, v.Perfect and colors.Perfect or colors.Gold)
-		end
-		if now &gt; v.Expire then
-			removeProjectile(v) -- safety: server end event never arrived
-		end
-	end
-end
-
-local function impact(position, normal, levelIndex, perfect, ownerIsLocal)
-	local level = SpinConfig.Levels[levelIndex]
-	local axis = CFrame.lookAt(position, position + normal) * CFrame.Angles(-math.pi / 2, 0, 0)
-	local color = perfect and colors.Perfect or colors.Gold
-
-	for i = 1, levelIndex do
-		task.delay((i - 1) * 0.05, function()
-			VFXLib.shockwave(axis, {
-				Radius = level.ShockwaveRadius * (1 - (i - 1) * 0.28),
-				Width = 0.5 + levelIndex * 0.15,
-				Duration = 0.4 + i * 0.05,
-				Color = i == 1 and color or colors.Orange,
-				Spin = 1.5 * i,
-			})
-		end)
-	end
-	if normal.Y &gt; 0.5 then
-		VFXLib.groundDisc(position, normal, { Radius = level.ShockwaveRadius * 0.6, Color = colors.Gold, Duration = 0.35 })
-	end
-	VFXLib.burst(position, { Count = 18 * levelIndex, Color = colors.GoldLight, Speed = 30, Lifetime = 0.5 })
-	-- Metal sparks that fall with gravity.
-	VFXLib.burst(position, {
-		Count = 14 * levelIndex,
-		Color = colors.Orange,
-		Speed = 45,
-		Lifetime = 0.6,
-		Drag = 1,
-		Acceleration = Vector3.new(0, -70, 0),
-		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.18), NumberSequenceKeypoint.new(1, 0) }),
-		Direction = normal,
-		Spread = 70,
-	})
-	-- Desert dust.
-	VFXLib.burst(position, {
-		Count = 6 * levelIndex,
-		Texture = VFXLib.Textures.Smoke,
-		Color = Color3.fromRGB(196, 168, 120),
-		LightEmission = 0,
-		Speed = 8,
-		Lifetime = 1.1,
-		Drag = 3,
-		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 5) }),
-		TransparencySeq = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 1) }),
-	})
-	VFXLib.flash(position, colors.Gold, 3 + levelIndex * 2, 12 + levelIndex * 6, 0.35)
-	VFXLib.sound(sounds.Impact, position, 0.6 + levelIndex * 0.15, 1.1 - levelIndex * 0.1)
-	CameraFX.shakeAt(position, level.CameraShake * 2, 60 + levelIndex * 20)
-	if perfect and ownerIsLocal then
-		CameraFX.impactFrame(colors.GoldLight)
-	end
-end
-
-local function endProjectile(data)
-	local visual = projectiles[data.Id]
-	local levelIndex = (data.Visual and data.Visual.Level) or (visual and visual.Level) or 1
-	local perfect = data.Visual and data.Visual.Perfect == true
-	if visual then
-		visual.Ball:PivotTo(CFrame.new(data.Position))
-		removeProjectile(visual)
-	end
-	-- Impact frame only for the thrower, and only when the ball hit someone.
-	local ownerIsLocal = data.HitCharacter and data.OwnerId == localPlayer.UserId
-	impact(data.Position, data.Normal, levelIndex, perfect, ownerIsLocal)
-end
+local colors = {
+	Gold = Color3.fromRGB(255, 196, 56),
+	Perfect = Color3.fromRGB(255, 250, 210),
+	GoldLight = Color3.fromRGB(255, 238, 160),
+}
 
 local function onHit(data)
 	if not data.Victim then
@@ -6540,31 +5866,42 @@ local function onDamage(data)
 	end)
 end
 
-function SpinVFX.init()
-	local FX = Net.get(&quot;SpinFX&quot;)
-	FX.OnClientEvent:Connect(function(name, data)
-		if name == &quot;SpinRelease&quot; then
-			onRelease(data)
-		elseif name == &quot;ProjectileSpawn&quot; and data.Kind == &quot;SteelBall&quot; then
-			spawnProjectile(data)
-		elseif name == &quot;ProjectileEnd&quot; and data.Kind == &quot;SteelBall&quot; then
-			endProjectile(data)
-		elseif name == &quot;Hit&quot; then
+function HitFX.init()
+	Net.get(&quot;SpinFX&quot;).OnClientEvent:Connect(function(name, data)
+		if name == &quot;Hit&quot; then
 			onHit(data)
 		elseif name == &quot;Damage&quot; then
 			onDamage(data)
 		end
 	end)
-	RunService.RenderStepped:Connect(function(dt)
-		chargeLoop(dt)
-		projectileLoop(dt)
-	end)
 end
 
-return SpinVFX
-</pre></details></section><section class="card" id="s35">
-<div class="head"><span class="num">35</span><div><h2>TuskActCommon <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="35">Copy code</button><details><summary>Show code (214 lines)</summary><pre id="c35">--[[
+return HitFX
+</pre></details></section><section class="card" id="s32">
+<div class="head"><span class="num">32</span><div><h2>JointCache <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="32">Copy code</button><details><summary>Show code (21 lines)</summary><pre id="c32">--[[
+	JointCache  (StarterPlayerScripts.SpinClient.JointCache)
+	Remembers each Motor6D&#x27;s original C0 the first time any pose system
+	touches it, so Spin poses and Tusk poses can both restore the true
+	rest pose instead of each other&#x27;s leftovers.
+]]
+
+local JointCache = {}
+local originals = setmetatable({}, { __mode = &quot;k&quot; })
+
+function JointCache.original(motor)
+	local c0 = originals[motor]
+	if not c0 then
+		c0 = motor.C0
+		originals[motor] = c0
+	end
+	return c0
+end
+
+return JointCache
+</pre></details></section><section class="card" id="s33">
+<div class="head"><span class="num">33</span><div><h2>TuskActCommon <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="33">Copy code</button><details><summary>Show code (215 lines)</summary><pre id="c33">--[[
 	TuskActCommon  (StarterPlayerScripts.SpinClient.TuskActCommon)
 
 	Shared client choreography used by every Act&#x27;s visual module:
@@ -6598,6 +5935,7 @@ Common.Palettes = {
 	[2] = { Main = Color3.fromRGB(80, 210, 255), Second = Color3.fromRGB(110, 70, 255), Light = colors.Ice },
 	[3] = { Main = Color3.fromRGB(70, 130, 255), Second = Color3.fromRGB(30, 20, 120), Light = Color3.fromRGB(190, 210, 255) },
 	[4] = { Main = colors.Gold, Second = colors.DeepBlue, Light = colors.GoldLight },
+	[5] = { Main = Color3.fromRGB(120, 225, 95), Second = Color3.fromRGB(40, 120, 50), Light = Color3.fromRGB(225, 255, 205) }, -- Gyro
 }
 
 function Common.palette(act)
@@ -6777,11 +6115,11 @@ function Common.actName(act)
 end
 
 return Common
-</pre></details></section><section class="card" id="s36">
-<div class="head"><span class="num">36</span><div><h2>TuskActVFX <span class="badge folder">Folder</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s37">
-<div class="head"><span class="num">37</span><div><h2>Act1 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="37">Copy code</button><details><summary>Show code (286 lines)</summary><pre id="c37">--[[
+</pre></details></section><section class="card" id="s34">
+<div class="head"><span class="num">34</span><div><h2>TuskActVFX <span class="badge folder">Folder</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s35">
+<div class="head"><span class="num">35</span><div><h2>Act1 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="35">Copy code</button><details><summary>Show code (286 lines)</summary><pre id="c35">--[[
 	TuskActVFX.Act1  (StarterPlayerScripts.SpinClient.TuskActVFX.Act1)
 
 	Client choreography for Tusk Act 1: poses, Stand motion, effects and
@@ -7066,9 +6404,9 @@ function Act1.step()
 end
 
 return Act1
-</pre></details></section><section class="card" id="s38">
-<div class="head"><span class="num">38</span><div><h2>Act2 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="38">Copy code</button><details><summary>Show code (104 lines)</summary><pre id="c38">--[[
+</pre></details></section><section class="card" id="s36">
+<div class="head"><span class="num">36</span><div><h2>Act2 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="36">Copy code</button><details><summary>Show code (104 lines)</summary><pre id="c36">--[[
 	TuskActVFX.Act2  (StarterPlayerScripts.SpinClient.TuskActVFX.Act2)
 	Client choreography for Tusk Act 2 (wormhole combat): cyan + violet
 	portals, spatial distortion, rotating nails through wormholes.
@@ -7171,9 +6509,9 @@ function Act2.handle(name, data)
 end
 
 return Act2
-</pre></details></section><section class="card" id="s39">
-<div class="head"><span class="num">39</span><div><h2>Act3 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="39">Copy code</button><details><summary>Show code (166 lines)</summary><pre id="c39">--[[
+</pre></details></section><section class="card" id="s37">
+<div class="head"><span class="num">37</span><div><h2>Act3 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="37">Copy code</button><details><summary>Show code (166 lines)</summary><pre id="c37">--[[
 	TuskActVFX.Act3  (StarterPlayerScripts.SpinClient.TuskActVFX.Act3)
 	Client choreography for Tusk Act 3 (spatial movement): deep-blue
 	layered portals, blue distortion afterimages, a tearing dimensional break.
@@ -7338,9 +6676,9 @@ function Act3.handle(name, data)
 end
 
 return Act3
-</pre></details></section><section class="card" id="s40">
-<div class="head"><span class="num">40</span><div><h2>Act4 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="40">Copy code</button><details><summary>Show code (304 lines)</summary><pre id="c40">--[[
+</pre></details></section><section class="card" id="s38">
+<div class="head"><span class="num">38</span><div><h2>Act4 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="38">Copy code</button><details><summary>Show code (304 lines)</summary><pre id="c38">--[[
 	TuskActVFX.Act4  (StarterPlayerScripts.SpinClient.TuskActVFX.Act4)
 	Client choreography for Tusk Act 4 (Infinite Rotation): gold and deep
 	blue, giant rotational rings, golden afterimages, distorted air, and the
@@ -7643,9 +6981,456 @@ function Act4.step()
 end
 
 return Act4
-</pre></details></section><section class="card" id="s41">
-<div class="head"><span class="num">41</span><div><h2>TuskAnimation <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="41">Copy code</button><details><summary>Show code (331 lines)</summary><pre id="c41">--[[
+</pre></details></section><section class="card" id="s39">
+<div class="head"><span class="num">39</span><div><h2>Gyro <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="39">Copy code</button><details><summary>Show code (446 lines)</summary><pre id="c39">--[[
+	TuskActVFX.Gyro  (StarterPlayerScripts.SpinClient.TuskActVFX.Gyro)
+
+	Client visuals for Gyro Zeppeli (Steel Ball moveset):
+	  * the green Steel Ball always spinning in Gyro&#x27;s right hand
+	    (hidden while it&#x27;s thrown, back when it returns)
+	  * thrown / returning ball with white-green spin rings and a trail
+	  * orange Wrecking Ball studs
+	  * Spin Vibration ripples, and shaking sparks on anyone hit by the Spin
+	  * BALL BREAKER: spiral build-up, giant ball, spinning vortex, burst
+]]
+
+local Players = game:GetService(&quot;Players&quot;)
+local RunService = game:GetService(&quot;RunService&quot;)
+local Debris = game:GetService(&quot;Debris&quot;)
+
+local Shared = game:GetService(&quot;ReplicatedStorage&quot;):WaitForChild(&quot;SpinShared&quot;)
+local TuskConfig = require(Shared.TuskConfig)
+local VFXQuality = require(Shared.VFXQuality)
+local Net = require(Shared.Net)
+local SteelBallModel = require(Shared.SteelBallModel)
+local WreckingBallModel = require(Shared.WreckingBallModel)
+local VFXLib = require(script.Parent.Parent.VFXLib)
+local CameraFX = require(script.Parent.Parent.CameraFX)
+local TuskVFX = require(script.Parent.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
+local Common = require(script.Parent.Parent.TuskActCommon)
+
+local Gyro = {}
+local pal = Common.palette(5)
+local sounds = TuskConfig.Sounds
+local localPlayer = Players.LocalPlayer
+local GYRO_ACT = 5
+
+local held = {} -- [character] = { Ball, Weld, Grip, Angle, HiddenUntil }
+local shakes = {} -- [character] = attachment with sparkles
+local balls = {} -- [projectile id] = visual
+
+local function handOf(character)
+	local hand = character:FindFirstChild(&quot;RightHand&quot;)
+	if hand then
+		return hand, CFrame.new(0, -0.5, -0.15)
+	end
+	local arm = character:FindFirstChild(&quot;Right Arm&quot;)
+	if arm then
+		return arm, CFrame.new(0, -1.15, -0.15)
+	end
+	return nil
+end
+
+local function setHidden(entry, hidden)
+	for _, d in ipairs(entry.Ball:GetDescendants()) do
+		if d:IsA(&quot;BasePart&quot;) then
+			d.LocalTransparencyModifier = hidden and 1 or 0
+		end
+	end
+	entry.Hidden = hidden
+end
+
+---------------------------------------------------------------------------
+-- Ball always in Gyro&#x27;s hand
+---------------------------------------------------------------------------
+local function updateHeld(dt)
+	local seen = {}
+	local now = os.clock()
+	for _, player in ipairs(Players:GetPlayers()) do
+		local character = player.Character
+		if character and character:GetAttribute(&quot;TuskAct&quot;) == GYRO_ACT then
+			local hand, grip = handOf(character)
+			if hand then
+				seen[character] = true
+				local entry = held[character]
+				if not entry then
+					local ball = SteelBallModel.build(0.9, VFXQuality.get().Grooves)
+					local core = ball.PrimaryPart
+					core.Anchored = false
+					ball:PivotTo(hand.CFrame * grip)
+					local weld = Instance.new(&quot;Weld&quot;)
+					weld.Part0 = hand
+					weld.Part1 = core
+					weld.C0 = grip
+					weld.Parent = core
+					ball.Parent = VFXLib.Folder
+					entry = { Ball = ball, Weld = weld, Grip = grip, Angle = 0, HiddenUntil = 0, Spin = 8 }
+					held[character] = entry
+				end
+				entry.Angle = entry.Angle + dt * entry.Spin
+				entry.Weld.C0 = entry.Grip * CFrame.Angles(entry.Angle, entry.Angle * 0.3, 0)
+				local hide = now &lt; entry.HiddenUntil
+				if hide ~= (entry.Hidden == true) then
+					setHidden(entry, hide)
+				end
+			end
+		end
+	end
+	for character, entry in pairs(held) do
+		if not seen[character] then
+			held[character] = nil
+			entry.Ball:Destroy()
+		end
+	end
+end
+
+-- Sparkly &quot;shaking&quot; on anyone the Spin is vibrating.
+local function updateShakes()
+	local seen = {}
+	local candidates = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player.Character then
+			table.insert(candidates, player.Character)
+		end
+	end
+	local dummies = workspace:FindFirstChild(&quot;SpinTestDummies&quot;)
+	if dummies then
+		for _, d in ipairs(dummies:GetChildren()) do
+			table.insert(candidates, d)
+		end
+	end
+	for _, model in ipairs(candidates) do
+		if model:IsA(&quot;Model&quot;) and model:GetAttribute(&quot;GyroSpinShake&quot;) then
+			local root = model:FindFirstChild(&quot;HumanoidRootPart&quot;)
+			if root then
+				seen[model] = true
+				if not shakes[model] then
+					local a = Instance.new(&quot;Attachment&quot;)
+					a.Name = &quot;GyroSpinShake&quot;
+					a.Parent = root
+					local e = Instance.new(&quot;ParticleEmitter&quot;)
+					e.Texture = VFXLib.Textures.Sparkle
+					e.Color = ColorSequence.new(pal.Light, pal.Main)
+					e.LightEmission = 1
+					e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0) })
+					e.Lifetime = NumberRange.new(0.2, 0.35)
+					e.Speed = NumberRange.new(4, 8)
+					e.SpreadAngle = Vector2.new(180, 180)
+					e.Rate = 30 * VFXQuality.get().Particles
+					e.Parent = a
+					shakes[model] = a
+				end
+			end
+		end
+	end
+	for model, a in pairs(shakes) do
+		if not seen[model] then
+			shakes[model] = nil
+			a:Destroy()
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Ball projectiles (server Kind &quot;GyroBall&quot;)
+---------------------------------------------------------------------------
+local function spawnBall(data)
+	local style = data.Visual and data.Visual.Style or &quot;Throw&quot;
+	local ball
+	local rings = {}
+	if style == &quot;Wrecking&quot; then
+		ball = WreckingBallModel.build(0.7, false)
+	else
+		local size = style == &quot;Breaker&quot; and (data.Visual.Scale or 6) or 1.1
+		ball = SteelBallModel.build(size, VFXQuality.get().Grooves)
+		local ringCount = style == &quot;Breaker&quot; and 3 or 2
+		for i = 1, ringCount do
+			rings[i] = VFXLib.ring({ Radius = size * 0.6 + i * (style == &quot;Breaker&quot; and 0.8 or 0.25), Width = style == &quot;Breaker&quot; and 0.35 or 0.1, Color = i % 2 == 1 and pal.Light or pal.Main, Transparency = 0.1 })
+		end
+	end
+	ball.PrimaryPart.Anchored = true
+	ball.Parent = VFXLib.Folder
+	local core = ball.PrimaryPart
+	local a0 = Instance.new(&quot;Attachment&quot;)
+	a0.Position = Vector3.new(0, 0.3, 0)
+	a0.Parent = core
+	local a1 = Instance.new(&quot;Attachment&quot;)
+	a1.Position = Vector3.new(0, -0.3, 0)
+	a1.Parent = core
+	local trail = Instance.new(&quot;Trail&quot;)
+	trail.Attachment0 = a0
+	trail.Attachment1 = a1
+	trail.Color = style == &quot;Wrecking&quot; and ColorSequence.new(Color3.fromRGB(255, 160, 60)) or ColorSequence.new(pal.Light, pal.Main)
+	trail.LightEmission = 1
+	trail.Lifetime = style == &quot;Breaker&quot; and 0.5 or 0.25
+	trail.WidthScale = NumberSequence.new(1, 0)
+	trail.Transparency = NumberSequence.new(0.1, 1)
+	trail.Parent = core
+	balls[data.Id] = {
+		Model = ball,
+		Rings = rings,
+		Style = style,
+		Origin = data.Origin,
+		Direction = data.Direction,
+		Speed = data.Speed,
+		Range = data.Range,
+		ServerTime = data.ServerTime,
+		Spin = 0,
+		Expire = os.clock() + data.Range / data.Speed + 1.5,
+		NextGhost = 0,
+	}
+	VFXLib.sound(sounds.NailFire, data.Origin, 0.5, style == &quot;Wrecking&quot; and 1.3 or 0.8)
+	if style ~= &quot;Return&quot; then
+		VFXLib.burst(data.Origin, { Count = 8, Color = pal.Light, Speed = 14, Spread = 30, Direction = data.Direction, Lifetime = 0.25 })
+	end
+end
+
+local function removeBall(v)
+	for _, ring in ipairs(v.Rings) do
+		ring:Destroy()
+	end
+	v.Model:Destroy()
+end
+
+local function endBall(data)
+	local v = balls[data.Id]
+	if v then
+		balls[data.Id] = nil
+		removeBall(v)
+	end
+	local style = data.Visual and data.Visual.Style or &quot;Throw&quot;
+	if style == &quot;Breaker&quot; then
+		return -- the vortex event takes over
+	end
+	if style == &quot;Wrecking&quot; then
+		VFXLib.burst(data.Position, { Count = 10, Color = Color3.fromRGB(255, 170, 70), Speed = 25, Lifetime = 0.3, Acceleration = Vector3.new(0, -50, 0) })
+		VFXLib.sound(sounds.NailImpact, data.Position, 0.4, 1.3)
+	elseif style == &quot;Throw&quot; then
+		TuskVFX.CreateImpact(data.Position, data.Normal, { Size = 1, Radius = 3.5, Layers = 2, Color = pal.Main, Color2 = pal.Light, Sound = sounds.NailImpact, Pitch = 0.8 })
+		CameraFX.shakeAt(data.Position, 0.3, 50)
+	end
+end
+
+local function stepBalls(dt)
+	local serverNow = workspace:GetServerTimeNow()
+	local now = os.clock()
+	for id, v in pairs(balls) do
+		local distance = math.min(v.Speed * (serverNow - v.ServerTime), v.Range)
+		local pos = v.Origin + v.Direction * distance
+		v.Spin = v.Spin + dt * (v.Style == &quot;Breaker&quot; and 10 or 25)
+		local facing = CFrame.lookAt(pos, pos + v.Direction)
+		v.Model:PivotTo(facing * CFrame.Angles(-v.Spin, 0, v.Spin * 0.2))
+		local axis = facing * CFrame.Angles(math.pi / 2, 0, 0)
+		for i, ring in ipairs(v.Rings) do
+			ring:SetCFrame(axis * CFrame.Angles(0.5 * i * math.sin(v.Spin * 0.2), v.Spin * (0.4 + i * 0.2) * (i % 2 == 0 and -1 or 1), 0.3 * i))
+		end
+		if v.Style == &quot;Breaker&quot; and now &gt;= v.NextGhost then
+			v.NextGhost = now + 0.05
+			VFXLib.afterimage(facing, 4, pal.Main)
+		end
+		if now &gt; v.Expire then
+			balls[id] = nil
+			removeBall(v)
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Moves
+---------------------------------------------------------------------------
+local function onAbility(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	local entry = character and held[character]
+	if data.Move == &quot;SteelBallThrow&quot; then
+		if data.Phase == &quot;Startup&quot; and root then
+			TuskAnimation.play(character, &quot;Throw&quot;)
+			if entry then
+				entry.Spin = 30
+				task.delay(data.Startup, function()
+					entry.HiddenUntil = os.clock() + 4 -- until it&#x27;s caught again
+					entry.Spin = 8
+				end)
+			end
+		elseif data.Phase == &quot;Caught&quot; and entry then
+			entry.HiddenUntil = 0
+			if root then
+				VFXLib.burst(root.Position + Vector3.new(0, 1, 0), { Count = 8, Color = pal.Light, Speed = 6, Lifetime = 0.25 })
+			end
+		end
+	elseif data.Move == &quot;WreckingBalls&quot; and data.Phase == &quot;Startup&quot; and root then
+		TuskAnimation.play(character, &quot;Throw&quot;)
+		local hand = (root.CFrame * CFrame.new(0.9, 0.6, -1.6)).Position
+		VFXLib.burst(hand, { Count = 14, Color = Color3.fromRGB(255, 170, 70), Speed = 8, Lifetime = 0.2 })
+		VFXLib.flash(hand, Color3.fromRGB(255, 180, 90), 3, 10, 0.2)
+	elseif data.Move == &quot;SpinVibration&quot; then
+		if data.Phase == &quot;Startup&quot; and root then
+			TuskAnimation.play(character, &quot;M1_3&quot;)
+			if entry then
+				entry.Spin = 45
+				task.delay(0.6, function()
+					entry.Spin = 8
+				end)
+			end
+		elseif data.Phase == &quot;Hit&quot; then
+			-- Spiral ripples spreading from the ball.
+			for i = 1, 3 do
+				task.delay(i * 0.06, function()
+					local axis = CFrame.new(data.Position) * CFrame.Angles(math.pi / 2, 0, 0)
+					TuskVFX.CreateRotationalShockwave(axis, { Radius = 2 + i * 1.5, Layers = 1, Color = pal.Light, Color2 = pal.Main, Particles = 0.4, Width = 0.25, Duration = 0.3, Spin = 5 })
+				end)
+			end
+			VFXLib.sound(sounds.Hit, data.Position, 0.6, 0.7)
+			if data.Hit and Common.isLocal(character) then
+				CameraFX.shake(0.4, 0.3)
+			end
+		end
+	end
+end
+
+-- Logarithmic spiral of beams (the Spin&#x27;s &quot;golden ratio&quot; spiral, in green/white).
+local function spiral(cframe, size, duration)
+	local carrier = VFXLib.anchor(cframe)
+	local prev
+	local points = VFXQuality.get().RingSegments
+	for i = 0, points do
+		local t = i / points
+		local angle = t * math.pi * 4
+		local r = size * 0.08 * math.exp(t * 2.5)
+		local a = Instance.new(&quot;Attachment&quot;)
+		a.Position = Vector3.new(math.cos(angle) * r, math.sin(angle) * r, 0)
+		a.Parent = carrier
+		if prev then
+			local b = Instance.new(&quot;Beam&quot;)
+			b.Attachment0 = prev
+			b.Attachment1 = a
+			b.FaceCamera = true
+			b.LightEmission = 1
+			b.Width0 = 0.18
+			b.Width1 = 0.18
+			b.Color = ColorSequence.new(pal.Light:Lerp(pal.Main, t))
+			b.Parent = carrier
+		end
+		prev = a
+	end
+	VFXLib.animate(duration, function(a, dt)
+		carrier.CFrame = carrier.CFrame * CFrame.Angles(0, 0, (dt or 0) * (2 + a * 8))
+	end, function()
+		carrier:Destroy()
+	end)
+end
+
+local function onUltimate(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Phase == &quot;Start&quot; and root then
+		TuskAnimation.play(character, &quot;Awakening&quot;)
+		VFXLib.sound(sounds.AwakeningBuild, root, 0.9, 0.9)
+		local entry = held[character]
+		if entry then
+			entry.Spin = 60
+		end
+		spiral(root.CFrame * CFrame.new(0, 2, -3), 6, data.Windup)
+		TuskVFX.CreateMagicCircle(CFrame.new(root.Position - Vector3.new(0, 2.9, 0)), { Radius = 8, Color = pal.Main, Color2 = pal.Light, Duration = data.Windup + 0.3, RotationSpeed = 2, Points = 5 })
+		TuskVFX.CreateEnergyCharge({
+			Follow = function()
+				return root.Parent and root.CFrame * CFrame.new(0.9, 0.8, -1.8) or nil
+			end,
+			Color = pal.Main,
+			Color2 = pal.Light,
+			MaxRadius = 1.6,
+			Duration = data.Windup,
+			Rings = 3,
+		})
+		if Common.isLocal(character) then
+			CameraFX.setFovHold(-10)
+		end
+	elseif data.Phase == &quot;Release&quot; then
+		local entry = character and held[character]
+		if entry then
+			entry.Spin = 8
+		end
+		if character then
+			TuskAnimation.play(character, &quot;Throw&quot;)
+		end
+		VFXLib.flash(data.Position, pal.Light, 10, 40, 0.5)
+		if Common.isLocal(character) then
+			CameraFX.setFovHold(0)
+			CameraFX.fovPunch(16, 0.6)
+			CameraFX.speedLines(0.45, pal.Light)
+		end
+	elseif data.Phase == &quot;Vortex&quot; then
+		local pos = data.Position
+		local ground = CFrame.new(pos - Vector3.new(0, 1, 0))
+		for i = 1, 3 do
+			TuskVFX.CreateSpinRing({ CFrame = ground * CFrame.new(0, i * 1.6, 0), Tilt = CFrame.Angles(0.15 * i, 0, 0), Radius = data.Radius * (1.05 - i * 0.2), Width = 0.4, Color = i % 2 == 1 and pal.Main or pal.Light, RotationSpeed = (5 + i * 2) * (i % 2 == 0 and -1 or 1), Duration = data.Duration })
+		end
+		TuskVFX.CreateMagicCircle(ground, { Radius = data.Radius, Color = pal.Main, Color2 = pal.Light, Duration = data.Duration, RotationSpeed = 3, Points = 6 })
+		TuskVFX.CreateEnergyCharge({ CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)), Color = pal.Main, Color2 = pal.Light, MaxRadius = 3, Duration = data.Duration, Rings = 3 })
+		spiral(CFrame.new(pos + Vector3.new(0, 0.5, 0)) * CFrame.Angles(-math.pi / 2, 0, 0), data.Radius * 0.8, data.Duration)
+		VFXLib.sound(sounds.ChargeLoop, pos, 0.8, 0.6)
+	elseif data.Phase == &quot;Burst&quot; then
+		local pos = data.Position
+		TuskVFX.CreateRotationalShockwave(CFrame.new(pos - Vector3.new(0, 1, 0)), { Radius = data.Radius * 1.6, Layers = 4, Color = pal.Main, Color2 = pal.Light, Ground = true, Particles = 3, Width = 1, Duration = 0.7 })
+		TuskVFX.CreateDistortion(pos, { Radius = 10, Duration = 0.5 })
+		VFXLib.flash(pos, pal.Light, 14, 60, 0.7)
+		VFXLib.sound(sounds.AwakeningBurst, pos, 1, 0.8)
+		CameraFX.shakeAt(pos, 1.5, 110)
+		if Common.isLocal(character) then
+			CameraFX.impactFrame(pal.Light)
+		end
+	end
+end
+
+function Gyro.handle(name, data)
+	if name == &quot;M1&quot; then
+		Common.m1(data, pal)
+	elseif name == &quot;M1Finisher&quot; then
+		Common.finisher(data, pal)
+		local entry = data.Character and held[data.Character]
+		if entry then
+			entry.Spin = 50
+			task.delay(0.4, function()
+				entry.Spin = 8
+			end)
+		end
+	elseif name == &quot;Ability&quot; then
+		onAbility(data)
+	elseif name == &quot;Ultimate&quot; then
+		onUltimate(data)
+	end
+end
+
+local shakeTimer = 0
+function Gyro.step(dt)
+	dt = dt or 1 / 60
+	updateHeld(dt)
+	stepBalls(dt)
+	shakeTimer = shakeTimer + dt
+	if shakeTimer &gt; 0.25 then
+		shakeTimer = 0
+		updateShakes()
+	end
+end
+
+-- Ball projectiles come through the shared SpinFX channel.
+Net.get(&quot;SpinFX&quot;).OnClientEvent:Connect(function(name, data)
+	if typeof(data) ~= &quot;table&quot; or data.Kind ~= &quot;GyroBall&quot; then
+		return
+	end
+	if name == &quot;ProjectileSpawn&quot; then
+		spawnBall(data)
+	elseif name == &quot;ProjectileEnd&quot; then
+		endBall(data)
+	end
+end)
+
+return Gyro
+</pre></details></section><section class="card" id="s40">
+<div class="head"><span class="num">40</span><div><h2>TuskAnimation <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="40">Copy code</button><details><summary>Show code (332 lines)</summary><pre id="c40">--[[
 	TuskAnimation  (StarterPlayerScripts.SpinClient.TuskAnimation)
 	(&quot;TuskAnimationController&quot; in the design doc)
 
@@ -7741,6 +7526,7 @@ TuskAnimation.Actions = {
 	SpinningNailRelease = { { 0, &quot;ChargeNail&quot; }, { 0.06, &quot;PointRecoil&quot; }, { 0.4, &quot;Point&quot; } },
 	Awakening = { { 0, &quot;Rest&quot; }, { 0.35, &quot;AwakenCrouch&quot; }, { 1.2, &quot;AwakenCrouch&quot; }, { 1.45, &quot;AwakenRise&quot; }, { 2.2, &quot;AwakenRise&quot; } },
 	Emerge = { { 0, &quot;Sneak&quot; }, { 0.12, &quot;Emerge&quot; }, { 0.5, &quot;Emerge&quot; } },
+	Throw = { { 0, &quot;Rest&quot; }, { 0.14, &quot;SlamWindup&quot; }, { 0.24, &quot;Point&quot; }, { 0.5, &quot;Point&quot; } },
 }
 
 local states = setmetatable({}, { __mode = &quot;k&quot; }) -- character -&gt; { Hold, ActionJob, Tracks }
@@ -7975,9 +7761,9 @@ Players.LocalPlayer.CharacterRemoving:Connect(function(character)
 end)
 
 return TuskAnimation
-</pre></details></section><section class="card" id="s42">
-<div class="head"><span class="num">42</span><div><h2>TuskController <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="42">Copy code</button><details><summary>Show code (243 lines)</summary><pre id="c42">--[[
+</pre></details></section><section class="card" id="s41">
+<div class="head"><span class="num">41</span><div><h2>TuskController <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="41">Copy code</button><details><summary>Show code (243 lines)</summary><pre id="c41">--[[
 	TuskController  (StarterPlayerScripts.SpinClient.TuskController)
 	(&quot;TuskAbilityController&quot; in the design doc)
 
@@ -8152,8 +7938,8 @@ function TuskController.init()
 	local FX = Net.get(&quot;TuskFX&quot;)
 
 	local actsFolder = script.Parent:WaitForChild(&quot;TuskActVFX&quot;)
-	for act in pairs(Registry.Acts) do
-		local m = actsFolder:FindFirstChild(&quot;Act&quot; .. act)
+	for act, info in pairs(Registry.Acts) do
+		local m = actsFolder:FindFirstChild(info.ClientModule or (&quot;Act&quot; .. act))
 		if m then
 			actVFX[act] = require(m)
 		end
@@ -8193,7 +7979,7 @@ function TuskController.init()
 		return Enum.ContextActionResult.Sink
 	end, false, TuskConfig.Keys.ActMenu.Keyboard, TuskConfig.Keys.ActMenu.Gamepad)
 
-	RunService.RenderStepped:Connect(function()
+	RunService.RenderStepped:Connect(function(dt)
 		local act = currentAct()
 		if act and not bound then
 			bindAll()
@@ -8206,7 +7992,7 @@ function TuskController.init()
 		end
 		for _, m in pairs(actVFX) do
 			if m.step then
-				m.step()
+				m.step(dt)
 			end
 		end
 		TuskUI.step(act)
@@ -8219,9 +8005,9 @@ function TuskController.init()
 end
 
 return TuskController
-</pre></details></section><section class="card" id="s43">
-<div class="head"><span class="num">43</span><div><h2>TuskProjectiles <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="43">Copy code</button><details><summary>Show code (267 lines)</summary><pre id="c43">--[[
+</pre></details></section><section class="card" id="s42">
+<div class="head"><span class="num">42</span><div><h2>TuskProjectiles <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="42">Copy code</button><details><summary>Show code (267 lines)</summary><pre id="c42">--[[
 	TuskProjectiles  (StarterPlayerScripts.SpinClient.TuskProjectiles)
 
 	Draws every server &quot;TuskNail&quot; projectile (ProjectileService events on
@@ -8487,9 +8273,9 @@ function TuskProjectiles.init()
 end
 
 return TuskProjectiles
-</pre></details></section><section class="card" id="s44">
-<div class="head"><span class="num">44</span><div><h2>TuskSneakController <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="44">Copy code</button><details><summary>Show code (277 lines)</summary><pre id="c44">--[[
+</pre></details></section><section class="card" id="s43">
+<div class="head"><span class="num">43</span><div><h2>TuskSneakController <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="43">Copy code</button><details><summary>Show code (277 lines)</summary><pre id="c43">--[[
 	TuskSneakController  (StarterPlayerScripts.SpinClient.TuskSneakController)
 
 	Client side of Tusk Sneak and the Sneak Attack, for every Act.
@@ -8765,9 +8551,9 @@ function TuskSneakController.init()
 end
 
 return TuskSneakController
-</pre></details></section><section class="card" id="s45">
-<div class="head"><span class="num">45</span><div><h2>TuskStand <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="45">Copy code</button><details><summary>Show code (269 lines)</summary><pre id="c45">--[[
+</pre></details></section><section class="card" id="s44">
+<div class="head"><span class="num">44</span><div><h2>TuskStand <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="44">Copy code</button><details><summary>Show code (269 lines)</summary><pre id="c44">--[[
 	TuskStand  (StarterPlayerScripts.SpinClient.TuskStand)
 
 	Builds and animates the Tusk Stand for every player whose character
@@ -9035,9 +8821,9 @@ function TuskStand.init()
 end
 
 return TuskStand
-</pre></details></section><section class="card" id="s46">
-<div class="head"><span class="num">46</span><div><h2>TuskVFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="46">Copy code</button><details><summary>Show code (837 lines)</summary><pre id="c46">--[[
+</pre></details></section><section class="card" id="s45">
+<div class="head"><span class="num">45</span><div><h2>TuskVFX <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="45">Copy code</button><details><summary>Show code (837 lines)</summary><pre id="c45">--[[
 	TuskVFX  (StarterPlayerScripts.SpinClient.TuskVFX)
 
 	Reusable procedural VFX framework for every Tusk Act (built on VFXLib).
@@ -9873,11 +9659,11 @@ function TuskVFX.CreateTuskTransformation(character, opts)
 end
 
 return TuskVFX
-</pre></details></section><section class="card" id="s47">
-<div class="head"><span class="num">47</span><div><h2>UI <span class="badge folder">Folder</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s48">
-<div class="head"><span class="num">48</span><div><h2>CharacterCard <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="48">Copy code</button><details><summary>Show code (490 lines)</summary><pre id="c48">--[[
+</pre></details></section><section class="card" id="s46">
+<div class="head"><span class="num">46</span><div><h2>UI <span class="badge folder">Folder</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s47">
+<div class="head"><span class="num">47</span><div><h2>CharacterCard <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="47">Copy code</button><details><summary>Show code (513 lines)</summary><pre id="c47">--[[
 	CharacterCard  (StarterPlayerScripts.SpinClient.UI.CharacterCard)
 
 	Top-left character card:
@@ -9908,7 +9694,7 @@ local player = Players.LocalPlayer
 local DARK = Color3.fromRGB(14, 12, 20)
 local GOLD = Color3.fromRGB(255, 205, 90)
 
-local gui, card, portrait, viewport, standLabel, pips, hpFill, hpText, scale, arrow
+local gui, card, portrait, viewport, nameLabel, standLabel, pips, hpFill, hpText, scale, arrow
 local dropdown, dropdownList, actRows, rosterRows
 -- Declared up here so init() can call them (they are defined further down).
 local buildDropdown, refreshDropdown
@@ -10066,7 +9852,7 @@ function CharacterCard.init()
 		viewport.Parent = frame
 	end
 
-	label(card, {
+	nameLabel = label(card, {
 		Position = UDim2.fromOffset(98, 6),
 		Size = UDim2.new(1, -130, 0, 28),
 		Font = Enum.Font.Bangers,
@@ -10271,13 +10057,19 @@ function refreshDropdown(act)
 	if not dropdown then
 		return
 	end
-	local johnny = rosterRows.Johnny
-	if johnny then
-		local playing = act ~= nil
-		johnny.Status.Text = playing and &quot;PLAYING&quot; or &quot;SELECT&quot;
-		johnny.Status.BackgroundColor3 = playing and Color3.fromRGB(40, 120, 70) or Color3.fromRGB(40, 90, 200)
-		johnny.Status.TextColor3 = Color3.new(1, 1, 1)
-		johnny.Status.Active = not playing
+	-- Each character row: PLAYING (green) or SELECT (blue).
+	local current = act and Registry.characterOf(act)
+	for id, row in pairs(rosterRows) do
+		if row.Entry.Available then
+			local playing = current == id
+			row.Status.Text = playing and &quot;PLAYING&quot; or &quot;SELECT&quot;
+			row.Status.BackgroundColor3 = playing and Color3.fromRGB(40, 120, 70) or Color3.fromRGB(40, 90, 200)
+			row.Status.TextColor3 = Color3.new(1, 1, 1)
+			row.Status.Active = not playing
+		end
+	end
+	if current ~= &quot;Johnny&quot; then
+		act = nil -- Tusk Act rows only light up while playing Johnny
 	end
 	for i, r in pairs(actRows) do
 		if act == i then
@@ -10351,12 +10143,29 @@ function CharacterCard.step()
 		local evolved = shownAct ~= nil and act ~= nil and act &gt; shownAct
 		shownAct = act
 		local info = act and Registry.get(act)
-		standLabel.Text = info and (&quot;STAND  ·  &quot; .. info.Name) or TuskConfig.Character.Title
+		local isGyro = act ~= nil and Registry.characterOf(act) == &quot;Gyro&quot;
+		-- Name plate follows the character (from TuskConfig.Roster).
+		local who = isGyro and &quot;Gyro&quot; or &quot;Johnny&quot;
+		for _, entry in ipairs(TuskConfig.Roster or {}) do
+			if entry.Id == who then
+				nameLabel.Text = entry.Name
+			end
+		end
+		if isGyro then
+			standLabel.Text = &quot;STEEL BALL USER&quot;
+		else
+			standLabel.Text = info and (&quot;STAND  ·  &quot; .. info.Name) or TuskConfig.Character.Title
+		end
 		standLabel.TextColor3 = info and info.Theme.Primary or Color3.fromRGB(200, 220, 255)
+		-- Act pips are Tusk&#x27;s progression; hidden for Gyro.
 		for i, pip in ipairs(pips) do
+			pip.Visible = not isGyro
 			local on = act ~= nil and i &lt;= act
 			local theme = Registry.get(i) and Registry.get(i).Theme.Primary or GOLD
 			pip.BackgroundColor3 = on and theme or Color3.fromRGB(60, 60, 80)
+		end
+		if isGyro then
+			evolved = false
 		end
 		if evolved and info then
 			CharacterCard.pop(info.Theme.Primary)
@@ -10366,39 +10175,24 @@ function CharacterCard.step()
 end
 
 return CharacterCard
-</pre></details></section><section class="card" id="s49">
-<div class="head"><span class="num">49</span><div><h2>SpinMeter <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="49">Copy code</button><details><summary>Show code (309 lines)</summary><pre id="c49">--[[
-	SpinMeter  (StarterPlayerScripts.SpinClient.UI.SpinMeter)
-
-	Golden Spin HUD:
-	  * charge bar with Power tick, gold PERFECT zone and overcharge zone
-	  * live level name (&quot;QUICK SPIN&quot; / &quot;POWER SPIN&quot; / &quot;PERFECT SPIN&quot;)
-	  * cooldown bar + key hint (R / RT / hidden on touch)
-	  * centre-screen popup on release (&quot;PERFECT SPIN!&quot;)
-	  * VFX quality toggle (top right)
-	Built in code so it can be dropped into any place. Later phases will
-	merge this into the full ability-slot HUD.
+</pre></details></section><section class="card" id="s48">
+<div class="head"><span class="num">48</span><div><h2>SettingsUI <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="48">Copy code</button><details><summary>Show code (70 lines)</summary><pre id="c48">--[[
+	SettingsUI  (StarterPlayerScripts.SpinClient.UI.SettingsUI)
+	The small &quot;VFX: MEDIUM&quot; button (top right) that cycles Low / Medium / High.
+	Phones start on Low to keep the frame rate smooth.
 ]]
 
 local Players = game:GetService(&quot;Players&quot;)
 local UserInputService = game:GetService(&quot;UserInputService&quot;)
 
 local Shared = game:GetService(&quot;ReplicatedStorage&quot;):WaitForChild(&quot;SpinShared&quot;)
-local SpinConfig = require(Shared.SpinConfig)
 local VFXQuality = require(Shared.VFXQuality)
-local VFXLib = require(script.Parent.Parent.VFXLib)
 
-local SpinMeter = {}
-
-local colors = SpinConfig.Colors
-local charge = SpinConfig.Charge
-local MAX_T = charge.PerfectWindowStart + charge.PerfectWindowDuration + 0.6
+local SettingsUI = {}
 local DARK = Color3.fromRGB(22, 16, 10)
 local FONT = Enum.Font.GothamBlack
-
-local gui, chargeFrame, fill, levelLabel, cooldownFill, cooldownLabel, keyHint, popupLabel, popupScale
-local cooldownJob, popupJob, chargeFadeJob
+local colors = { GoldLight = Color3.fromRGB(255, 238, 160), Gold = Color3.fromRGB(255, 196, 56) }
 
 local function corner(parent, radius)
 	local c = Instance.new(&quot;UICorner&quot;)
@@ -10415,158 +10209,11 @@ local function stroke(parent, color, thickness)
 	return s
 end
 
-local function label(parent, props)
-	local l = Instance.new(&quot;TextLabel&quot;)
-	l.BackgroundTransparency = 1
-	l.Font = FONT
-	l.TextColor3 = colors.GoldLight
-	l.TextStrokeTransparency = 0.4
-	l.TextStrokeColor3 = Color3.new(0, 0, 0)
-	for k, v in pairs(props) do
-		l[k] = v
-	end
-	l.Parent = parent
-	return l
-end
-
-local function keyText()
-	local last = UserInputService:GetLastInputType()
-	if last == Enum.UserInputType.Touch then
-		return &quot;&quot;
-	end
-	if string.find(last.Name, &quot;Gamepad&quot;) then
-		return &quot;RT&quot;
-	end
-	return SpinConfig.Input.Keyboard.Name
-end
-
-function SpinMeter.init()
-	local playerGui = Players.LocalPlayer:WaitForChild(&quot;PlayerGui&quot;)
-	gui = Instance.new(&quot;ScreenGui&quot;)
-	gui.Name = &quot;SpinHUD&quot;
+function SettingsUI.init()
+	local gui = Instance.new(&quot;ScreenGui&quot;)
+	gui.Name = &quot;SpinSettings&quot;
 	gui.ResetOnSpawn = false
-	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	gui.Parent = playerGui
-
-	-- Bottom-centre panel.
-	local panel = Instance.new(&quot;Frame&quot;)
-	panel.Name = &quot;SpinPanel&quot;
-	panel.AnchorPoint = Vector2.new(0.5, 1)
-	panel.Position = UDim2.new(0.5, 0, 1, -24)
-	panel.Size = UDim2.fromOffset(320, 58)
-	panel.BackgroundTransparency = 1
-	panel.Parent = gui
-
-	local sizeLimit = Instance.new(&quot;UISizeConstraint&quot;)
-	sizeLimit.MaxSize = Vector2.new(320, 58)
-	sizeLimit.Parent = panel
-
-	-- Charge bar (hidden until charging).
-	chargeFrame = Instance.new(&quot;Frame&quot;)
-	chargeFrame.Name = &quot;Charge&quot;
-	chargeFrame.Size = UDim2.new(1, 0, 0, 16)
-	chargeFrame.BackgroundColor3 = DARK
-	chargeFrame.BackgroundTransparency = 0.15
-	chargeFrame.Visible = false
-	chargeFrame.Parent = panel
-	corner(chargeFrame, 8)
-	stroke(chargeFrame, colors.Gold, 2)
-
-	local function zone(name, from, to, color, transparency)
-		local z = Instance.new(&quot;Frame&quot;)
-		z.Name = name
-		z.BorderSizePixel = 0
-		z.Position = UDim2.fromScale(from / MAX_T, 0)
-		z.Size = UDim2.fromScale((to - from) / MAX_T, 1)
-		z.BackgroundColor3 = color
-		z.BackgroundTransparency = transparency
-		z.ZIndex = 1
-		z.Parent = chargeFrame
-		return z
-	end
-	local windowEnd = charge.PerfectWindowStart + charge.PerfectWindowDuration
-	zone(&quot;PerfectZone&quot;, charge.PerfectWindowStart, windowEnd, colors.Perfect, 0.35)
-	zone(&quot;Overcharge&quot;, windowEnd, MAX_T, Color3.fromRGB(120, 30, 20), 0.55)
-	zone(&quot;PowerTick&quot;, SpinConfig.Levels[2].ChargeTime, SpinConfig.Levels[2].ChargeTime + 0.025, colors.GoldLight, 0.2)
-
-	fill = Instance.new(&quot;Frame&quot;)
-	fill.Name = &quot;Fill&quot;
-	fill.BorderSizePixel = 0
-	fill.Size = UDim2.fromScale(0, 1)
-	fill.BackgroundColor3 = colors.Orange
-	fill.ZIndex = 2
-	fill.Parent = chargeFrame
-	corner(fill, 8)
-
-	levelLabel = label(chargeFrame, {
-		Name = &quot;Level&quot;,
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 0, -2),
-		Size = UDim2.new(1, 0, 0, 20),
-		TextSize = 18,
-		Text = &quot;&quot;,
-	})
-
-	-- Cooldown row.
-	local row = Instance.new(&quot;Frame&quot;)
-	row.Name = &quot;Cooldown&quot;
-	row.Position = UDim2.new(0, 0, 1, -22)
-	row.Size = UDim2.new(1, 0, 0, 22)
-	row.BackgroundColor3 = DARK
-	row.BackgroundTransparency = 0.25
-	row.Parent = panel
-	corner(row, 6)
-	stroke(row, colors.BallDark, 1.5)
-
-	cooldownFill = Instance.new(&quot;Frame&quot;)
-	cooldownFill.BorderSizePixel = 0
-	cooldownFill.BackgroundColor3 = colors.Gold
-	cooldownFill.BackgroundTransparency = 0.6
-	cooldownFill.Size = UDim2.fromScale(0, 1)
-	cooldownFill.Parent = row
-	corner(cooldownFill, 6)
-
-	keyHint = label(row, {
-		Position = UDim2.fromOffset(8, 0),
-		Size = UDim2.new(0, 40, 1, 0),
-		TextSize = 14,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = keyText(),
-	})
-	label(row, {
-		Position = UDim2.fromOffset(44, 0),
-		Size = UDim2.new(0.5, 0, 1, 0),
-		TextSize = 14,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = &quot;GOLDEN SPIN&quot;,
-	})
-	cooldownLabel = label(row, {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -8, 0, 0),
-		Size = UDim2.new(0.4, 0, 1, 0),
-		TextSize = 14,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		Text = &quot;READY&quot;,
-	})
-
-	UserInputService.LastInputTypeChanged:Connect(function()
-		keyHint.Text = keyText()
-	end)
-
-	-- Centre popup.
-	popupLabel = label(gui, {
-		Name = &quot;Popup&quot;,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.32),
-		Size = UDim2.fromOffset(500, 70),
-		Font = Enum.Font.Bangers,
-		TextSize = 56,
-		TextTransparency = 1,
-		TextStrokeTransparency = 1,
-		Text = &quot;&quot;,
-	})
-	popupScale = Instance.new(&quot;UIScale&quot;)
-	popupScale.Parent = popupLabel
+	gui.Parent = Players.LocalPlayer:WaitForChild(&quot;PlayerGui&quot;)
 
 	-- VFX quality toggle (top right, small).
 	local qualityButton = Instance.new(&quot;TextButton&quot;)
@@ -10598,87 +10245,10 @@ function SpinMeter.init()
 	end
 end
 
-function SpinMeter.showCharge()
-	VFXLib.cancel(chargeFadeJob)
-	chargeFrame.Visible = true
-	chargeFrame.BackgroundTransparency = 0.15
-	fill.Size = UDim2.fromScale(0, 1)
-end
-
-function SpinMeter.updateCharge(chargeTime)
-	local level, perfect = SpinConfig.getLevel(chargeTime)
-	local windowEnd = charge.PerfectWindowStart + charge.PerfectWindowDuration
-	local over = chargeTime &gt; windowEnd
-	fill.Size = UDim2.fromScale(math.clamp(chargeTime / MAX_T, 0, 1), 1)
-	if perfect then
-		fill.BackgroundColor3 = colors.Perfect
-		levelLabel.Text = &quot;PERFECT SPIN — RELEASE!&quot;
-		levelLabel.TextColor3 = colors.Perfect
-	elseif over then
-		fill.BackgroundColor3 = Color3.fromRGB(170, 80, 40)
-		levelLabel.Text = &quot;OVERCHARGED&quot;
-		levelLabel.TextColor3 = Color3.fromRGB(230, 120, 90)
-	else
-		fill.BackgroundColor3 = level == 2 and colors.Gold or colors.Orange
-		levelLabel.Text = SpinConfig.Levels[level].Name
-		levelLabel.TextColor3 = colors.GoldLight
-	end
-end
-
-function SpinMeter.hideCharge()
-	VFXLib.cancel(chargeFadeJob)
-	chargeFadeJob = VFXLib.animate(0.15, function(a)
-		chargeFrame.BackgroundTransparency = 0.15 + a * 0.85
-	end, function()
-		chargeFrame.Visible = false
-		levelLabel.Text = &quot;&quot;
-	end)
-end
-
-function SpinMeter.startCooldown(seconds)
-	VFXLib.cancel(cooldownJob)
-	if seconds &lt;= 0 then
-		cooldownFill.Size = UDim2.fromScale(0, 1)
-		cooldownLabel.Text = &quot;READY&quot;
-		return
-	end
-	cooldownJob = VFXLib.animate(seconds, function(a)
-		cooldownFill.Size = UDim2.fromScale(1 - a, 1)
-		cooldownLabel.Text = string.format(&quot;%.1fs&quot;, seconds * (1 - a))
-	end, function()
-		cooldownFill.Size = UDim2.fromScale(0, 1)
-		cooldownLabel.Text = &quot;READY&quot;
-	end)
-end
-
-function SpinMeter.popup(text, color, big)
-	VFXLib.cancel(popupJob)
-	popupLabel.Text = text
-	popupLabel.TextColor3 = color or colors.GoldLight
-	local peak = big and 1.25 or 0.9
-	popupJob = VFXLib.animate(big and 1.1 or 0.8, function(a)
-		if a &lt; 0.12 then
-			popupScale.Scale = peak * (1.6 - a / 0.12 * 0.6)
-		else
-			popupScale.Scale = peak
-		end
-		local fade = math.clamp((a - 0.65) / 0.35, 0, 1)
-		popupLabel.TextTransparency = fade
-		popupLabel.TextStrokeTransparency = math.max(fade, 0.2)
-	end, function()
-		popupLabel.TextTransparency = 1
-		popupLabel.TextStrokeTransparency = 1
-	end)
-end
-
-function SpinMeter.flashDenied(text)
-	SpinMeter.popup(text, Color3.fromRGB(230, 120, 90), false)
-end
-
-return SpinMeter
-</pre></details></section><section class="card" id="s50">
-<div class="head"><span class="num">50</span><div><h2>TuskUI <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="50">Copy code</button><details><summary>Show code (544 lines)</summary><pre id="c50">--[[
+return SettingsUI
+</pre></details></section><section class="card" id="s49">
+<div class="head"><span class="num">49</span><div><h2>TuskUI <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="49">Copy code</button><details><summary>Show code (546 lines)</summary><pre id="c49">--[[
 	TuskUI  (StarterPlayerScripts.SpinClient.UI.TuskUI)
 	(&quot;TuskUIController&quot; in the design doc)
 
@@ -10913,7 +10483,7 @@ function TuskUI.init(cb)
 	hud = Instance.new(&quot;Frame&quot;)
 	hud.Name = &quot;HUD&quot;
 	hud.AnchorPoint = Vector2.new(0.5, 1)
-	hud.Position = UDim2.new(0.5, 0, 1, -92) -- sits above the Golden Spin panel
+	hud.Position = UDim2.new(0.5, 0, 1, -24)
 	hud.Size = UDim2.new(0.92, 0, 0, 150)
 	hud.BackgroundTransparency = 1
 	hud.Visible = false
@@ -10984,7 +10554,7 @@ function TuskUI.init(cb)
 	-- Combo counter (right side of the screen).
 	comboLabel = text(gui, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -24, 0.42, 0), Size = UDim2.fromOffset(220, 60), Font = TITLE_FONT, TextSize = 48, TextColor3 = colors.Ice, TextXAlignment = Enum.TextXAlignment.Right, TextTransparency = 1, TextStrokeTransparency = 1, Text = &quot;&quot; })
 
-	toastLabel = text(gui, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -250), Size = UDim2.fromOffset(400, 26), TextSize = 18, TextTransparency = 1, TextStrokeTransparency = 1, Text = &quot;&quot; })
+	toastLabel = text(gui, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -185), Size = UDim2.fromOffset(400, 26), TextSize = 18, TextTransparency = 1, TextStrokeTransparency = 1, Text = &quot;&quot; })
 
 	-- Transformation banner.
 	banner = text(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.25), Size = UDim2.fromOffset(700, 80), Font = TITLE_FONT, TextSize = 72, TextColor3 = colors.Cyan, TextTransparency = 1, TextStrokeTransparency = 1, Text = &quot;&quot; })
@@ -10993,7 +10563,7 @@ function TuskUI.init(cb)
 
 	awakenBar = Instance.new(&quot;Frame&quot;)
 	awakenBar.AnchorPoint = Vector2.new(0.5, 1)
-	awakenBar.Position = UDim2.new(0.5, 0, 1, -248)
+	awakenBar.Position = UDim2.new(0.5, 0, 1, -183)
 	awakenBar.Size = UDim2.fromOffset(240, 6)
 	awakenBar.BackgroundColor3 = DARK
 	awakenBar.Visible = false
@@ -11140,6 +10710,8 @@ function TuskUI.step(act)
 	end
 	local character = player.Character
 	local sneaking = character and character:GetAttribute(&quot;TuskSneaking&quot;) == true
+	-- Tusk Sneak is Johnny&#x27;s; Gyro has no sneak chip.
+	sneakChip.Visible = Registry.characterOf(act) == &quot;Johnny&quot;
 	sneakChip.TextColor3 = sneaking and DARK or Color3.fromRGB(150, 170, 200)
 	sneakChip.BackgroundColor3 = sneaking and colors.Cyan or DARK
 	sneakHint.Visible = sneaking
@@ -11221,9 +10793,9 @@ function TuskUI.onState(data)
 end
 
 return TuskUI
-</pre></details></section><section class="card" id="s51">
-<div class="head"><span class="num">51</span><div><h2>VFXLib <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="51">Copy code</button><details><summary>Show code (361 lines)</summary><pre id="c51">--[[
+</pre></details></section><section class="card" id="s50">
+<div class="head"><span class="num">50</span><div><h2>VFXLib <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="50">Copy code</button><details><summary>Show code (361 lines)</summary><pre id="c50">--[[
 	VFXLib  (StarterPlayerScripts.SpinClient.VFXLib)
 
 	Reusable procedural VFX building blocks. Built for Spin first, and meant
@@ -11583,9 +11155,9 @@ function VFXLib.sound(soundId, parentOrPosition, volume, pitch, looped)
 end
 
 return VFXLib
-</pre></details></section><section class="card" id="s52">
-<div class="head"><span class="num">52</span><div><h2>WorldClient <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="52">Copy code</button><details><summary>Show code (232 lines)</summary><pre id="c52">--[[
+</pre></details></section><section class="card" id="s51">
+<div class="head"><span class="num">51</span><div><h2>WorldClient <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="51">Copy code</button><details><summary>Show code (232 lines)</summary><pre id="c51">--[[
 	WorldClient  (StarterPlayerScripts.SpinClient.WorldClient)
 	Client side of the SBR map:
 	  * NPC speech bubbles (from NPCService &quot;NPCSay&quot;), shown within 60 studs
@@ -11816,11 +11388,11 @@ function WorldClient.init()
 end
 
 return WorldClient
-</pre></details></section><section class="card" id="s53">
-<div class="head"><span class="num">53</span><div><h2>SpinTools <span class="badge folder">Folder</span></h2>
-<p class="loc">Put it in: <b>ServerStorage</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s54">
-<div class="head"><span class="num">54</span><div><h2>SBRMapBuilder <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerStorage › SpinTools</b></p></div></div><button class="copy" data-i="54">Copy code</button><details><summary>Show code (1139 lines)</summary><pre id="c54">--[[
+</pre></details></section><section class="card" id="s52">
+<div class="head"><span class="num">52</span><div><h2>SpinTools <span class="badge folder">Folder</span></h2>
+<p class="loc">Put it in: <b>ServerStorage</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s53">
+<div class="head"><span class="num">53</span><div><h2>SBRMapBuilder <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerStorage › SpinTools</b></p></div></div><button class="copy" data-i="53">Copy code</button><details><summary>Show code (1139 lines)</summary><pre id="c53">--[[
 	SBRMapBuilder  (ServerStorage.SpinTools.SBRMapBuilder — ModuleScript)
 
 	One-time Studio tool that builds an original Steel Ball Run-style

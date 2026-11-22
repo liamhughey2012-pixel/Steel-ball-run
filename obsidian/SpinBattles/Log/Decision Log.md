@@ -27,3 +27,5 @@ updated: 2026-11-22
 | 2026-11-22 | Both scripts check they are in the right kind of script and explain the fix if not |
 | 2026-11-22 | Act 1 back to the pink Classic look by default (owner re-sent the drawing); Mascot kept as an option |
 | 2026-11-22 | Johnny's nails: cyan glow + spinning blue Spin whirls |
+| 2026-11-22 | Gyro Zeppeli playable with a Steel Ball moveset (reuses the Tusk ability system as Act 5) |
+| 2026-11-22 | Golden Spin (R for everyone) removed; its hit feedback and settings button kept in new modules |
