@@ -6,6 +6,7 @@
 	  m1(data, palette)     poses, Stand lunges, swipes, mini-portals
 	  finisher(data, pal)   combo-ender shockwave
 	  portal(...)           wormhole that opens, holds and collapses
+	  golden(...)           golden rectangle + spiral (Act 2), same arguments
 	  portalNail(...)       portals for nails fired through them
 	  evolve(data)          the "next Act" transformation + banner
 	  charge helpers        attribute-driven hold charges
@@ -79,6 +80,26 @@ function Common.portal(position, lookAt, radius, duration, palette, delay)
 	end
 end
 
+-- Golden ratio (Act 2): a Golden Rectangle with its spiral facing `lookAt`,
+-- a spinning golden spiral in front and a soft gold flash. Same arguments
+-- as Common.portal so the two can be swapped.
+function Common.golden(position, lookAt, radius, duration, palette, delay)
+	palette = palette or Common.palette(2)
+	local function open()
+		local facing = (lookAt and (lookAt - position).Magnitude > 0.1) and CFrame.lookAt(position, lookAt) or CFrame.new(position)
+		local size = (radius or 2.5) * 1.1
+		TuskVFX.CreateGoldenRectangle(facing, { Size = size, Duration = (duration or 0.6) + 0.25, Color = colors.Gold, Color2 = colors.GoldLight, Turn = math.pi * 0.4 })
+		TuskVFX.CreateGoldenSpiral(facing * CFrame.new(0, 0, -0.1), { Size = size * 0.9, Duration = (duration or 0.6) + 0.2, Color = palette.Main, Color2 = colors.GoldLight, Width = 0.14 })
+		VFXLib.flash(position, colors.Gold, 3, 10 + size * 2, 0.25)
+		VFXLib.sound(sounds.Warning, position, 0.2, 1.8)
+	end
+	if delay and delay > 0 then
+		task.delay(delay, open)
+	else
+		open()
+	end
+end
+
 ---------------------------------------------------------------------------
 -- M1
 ---------------------------------------------------------------------------
@@ -102,9 +123,10 @@ function Common.m1(data, palette, opts)
 	TuskStand.action(character, "Lunge", { Target = LUNGES[index], Duration = index == 4 and 0.5 or 0.26 })
 	Common.swipe(root, index % 2 == 1 and 1 or -1, index % 2 == 1 and palette.Main or palette.Light, opts.Scale)
 	if data.Portal then
-		-- Short portal flash beside the strike.
+		-- Short portal (or golden rectangle) flash beside the strike.
 		local pos = (root.CFrame * CFrame.new(index % 2 == 1 and 1.6 or -1.6, 1, -2.6)).Position
-		Common.portal(pos, (root.CFrame * CFrame.new(0, 1, -6)).Position, 1.1, 0.18, palette)
+		local open = opts.Golden and Common.golden or Common.portal
+		open(pos, (root.CFrame * CFrame.new(0, 1, -6)).Position, 1.1, 0.18, palette)
 	end
 	if (data.Repeat or 1) > 1 then
 		for i = 2, data.Repeat do

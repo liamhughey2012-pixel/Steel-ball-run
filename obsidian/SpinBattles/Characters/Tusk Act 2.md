@@ -17,3 +17,8 @@ Reached by using the previous Act's ultimate. Numbers are in `TuskConfig.Act2`.
 | G | DIMENSIONAL STORM: six portals rain three waves of nails, a giant blue burst, then **evolves to [[Tusk Act 3]]** |
 
 Status: 🧪 code complete, not yet tested in Studio. See [[Test Checklist]].
+
+## The Golden Ratio (replaces the portals)
+Everywhere Act 2 used to open wormhole portals (M1 hits, the nail fingertip, the ring around the target, the finisher, the ultimate), it now opens a **Golden Rectangle**: nested golden-ratio rectangles with the golden spiral drawn through them, plus a spinning golden spiral, in gold. Nails fly out of them with gold-and-cyan trails.
+Renamed: GOLDEN COMBO (M1), GOLDEN RATIO NAIL (1), UNDERGROUND PURSUIT (2), GOLDEN SPIRAL (3), GOLDEN RATIO STORM (ultimate). Tagline "The Golden Ratio".
+![[act2_golden_ratio_preview.png]]

@@ -417,8 +417,9 @@ end
 __modules["Act2"] = function()
 --[[
 	TuskActVFX.Act2  (StarterPlayerScripts.SpinClient.TuskActVFX.Act2)
-	Client choreography for Tusk Act 2 (wormhole combat): cyan + violet
-	portals, spatial distortion, rotating nails through wormholes.
+	Client choreography for Tusk Act 2 (THE GOLDEN RATIO): golden rectangles
+	and golden spirals open where Act 2 used to open portals; nails fly out
+	of them with gold trails.
 ]]
 
 local Shared = nil -- (bundled: modules are inlined)
@@ -440,16 +441,16 @@ local function onAbility(data)
 	if data.Move == "WormholeNail" and root then
 		TuskAnimation.play(character, "NailShot")
 		TuskStand.action(character, "Lunge", { Target = CFrame.new(1.4, 0.8, -1.2), Duration = data.Startup + 0.25 })
-		-- A small portal opens at the fingertip; the nail is fired through it.
+		-- A small golden rectangle opens at the fingertip; the nail is fired through it.
 		local tip = (root.CFrame * CFrame.new(0.9, 0.55, -2.2)).Position
-		Common.portal(tip, tip + data.Direction * 5, 1, data.Startup + 0.2, pal)
+		Common.golden(tip, tip + data.Direction * 5, 1, data.Startup + 0.2, pal)
 	elseif data.Move == "NailDimension" and data.Phase == "Open" then
 		if root then
 			TuskAnimation.play(character, "NailDimension")
 			TuskStand.action(character, "Lunge", { Target = CFrame.new(0, 2, -2), Duration = 0.6 })
 		end
 		for i, pos in ipairs(data.Portals) do
-			Common.portal(pos, data.Center, 2.4, data.OpenTime + 0.55, pal, (i - 1) * 0.06)
+			Common.golden(pos, data.Center, 2.4, data.OpenTime + 0.55, pal, (i - 1) * 0.06)
 		end
 		TuskVFX.CreateMagicCircle(CFrame.new(data.Center - Vector3.new(0, 2.8, 0)), { Radius = 11, Color = pal.Second, Color2 = pal.Main, Duration = data.OpenTime + 0.9, RotationSpeed = 1.5, Points = 6 })
 	end
@@ -477,7 +478,7 @@ local function onUltimate(data)
 		local center = data.Center
 		TuskVFX.CreateMagicCircle(CFrame.new(center - Vector3.new(0, 2.9, 0)), { Radius = 14, Color = pal.Main, Color2 = pal.Second, Duration = data.Windup + 1.6, RotationSpeed = 1, Points = 7 })
 		for i, pos in ipairs(data.Portals) do
-			Common.portal(pos, center, 3, data.Windup + 1.2, pal, (i - 1) * (data.Windup * 0.5 / #data.Portals))
+			Common.golden(pos, center, 3, data.Windup + 1.2, pal, (i - 1) * (data.Windup * 0.5 / #data.Portals))
 		end
 		if Common.isLocal(character) then
 			CameraFX.setFovHold(8) -- pull back to see the storm
@@ -504,16 +505,16 @@ end
 
 function Act2.handle(name, data)
 	if name == "M1" then
-		Common.m1(data, pal)
+		Common.m1(data, pal, { Golden = true })
 	elseif name == "M1Finisher" then
 		Common.finisher(data, pal)
-		Common.portal(data.Position + Vector3.new(0, 1, 0), data.Position + Vector3.new(0, 1, -4), 2.6, 0.35, pal)
+		Common.golden(data.Position + Vector3.new(0, 1, 0), data.Position + Vector3.new(0, 1, -4), 2.6, 0.35, pal)
 	elseif name == "Ability" then
 		onAbility(data)
 	elseif name == "AbilityImpact" then
 		onAbilityImpact(data)
 	elseif name == "Portal" then
-		Common.portal(data.Position, data.LookAt, data.Radius, data.Duration, pal)
+		Common.golden(data.Position, data.LookAt, data.Radius, data.Duration, pal)
 	elseif name == "Ultimate" then
 		onUltimate(data)
 	end
@@ -1785,7 +1786,9 @@ __modules["Diego"] = function()
 	    rakes, tail whips. The player's own body is hidden locally.
 	  * KINETIC VISION (Diego only, while transformed): moving enemies glow
 	  * claw marks, tail sweeps, "chomp" fangs that snap shut on bites
-	  * DINO INFECTION: teal glow, scales growing on the victim, spores
+	  * DINO INFECTION: scales spread over the victim, then they turn into a
+	    dinosaur in their own avatar's colours that Diego commands
+	    ("YOUR DINO 7s" tag, blue outline, bites, "sic 'em" target marks)
 	  * RAPTOR POUNCE: crouch, leap trail, crunching landing
 	  * RAPTOR PACK: a roar shock, then a pack of raptors charges out
 ]]
@@ -1809,12 +1812,16 @@ local sounds = TuskConfig.Sounds
 local localPlayer = Players.LocalPlayer
 local DIEGO_ACT = 6
 local WHITE = Color3.new(1, 1, 1)
+-- Scary Monsters' slashes are blue (owner's request).
+local SLASH = Color3.fromRGB(40, 110, 255)
+local SLASH_LIGHT = Color3.fromRGB(150, 205, 255)
 
 local dinos = {} -- [character] = transformed raptor entry
 local stanced = {} -- [character] = true while holding the human stance
 local infected = {} -- [model] = infection visuals
 local seen = {} -- [model] = kinetic-vision highlight
 local pack = {} -- [raptor id] = running pack raptor
+local thralls = {} -- [model] = a Dino Infection victim turned into a dinosaur
 local visionTint
 
 local function candidates()
@@ -1861,8 +1868,8 @@ local function clawMarks(cf, side, scale, color)
 			Width = 0.24 * scale,
 			Arc = math.rad(105),
 			Sweep = side * 1.5,
-			Color = color or pal.Main,
-			Color2 = WHITE,
+			Color = color or SLASH,
+			Color2 = SLASH_LIGHT,
 			Duration = 0.2,
 		})
 	end
@@ -2032,6 +2039,110 @@ local function stepDinos(dt)
 	end
 end
 
+---------------------------------------------------------------------------
+-- DINO INFECTION victims: a dinosaur in their own avatar's colours
+---------------------------------------------------------------------------
+local function partColor(model, names)
+	for _, n in ipairs(names) do
+		local p = model:FindFirstChild(n)
+		if p and p:IsA("BasePart") then
+			return p.Color
+		end
+	end
+	return nil
+end
+
+-- Colours from the victim's avatar: torso -> body, legs -> legs and tail, head -> head.
+local function avatarPalette(model)
+	local body = partColor(model, { "UpperTorso", "Torso" }) or pal.Main
+	local legs = partColor(model, { "LeftUpperLeg", "RightUpperLeg", "Left Leg", "Right Leg" }) or pal.Second
+	local head = partColor(model, { "Head" }) or body
+	-- Keep the body and legs readable when the avatar is all one colour.
+	local d = math.abs(body.R - legs.R) + math.abs(body.G - legs.G) + math.abs(body.B - legs.B)
+	if d < 0.15 then
+		legs = body:Lerp(Color3.new(0, 0, 0), 0.35)
+	end
+	return { Body = body, Legs = legs, Head = head }
+end
+
+local function stopThrall(model)
+	local t = thralls[model]
+	if not t then
+		return
+	end
+	thralls[model] = nil
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if root then
+		transformBurst(model, root, pal.Light)
+	end
+	t.Rig:Destroy()
+	t.Tag:Destroy()
+	t.Highlight:Destroy()
+	if model.Parent then
+		setHidden(model, false)
+	end
+end
+
+local function stepThralls(dt)
+	local now = os.clock()
+	local keep = {}
+	for _, model in ipairs(candidates()) do
+		local owner = model:GetAttribute("DinoThrall")
+		local root = model:FindFirstChild("HumanoidRootPart")
+		local humanoid = model:FindFirstChildOfClass("Humanoid")
+		if owner and root and humanoid and humanoid.Health > 0 then
+			keep[model] = true
+			local t = thralls[model]
+			if not t then
+				local rig = RaptorModel.build(0.85, { Lite = VFXQuality.get().RingSegments <= 12, Palette = avatarPalette(model) })
+				rig.Model.Parent = VFXLib.Folder
+				-- Blue outline: this dinosaur belongs to Diego.
+				local h = Instance.new("Highlight")
+				h.Adornee = rig.Model
+				h.FillTransparency = 1
+				h.OutlineColor = SLASH
+				h.DepthMode = Enum.HighlightDepthMode.Occluded
+				h.Parent = VFXLib.Folder
+				-- Floating tag with the time left.
+				local tag = Instance.new("BillboardGui")
+				tag.Size = UDim2.fromOffset(150, 26)
+				tag.StudsOffset = Vector3.new(0, 5.5, 0)
+				tag.AlwaysOnTop = true
+				tag.Adornee = root
+				tag.Parent = VFXLib.Folder
+				local label = Instance.new("TextLabel")
+				label.BackgroundTransparency = 1
+				label.Size = UDim2.fromScale(1, 1)
+				label.Font = Enum.Font.Bangers
+				label.TextScaled = true
+				label.TextColor3 = SLASH_LIGHT
+				label.TextStrokeTransparency = 0
+				label.Parent = tag
+				t = { Rig = rig, Tag = tag, Label = label, Highlight = h, Phase = 0, Jaw = 0, Lunge = 0 }
+				thralls[model] = t
+				transformBurst(model, root, pal.Main)
+				roarSound(root.Position, 0.75)
+			end
+			setHidden(model, true)
+			local v = root.AssemblyLinearVelocity
+			local speed = math.clamp(Vector3.new(v.X, 0, v.Z).Magnitude / 24, 0, 1)
+			t.Phase = t.Phase + dt * (3 + speed * 12)
+			local decay = math.exp(-dt * 7)
+			t.Jaw = t.Jaw * decay
+			t.Lunge = t.Lunge * decay
+			t.Rig:Pose(groundCF(model, root), { Time = now, Phase = t.Phase, Speed = speed, Jaw = math.max(t.Jaw, 0.15), Lunge = t.Lunge })
+			local untilT = model:GetAttribute("DinoThrallUntil")
+			local left = untilT and math.max(0, untilT - workspace:GetServerTimeNow()) or 0
+			t.Label.Text = (owner == localPlayer.UserId and "YOUR DINO" or "DIEGO'S DINO") .. "  " .. math.ceil(left) .. "s"
+		end
+	end
+	for model in pairs(thralls) do
+		if not keep[model] then
+			stopThrall(model)
+		end
+	end
+end
+
 -- Kinetic vision: while YOU are transformed, moving enemies glow through walls.
 local function stepVision()
 	local me = localPlayer.Character
@@ -2041,7 +2152,7 @@ local function stepVision()
 	local keep = {}
 	if active then
 		for _, model in ipairs(candidates()) do
-			if model ~= me then
+			if model ~= me and model:GetAttribute("DinoThrall") ~= localPlayer.UserId then
 				local root = model:FindFirstChild("HumanoidRootPart")
 				if root and (root.Position - myRoot.Position).Magnitude < range then
 					local v = root.AssemblyLinearVelocity
@@ -2101,7 +2212,7 @@ end
 local function stepInfected()
 	local keep = {}
 	for _, model in ipairs(candidates()) do
-		if model:GetAttribute("DinoInfected") then
+		if model:GetAttribute("DinoInfected") and not model:GetAttribute("DinoThrall") then
 			local root = model:FindFirstChild("HumanoidRootPart")
 			if root then
 				keep[model] = true
@@ -2229,7 +2340,7 @@ local function onM1(data)
 			TuskAnimation.play(character, "D_M1_3")
 		end
 		-- Wide low tail sweep around the body.
-		TuskVFX.CreateCrescent(root.CFrame * CFrame.new(0, -1.6, 0), { Radius = 4.5 * scale, Width = 0.5 * scale, Arc = math.rad(200), Sweep = 2.6, Color = pal.Second, Color2 = pal.Light, Duration = 0.26 })
+		TuskVFX.CreateCrescent(root.CFrame * CFrame.new(0, -1.6, 0), { Radius = 4.5 * scale, Width = 0.5 * scale, Arc = math.rad(200), Sweep = 2.6, Color = SLASH, Color2 = SLASH_LIGHT, Duration = 0.26 })
 		VFXLib.burst(root.Position - Vector3.new(0, 2.5, 0), { Count = 8, Texture = VFXLib.Textures.Smoke, Color = Color3.fromRGB(200, 180, 140), LightEmission = 0, Speed = 12, Lifetime = 0.5 })
 	else
 		if not dinoAction(character, "Bite") then
@@ -2287,6 +2398,31 @@ local function onAbility(data)
 			end
 			CameraFX.shakeAt(pos, data.Hit and 0.7 or 0.4, 50)
 		end
+	elseif data.Move == "DinoInfection" and data.Phase == "ThrallBite" then
+		local t = data.Target and thralls[data.Target]
+		if t then
+			t.Jaw = 1
+			t.Lunge = 1
+		end
+		chomp(data.Position + Vector3.new(0, 0.5, 0), data.Direction, 1.1)
+		VFXLib.sound(sounds.Hit, data.Position, 0.6, 0.85)
+	elseif data.Move == "DinoInfection" and data.Phase == "Command" then
+		-- "Sic 'em": a blue target mark on the prey, the dinosaur roars.
+		local t = data.Target and thralls[data.Target]
+		if t then
+			t.Jaw = 1
+		end
+		TuskVFX.CreateImpactStar(data.Position + Vector3.new(0, 1, 0), { Size = 5, Rays = 8, Color = SLASH, Color2 = SLASH_LIGHT, Duration = 0.35 })
+		TuskVFX.CreateRotationalShockwave(CFrame.new(data.Position - Vector3.new(0, 2.6, 0)), { Radius = 5, Layers = 2, Color = SLASH, Color2 = SLASH_LIGHT, Ground = true, Particles = 0, Width = 0.3 })
+		local thrallRoot = data.Target and data.Target:FindFirstChild("HumanoidRootPart")
+		if thrallRoot then
+			roarSound(thrallRoot.Position, 0.8)
+		end
+		if root then
+			TuskAnimation.play(character, "D_M1_1") -- Diego points the claw
+		end
+	elseif data.Move == "DinoInfection" and (data.Phase == "Turn" or data.Phase == "Release") then
+		-- Drawn by stepThralls from the DinoThrall attribute.
 	elseif data.Move == "DinoInfection" then
 		if data.Phase == "Startup" and root then
 			if not dinoAction(character, "Bite") then
@@ -2473,6 +2609,7 @@ local slowTimer = 0
 function Diego.step(dt)
 	dt = dt or 1 / 60
 	stepDinos(dt)
+	stepThralls(dt)
 	stepPack(dt)
 	slowTimer = slowTimer + dt
 	if slowTimer > 0.1 then
@@ -2968,113 +3105,13 @@ local function onAbility(data)
 	end
 end
 
--- Logarithmic spiral of beams (the Spin's "golden ratio" spiral, in green/white).
+-- Golden ratio spiral / Golden Rectangle in Gyro's green (shared in TuskVFX).
 local function spiral(cframe, size, duration)
-	local carrier = VFXLib.anchor(cframe)
-	local prev
-	local points = VFXQuality.get().RingSegments
-	for i = 0, points do
-		local t = i / points
-		local angle = t * math.pi * 4
-		local r = size * 0.08 * math.exp(t * 2.5)
-		local a = Instance.new("Attachment")
-		a.Position = Vector3.new(math.cos(angle) * r, math.sin(angle) * r, 0)
-		a.Parent = carrier
-		if prev then
-			local b = Instance.new("Beam")
-			b.Attachment0 = prev
-			b.Attachment1 = a
-			b.FaceCamera = true
-			b.LightEmission = 1
-			b.Width0 = 0.18
-			b.Width1 = 0.18
-			b.Color = ColorSequence.new(pal.Light:Lerp(pal.Main, t))
-			b.Parent = carrier
-		end
-		prev = a
-	end
-	VFXLib.animate(duration, function(a, dt)
-		carrier.CFrame = carrier.CFrame * CFrame.Angles(0, 0, (dt or 0) * (2 + a * 8))
-	end, function()
-		carrier:Destroy()
-	end)
+	TuskVFX.CreateGoldenSpiral(cframe, { Size = size, Duration = duration, Color = pal.Main, Color2 = pal.Light })
 end
 
--- The Golden Rectangle: nested golden-ratio rectangles with the spiral
--- drawn through them (green/white Spin energy), growing and turning.
 local function goldenRectangle(cframe, size, duration)
-	local carrier = VFXLib.anchor(cframe)
-	local phi = 1.618
-	local function line(a, b, width, color)
-		local a0 = Instance.new("Attachment")
-		a0.Position = a
-		a0.Parent = carrier
-		local a1 = Instance.new("Attachment")
-		a1.Position = b
-		a1.Parent = carrier
-		local beam = Instance.new("Beam")
-		beam.Attachment0 = a0
-		beam.Attachment1 = a1
-		beam.FaceCamera = true
-		beam.LightEmission = 1
-		beam.Segments = 1
-		beam.Width0 = width
-		beam.Width1 = width
-		beam.Color = ColorSequence.new(color)
-		beam.Parent = carrier
-	end
-	-- Outer rectangle, then 6 nested squares cut off in turn (golden subdivision).
-	local x0, y0, w, h = -size * phi / 2, -size / 2, size * phi, size
-	local spiralPoints = {}
-	for i = 0, 6 do
-		local color = pal.Light:Lerp(pal.Main, i / 6)
-		local width = 0.16 * (1 - i * 0.1)
-		line(Vector3.new(x0, y0, 0), Vector3.new(x0 + w, y0, 0), width, color)
-		line(Vector3.new(x0 + w, y0, 0), Vector3.new(x0 + w, y0 + h, 0), width, color)
-		line(Vector3.new(x0 + w, y0 + h, 0), Vector3.new(x0, y0 + h, 0), width, color)
-		line(Vector3.new(x0, y0 + h, 0), Vector3.new(x0, y0, 0), width, color)
-		-- Cut a square off the rectangle (rotating which side each time).
-		local side = i % 4
-		local sq = math.min(w, h)
-		local cx, cy
-		if side == 0 then
-			cx, cy = x0 + sq, y0 + sq
-			x0, w = x0 + sq, w - sq
-		elseif side == 1 then
-			cx, cy = x0 + w - sq, y0 + sq
-			y0, h = y0 + sq, h - sq
-		elseif side == 2 then
-			cx, cy = x0 + w - sq, y0 + h - sq
-			w = w - sq
-		else
-			cx, cy = x0 + sq, y0 + h - sq
-			h = h - sq
-		end
-		table.insert(spiralPoints, { cx, cy, sq, side })
-	end
-	-- Quarter-circle arcs through the squares = the golden spiral.
-	local prev
-	for _, q in ipairs(spiralPoints) do
-		for k = 0, 4 do
-			local angle = (q[4] * math.pi / 2) + math.pi + k / 4 * (math.pi / 2)
-			local p = Vector3.new(q[1] + math.cos(angle) * q[3], q[2] + math.sin(angle) * q[3], -0.05)
-			if prev then
-				line(prev, p, 0.22, pal.Light)
-			end
-			prev = p
-		end
-	end
-	VFXLib.animate(duration, function(a, dt)
-		local grow = VFXLib.easeOut(math.min(a * 2.5, 1))
-		carrier.CFrame = cframe * CFrame.Angles(0, 0, a * math.pi * 0.6)
-		for _, child in ipairs(carrier:GetChildren()) do
-			if child:IsA("Beam") then
-				child.Transparency = NumberSequence.new(math.clamp(1 - grow + math.max(0, a - 0.85) / 0.15, 0, 1))
-			end
-		end
-	end, function()
-		carrier:Destroy()
-	end)
+	TuskVFX.CreateGoldenRectangle(cframe, { Size = size, Duration = duration, Color = pal.Main, Color2 = pal.Light })
 end
 
 ---------------------------------------------------------------------------
@@ -4027,6 +4064,7 @@ __modules["RaptorModel"] = function()
 	RaptorModel.build(scale, opts) -> rig
 	  opts.Lite = true   fewer details (teeth, crown, markings) for crowds
 	  opts.Blocky = false  keep rounded shapes (default: TuskConfig.BlockyModels)
+	  opts.Palette = { Body, Legs, Head }  recolour the raptor (Color3 values)
 	  rig.Model          the Model (all parts anchored, no collision)
 	  rig:Pose(groundCF, s)  place every part. groundCF = point on the ground
 	                         under the hips, facing the way the raptor looks.
@@ -4101,8 +4139,32 @@ function RaptorModel.build(scale, opts)
 	model.Name = "ScaryMonstersRaptor"
 
 	local entries = {} -- { Part, Bone, Offset }
+	-- Optional recolour (e.g. a victim of Dino Infection in their avatar's colours):
+	-- teal skin -> Body (Head colour on the head and jaw), blue -> Legs.
+	local palette = opts.Palette
+	local function recolor(bone, color)
+		if not palette then
+			return color
+		end
+		local onHead = bone == "Head" or bone == "Jaw"
+		if color == C.Teal then
+			return onHead and (palette.Head or palette.Body) or palette.Body
+		elseif color == C.TealDark then
+			return (onHead and (palette.Head or palette.Body) or palette.Body):Lerp(Color3.new(0, 0, 0), 0.25)
+		elseif color == C.Blue then
+			return palette.Legs
+		elseif color == C.BlueDark then
+			return palette.Legs:Lerp(Color3.new(0, 0, 0), 0.3)
+		elseif color == C.Navy then
+			return palette.Body:Lerp(Color3.new(0, 0, 0), 0.6)
+		end
+		if bone:sub(1, 4) == "Tail" and color ~= C.Pale and color ~= C.Yellow then
+			return palette.Legs -- tail base blends teal -> blue
+		end
+		return color
+	end
 	local function add(bone, name, size, color, offset, partOpts)
-		local p = newPart(model, name, size * scale, color, partOpts)
+		local p = newPart(model, name, size * scale, recolor(bone, color), partOpts)
 		local o = offset or CFrame.new()
 		table.insert(entries, { Part = p, Bone = bone, Offset = o - o.Position + o.Position * scale })
 		return p
@@ -4629,6 +4691,7 @@ __modules["TuskActCommon"] = function()
 	  m1(data, palette)     poses, Stand lunges, swipes, mini-portals
 	  finisher(data, pal)   combo-ender shockwave
 	  portal(...)           wormhole that opens, holds and collapses
+	  golden(...)           golden rectangle + spiral (Act 2), same arguments
 	  portalNail(...)       portals for nails fired through them
 	  evolve(data)          the "next Act" transformation + banner
 	  charge helpers        attribute-driven hold charges
@@ -4702,6 +4765,26 @@ function Common.portal(position, lookAt, radius, duration, palette, delay)
 	end
 end
 
+-- Golden ratio (Act 2): a Golden Rectangle with its spiral facing `lookAt`,
+-- a spinning golden spiral in front and a soft gold flash. Same arguments
+-- as Common.portal so the two can be swapped.
+function Common.golden(position, lookAt, radius, duration, palette, delay)
+	palette = palette or Common.palette(2)
+	local function open()
+		local facing = (lookAt and (lookAt - position).Magnitude > 0.1) and CFrame.lookAt(position, lookAt) or CFrame.new(position)
+		local size = (radius or 2.5) * 1.1
+		TuskVFX.CreateGoldenRectangle(facing, { Size = size, Duration = (duration or 0.6) + 0.25, Color = colors.Gold, Color2 = colors.GoldLight, Turn = math.pi * 0.4 })
+		TuskVFX.CreateGoldenSpiral(facing * CFrame.new(0, 0, -0.1), { Size = size * 0.9, Duration = (duration or 0.6) + 0.2, Color = palette.Main, Color2 = colors.GoldLight, Width = 0.14 })
+		VFXLib.flash(position, colors.Gold, 3, 10 + size * 2, 0.25)
+		VFXLib.sound(sounds.Warning, position, 0.2, 1.8)
+	end
+	if delay and delay > 0 then
+		task.delay(delay, open)
+	else
+		open()
+	end
+end
+
 ---------------------------------------------------------------------------
 -- M1
 ---------------------------------------------------------------------------
@@ -4725,9 +4808,10 @@ function Common.m1(data, palette, opts)
 	TuskStand.action(character, "Lunge", { Target = LUNGES[index], Duration = index == 4 and 0.5 or 0.26 })
 	Common.swipe(root, index % 2 == 1 and 1 or -1, index % 2 == 1 and palette.Main or palette.Light, opts.Scale)
 	if data.Portal then
-		-- Short portal flash beside the strike.
+		-- Short portal (or golden rectangle) flash beside the strike.
 		local pos = (root.CFrame * CFrame.new(index % 2 == 1 and 1.6 or -1.6, 1, -2.6)).Position
-		Common.portal(pos, (root.CFrame * CFrame.new(0, 1, -6)).Position, 1.1, 0.18, palette)
+		local open = opts.Golden and Common.golden or Common.portal
+		open(pos, (root.CFrame * CFrame.new(0, 1, -6)).Position, 1.1, 0.18, palette)
 	end
 	if (data.Repeat or 1) > 1 then
 		for i = 2, data.Repeat do
@@ -4866,14 +4950,14 @@ TuskActRegistry.Acts = {
 	},
 	[2] = {
 		Name = "TUSK ACT 2",
-		Tagline = "Wormhole combat",
+		Tagline = "The Golden Ratio",
 		Implemented = true,
 		Theme = { Primary = Color3.fromRGB(70, 200, 255), Secondary = Color3.fromRGB(30, 80, 220) },
-		M1 = "DIMENSIONAL COMBO",
-		Abilities = { "WORMHOLE NAIL", "UNDERGROUND PURSUIT", "NAIL DIMENSION" },
+		M1 = "GOLDEN COMBO",
+		Abilities = { "GOLDEN RATIO NAIL", "UNDERGROUND PURSUIT", "GOLDEN SPIRAL" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Next = 3,
-		Ultimate = "DIMENSIONAL STORM",
+		Ultimate = "GOLDEN RATIO STORM",
 	},
 	[3] = {
 		Name = "TUSK ACT 3",
@@ -4928,8 +5012,11 @@ TuskActRegistry.Acts = {
 		Module = "DiegoBrando", -- server moves
 		ClientModule = "Diego", -- client visuals (TuskActVFX.Diego)
 		CardTitle = "STAND  ·  SCARY MONSTERS",
-		-- The HUD shows a timer on this slot while the buff attribute (server time) is in the future.
-		Buff = { Slot = 3, Attribute = "DinoModeUntil" },
+		-- The HUD shows a timer on these slots while the attribute (server time) is in the future.
+		Buffs = {
+			{ Slot = 3, Attribute = "DinoModeUntil", Text = "ACTIVE" },
+			{ Slot = 2, Attribute = "ThrallUntil", Text = "COMMAND" },
+		},
 	},
 }
 
@@ -5852,16 +5939,17 @@ local function styleFor(visual)
 	end
 	local act = visual.Act or 1
 	if style == "Wormhole" then
-		-- Act 2: violet-cyan helix, one tilted ring.
-		s.Color = Color3.fromRGB(110, 70, 255)
+		-- Act 2 (golden ratio): gold and cyan helix, one golden ring.
+		s.Color = colors.Gold
 		s.Color2 = Color3.fromRGB(80, 210, 255)
 		s.Rings = 1
-		s.RingColor = Color3.fromRGB(160, 120, 255)
+		s.RingColor = colors.GoldLight
+		s.TrailColor = colors.GoldLight
 		s.ImpactSize = 1
 	elseif style == "Portal" then
 		-- Nails fired through portals (Acts 2 and 3).
 		s.Scale = 0.9
-		s.Color = act == 3 and Color3.fromRGB(30, 20, 120) or Color3.fromRGB(110, 70, 255)
+		s.Color = act == 3 and Color3.fromRGB(30, 20, 120) or colors.Gold
 		s.Color2 = act == 3 and Color3.fromRGB(120, 160, 255) or colors.Cyan
 		s.ImpactSize = 0.8
 	elseif style == "Golden" then
@@ -7729,6 +7817,8 @@ local function iconKind(name)
 		return "fang"
 	elseif has("POUNCE") then
 		return "dash"
+	elseif has("GOLDEN RATIO") or has("GOLDEN SPIRAL") or has("GOLDEN COMBO") then
+		return "golden"
 	elseif has("BARRAGE") then
 		return "barrage"
 	elseif has("TORNADO") then
@@ -7819,6 +7909,16 @@ local function drawIcon(icon, kind)
 		end
 		local c = bar(icon, 0.5, 0.5, 0.3, 0.3, 45)
 		corner(c, 999)
+	elseif kind == "golden" then
+		-- Golden rectangle: a 1.618 box split into a square, with a spiral dot.
+		local outer = frame(icon, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.95, 0.59), BackgroundTransparency = 1 })
+		local s1 = stroke(outer, WHITE, 2)
+		s1:SetAttribute("IconStroke", true)
+		bar(icon, 0.665, 0.5, 0.04, 0.59, 0)
+		bar(icon, 0.84, 0.39, 0.33, 0.04, 0)
+		ring(icon, 0.55, 2, UDim2.fromScale(0.36, 0.5))
+		local dot = bar(icon, 0.77, 0.6, 0.12, 0.12)
+		corner(dot, 999)
 	elseif kind == "fang" then
 		-- Two rows of fangs.
 		for i = -1, 1 do
@@ -8374,6 +8474,18 @@ local function keyHeld(slotKey)
 	return ok and down
 end
 
+-- The registry buff (if any) that is running on this slot right now.
+local function buffFor(info, slot, character)
+	local list = info.Buffs or (info.Buff and { info.Buff }) or {}
+	for _, buff in ipairs(list) do
+		local untilT = buff.Slot == slot and character:GetAttribute(buff.Attribute)
+		if untilT and untilT > workspace:GetServerTimeNow() then
+			return buff
+		end
+	end
+	return nil
+end
+
 local function setKey(card, keyText)
 	card.Key.Text = keyText
 	card.Badge.Visible = keyText ~= ""
@@ -8462,15 +8574,16 @@ function TuskUI.step(act)
 				end)()) or ""
 				card.GlowStroke.Transparency = 1
 			end
-		elseif info.Buff and info.Buff.Slot == i and character and character:GetAttribute(info.Buff.Attribute) then
-			-- Active buff (e.g. Scary Monsters): draining timer bar + glow.
-			local untilT = character:GetAttribute(info.Buff.Attribute)
+		elseif character and buffFor(info, i, character) then
+			-- Active buff (e.g. Scary Monsters, a commanded dinosaur): draining timer bar + glow.
+			local buff = buffFor(info, i, character)
+			local untilT = character:GetAttribute(buff.Attribute)
 			local left = math.max(0, untilT - workspace:GetServerTimeNow())
 			card.BuffMax = math.max(card.BuffMax or 0, left)
 			card.ChargeBack.Visible = true
 			card.ChargeFill.Size = UDim2.fromScale(left / math.max(card.BuffMax, 0.01), 1)
 			card.ChargeFill.BackgroundColor3 = theme.Primary
-			card.ChargeText.Text = "ACTIVE " .. math.ceil(left) .. "s"
+			card.ChargeText.Text = (buff.Text or "ACTIVE") .. " " .. math.ceil(left) .. "s"
 			card.GlowStroke.Transparency = 0.45 + (math.sin(now * 5) + 1) * 0.15
 		elseif card.ChargeBack.Visible then
 			card.ChargeBack.Visible = false
@@ -8655,6 +8768,8 @@ __modules["TuskVFX"] = function()
 	  CreateEnergyPillar(position, opts)   column of energy shooting upward
 	  CreateCrescent(cframe, opts)         tapered crescent slash that sweeps and fades
 	  ScreenTint(duration, opts)           darken / tint the screen, then release
+	  CreateGoldenSpiral(cframe, opts)     golden-ratio spiral of light, spinning up
+	  CreateGoldenRectangle(cframe, opts)  nested golden rectangles + spiral
 	  CleanupEffect(handle)
 ]]
 
@@ -9741,6 +9856,128 @@ function TuskVFX.IsNear(position, range)
 	local camera = workspace.CurrentCamera
 	return camera ~= nil and (camera.CFrame.Position - position).Magnitude < (range or 80)
 end
+
+---------------------------------------------------------------------------
+-- Golden ratio: logarithmic spiral and the Golden Rectangle
+---------------------------------------------------------------------------
+--[[ Golden spiral of beams that turns faster and faster.
+     opts: Size, Duration, Color (outer), Color2 (inner/light), Width ]]
+function TuskVFX.CreateGoldenSpiral(cframe, opts)
+	opts = opts or {}
+	local size, duration = opts.Size or 3, opts.Duration or 0.6
+	local main, light = opts.Color or colors.Gold, opts.Color2 or colors.GoldLight
+	local carrier = VFXLib.anchor(cframe)
+	local prev
+	local points = q().RingSegments
+	for i = 0, points do
+		local t = i / points
+		local angle = t * math.pi * 4
+		local r = size * 0.08 * math.exp(t * 2.5)
+		local a = Instance.new("Attachment")
+		a.Position = Vector3.new(math.cos(angle) * r, math.sin(angle) * r, 0)
+		a.Parent = carrier
+		if prev then
+			local b = Instance.new("Beam")
+			b.Attachment0 = prev
+			b.Attachment1 = a
+			b.FaceCamera = true
+			b.LightEmission = 1
+			b.Width0 = opts.Width or 0.18
+			b.Width1 = opts.Width or 0.18
+			b.Color = ColorSequence.new(light:Lerp(main, t))
+			b.Parent = carrier
+		end
+		prev = a
+	end
+	VFXLib.animate(duration, function(a, dt)
+		carrier.CFrame = carrier.CFrame * CFrame.Angles(0, 0, (dt or 0) * (2 + a * 8))
+	end, function()
+		carrier:Destroy()
+	end)
+end
+
+--[[ The Golden Rectangle: nested golden-ratio rectangles with the spiral
+     drawn through them, growing in and turning.
+     opts: Size, Duration, Color (outer), Color2 (inner/light), Turn (radians) ]]
+function TuskVFX.CreateGoldenRectangle(cframe, opts)
+	opts = opts or {}
+	local size, duration = opts.Size or 3, opts.Duration or 0.8
+	local main, light = opts.Color or colors.Gold, opts.Color2 or colors.GoldLight
+	local carrier = VFXLib.anchor(cframe)
+	local phi = 1.618
+	local function line(a, b, width, color)
+		local a0 = Instance.new("Attachment")
+		a0.Position = a
+		a0.Parent = carrier
+		local a1 = Instance.new("Attachment")
+		a1.Position = b
+		a1.Parent = carrier
+		local beam = Instance.new("Beam")
+		beam.Attachment0 = a0
+		beam.Attachment1 = a1
+		beam.FaceCamera = true
+		beam.LightEmission = 1
+		beam.Segments = 1
+		beam.Width0 = width
+		beam.Width1 = width
+		beam.Color = ColorSequence.new(color)
+		beam.Parent = carrier
+	end
+	-- Outer rectangle, then squares cut off in turn (left, top, right, bottom...).
+	-- Each square gets a quarter circle centred on its inner corner: together
+	-- they make the golden spiral.
+	local x0, y0, w, h = -size * phi / 2, -size / 2, size * phi, size
+	local arcs = {}
+	for i = 0, 6 do
+		local color = light:Lerp(main, i / 6)
+		local width = 0.16 * (1 - i * 0.1)
+		line(Vector3.new(x0, y0, 0), Vector3.new(x0 + w, y0, 0), width, color)
+		line(Vector3.new(x0 + w, y0, 0), Vector3.new(x0 + w, y0 + h, 0), width, color)
+		line(Vector3.new(x0 + w, y0 + h, 0), Vector3.new(x0, y0 + h, 0), width, color)
+		line(Vector3.new(x0, y0 + h, 0), Vector3.new(x0, y0, 0), width, color)
+		local side = i % 4
+		if side == 0 then -- square on the left
+			local sq = h
+			table.insert(arcs, { x0 + sq, y0, sq, math.pi, math.pi / 2 })
+			x0, w = x0 + sq, w - sq
+		elseif side == 1 then -- square on top
+			local sq = w
+			table.insert(arcs, { x0, y0 + h - sq, sq, math.pi / 2, 0 })
+			h = h - sq
+		elseif side == 2 then -- square on the right
+			local sq = h
+			table.insert(arcs, { x0 + w - sq, y0 + h, sq, 0, -math.pi / 2 })
+			w = w - sq
+		else -- square on the bottom
+			local sq = w
+			table.insert(arcs, { x0 + w, y0 + sq, sq, -math.pi / 2, -math.pi })
+			y0, h = y0 + sq, h - sq
+		end
+	end
+	local prev
+	for _, arc in ipairs(arcs) do
+		for k = 0, 5 do
+			local angle = arc[4] + (arc[5] - arc[4]) * k / 5
+			local p = Vector3.new(arc[1] + math.cos(angle) * arc[3], arc[2] + math.sin(angle) * arc[3], -0.05)
+			if prev then
+				line(prev, p, 0.22, light)
+			end
+			prev = p
+		end
+	end
+	VFXLib.animate(duration, function(a, dt)
+		local grow = VFXLib.easeOut(math.min(a * 2.5, 1))
+		carrier.CFrame = cframe * CFrame.Angles(0, 0, a * (opts.Turn or math.pi * 0.6))
+		for _, child in ipairs(carrier:GetChildren()) do
+			if child:IsA("Beam") then
+				child.Transparency = NumberSequence.new(math.clamp(1 - grow + math.max(0, a - 0.85) / 0.15, 0, 1))
+			end
+		end
+	end, function()
+		carrier:Destroy()
+	end)
+end
+
 
 return TuskVFX
 end

@@ -53,14 +53,14 @@ TuskActRegistry.Acts = {
 	},
 	[2] = {
 		Name = "TUSK ACT 2",
-		Tagline = "Wormhole combat",
+		Tagline = "The Golden Ratio",
 		Implemented = true,
 		Theme = { Primary = Color3.fromRGB(70, 200, 255), Secondary = Color3.fromRGB(30, 80, 220) },
-		M1 = "DIMENSIONAL COMBO",
-		Abilities = { "WORMHOLE NAIL", "UNDERGROUND PURSUIT", "NAIL DIMENSION" },
+		M1 = "GOLDEN COMBO",
+		Abilities = { "GOLDEN RATIO NAIL", "UNDERGROUND PURSUIT", "GOLDEN SPIRAL" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Next = 3,
-		Ultimate = "DIMENSIONAL STORM",
+		Ultimate = "GOLDEN RATIO STORM",
 	},
 	[3] = {
 		Name = "TUSK ACT 3",
@@ -115,8 +115,11 @@ TuskActRegistry.Acts = {
 		Module = "DiegoBrando", -- server moves
 		ClientModule = "Diego", -- client visuals (TuskActVFX.Diego)
 		CardTitle = "STAND  ·  SCARY MONSTERS",
-		-- The HUD shows a timer on this slot while the buff attribute (server time) is in the future.
-		Buff = { Slot = 3, Attribute = "DinoModeUntil" },
+		-- The HUD shows a timer on these slots while the attribute (server time) is in the future.
+		Buffs = {
+			{ Slot = 3, Attribute = "DinoModeUntil", Text = "ACTIVE" },
+			{ Slot = 2, Attribute = "ThrallUntil", Text = "COMMAND" },
+		},
 	},
 }
 

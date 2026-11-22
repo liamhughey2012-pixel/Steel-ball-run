@@ -183,6 +183,10 @@ function Adapter.canAct(player)
 	if Adapter.isStunned(character) then
 		return false
 	end
+	-- Turned into Diego's dinosaur (Scary Monsters): Diego is in control.
+	if character:GetAttribute("DinoThrall") then
+		return false
+	end
 	if Adapter.Hooks.CanAct and not Adapter.Hooks.CanAct(player) then
 		return false
 	end
@@ -201,6 +205,10 @@ function Adapter.canBeHit(attackerPlayer, targetCharacter)
 		return false
 	end
 	if targetCharacter:FindFirstChildOfClass("ForceField") then
+		return false
+	end
+	-- Diego can't hurt the dinosaur he is commanding.
+	if attackerPlayer and targetCharacter:GetAttribute("DinoThrall") == attackerPlayer.UserId then
 		return false
 	end
 	if not Adapter.Settings.FriendlyFire and attackerPlayer then
@@ -411,8 +419,11 @@ __modules["DiegoBrando"] = function()
 	            faster while transformed.
 	  Ability 1 RAPTOR POUNCE: crouch, then leap at the nearest enemy in front
 	            and land on them (bite + area hit). Hits harder transformed.
-	  Ability 2 DINO INFECTION: a bite that infects: the target is slowed and
-	            takes damage over time while dinosaur scales spread on them
+	  Ability 2 DINO INFECTION: an infecting bite. Scales spread over the
+	            victim, then they TURN INTO A DINOSAUR (in their own avatar's
+	            colours) that Diego commands for ThrallTime seconds: it heels
+	            beside him and bites nearby enemies; press the move again to
+	            send it after whoever Diego aims at. 25 s cooldown on a hit.
 	  Ability 3 SCARY MONSTERS: turn into a full raptor for a while: faster,
 	            stronger claws, and KINETIC VISION (moving enemies glow for
 	            Diego). Press again to change back early.
@@ -571,41 +582,170 @@ local function raptorPounce(S, player, state, aim)
 end
 
 ---------------------------------------------------------------------------
--- DINO INFECTION
+-- DINO INFECTION: the bite turns the victim into a dinosaur (in their own
+-- avatar's colours, drawn by the clients) that Diego commands for a while.
 ---------------------------------------------------------------------------
-local function infect(S, player, target, c)
-	local humanoid = target:FindFirstChildOfClass("Humanoid")
-	if not humanoid then
+local Players = game:GetService("Players")
+
+local function releaseThrall(S, player, state)
+	local thrall = state.Thrall
+	if not thrall then
 		return
 	end
-	local token = tostring({})
-	target:SetAttribute("DinoInfected", token)
-	S.Adapter.setMoveModifier(humanoid, "DinoInfection", c.InfectSlow)
-	local ticks = math.floor(c.InfectTime / c.InfectTick)
+	state.Thrall = nil
+	local target = thrall.Target
+	if target and target.Parent then
+		target:SetAttribute("DinoThrall", nil)
+		target:SetAttribute("DinoThrallUntil", nil)
+		target:SetAttribute("DinoInfected", nil)
+		local humanoid = target:FindFirstChildOfClass("Humanoid")
+		local root = target:FindFirstChild("HumanoidRootPart")
+		if humanoid then
+			S.Adapter.setMoveModifier(humanoid, "DinoThrall", nil)
+			if root then
+				humanoid:MoveTo(root.Position)
+			end
+		end
+		-- Hand movement back to the player who owns this character.
+		if root and thrall.Player then
+			pcall(function()
+				root:SetNetworkOwner(thrall.Player)
+			end)
+		end
+		S.fx("Ability", { Act = ACT, Move = "DinoInfection", Phase = "Release", Target = target })
+	end
+	if state.Character then
+		state.Character:SetAttribute("ThrallUntil", nil)
+	end
+end
+
+-- Pick the thrall's prey: Diego's command target, else the nearest enemy close by.
+local function preyFor(S, player, thrall, c)
+	local forced = thrall.Command
+	if forced and forced.Until > os.clock() and forced.Target.Parent and S.Adapter.canBeHit(player, forced.Target) then
+		return forced.Target, true
+	end
+	thrall.Command = nil
+	local tr = thrall.Target:FindFirstChild("HumanoidRootPart")
+	if not tr then
+		return nil
+	end
+	local best, bestDistance
+	for _, enemy in ipairs(S.Hitbox.inRadius(player.Character, tr.Position, c.ThrallAggroRange, 6)) do
+		if enemy ~= thrall.Target and S.Adapter.canBeHit(player, enemy) then
+			local er = enemy:FindFirstChild("HumanoidRootPart")
+			local d = er and (er.Position - tr.Position).Magnitude
+			if d and (not bestDistance or d < bestDistance) then
+				best, bestDistance = enemy, d
+			end
+		end
+	end
+	return best, false
+end
+
+local function enthrall(S, player, state, target, c)
+	releaseThrall(S, player, state)
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	local root = target:FindFirstChild("HumanoidRootPart")
+	if not humanoid or not root then
+		return
+	end
+	local token = {}
+	local thrall = { Target = target, Player = Players:GetPlayerFromCharacter(target), Token = token, NextBite = 0 }
+	state.Thrall = thrall
+	local untilT = workspace:GetServerTimeNow() + c.ThrallTime
+	-- 1) the infection spreads (scales grow), 2) they become a dinosaur.
+	target:SetAttribute("DinoInfected", tostring(token))
+	task.delay(c.SpreadTime, function()
+		if state.Thrall ~= thrall or not target.Parent or humanoid.Health <= 0 then
+			return
+		end
+		target:SetAttribute("DinoThrall", player.UserId)
+		target:SetAttribute("DinoThrallUntil", untilT + c.SpreadTime)
+		if state.Character then
+			state.Character:SetAttribute("ThrallUntil", untilT + c.SpreadTime)
+		end
+		S.Adapter.setMoveModifier(humanoid, "DinoThrall", c.ThrallSpeed)
+		-- The server takes over the body so Diego's commands drive it.
+		if thrall.Player then
+			pcall(function()
+				root:SetNetworkOwner(nil)
+			end)
+		end
+		S.fx("Ability", { Act = ACT, Move = "DinoInfection", Phase = "Turn", Target = target, Position = root.Position })
+	end)
+	-- Brain: every tick, chase prey (bite when close) or heel beside Diego.
+	local ticks = math.floor((c.ThrallTime + c.SpreadTime) / c.ThrallTick)
 	for i = 1, ticks do
-		task.delay(i * c.InfectTick, function()
-			if target:GetAttribute("DinoInfected") == token and humanoid.Health > 0 then
-				local tr = target:FindFirstChild("HumanoidRootPart")
-				S.hit(player, target, { Damage = c.InfectDamage, Stun = 0, Knockback = 0, Direction = Vector3.new(0, 0, 0), Position = tr and tr.Position or nil, Source = "DiegoInfection" })
+		task.delay(i * c.ThrallTick, function()
+			if state.Thrall ~= thrall or i * c.ThrallTick < c.SpreadTime then
+				return
+			end
+			if not target.Parent or humanoid.Health <= 0 then
+				releaseThrall(S, player, state)
+				return
+			end
+			local _, _, diegoRoot = alive(S, player)
+			local tr = target:FindFirstChild("HumanoidRootPart")
+			if not diegoRoot or not tr then
+				releaseThrall(S, player, state)
+				return
+			end
+			local prey, commanded = preyFor(S, player, thrall, c)
+			local pr = prey and prey:FindFirstChild("HumanoidRootPart")
+			if pr then
+				humanoid:MoveTo(pr.Position)
+				if (pr.Position - tr.Position).Magnitude <= c.ThrallBiteRange and os.clock() >= thrall.NextBite then
+					thrall.NextBite = os.clock() + c.ThrallBiteInterval
+					local dir = pr.Position - tr.Position
+					S.hit(player, prey, { Damage = commanded and c.CommandDamage or c.ThrallDamage, Stun = 0.45, Knockback = 10, Direction = dir, Position = pr.Position, Source = "DiegoThrall" })
+					S.fx("Ability", { Act = ACT, Move = "DinoInfection", Phase = "ThrallBite", Target = target, Position = pr.Position, Direction = dir })
+				end
+			else
+				-- Heel: stay just behind Diego's shoulder.
+				local spot = diegoRoot.Position - diegoRoot.CFrame.LookVector * 5 + diegoRoot.CFrame.RightVector * 4
+				if (spot - tr.Position).Magnitude > 3 then
+					humanoid:MoveTo(spot)
+				end
 			end
 		end)
 	end
-	task.delay(c.InfectTime, function()
-		if target:GetAttribute("DinoInfected") == token then
-			target:SetAttribute("DinoInfected", nil)
-			if humanoid.Parent then
-				S.Adapter.setMoveModifier(humanoid, "DinoInfection", nil)
-			end
+	task.delay(c.ThrallTime + c.SpreadTime, function()
+		if state.Thrall == thrall then
+			releaseThrall(S, player, state)
 		end
 	end)
 end
 
+-- While a dinosaur is under control, pressing the move again sends it after
+-- whoever Diego is aiming at ("sic 'em").
+local function commandThrall(S, player, state, aim, c)
+	local character, _, root = alive(S, player)
+	local thrall = state.Thrall
+	local direction = Moves.flat(S.aim(aim, root))
+	local prey = Moves.findTarget(S, character, root, c.CommandRange, c.CommandCone, direction)
+	if prey == thrall.Target then
+		prey = nil
+	end
+	if not prey then
+		S.tell(player, "Denied", { Reason = "NoTarget" })
+		return
+	end
+	thrall.Command = { Target = prey, Until = os.clock() + c.CommandTime }
+	thrall.NextBite = 0
+	local pr = prey:FindFirstChild("HumanoidRootPart")
+	S.fx("Ability", { Character = character, Act = ACT, Move = "DinoInfection", Phase = "Command", Target = thrall.Target, Prey = prey, Position = pr and pr.Position or root.Position })
+end
+
 local function dinoInfection(S, player, state, aim)
 	local c = cfg.DinoInfection
+	if state.Thrall and state.Thrall.Target:GetAttribute("DinoThrall") then
+		commandThrall(S, player, state, aim, c)
+		return
+	end
 	if not ready(S, player, state, "DinoInfection", 2) then
 		return
 	end
-	S.startCooldown(player, state, "DinoInfection", c.Cooldown, 2)
 	S.lock(state, c.Windup + 0.35)
 	local character = alive(S, player)
 	local life = state.Life
@@ -616,9 +756,13 @@ local function dinoInfection(S, player, state, aim)
 		end
 		local _, _, r = alive(S, player)
 		local cf = r.CFrame * CFrame.new(0, 0, -c.HitboxForward)
-		local count, hitSet = Moves.boxHit(S, player, cf, c.HitboxSize, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Source = "DiegoInfection" }, 2)
-		for target in pairs(hitSet) do
-			infect(S, player, target, c)
+		local count, hitSet = Moves.boxHit(S, player, cf, c.HitboxSize, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Source = "DiegoInfection" }, 1)
+		local victim = next(hitSet)
+		if victim then
+			S.startCooldown(player, state, "DinoInfection", c.Cooldown, 2)
+			enthrall(S, player, state, victim, c)
+		else
+			S.startCooldown(player, state, "DinoInfection", c.MissCooldown, 2) -- missed: short cooldown
 		end
 		S.fx("Ability", { Character = character, Act = ACT, Move = "DinoInfection", Phase = "Hit", Position = cf.Position, Hit = count > 0 })
 	end)
@@ -724,6 +868,7 @@ end
 
 function Diego.Cleanup(S, player, state)
 	revert(S, player, state, false)
+	releaseThrall(S, player, state)
 	if state.Character then
 		state.Character:SetAttribute("Armored", nil)
 	end
@@ -2125,6 +2270,7 @@ __modules["RaptorModel"] = function()
 	RaptorModel.build(scale, opts) -> rig
 	  opts.Lite = true   fewer details (teeth, crown, markings) for crowds
 	  opts.Blocky = false  keep rounded shapes (default: TuskConfig.BlockyModels)
+	  opts.Palette = { Body, Legs, Head }  recolour the raptor (Color3 values)
 	  rig.Model          the Model (all parts anchored, no collision)
 	  rig:Pose(groundCF, s)  place every part. groundCF = point on the ground
 	                         under the hips, facing the way the raptor looks.
@@ -2199,8 +2345,32 @@ function RaptorModel.build(scale, opts)
 	model.Name = "ScaryMonstersRaptor"
 
 	local entries = {} -- { Part, Bone, Offset }
+	-- Optional recolour (e.g. a victim of Dino Infection in their avatar's colours):
+	-- teal skin -> Body (Head colour on the head and jaw), blue -> Legs.
+	local palette = opts.Palette
+	local function recolor(bone, color)
+		if not palette then
+			return color
+		end
+		local onHead = bone == "Head" or bone == "Jaw"
+		if color == C.Teal then
+			return onHead and (palette.Head or palette.Body) or palette.Body
+		elseif color == C.TealDark then
+			return (onHead and (palette.Head or palette.Body) or palette.Body):Lerp(Color3.new(0, 0, 0), 0.25)
+		elseif color == C.Blue then
+			return palette.Legs
+		elseif color == C.BlueDark then
+			return palette.Legs:Lerp(Color3.new(0, 0, 0), 0.3)
+		elseif color == C.Navy then
+			return palette.Body:Lerp(Color3.new(0, 0, 0), 0.6)
+		end
+		if bone:sub(1, 4) == "Tail" and color ~= C.Pale and color ~= C.Yellow then
+			return palette.Legs -- tail base blends teal -> blue
+		end
+		return color
+	end
 	local function add(bone, name, size, color, offset, partOpts)
-		local p = newPart(model, name, size * scale, color, partOpts)
+		local p = newPart(model, name, size * scale, recolor(bone, color), partOpts)
 		local o = offset or CFrame.new()
 		table.insert(entries, { Part = p, Bone = bone, Offset = o - o.Position + o.Position * scale })
 		return p
@@ -5494,14 +5664,14 @@ TuskActRegistry.Acts = {
 	},
 	[2] = {
 		Name = "TUSK ACT 2",
-		Tagline = "Wormhole combat",
+		Tagline = "The Golden Ratio",
 		Implemented = true,
 		Theme = { Primary = Color3.fromRGB(70, 200, 255), Secondary = Color3.fromRGB(30, 80, 220) },
-		M1 = "DIMENSIONAL COMBO",
-		Abilities = { "WORMHOLE NAIL", "UNDERGROUND PURSUIT", "NAIL DIMENSION" },
+		M1 = "GOLDEN COMBO",
+		Abilities = { "GOLDEN RATIO NAIL", "UNDERGROUND PURSUIT", "GOLDEN SPIRAL" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Next = 3,
-		Ultimate = "DIMENSIONAL STORM",
+		Ultimate = "GOLDEN RATIO STORM",
 	},
 	[3] = {
 		Name = "TUSK ACT 3",
@@ -5556,8 +5726,11 @@ TuskActRegistry.Acts = {
 		Module = "DiegoBrando", -- server moves
 		ClientModule = "Diego", -- client visuals (TuskActVFX.Diego)
 		CardTitle = "STAND  ·  SCARY MONSTERS",
-		-- The HUD shows a timer on this slot while the buff attribute (server time) is in the future.
-		Buff = { Slot = 3, Attribute = "DinoModeUntil" },
+		-- The HUD shows a timer on these slots while the attribute (server time) is in the future.
+		Buffs = {
+			{ Slot = 3, Attribute = "DinoModeUntil", Text = "ACTIVE" },
+			{ Slot = 2, Attribute = "ThrallUntil", Text = "COMMAND" },
+		},
 	},
 }
 

@@ -167,6 +167,8 @@ local function iconKind(name)
 		return "fang"
 	elseif has("POUNCE") then
 		return "dash"
+	elseif has("GOLDEN RATIO") or has("GOLDEN SPIRAL") or has("GOLDEN COMBO") then
+		return "golden"
 	elseif has("BARRAGE") then
 		return "barrage"
 	elseif has("TORNADO") then
@@ -257,6 +259,16 @@ local function drawIcon(icon, kind)
 		end
 		local c = bar(icon, 0.5, 0.5, 0.3, 0.3, 45)
 		corner(c, 999)
+	elseif kind == "golden" then
+		-- Golden rectangle: a 1.618 box split into a square, with a spiral dot.
+		local outer = frame(icon, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.95, 0.59), BackgroundTransparency = 1 })
+		local s1 = stroke(outer, WHITE, 2)
+		s1:SetAttribute("IconStroke", true)
+		bar(icon, 0.665, 0.5, 0.04, 0.59, 0)
+		bar(icon, 0.84, 0.39, 0.33, 0.04, 0)
+		ring(icon, 0.55, 2, UDim2.fromScale(0.36, 0.5))
+		local dot = bar(icon, 0.77, 0.6, 0.12, 0.12)
+		corner(dot, 999)
 	elseif kind == "fang" then
 		-- Two rows of fangs.
 		for i = -1, 1 do
@@ -812,6 +824,18 @@ local function keyHeld(slotKey)
 	return ok and down
 end
 
+-- The registry buff (if any) that is running on this slot right now.
+local function buffFor(info, slot, character)
+	local list = info.Buffs or (info.Buff and { info.Buff }) or {}
+	for _, buff in ipairs(list) do
+		local untilT = buff.Slot == slot and character:GetAttribute(buff.Attribute)
+		if untilT and untilT > workspace:GetServerTimeNow() then
+			return buff
+		end
+	end
+	return nil
+end
+
 local function setKey(card, keyText)
 	card.Key.Text = keyText
 	card.Badge.Visible = keyText ~= ""
@@ -900,15 +924,16 @@ function TuskUI.step(act)
 				end)()) or ""
 				card.GlowStroke.Transparency = 1
 			end
-		elseif info.Buff and info.Buff.Slot == i and character and character:GetAttribute(info.Buff.Attribute) then
-			-- Active buff (e.g. Scary Monsters): draining timer bar + glow.
-			local untilT = character:GetAttribute(info.Buff.Attribute)
+		elseif character and buffFor(info, i, character) then
+			-- Active buff (e.g. Scary Monsters, a commanded dinosaur): draining timer bar + glow.
+			local buff = buffFor(info, i, character)
+			local untilT = character:GetAttribute(buff.Attribute)
 			local left = math.max(0, untilT - workspace:GetServerTimeNow())
 			card.BuffMax = math.max(card.BuffMax or 0, left)
 			card.ChargeBack.Visible = true
 			card.ChargeFill.Size = UDim2.fromScale(left / math.max(card.BuffMax, 0.01), 1)
 			card.ChargeFill.BackgroundColor3 = theme.Primary
-			card.ChargeText.Text = "ACTIVE " .. math.ceil(left) .. "s"
+			card.ChargeText.Text = (buff.Text or "ACTIVE") .. " " .. math.ceil(left) .. "s"
 			card.GlowStroke.Transparency = 0.45 + (math.sin(now * 5) + 1) * 0.15
 		elseif card.ChargeBack.Visible then
 			card.ChargeBack.Visible = false

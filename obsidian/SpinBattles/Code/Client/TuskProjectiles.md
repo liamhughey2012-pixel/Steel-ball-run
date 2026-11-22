@@ -107,16 +107,17 @@ local function styleFor(visual)
 	end
 	local act = visual.Act or 1
 	if style == "Wormhole" then
-		-- Act 2: violet-cyan helix, one tilted ring.
-		s.Color = Color3.fromRGB(110, 70, 255)
+		-- Act 2 (golden ratio): gold and cyan helix, one golden ring.
+		s.Color = colors.Gold
 		s.Color2 = Color3.fromRGB(80, 210, 255)
 		s.Rings = 1
-		s.RingColor = Color3.fromRGB(160, 120, 255)
+		s.RingColor = colors.GoldLight
+		s.TrailColor = colors.GoldLight
 		s.ImpactSize = 1
 	elseif style == "Portal" then
 		-- Nails fired through portals (Acts 2 and 3).
 		s.Scale = 0.9
-		s.Color = act == 3 and Color3.fromRGB(30, 20, 120) or Color3.fromRGB(110, 70, 255)
+		s.Color = act == 3 and Color3.fromRGB(30, 20, 120) or colors.Gold
 		s.Color2 = act == 3 and Color3.fromRGB(120, 160, 255) or colors.Cyan
 		s.ImpactSize = 0.8
 	elseif style == "Golden" then

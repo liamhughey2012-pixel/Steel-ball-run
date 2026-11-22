@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
 | **Exact name** | `Act2` (capitals matter) |
 
-**What it does:** Client choreography for Tusk Act 2 (wormhole combat): cyan + violet portals, spatial distortion, rotating nails through wormholes.
+**What it does:** Client choreography for Tusk Act 2 (THE GOLDEN RATIO): golden rectangles and golden spirals open where Act 2 used to open portals; nails fly out of them with gold trails.
 
 ## How to add it
 1. In Studio's Explorer, find **TuskActVFX** (StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX).
@@ -26,8 +26,9 @@ Back to [[Where To Put Code]]
 ```lua
 --[[
 	TuskActVFX.Act2  (StarterPlayerScripts.SpinClient.TuskActVFX.Act2)
-	Client choreography for Tusk Act 2 (wormhole combat): cyan + violet
-	portals, spatial distortion, rotating nails through wormholes.
+	Client choreography for Tusk Act 2 (THE GOLDEN RATIO): golden rectangles
+	and golden spirals open where Act 2 used to open portals; nails fly out
+	of them with gold trails.
 ]]
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
@@ -49,16 +50,16 @@ local function onAbility(data)
 	if data.Move == "WormholeNail" and root then
 		TuskAnimation.play(character, "NailShot")
 		TuskStand.action(character, "Lunge", { Target = CFrame.new(1.4, 0.8, -1.2), Duration = data.Startup + 0.25 })
-		-- A small portal opens at the fingertip; the nail is fired through it.
+		-- A small golden rectangle opens at the fingertip; the nail is fired through it.
 		local tip = (root.CFrame * CFrame.new(0.9, 0.55, -2.2)).Position
-		Common.portal(tip, tip + data.Direction * 5, 1, data.Startup + 0.2, pal)
+		Common.golden(tip, tip + data.Direction * 5, 1, data.Startup + 0.2, pal)
 	elseif data.Move == "NailDimension" and data.Phase == "Open" then
 		if root then
 			TuskAnimation.play(character, "NailDimension")
 			TuskStand.action(character, "Lunge", { Target = CFrame.new(0, 2, -2), Duration = 0.6 })
 		end
 		for i, pos in ipairs(data.Portals) do
-			Common.portal(pos, data.Center, 2.4, data.OpenTime + 0.55, pal, (i - 1) * 0.06)
+			Common.golden(pos, data.Center, 2.4, data.OpenTime + 0.55, pal, (i - 1) * 0.06)
 		end
 		TuskVFX.CreateMagicCircle(CFrame.new(data.Center - Vector3.new(0, 2.8, 0)), { Radius = 11, Color = pal.Second, Color2 = pal.Main, Duration = data.OpenTime + 0.9, RotationSpeed = 1.5, Points = 6 })
 	end
@@ -86,7 +87,7 @@ local function onUltimate(data)
 		local center = data.Center
 		TuskVFX.CreateMagicCircle(CFrame.new(center - Vector3.new(0, 2.9, 0)), { Radius = 14, Color = pal.Main, Color2 = pal.Second, Duration = data.Windup + 1.6, RotationSpeed = 1, Points = 7 })
 		for i, pos in ipairs(data.Portals) do
-			Common.portal(pos, center, 3, data.Windup + 1.2, pal, (i - 1) * (data.Windup * 0.5 / #data.Portals))
+			Common.golden(pos, center, 3, data.Windup + 1.2, pal, (i - 1) * (data.Windup * 0.5 / #data.Portals))
 		end
 		if Common.isLocal(character) then
 			CameraFX.setFovHold(8) -- pull back to see the storm
@@ -113,16 +114,16 @@ end
 
 function Act2.handle(name, data)
 	if name == "M1" then
-		Common.m1(data, pal)
+		Common.m1(data, pal, { Golden = true })
 	elseif name == "M1Finisher" then
 		Common.finisher(data, pal)
-		Common.portal(data.Position + Vector3.new(0, 1, 0), data.Position + Vector3.new(0, 1, -4), 2.6, 0.35, pal)
+		Common.golden(data.Position + Vector3.new(0, 1, 0), data.Position + Vector3.new(0, 1, -4), 2.6, 0.35, pal)
 	elseif name == "Ability" then
 		onAbility(data)
 	elseif name == "AbilityImpact" then
 		onAbilityImpact(data)
 	elseif name == "Portal" then
-		Common.portal(data.Position, data.LookAt, data.Radius, data.Duration, pal)
+		Common.golden(data.Position, data.LookAt, data.Radius, data.Duration, pal)
 	elseif name == "Ultimate" then
 		onUltimate(data)
 	end

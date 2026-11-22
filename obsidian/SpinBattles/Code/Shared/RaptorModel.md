@@ -38,6 +38,7 @@ Back to [[Where To Put Code]]
 	RaptorModel.build(scale, opts) -> rig
 	  opts.Lite = true   fewer details (teeth, crown, markings) for crowds
 	  opts.Blocky = false  keep rounded shapes (default: TuskConfig.BlockyModels)
+	  opts.Palette = { Body, Legs, Head }  recolour the raptor (Color3 values)
 	  rig.Model          the Model (all parts anchored, no collision)
 	  rig:Pose(groundCF, s)  place every part. groundCF = point on the ground
 	                         under the hips, facing the way the raptor looks.
@@ -112,8 +113,32 @@ function RaptorModel.build(scale, opts)
 	model.Name = "ScaryMonstersRaptor"
 
 	local entries = {} -- { Part, Bone, Offset }
+	-- Optional recolour (e.g. a victim of Dino Infection in their avatar's colours):
+	-- teal skin -> Body (Head colour on the head and jaw), blue -> Legs.
+	local palette = opts.Palette
+	local function recolor(bone, color)
+		if not palette then
+			return color
+		end
+		local onHead = bone == "Head" or bone == "Jaw"
+		if color == C.Teal then
+			return onHead and (palette.Head or palette.Body) or palette.Body
+		elseif color == C.TealDark then
+			return (onHead and (palette.Head or palette.Body) or palette.Body):Lerp(Color3.new(0, 0, 0), 0.25)
+		elseif color == C.Blue then
+			return palette.Legs
+		elseif color == C.BlueDark then
+			return palette.Legs:Lerp(Color3.new(0, 0, 0), 0.3)
+		elseif color == C.Navy then
+			return palette.Body:Lerp(Color3.new(0, 0, 0), 0.6)
+		end
+		if bone:sub(1, 4) == "Tail" and color ~= C.Pale and color ~= C.Yellow then
+			return palette.Legs -- tail base blends teal -> blue
+		end
+		return color
+	end
 	local function add(bone, name, size, color, offset, partOpts)
-		local p = newPart(model, name, size * scale, color, partOpts)
+		local p = newPart(model, name, size * scale, recolor(bone, color), partOpts)
 		local o = offset or CFrame.new()
 		table.insert(entries, { Part = p, Bone = bone, Offset = o - o.Position + o.Position * scale })
 		return p

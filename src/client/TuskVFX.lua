@@ -24,6 +24,8 @@
 	  CreateEnergyPillar(position, opts)   column of energy shooting upward
 	  CreateCrescent(cframe, opts)         tapered crescent slash that sweeps and fades
 	  ScreenTint(duration, opts)           darken / tint the screen, then release
+	  CreateGoldenSpiral(cframe, opts)     golden-ratio spiral of light, spinning up
+	  CreateGoldenRectangle(cframe, opts)  nested golden rectangles + spiral
 	  CleanupEffect(handle)
 ]]
 
@@ -1110,5 +1112,127 @@ function TuskVFX.IsNear(position, range)
 	local camera = workspace.CurrentCamera
 	return camera ~= nil and (camera.CFrame.Position - position).Magnitude < (range or 80)
 end
+
+---------------------------------------------------------------------------
+-- Golden ratio: logarithmic spiral and the Golden Rectangle
+---------------------------------------------------------------------------
+--[[ Golden spiral of beams that turns faster and faster.
+     opts: Size, Duration, Color (outer), Color2 (inner/light), Width ]]
+function TuskVFX.CreateGoldenSpiral(cframe, opts)
+	opts = opts or {}
+	local size, duration = opts.Size or 3, opts.Duration or 0.6
+	local main, light = opts.Color or colors.Gold, opts.Color2 or colors.GoldLight
+	local carrier = VFXLib.anchor(cframe)
+	local prev
+	local points = q().RingSegments
+	for i = 0, points do
+		local t = i / points
+		local angle = t * math.pi * 4
+		local r = size * 0.08 * math.exp(t * 2.5)
+		local a = Instance.new("Attachment")
+		a.Position = Vector3.new(math.cos(angle) * r, math.sin(angle) * r, 0)
+		a.Parent = carrier
+		if prev then
+			local b = Instance.new("Beam")
+			b.Attachment0 = prev
+			b.Attachment1 = a
+			b.FaceCamera = true
+			b.LightEmission = 1
+			b.Width0 = opts.Width or 0.18
+			b.Width1 = opts.Width or 0.18
+			b.Color = ColorSequence.new(light:Lerp(main, t))
+			b.Parent = carrier
+		end
+		prev = a
+	end
+	VFXLib.animate(duration, function(a, dt)
+		carrier.CFrame = carrier.CFrame * CFrame.Angles(0, 0, (dt or 0) * (2 + a * 8))
+	end, function()
+		carrier:Destroy()
+	end)
+end
+
+--[[ The Golden Rectangle: nested golden-ratio rectangles with the spiral
+     drawn through them, growing in and turning.
+     opts: Size, Duration, Color (outer), Color2 (inner/light), Turn (radians) ]]
+function TuskVFX.CreateGoldenRectangle(cframe, opts)
+	opts = opts or {}
+	local size, duration = opts.Size or 3, opts.Duration or 0.8
+	local main, light = opts.Color or colors.Gold, opts.Color2 or colors.GoldLight
+	local carrier = VFXLib.anchor(cframe)
+	local phi = 1.618
+	local function line(a, b, width, color)
+		local a0 = Instance.new("Attachment")
+		a0.Position = a
+		a0.Parent = carrier
+		local a1 = Instance.new("Attachment")
+		a1.Position = b
+		a1.Parent = carrier
+		local beam = Instance.new("Beam")
+		beam.Attachment0 = a0
+		beam.Attachment1 = a1
+		beam.FaceCamera = true
+		beam.LightEmission = 1
+		beam.Segments = 1
+		beam.Width0 = width
+		beam.Width1 = width
+		beam.Color = ColorSequence.new(color)
+		beam.Parent = carrier
+	end
+	-- Outer rectangle, then squares cut off in turn (left, top, right, bottom...).
+	-- Each square gets a quarter circle centred on its inner corner: together
+	-- they make the golden spiral.
+	local x0, y0, w, h = -size * phi / 2, -size / 2, size * phi, size
+	local arcs = {}
+	for i = 0, 6 do
+		local color = light:Lerp(main, i / 6)
+		local width = 0.16 * (1 - i * 0.1)
+		line(Vector3.new(x0, y0, 0), Vector3.new(x0 + w, y0, 0), width, color)
+		line(Vector3.new(x0 + w, y0, 0), Vector3.new(x0 + w, y0 + h, 0), width, color)
+		line(Vector3.new(x0 + w, y0 + h, 0), Vector3.new(x0, y0 + h, 0), width, color)
+		line(Vector3.new(x0, y0 + h, 0), Vector3.new(x0, y0, 0), width, color)
+		local side = i % 4
+		if side == 0 then -- square on the left
+			local sq = h
+			table.insert(arcs, { x0 + sq, y0, sq, math.pi, math.pi / 2 })
+			x0, w = x0 + sq, w - sq
+		elseif side == 1 then -- square on top
+			local sq = w
+			table.insert(arcs, { x0, y0 + h - sq, sq, math.pi / 2, 0 })
+			h = h - sq
+		elseif side == 2 then -- square on the right
+			local sq = h
+			table.insert(arcs, { x0 + w - sq, y0 + h, sq, 0, -math.pi / 2 })
+			w = w - sq
+		else -- square on the bottom
+			local sq = w
+			table.insert(arcs, { x0 + w, y0 + sq, sq, -math.pi / 2, -math.pi })
+			y0, h = y0 + sq, h - sq
+		end
+	end
+	local prev
+	for _, arc in ipairs(arcs) do
+		for k = 0, 5 do
+			local angle = arc[4] + (arc[5] - arc[4]) * k / 5
+			local p = Vector3.new(arc[1] + math.cos(angle) * arc[3], arc[2] + math.sin(angle) * arc[3], -0.05)
+			if prev then
+				line(prev, p, 0.22, light)
+			end
+			prev = p
+		end
+	end
+	VFXLib.animate(duration, function(a, dt)
+		local grow = VFXLib.easeOut(math.min(a * 2.5, 1))
+		carrier.CFrame = cframe * CFrame.Angles(0, 0, a * (opts.Turn or math.pi * 0.6))
+		for _, child in ipairs(carrier:GetChildren()) do
+			if child:IsA("Beam") then
+				child.Transparency = NumberSequence.new(math.clamp(1 - grow + math.max(0, a - 0.85) / 0.15, 0, 1))
+			end
+		end
+	end, function()
+		carrier:Destroy()
+	end)
+end
+
 
 return TuskVFX

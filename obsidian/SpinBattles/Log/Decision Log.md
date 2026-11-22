@@ -47,3 +47,6 @@ updated: 2026-11-22
 | 2026-11-22 | Animation engine upgrade: eases (In/Snap/Back/Sine), impact shake, elbows + legs + forward lunge, mirrored poses, breathing idle, smooth settle; every move re-keyed |
 | 2026-11-22 | Diego Brando / Scary Monsters added as character 6 (from the owner's raptor and Diego pictures): claw combo, Raptor Pounce, Dino Infection, Scary Monsters raptor form with Kinetic Vision, Raptor Pack ultimate |
 | 2026-11-22 | Blocky (classic Roblox) look for the Tusk Stands, the Scary Monsters raptor and Diego's tail (SpinShared.Blockify, TuskConfig.BlockyModels) |
+| 2026-11-22 | Tusk Act 2 uses golden-ratio visuals (Golden Rectangle + spiral) instead of portals; moves renamed; golden spiral construction fixed (also improves Gyro's Ball Breaker) |
+| 2026-11-22 | Scary Monsters slashes are blue |
+| 2026-11-22 | Dino Infection turns the victim into a dinosaur in their avatar's colours that Diego commands for 10 s (25 s cooldown on hit) |

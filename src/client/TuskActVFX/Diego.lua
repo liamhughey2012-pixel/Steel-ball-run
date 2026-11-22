@@ -8,7 +8,9 @@
 	    rakes, tail whips. The player's own body is hidden locally.
 	  * KINETIC VISION (Diego only, while transformed): moving enemies glow
 	  * claw marks, tail sweeps, "chomp" fangs that snap shut on bites
-	  * DINO INFECTION: teal glow, scales growing on the victim, spores
+	  * DINO INFECTION: scales spread over the victim, then they turn into a
+	    dinosaur in their own avatar's colours that Diego commands
+	    ("YOUR DINO 7s" tag, blue outline, bites, "sic 'em" target marks)
 	  * RAPTOR POUNCE: crouch, leap trail, crunching landing
 	  * RAPTOR PACK: a roar shock, then a pack of raptors charges out
 ]]
@@ -32,12 +34,16 @@ local sounds = TuskConfig.Sounds
 local localPlayer = Players.LocalPlayer
 local DIEGO_ACT = 6
 local WHITE = Color3.new(1, 1, 1)
+-- Scary Monsters' slashes are blue (owner's request).
+local SLASH = Color3.fromRGB(40, 110, 255)
+local SLASH_LIGHT = Color3.fromRGB(150, 205, 255)
 
 local dinos = {} -- [character] = transformed raptor entry
 local stanced = {} -- [character] = true while holding the human stance
 local infected = {} -- [model] = infection visuals
 local seen = {} -- [model] = kinetic-vision highlight
 local pack = {} -- [raptor id] = running pack raptor
+local thralls = {} -- [model] = a Dino Infection victim turned into a dinosaur
 local visionTint
 
 local function candidates()
@@ -84,8 +90,8 @@ local function clawMarks(cf, side, scale, color)
 			Width = 0.24 * scale,
 			Arc = math.rad(105),
 			Sweep = side * 1.5,
-			Color = color or pal.Main,
-			Color2 = WHITE,
+			Color = color or SLASH,
+			Color2 = SLASH_LIGHT,
 			Duration = 0.2,
 		})
 	end
@@ -255,6 +261,110 @@ local function stepDinos(dt)
 	end
 end
 
+---------------------------------------------------------------------------
+-- DINO INFECTION victims: a dinosaur in their own avatar's colours
+---------------------------------------------------------------------------
+local function partColor(model, names)
+	for _, n in ipairs(names) do
+		local p = model:FindFirstChild(n)
+		if p and p:IsA("BasePart") then
+			return p.Color
+		end
+	end
+	return nil
+end
+
+-- Colours from the victim's avatar: torso -> body, legs -> legs and tail, head -> head.
+local function avatarPalette(model)
+	local body = partColor(model, { "UpperTorso", "Torso" }) or pal.Main
+	local legs = partColor(model, { "LeftUpperLeg", "RightUpperLeg", "Left Leg", "Right Leg" }) or pal.Second
+	local head = partColor(model, { "Head" }) or body
+	-- Keep the body and legs readable when the avatar is all one colour.
+	local d = math.abs(body.R - legs.R) + math.abs(body.G - legs.G) + math.abs(body.B - legs.B)
+	if d < 0.15 then
+		legs = body:Lerp(Color3.new(0, 0, 0), 0.35)
+	end
+	return { Body = body, Legs = legs, Head = head }
+end
+
+local function stopThrall(model)
+	local t = thralls[model]
+	if not t then
+		return
+	end
+	thralls[model] = nil
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if root then
+		transformBurst(model, root, pal.Light)
+	end
+	t.Rig:Destroy()
+	t.Tag:Destroy()
+	t.Highlight:Destroy()
+	if model.Parent then
+		setHidden(model, false)
+	end
+end
+
+local function stepThralls(dt)
+	local now = os.clock()
+	local keep = {}
+	for _, model in ipairs(candidates()) do
+		local owner = model:GetAttribute("DinoThrall")
+		local root = model:FindFirstChild("HumanoidRootPart")
+		local humanoid = model:FindFirstChildOfClass("Humanoid")
+		if owner and root and humanoid and humanoid.Health > 0 then
+			keep[model] = true
+			local t = thralls[model]
+			if not t then
+				local rig = RaptorModel.build(0.85, { Lite = VFXQuality.get().RingSegments <= 12, Palette = avatarPalette(model) })
+				rig.Model.Parent = VFXLib.Folder
+				-- Blue outline: this dinosaur belongs to Diego.
+				local h = Instance.new("Highlight")
+				h.Adornee = rig.Model
+				h.FillTransparency = 1
+				h.OutlineColor = SLASH
+				h.DepthMode = Enum.HighlightDepthMode.Occluded
+				h.Parent = VFXLib.Folder
+				-- Floating tag with the time left.
+				local tag = Instance.new("BillboardGui")
+				tag.Size = UDim2.fromOffset(150, 26)
+				tag.StudsOffset = Vector3.new(0, 5.5, 0)
+				tag.AlwaysOnTop = true
+				tag.Adornee = root
+				tag.Parent = VFXLib.Folder
+				local label = Instance.new("TextLabel")
+				label.BackgroundTransparency = 1
+				label.Size = UDim2.fromScale(1, 1)
+				label.Font = Enum.Font.Bangers
+				label.TextScaled = true
+				label.TextColor3 = SLASH_LIGHT
+				label.TextStrokeTransparency = 0
+				label.Parent = tag
+				t = { Rig = rig, Tag = tag, Label = label, Highlight = h, Phase = 0, Jaw = 0, Lunge = 0 }
+				thralls[model] = t
+				transformBurst(model, root, pal.Main)
+				roarSound(root.Position, 0.75)
+			end
+			setHidden(model, true)
+			local v = root.AssemblyLinearVelocity
+			local speed = math.clamp(Vector3.new(v.X, 0, v.Z).Magnitude / 24, 0, 1)
+			t.Phase = t.Phase + dt * (3 + speed * 12)
+			local decay = math.exp(-dt * 7)
+			t.Jaw = t.Jaw * decay
+			t.Lunge = t.Lunge * decay
+			t.Rig:Pose(groundCF(model, root), { Time = now, Phase = t.Phase, Speed = speed, Jaw = math.max(t.Jaw, 0.15), Lunge = t.Lunge })
+			local untilT = model:GetAttribute("DinoThrallUntil")
+			local left = untilT and math.max(0, untilT - workspace:GetServerTimeNow()) or 0
+			t.Label.Text = (owner == localPlayer.UserId and "YOUR DINO" or "DIEGO'S DINO") .. "  " .. math.ceil(left) .. "s"
+		end
+	end
+	for model in pairs(thralls) do
+		if not keep[model] then
+			stopThrall(model)
+		end
+	end
+end
+
 -- Kinetic vision: while YOU are transformed, moving enemies glow through walls.
 local function stepVision()
 	local me = localPlayer.Character
@@ -264,7 +374,7 @@ local function stepVision()
 	local keep = {}
 	if active then
 		for _, model in ipairs(candidates()) do
-			if model ~= me then
+			if model ~= me and model:GetAttribute("DinoThrall") ~= localPlayer.UserId then
 				local root = model:FindFirstChild("HumanoidRootPart")
 				if root and (root.Position - myRoot.Position).Magnitude < range then
 					local v = root.AssemblyLinearVelocity
@@ -324,7 +434,7 @@ end
 local function stepInfected()
 	local keep = {}
 	for _, model in ipairs(candidates()) do
-		if model:GetAttribute("DinoInfected") then
+		if model:GetAttribute("DinoInfected") and not model:GetAttribute("DinoThrall") then
 			local root = model:FindFirstChild("HumanoidRootPart")
 			if root then
 				keep[model] = true
@@ -452,7 +562,7 @@ local function onM1(data)
 			TuskAnimation.play(character, "D_M1_3")
 		end
 		-- Wide low tail sweep around the body.
-		TuskVFX.CreateCrescent(root.CFrame * CFrame.new(0, -1.6, 0), { Radius = 4.5 * scale, Width = 0.5 * scale, Arc = math.rad(200), Sweep = 2.6, Color = pal.Second, Color2 = pal.Light, Duration = 0.26 })
+		TuskVFX.CreateCrescent(root.CFrame * CFrame.new(0, -1.6, 0), { Radius = 4.5 * scale, Width = 0.5 * scale, Arc = math.rad(200), Sweep = 2.6, Color = SLASH, Color2 = SLASH_LIGHT, Duration = 0.26 })
 		VFXLib.burst(root.Position - Vector3.new(0, 2.5, 0), { Count = 8, Texture = VFXLib.Textures.Smoke, Color = Color3.fromRGB(200, 180, 140), LightEmission = 0, Speed = 12, Lifetime = 0.5 })
 	else
 		if not dinoAction(character, "Bite") then
@@ -510,6 +620,31 @@ local function onAbility(data)
 			end
 			CameraFX.shakeAt(pos, data.Hit and 0.7 or 0.4, 50)
 		end
+	elseif data.Move == "DinoInfection" and data.Phase == "ThrallBite" then
+		local t = data.Target and thralls[data.Target]
+		if t then
+			t.Jaw = 1
+			t.Lunge = 1
+		end
+		chomp(data.Position + Vector3.new(0, 0.5, 0), data.Direction, 1.1)
+		VFXLib.sound(sounds.Hit, data.Position, 0.6, 0.85)
+	elseif data.Move == "DinoInfection" and data.Phase == "Command" then
+		-- "Sic 'em": a blue target mark on the prey, the dinosaur roars.
+		local t = data.Target and thralls[data.Target]
+		if t then
+			t.Jaw = 1
+		end
+		TuskVFX.CreateImpactStar(data.Position + Vector3.new(0, 1, 0), { Size = 5, Rays = 8, Color = SLASH, Color2 = SLASH_LIGHT, Duration = 0.35 })
+		TuskVFX.CreateRotationalShockwave(CFrame.new(data.Position - Vector3.new(0, 2.6, 0)), { Radius = 5, Layers = 2, Color = SLASH, Color2 = SLASH_LIGHT, Ground = true, Particles = 0, Width = 0.3 })
+		local thrallRoot = data.Target and data.Target:FindFirstChild("HumanoidRootPart")
+		if thrallRoot then
+			roarSound(thrallRoot.Position, 0.8)
+		end
+		if root then
+			TuskAnimation.play(character, "D_M1_1") -- Diego points the claw
+		end
+	elseif data.Move == "DinoInfection" and (data.Phase == "Turn" or data.Phase == "Release") then
+		-- Drawn by stepThralls from the DinoThrall attribute.
 	elseif data.Move == "DinoInfection" then
 		if data.Phase == "Startup" and root then
 			if not dinoAction(character, "Bite") then
@@ -696,6 +831,7 @@ local slowTimer = 0
 function Diego.step(dt)
 	dt = dt or 1 / 60
 	stepDinos(dt)
+	stepThralls(dt)
 	stepPack(dt)
 	slowTimer = slowTimer + dt
 	if slowTimer > 0.1 then

@@ -302,10 +302,17 @@ TuskConfig.Diego = {
 		TargetCone = 70, -- leaps at the nearest enemy inside this cone
 		Damage = 9, Stun = 0.6, Knockback = 14, HitRadius = 6.5,
 	},
-	DinoInfection = {
-		Cooldown = 9, Windup = 0.2, Damage = 7, Stun = 0.5, Knockback = 6,
+	DinoInfection = { -- the bite turns the victim into a dinosaur Diego commands
+		Cooldown = 25, -- after a hit
+		MissCooldown = 4, -- after a miss
+		Windup = 0.2, Damage = 7, Stun = 0.5, Knockback = 6,
 		HitboxSize = Vector3.new(5, 6, 6), HitboxForward = 3,
-		InfectTime = 4, InfectSlow = 0.6, InfectTick = 0.5, InfectDamage = 1, -- slowed + damage over time
+		SpreadTime = 0.8, -- scales spread over the victim before they turn
+		ThrallTime = 10, -- seconds Diego commands the dinosaur
+		ThrallSpeed = 1.3, -- dinosaur walk speed multiplier
+		ThrallTick = 0.15, ThrallAggroRange = 14, ThrallBiteRange = 4.5, ThrallBiteInterval = 0.9,
+		ThrallDamage = 5, -- bites on nearby enemies
+		CommandDamage = 7, CommandRange = 60, CommandCone = 50, CommandTime = 4, -- press again: "sic 'em"
 	},
 	ScaryMonsters = { -- turn into a full raptor
 		Cooldown = 14, -- starts when the transformation ends

@@ -102,6 +102,10 @@ function Adapter.canAct(player)
 	if Adapter.isStunned(character) then
 		return false
 	end
+	-- Turned into Diego's dinosaur (Scary Monsters): Diego is in control.
+	if character:GetAttribute("DinoThrall") then
+		return false
+	end
 	if Adapter.Hooks.CanAct and not Adapter.Hooks.CanAct(player) then
 		return false
 	end
@@ -120,6 +124,10 @@ function Adapter.canBeHit(attackerPlayer, targetCharacter)
 		return false
 	end
 	if targetCharacter:FindFirstChildOfClass("ForceField") then
+		return false
+	end
+	-- Diego can't hurt the dinosaur he is commanding.
+	if attackerPlayer and targetCharacter:GetAttribute("DinoThrall") == attackerPlayer.UserId then
 		return false
 	end
 	if not Adapter.Settings.FriendlyFire and attackerPlayer then

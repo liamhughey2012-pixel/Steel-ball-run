@@ -502,113 +502,13 @@ local function onAbility(data)
 	end
 end
 
--- Logarithmic spiral of beams (the Spin's "golden ratio" spiral, in green/white).
+-- Golden ratio spiral / Golden Rectangle in Gyro's green (shared in TuskVFX).
 local function spiral(cframe, size, duration)
-	local carrier = VFXLib.anchor(cframe)
-	local prev
-	local points = VFXQuality.get().RingSegments
-	for i = 0, points do
-		local t = i / points
-		local angle = t * math.pi * 4
-		local r = size * 0.08 * math.exp(t * 2.5)
-		local a = Instance.new("Attachment")
-		a.Position = Vector3.new(math.cos(angle) * r, math.sin(angle) * r, 0)
-		a.Parent = carrier
-		if prev then
-			local b = Instance.new("Beam")
-			b.Attachment0 = prev
-			b.Attachment1 = a
-			b.FaceCamera = true
-			b.LightEmission = 1
-			b.Width0 = 0.18
-			b.Width1 = 0.18
-			b.Color = ColorSequence.new(pal.Light:Lerp(pal.Main, t))
-			b.Parent = carrier
-		end
-		prev = a
-	end
-	VFXLib.animate(duration, function(a, dt)
-		carrier.CFrame = carrier.CFrame * CFrame.Angles(0, 0, (dt or 0) * (2 + a * 8))
-	end, function()
-		carrier:Destroy()
-	end)
+	TuskVFX.CreateGoldenSpiral(cframe, { Size = size, Duration = duration, Color = pal.Main, Color2 = pal.Light })
 end
 
--- The Golden Rectangle: nested golden-ratio rectangles with the spiral
--- drawn through them (green/white Spin energy), growing and turning.
 local function goldenRectangle(cframe, size, duration)
-	local carrier = VFXLib.anchor(cframe)
-	local phi = 1.618
-	local function line(a, b, width, color)
-		local a0 = Instance.new("Attachment")
-		a0.Position = a
-		a0.Parent = carrier
-		local a1 = Instance.new("Attachment")
-		a1.Position = b
-		a1.Parent = carrier
-		local beam = Instance.new("Beam")
-		beam.Attachment0 = a0
-		beam.Attachment1 = a1
-		beam.FaceCamera = true
-		beam.LightEmission = 1
-		beam.Segments = 1
-		beam.Width0 = width
-		beam.Width1 = width
-		beam.Color = ColorSequence.new(color)
-		beam.Parent = carrier
-	end
-	-- Outer rectangle, then 6 nested squares cut off in turn (golden subdivision).
-	local x0, y0, w, h = -size * phi / 2, -size / 2, size * phi, size
-	local spiralPoints = {}
-	for i = 0, 6 do
-		local color = pal.Light:Lerp(pal.Main, i / 6)
-		local width = 0.16 * (1 - i * 0.1)
-		line(Vector3.new(x0, y0, 0), Vector3.new(x0 + w, y0, 0), width, color)
-		line(Vector3.new(x0 + w, y0, 0), Vector3.new(x0 + w, y0 + h, 0), width, color)
-		line(Vector3.new(x0 + w, y0 + h, 0), Vector3.new(x0, y0 + h, 0), width, color)
-		line(Vector3.new(x0, y0 + h, 0), Vector3.new(x0, y0, 0), width, color)
-		-- Cut a square off the rectangle (rotating which side each time).
-		local side = i % 4
-		local sq = math.min(w, h)
-		local cx, cy
-		if side == 0 then
-			cx, cy = x0 + sq, y0 + sq
-			x0, w = x0 + sq, w - sq
-		elseif side == 1 then
-			cx, cy = x0 + w - sq, y0 + sq
-			y0, h = y0 + sq, h - sq
-		elseif side == 2 then
-			cx, cy = x0 + w - sq, y0 + h - sq
-			w = w - sq
-		else
-			cx, cy = x0 + sq, y0 + h - sq
-			h = h - sq
-		end
-		table.insert(spiralPoints, { cx, cy, sq, side })
-	end
-	-- Quarter-circle arcs through the squares = the golden spiral.
-	local prev
-	for _, q in ipairs(spiralPoints) do
-		for k = 0, 4 do
-			local angle = (q[4] * math.pi / 2) + math.pi + k / 4 * (math.pi / 2)
-			local p = Vector3.new(q[1] + math.cos(angle) * q[3], q[2] + math.sin(angle) * q[3], -0.05)
-			if prev then
-				line(prev, p, 0.22, pal.Light)
-			end
-			prev = p
-		end
-	end
-	VFXLib.animate(duration, function(a, dt)
-		local grow = VFXLib.easeOut(math.min(a * 2.5, 1))
-		carrier.CFrame = cframe * CFrame.Angles(0, 0, a * math.pi * 0.6)
-		for _, child in ipairs(carrier:GetChildren()) do
-			if child:IsA("Beam") then
-				child.Transparency = NumberSequence.new(math.clamp(1 - grow + math.max(0, a - 0.85) / 0.15, 0, 1))
-			end
-		end
-	end, function()
-		carrier:Destroy()
-	end)
+	TuskVFX.CreateGoldenRectangle(cframe, { Size = size, Duration = duration, Color = pal.Main, Color2 = pal.Light })
 end
 
 ---------------------------------------------------------------------------
