@@ -131,6 +131,14 @@ local function update(stand, root, dt, now)
 	local bob = math.sin(t * 2.2) * (sneaking and 0.08 or 0.22)
 	local offset = (sneaking and SNEAK_OFFSET or (IDLE_OFFSETS[stand.Act] or IDLE_OFFSET)) * CFrame.new(0, bob, 0)
 	local desired = root.CFrame * offset * CFrame.Angles(-lean, math.sin(t * 0.9) * 0.12, math.sin(t * 1.3) * 0.08)
+	if stand.Act == 1 and not sneaking then
+		-- Act 1 is small and restless: quick bounces plus a wandering drift.
+		local bounce = math.abs(math.sin(t * 4.2)) * 0.28
+		local driftX = math.noise(t * 0.9, stand.Phase) * 0.6
+		local driftZ = math.noise(stand.Phase, t * 0.8) * 0.45
+		local wobble = math.noise(t * 1.7, stand.Phase + 3) * 0.35
+		desired = desired * CFrame.new(driftX, bounce, driftZ) * CFrame.Angles(0, wobble, wobble * 0.4)
+	end
 	local snap = 12
 
 	local action = stand.Action
@@ -160,6 +168,13 @@ local function update(stand, root, dt, now)
 
 	-- Secondary motion on the built-in model.
 	local joints = stand.Rig.Joints
+	-- Head: curious little tilts and glances (Act 1 mascot).
+	if joints.Head then
+		local yaw = math.noise(t * 0.7, stand.Phase + 7) * 0.7
+		local tilt = math.noise(stand.Phase + 11, t * 0.9) * 0.3
+		local nod = math.sin(t * 2.6) * 0.06
+		joints.Head.Weld.C0 = joints.Head.Base * CFrame.Angles(nod, yaw, tilt) * joints.Head.Offset
+	end
 	if joints.EarL then
 		local flap = math.sin(t * 3.1) * 0.18 + lean * 0.5
 		joints.EarL.Weld.C0 = joints.EarL.Base * CFrame.Angles(0, 0, flap) * joints.EarL.Offset

@@ -234,7 +234,7 @@ end
 ---------------------------------------------------------------------------
 -- ACT 1 (from the owner's two reference images)
 ---------------------------------------------------------------------------
-local function buildAct1(scale)
+local function buildAct1Classic(scale)
 	local s = scale
 	local pink = Color3.fromRGB(236, 120, 200)
 	local pinkLight = Color3.fromRGB(250, 170, 225)
@@ -622,6 +622,123 @@ end
 -- dark crest, antennae, a slotted face mask, blue shoulder balls with red
 -- stars, a purple belly lens, thin limbs with ball joints and spiked claws.
 ---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+-- ACT 1 "Mascot" (owner's written description): a small, toy-like blue and
+-- cyan humanoid with a big round head, big eyes, mechanical seams, pink
+-- accents, short arms and legs, and cyan Spin sparkles on its hands.
+---------------------------------------------------------------------------
+local function sparkles(parent, color)
+	local a = Instance.new("Attachment")
+	a.Name = "SpinSparkles"
+	a.Parent = parent
+	local e = Instance.new("ParticleEmitter")
+	e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	e.Color = ColorSequence.new(color)
+	e.LightEmission = 1
+	e.LightInfluence = 0
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.18), NumberSequenceKeypoint.new(1, 0) })
+	e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+	e.Lifetime = NumberRange.new(0.3, 0.6)
+	e.Speed = NumberRange.new(0.5, 1.5)
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.Rate = 7
+	e.Parent = a
+	return e
+end
+
+local function buildAct1Mascot(scale)
+	local s = scale
+	local blue = Color3.fromRGB(46, 120, 214)
+	local cyan = Color3.fromRGB(90, 214, 250)
+	local light = Color3.fromRGB(196, 240, 255)
+	local navy = Color3.fromRGB(26, 52, 120)
+	local pink = Color3.fromRGB(246, 120, 190)
+	local steel = Color3.fromRGB(170, 185, 200)
+
+	local model = Instance.new("Model")
+	model.Name = "TuskAct1"
+	-- Small torso is the root; the big head sits on top (animated).
+	local torso = part(model, { Name = "Body", Size = Vector3.new(0.85, 0.9, 0.7) * s, Color = blue, Ellipsoid = true, Massless = false })
+	torso.CFrame = CFrame.new()
+	torso.Anchored = true
+	model.PrimaryPart = torso
+	local rig = { Body = torso, Joints = {} }
+
+	local chest = part(model, { Name = "ChestPlate", Size = Vector3.new(0.6, 0.55, 0.2) * s, Color = light, Ellipsoid = true })
+	attach(torso, chest, CFrame.new(0, 0.05 * s, -0.27 * s))
+	star5(model, torso, Vector3.new(0, 0.06 * s, -0.38 * s), Vector3.new(0, 0, -1), 0.32 * s, pink, 0)
+	local belt = part(model, { Name = "Belt", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.1, 0.78, 0.78) * s, Color = navy, Material = Enum.Material.Metal })
+	attach(torso, belt, CFrame.new(0, -0.3 * s, 0) * CFrame.Angles(0, 0, math.pi / 2))
+
+	-- Head: a separate welded group so it can tilt and look around.
+	local headBase = CFrame.new(0, 0.95 * s, -0.02 * s)
+	local head = part(model, { Name = "Head", Size = Vector3.new(1.45, 1.35, 1.35) * s, Color = cyan, Ellipsoid = true })
+	local headWeld = attach(torso, head, headBase)
+	rig.Joints.Head = { Weld = headWeld, Base = headBase, Offset = CFrame.new() }
+	local face = part(model, { Name = "Face", Size = Vector3.new(1.15, 0.95, 0.5) * s, Color = light, Ellipsoid = true })
+	attach(head, face, CFrame.new(0, -0.08 * s, -0.47 * s))
+	-- Mechanical seam ring and side bolts.
+	local seam = part(model, { Name = "Seam", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.06, 1.47, 1.47) * s, Color = navy, Material = Enum.Material.Metal })
+	attach(head, seam, CFrame.Angles(0, math.pi / 2, 0) * CFrame.Angles(0, 0, 0))
+	for _, side in ipairs({ -1, 1 }) do
+		local bolt = part(model, { Name = "Bolt", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.14, 0.3, 0.3) * s, Color = steel, Material = Enum.Material.Metal })
+		attach(head, bolt, CFrame.new(side * 0.72 * s, 0.02 * s, 0))
+		local cheek = part(model, { Name = "Cheek", Size = Vector3.new(0.18, 0.11, 0.05) * s, Color = pink, Ellipsoid = true })
+		attach(head, cheek, CFrame.new(side * 0.36 * s, -0.3 * s, -0.66 * s))
+	end
+	-- Antenna with a pink star ball.
+	local antenna = part(model, { Name = "Antenna", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, 0.05, 0.05) * s, Color = navy, Material = Enum.Material.Metal })
+	attach(head, antenna, CFrame.new(0.15 * s, 0.82 * s, 0) * CFrame.Angles(0, 0, math.pi / 2 - 0.3))
+	local bulb = part(model, { Name = "AntennaBall", Size = Vector3.new(0.18, 0.18, 0.18) * s, Color = pink, Material = Enum.Material.Neon, Ellipsoid = true })
+	attach(head, bulb, CFrame.new(0.21 * s, 1.02 * s, 0))
+	-- Big, slightly mismatched toy eyes.
+	for _, e in ipairs({ { -1, 0.42 }, { 1, 0.38 } }) do
+		local eyePos = CFrame.new(e[1] * 0.3 * s, 0.08 * s, -0.62 * s)
+		local white = part(model, { Name = "Eye", Size = Vector3.new(0.4, e[2] * 1.15, 0.2) * s, Color = Color3.new(1, 1, 1), Ellipsoid = true })
+		attach(head, white, eyePos)
+		local pupil = part(model, { Name = "Pupil", Size = Vector3.new(0.25, e[2] * 0.75, 0.08) * s, Color = Color3.fromRGB(15, 20, 45), Ellipsoid = true })
+		attach(head, pupil, eyePos * CFrame.new(e[1] * -0.03 * s, -0.02 * s, -0.08 * s))
+		local glint = part(model, { Name = "Glint", Size = Vector3.new(0.08, 0.08, 0.03) * s, Color = Color3.new(1, 1, 1), Ellipsoid = true })
+		attach(head, glint, eyePos * CFrame.new(0.05 * s, 0.07 * s, -0.12 * s))
+		local rim = part(model, { Name = "EyeRim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.05, 0.46, 0.46) * s, Color = navy, Material = Enum.Material.Metal })
+		attach(head, rim, eyePos * CFrame.new(0, 0, 0.02 * s) * CFrame.Angles(0, math.pi / 2, 0))
+	end
+	local mouth = part(model, { Name = "Mouth", Size = Vector3.new(0.2, 0.07, 0.04) * s, Color = pink, Ellipsoid = true })
+	attach(head, mouth, CFrame.new(0, -0.38 * s, -0.66 * s))
+
+	-- Short arms (animated) with round hands and cyan Spin sparkles.
+	for _, a in ipairs({ { "ArmL", -1 }, { "ArmR", 1 } }) do
+		local shoulder = CFrame.new(a[2] * 0.45 * s, 0.22 * s, 0) * CFrame.Angles(0, 0, a[2] * 0.45)
+		local _, hand = limb(model, torso, rig, a[1], shoulder, 0.5 * s, 0.2 * s, cyan, light)
+		hand.Size = Vector3.new(0.3, 0.3, 0.3) * s
+		local pad = part(model, { Name = "ElbowPad", Size = Vector3.new(0.22, 0.22, 0.22) * s, Color = pink, Ellipsoid = true })
+		attach(torso, pad, shoulder)
+		sparkles(hand, cyan)
+		if a[1] == "ArmR" then
+			rig.NailPoint = Instance.new("Attachment")
+			rig.NailPoint.Name = "NailPoint"
+			rig.NailPoint.Parent = hand
+		end
+	end
+	-- Short stubby legs (animated) with navy boots.
+	for i, side in ipairs({ -1, 1 }) do
+		local hip = CFrame.new(side * 0.2 * s, -0.4 * s, 0)
+		local _, foot = limb(model, torso, rig, "Leg" .. i, hip, 0.4 * s, 0.22 * s, blue, navy)
+		foot.Size = Vector3.new(0.3, 0.26, 0.4) * s
+	end
+	return model, rig
+end
+
+-- Act 1 has two looks: "Mascot" (default) or "Classic" (the pink star
+-- creature from the drawings). Switch in TuskConfig.StandModels[1].Style.
+local function buildAct1(scale)
+	local settings = TuskConfig.StandModels and TuskConfig.StandModels[1] or {}
+	if settings.Style == "Classic" then
+		return buildAct1Classic(scale)
+	end
+	return buildAct1Mascot(scale)
+end
+
 local function buildAct3(scale)
 	local s = scale * 1.15
 	local pink = Color3.fromRGB(226, 110, 178)

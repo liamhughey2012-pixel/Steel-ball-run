@@ -100,6 +100,11 @@ SERVER_HEADER = '''--[[
 
 	MAP SETTINGS (change here):
 ]]
+-- Safety check: this code must be in a Script in ServerScriptService.
+if not game:GetService("RunService"):IsServer() or script:IsA("LocalScript") then
+	error("[Spin] This is the Spin_SERVER code. It must go in a Script in ServerScriptService, not a LocalScript. Paste Spin_Client.lua into the LocalScript instead.")
+end
+
 local BUILD_MAP_ON_START = true -- false = don't build the SBR map
 local MAP_ORIGIN = Vector3.new(0, 0, 0) -- move the map away from an existing one, e.g. Vector3.new(1500, 0, 0)
 
@@ -136,6 +141,11 @@ CLIENT_HEADER = '''--[[
 	Needs these ModuleScripts in ReplicatedStorage: SpinConfig, TuskConfig.
 	Works with the Script Spin_Server in ServerScriptService.
 ]]
+
+-- Safety check: this code must be in a LocalScript in StarterPlayerScripts.
+if game:GetService("RunService"):IsServer() then
+	error("[Spin] This is the Spin_CLIENT code. It must go in a LocalScript in StarterPlayer > StarterPlayerScripts. Paste Spin_Server.lua into the Script in ServerScriptService instead.")
+end
 
 '''
 CLIENT_MAIN = '''__require("SpinMeter").init()

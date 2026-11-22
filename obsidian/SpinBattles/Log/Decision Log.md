@@ -23,3 +23,5 @@ updated: 2026-11-22
 | 2026-11-22 | Act 1 and Act 2 Stands rebuilt from the owner's images; Act 1 store model is optional (AssetId 0 by default) |
 | 2026-11-22 | Stand previews are rendered outside Studio with tools/preview (Roblox maths stand-in + ray tracer) |
 | 2026-11-22 | Act 3 and Act 4 Stands rebuilt from the owner's images |
+| 2026-11-22 | Act 1 default look is the blue/cyan Mascot (owner's description); the pink Classic look stays as an option |
+| 2026-11-22 | Both scripts check they are in the right kind of script and explain the fix if not |

@@ -4,7 +4,9 @@ status: built
 updated: 2026-11-22
 ---
 # Tusk Act 1: the beginning of Spin
-Stand: rebuilt from the owner's two reference drawings: tilted pink egg, big five-point forehead star with dark fur, gold pin to a gold cone beak, heavy-lidded eyes with lashes and wavy tendrils, one big sweeping ear and one drooping ear, long chin with gold spikes, a side appendage with a horn, orange stars everywhere, five legs with heart feet.
+**Default look "Mascot"** (owner's written description): a small blue/cyan toy-like humanoid with a big round head, big eyes, mechanical seams and bolts, pink accents, short arms and legs, cyan Spin sparkles on its hands. It floats with quick, bouncy, slightly unpredictable motion and looks around.
+
+**Alternative look "Classic"** (`TuskConfig.StandModels[1].Style = "Classic"`), from the owner's two drawings: tilted pink egg, big five-point forehead star with dark fur, gold pin to a gold cone beak, heavy-lidded eyes with lashes and wavy tendrils, one big sweeping ear and one drooping ear, long chin with gold spikes, a side appendage with a horn, orange stars everywhere, five legs with heart feet.
 
 | Input | Move | What it does | Numbers (TuskConfig.Act1) |
 |---|---|---|---|

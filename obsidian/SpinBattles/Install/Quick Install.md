@@ -21,3 +21,6 @@ Same format as Anime Fighters: `_Server` = Script, `_Client` = LocalScript, sett
 **Settings** (damage, cooldowns, keys, sound ids) live only in SpinConfig and TuskConfig.
 
 > If you installed the older 39-script version, delete the `SpinShared`, `SpinServer`, `SpinClient` and `SpinTools` objects first.
+
+## Wrong script?
+`Spin_Server` code goes in the **Script**, `Spin_Client` code goes in the **LocalScript**. If they're swapped, the Output now shows a clear message saying which file goes where.

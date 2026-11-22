@@ -138,3 +138,8 @@ function dumpParts()
 	end
 	return table.concat(out, "\n")
 end
+ColorSequence = { new = function(...) return { ... } end }
+NumberSequence = { new = function(...) return { ... } end }
+NumberSequenceKeypoint = { new = function(...) return { ... } end }
+NumberRange = { new = function(...) return { ... } end }
+Vector2 = { new = function(x, y) return { X = x, Y = y } end }

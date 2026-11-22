@@ -91,7 +91,12 @@ TuskConfig.Ultimate = {
 -- Any Scripts inside a loaded model are removed for safety.
 ---------------------------------------------------------------------------
 TuskConfig.StandModels = {
-	[1] = { AssetId = 0, Height = 3.2, Rotation = Vector3.new(0, 0, 0) }, -- 0 = new built-in Act 1 (set 8768080824 to use the "Tusk1" store model)
+	[1] = {
+		AssetId = 0, -- set 8768080824 to use the "Tusk1" store model instead
+		Style = "Mascot", -- built-in look: "Mascot" (small blue/cyan toy-like humanoid) or "Classic" (pink star creature)
+		Height = 3.2,
+		Rotation = Vector3.new(0, 0, 0),
+	},
 	[2] = { AssetId = 0, Height = 3.6, Rotation = Vector3.new(0, 0, 0) },
 	[3] = { AssetId = 0, Height = 4.6, Rotation = Vector3.new(0, 0, 0) },
 	[4] = { AssetId = 0, Height = 6, Rotation = Vector3.new(0, 0, 0) },
