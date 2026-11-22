@@ -38,3 +38,5 @@ updated: 2026-11-22
 | 2026-11-22 | Animations: support AnimationConstraint joints, warn when no joints, hold poses slightly longer |
 | 2026-11-22 | Tusk Awakening rebuilt: screen darkens, stacked magic circles, 8 cyan nails orbit and fly out, pillar + ground cracks + starburst |
 | 2026-11-22 | VFX polish for Johnny and Gyro: crescent M1 slashes, impact stars on every hit (cyan/green by attacker), finisher and ultimate ground cracks |
+| 2026-11-22 | Gyro: Steel Ball Throw gets a glow, spiral trails, afterimages, a release ring and drilling ripples; Spin Tornado gets spiral strands, a wind body, a ground swirl, flying debris and sparks |
+| 2026-11-22 | Map upgrade 3: river with waterfall, covered bridge, railway trestle, gold camp, Dustwater ghost town, Lucky Horseshoe Ranch, Fort Dust, signpost, 8 NPCs |

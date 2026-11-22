@@ -1696,6 +1696,34 @@ local function spawnBall(data)
 	trail.WidthScale = NumberSequence.new(1, 0)
 	trail.Transparency = NumberSequence.new(0.1, 1)
 	trail.Parent = core
+	-- Steel Ball Throw / return: green glow, spiral Spin trails, afterimages.
+	local glow, helix
+	if style == "Throw" or style == "Return" then
+		glow = VFXLib.part({ Shape = Enum.PartType.Ball, Material = Enum.Material.ForceField, Color = pal.Main, Transparency = 0.1, Size = Vector3.new(1.9, 1.9, 1.9) })
+		helix = VFXLib.anchor(CFrame.new(data.Origin))
+		local strands = VFXQuality.get().RingSegments > 12 and 3 or 2
+		for i = 1, strands do
+			local th = (i - 1) / strands * math.pi * 2
+			local dir = Vector3.new(math.cos(th), math.sin(th), 0)
+			local h0 = Instance.new("Attachment")
+			h0.Position = dir * 0.9
+			h0.Parent = helix
+			local h1 = Instance.new("Attachment")
+			h1.Position = dir * 1.05
+			h1.Parent = helix
+			local t = Instance.new("Trail")
+			t.Attachment0 = h0
+			t.Attachment1 = h1
+			t.Color = ColorSequence.new(Color3.new(1, 1, 1), pal.Main)
+			t.LightEmission = 1
+			t.LightInfluence = 0
+			t.FaceCamera = true
+			t.Lifetime = 0.3
+			t.WidthScale = NumberSequence.new(1, 0.1)
+			t.Transparency = NumberSequence.new(0, 1)
+			t.Parent = helix
+		end
+	end
 	local whirl
 	if style == "Breaker" then
 		-- Spinning spiral trailing the giant ball.
@@ -1724,6 +1752,8 @@ local function spawnBall(data)
 		end
 	end
 	balls[data.Id] = {
+		Glow = glow,
+		Helix = helix,
 		Whirl = whirl,
 		Model = ball,
 		Rings = rings,
@@ -1739,7 +1769,14 @@ local function spawnBall(data)
 	}
 	VFXLib.sound(sounds.NailFire, data.Origin, 0.5, style == "Wrecking" and 1.3 or 0.8)
 	if style ~= "Return" then
-		VFXLib.burst(data.Origin, { Count = 8, Color = pal.Light, Speed = 14, Spread = 30, Direction = data.Direction, Lifetime = 0.25 })
+		VFXLib.burst(data.Origin, { Count = 14, Color = pal.Light, Speed = 22, Spread = 30, Direction = data.Direction, Lifetime = 0.3 })
+	end
+	if style == "Throw" then
+		-- Release: a spin ring blasts off the hand along the throw, plus a flash.
+		local axis = CFrame.lookAt(data.Origin, data.Origin + data.Direction) * CFrame.Angles(math.pi / 2, 0, 0)
+		TuskVFX.CreateRotationalShockwave(axis, { Radius = 3.2, Layers = 2, Color = pal.Light, Color2 = pal.Main, Particles = 0, Width = 0.25, Duration = 0.3, Spin = 6 })
+		TuskVFX.CreateImpactStar(data.Origin, { Size = 3, Rays = 6, Color = pal.Main, Color2 = pal.Light, Duration = 0.18 })
+		VFXLib.flash(data.Origin, pal.Main, 4, 16, 0.2)
 	end
 end
 
@@ -1749,6 +1786,17 @@ local function removeBall(v)
 	end
 	if v.Whirl then
 		v.Whirl:Destroy()
+	end
+	if v.Glow then
+		v.Glow:Destroy()
+	end
+	if v.Helix then
+		Debris:AddItem(v.Helix, 0.4) -- let the spiral trails finish fading
+		for _, t in ipairs(v.Helix:GetChildren()) do
+			if t:IsA("Trail") then
+				t.Enabled = false
+			end
+		end
 	end
 	v.Model:Destroy()
 end
@@ -1767,8 +1815,19 @@ local function endBall(data)
 		VFXLib.burst(data.Position, { Count = 10, Color = Color3.fromRGB(255, 170, 70), Speed = 25, Lifetime = 0.3, Acceleration = Vector3.new(0, -50, 0) })
 		VFXLib.sound(sounds.NailImpact, data.Position, 0.4, 1.3)
 	elseif style == "Throw" then
-		TuskVFX.CreateImpact(data.Position, data.Normal, { Size = 1, Radius = 3.5, Layers = 2, Color = pal.Main, Color2 = pal.Light, Sound = sounds.NailImpact, Pitch = 0.8 })
-		CameraFX.shakeAt(data.Position, 0.3, 50)
+		TuskVFX.CreateImpact(data.Position, data.Normal, { Size = 1.3, Radius = 4.5, Layers = 3, Color = pal.Main, Color2 = pal.Light, Sound = sounds.NailImpact, Pitch = 0.8 })
+		-- The Spin keeps drilling: two late ripples spiral out from the hit.
+		local normal = data.Normal or Vector3.new(0, 1, 0)
+		local axis = CFrame.lookAt(data.Position, data.Position + normal) * CFrame.Angles(-math.pi / 2, 0, 0)
+		for i = 1, 2 do
+			task.delay(0.08 * i, function()
+				TuskVFX.CreateRotationalShockwave(axis, { Radius = 3 + i * 2, Layers = 1, Color = pal.Light, Color2 = pal.Main, Particles = 0.5, Width = 0.2, Duration = 0.35, Spin = 8 })
+			end)
+		end
+		if normal.Y > 0.6 then
+			TuskVFX.CreateGroundCracks(data.Position, { Radius = 5, Count = 5, Color = pal.Main, Duration = 1.2 })
+		end
+		CameraFX.shakeAt(data.Position, 0.4, 50)
 	end
 end
 
@@ -1795,6 +1854,18 @@ local function stepBalls(dt)
 		if v.Whirl then
 			v.Whirl.CFrame = facing * CFrame.new(0, 0, 3.5) * CFrame.Angles(0, 0, v.Spin * 0.5)
 		end
+		if v.Glow then
+			local pulse = 1.8 + math.sin(v.Spin * 0.8) * 0.25
+			v.Glow.Size = Vector3.new(pulse, pulse, pulse)
+			v.Glow.CFrame = facing
+		end
+		if v.Helix then
+			v.Helix.CFrame = facing * CFrame.Angles(0, 0, v.Spin * 0.6)
+			if v.Style == "Throw" and VFXQuality.get().Afterimages and now >= v.NextGhost then
+				v.NextGhost = now + 0.05
+				VFXLib.afterimage(facing, 1, pal.Light)
+			end
+		end
 		if now > v.Expire then
 			balls[id] = nil
 			removeBall(v)
@@ -1812,6 +1883,21 @@ local function onAbility(data)
 	if data.Move == "SteelBallThrow" then
 		if data.Phase == "Startup" and root then
 			TuskAnimation.play(character, "GyroThrow")
+			-- Wind-up: the ball spins faster and faster inside two whirling rings.
+			for i = 1, 2 do
+				TuskVFX.CreateSpinRing({
+					Follow = function()
+						local hand = handOf(character)
+						return hand and hand.Parent and hand.CFrame * CFrame.new(0, -0.6, 0) or nil
+					end,
+					Tilt = CFrame.Angles(0.9 * i, 0, 0.6 * i),
+					Radius = 0.9 + i * 0.3,
+					Width = 0.08,
+					Color = i == 1 and pal.Light or pal.Main,
+					RotationSpeed = 10 + i * 4,
+					Duration = data.Startup or 0.3,
+				})
+			end
 			if entry then
 				entry.Spin = 30
 				task.delay(data.Startup, function()
@@ -1827,6 +1913,8 @@ local function onAbility(data)
 		end
 	elseif data.Move == "SpinTornado" and data.Phase == "Startup" and root then
 		TuskAnimation.play(character, "GyroBowl")
+		TuskVFX.CreateMagicCircle(CFrame.new(root.Position - Vector3.new(0, 2.9, 0)), { Radius = 4, Color = pal.Main, Color2 = pal.Light, Duration = (data.Startup or 0.3) + 0.3, RotationSpeed = 5, Points = 5 })
+		VFXLib.burst(root.Position - Vector3.new(0, 2.5, 0), { Count = 12, Color = pal.Light, Speed = 10, Spread = 40, Direction = Vector3.new(0, 1, 0), Lifetime = 0.4 })
 		if entry then
 			entry.Spin = 40
 			task.delay(data.Startup, function()
@@ -2186,10 +2274,69 @@ local function startTornado(data)
 	sparks.Rate = 40 * VFXQuality.get().Particles
 	sparks.Parent = carrier
 	t.Carrier = carrier
+	local high = VFXQuality.get().RingSegments > 12
+	-- Spiral strands of light winding up the funnel (rotated every frame).
+	local helix = VFXLib.anchor(CFrame.new(data.Position))
+	local strands = high and 3 or 2
+	local points = high and 14 or 8
+	for sIdx = 1, strands do
+		local prev
+		for i = 0, points do
+			local k = i / points
+			local th = k * math.pi * 3 + (sIdx - 1) / strands * math.pi * 2
+			local rad = r * (0.2 + k * 0.85)
+			local a = Instance.new("Attachment")
+			a.Position = Vector3.new(math.cos(th) * rad, -2.5 + k * 12, math.sin(th) * rad)
+			a.Parent = helix
+			if prev then
+				local b = Instance.new("Beam")
+				b.Attachment0 = prev
+				b.Attachment1 = a
+				b.FaceCamera = true
+				b.LightEmission = 1
+				b.LightInfluence = 0
+				b.Segments = 1
+				b.Width0 = 0.35 + k * 0.3
+				b.Width1 = 0.35 + k * 0.3
+				b.Color = ColorSequence.new(Color3.new(1, 1, 1):Lerp(pal.Main, k))
+				b.Transparency = NumberSequence.new(0.15 + k * 0.45)
+				b.Parent = helix
+			end
+			prev = a
+		end
+	end
+	t.Helix = helix
+	-- See-through wind body: stacked force-field rings of air.
+	t.Body = {}
+	for i = 1, (high and 3 or 2) do
+		local k = (i - 1) / 2
+		local d = r * (0.6 + k * 1.1)
+		t.Body[i] = {
+			Part = VFXLib.part({ Shape = Enum.PartType.Cylinder, Material = Enum.Material.ForceField, Color = i == 2 and pal.Light or pal.Main, Transparency = 0.15, Size = Vector3.new(4, d, d) }),
+			Height = -1 + k * 8,
+			Speed = (i % 2 == 0) and -7 or 9,
+		}
+	end
+	-- Ground swirl: a flat ring of churned dust at the base.
+	t.Ground = VFXLib.ring({ Radius = r * 1.3, Width = 0.5, Color = Color3.fromRGB(225, 205, 160), Transparency = 0.35, LightEmission = 0.2 })
+	-- Debris sucked up the funnel: rocks and planks that orbit and rise.
+	t.Debris = {}
+	local debrisCount = high and 8 or 4
+	for i = 1, debrisCount do
+		local isPlank = i % 3 == 0
+		t.Debris[i] = {
+			Part = VFXLib.part({ Material = isPlank and Enum.Material.Wood or Enum.Material.Sandstone, Color = isPlank and Color3.fromRGB(120, 84, 52) or Color3.fromRGB(180, 150, 110), Size = isPlank and Vector3.new(0.3, 0.3, 1.6) or Vector3.new(0.7, 0.6, 0.7), CastShadow = true }),
+			Phase = i / debrisCount * math.pi * 2,
+			Rise = math.random(),
+			Speed = 0.35 + math.random() * 0.3,
+		}
+	end
+	t.NextBolt = os.clock() + 0.2
 	t.Sound = VFXLib.sound(sounds.ChargeLoop, carrier, 0.6, 0.6, true)
 	t.Expire = os.clock() + data.Duration + 1
 	tornadoes[data.Id] = t
-	VFXLib.burst(data.Position, { Count = 16, Color = pal.Light, Speed = 18, Lifetime = 0.4 })
+	VFXLib.burst(data.Position, { Count = 24, Color = pal.Light, Speed = 22, Lifetime = 0.45 })
+	TuskVFX.CreateRotationalShockwave(CFrame.new(data.Position - Vector3.new(0, 2.5, 0)), { Radius = r * 1.6, Layers = 2, Color = pal.Light, Color2 = pal.Main, Ground = true, Particles = 0.5, Width = 0.4, Duration = 0.4 })
 end
 
 local function endTornado(data)
@@ -2203,10 +2350,34 @@ local function endTornado(data)
 			t.Sound:Destroy()
 		end
 		t.Carrier:Destroy()
+		t.Helix:Destroy()
+		t.Ground:Destroy()
+		for _, b in ipairs(t.Body) do
+			b.Part:Destroy()
+		end
+		-- Debris is flung outward when the tornado bursts.
+		for _, d in ipairs(t.Debris) do
+			local part = d.Part
+			local from = part.Position
+			local out = Vector3.new(from.X - t.Pos.X, 0, from.Z - t.Pos.Z)
+			out = (out.Magnitude > 0.01 and out.Unit or Vector3.new(1, 0, 0)) * (18 + math.random() * 10) + Vector3.new(0, 12, 0)
+			local spin = Vector3.new(math.random() * 10, math.random() * 10, math.random() * 10)
+			VFXLib.animate(0.9, function(a)
+				local p = from + out * a + Vector3.new(0, -30 * a * a, 0)
+				part.CFrame = CFrame.new(p) * CFrame.Angles(spin.X * a, spin.Y * a, spin.Z * a)
+				part.Transparency = math.max(0, (a - 0.6) / 0.4)
+			end, function()
+				part:Destroy()
+			end)
+		end
 	end
 	local pos = data.Position
 	TuskVFX.CreateRotationalShockwave(CFrame.new(pos - Vector3.new(0, 2.5, 0)), { Radius = data.Radius * 1.6, Layers = 3, Color = pal.Main, Color2 = pal.Light, Ground = true, Particles = 2, Width = 0.7 })
 	VFXLib.burst(pos, { Count = 30, Color = pal.Light, Speed = 40, Lifetime = 0.5 })
+	TuskVFX.CreateImpactStar(pos, { Size = 9, Rays = 10, Color = pal.Main, Color2 = pal.Light, Duration = 0.35, Width = 1 })
+	TuskVFX.CreateEnergyPillar(pos - Vector3.new(0, 2.5, 0), { Radius = data.Radius * 0.9, Height = 35, Color = pal.Light, Color2 = pal.Main, Duration = 0.5 })
+	TuskVFX.CreateGroundCracks(pos, { Radius = data.Radius * 1.4, Color = pal.Main, Duration = 1.6 })
+	VFXLib.flash(pos, pal.Light, 8, 30, 0.4)
 	VFXLib.sound(sounds.Finisher, pos, 0.8, 0.9)
 	CameraFX.shakeAt(pos, 0.8, 70)
 end
@@ -2221,6 +2392,25 @@ local function stepTornadoes(dt)
 			layer.Ring:SetCFrame(CFrame.new(t.Pos + Vector3.new(sway, layer.Height, 0)) * CFrame.Angles(layer.Tilt, t.Angle * layer.Speed, 0))
 		end
 		t.Carrier.CFrame = CFrame.new(t.Pos + Vector3.new(0, 2, 0))
+		t.Helix.CFrame = CFrame.new(t.Pos) * CFrame.Angles(0, -t.Angle * 7, 0)
+		t.Ground:SetCFrame(CFrame.new(t.Pos - Vector3.new(0, 2.6, 0)) * CFrame.Angles(0, t.Angle * 5, 0))
+		for _, b in ipairs(t.Body) do
+			-- Upright cylinder (axis X -> world up), spun around its axis for a shimmer.
+			b.Part.CFrame = CFrame.new(t.Pos + Vector3.new(0, b.Height, 0)) * CFrame.Angles(0, 0, math.pi / 2) * CFrame.Angles(t.Angle * b.Speed, 0, 0)
+		end
+		for _, d in ipairs(t.Debris) do
+			d.Rise = (d.Rise + dt * d.Speed) % 1
+			local th = d.Phase + t.Angle * (8 - d.Rise * 3)
+			local rad = t.Radius * (0.3 + d.Rise * 0.8)
+			d.Part.CFrame = CFrame.new(t.Pos + Vector3.new(math.cos(th) * rad, -2 + d.Rise * 11, math.sin(th) * rad)) * CFrame.Angles(th * 2, th, 0)
+		end
+		-- Green Spin sparks crackling inside the funnel.
+		if now >= t.NextBolt then
+			t.NextBolt = now + 0.18 + math.random() * 0.2
+			local th = math.random() * math.pi * 2
+			local p = t.Pos + Vector3.new(math.cos(th) * t.Radius * 0.5, math.random() * 8 - 1, math.sin(th) * t.Radius * 0.5)
+			TuskVFX.CreateImpactStar(p, { Size = 2, Rays = 4, Color = pal.Main, Color2 = Color3.new(1, 1, 1), Duration = 0.15 })
+		end
 		if now > t.Expire then
 			endTornado({ Id = id, Position = t.Pos, Radius = t.Radius })
 		end

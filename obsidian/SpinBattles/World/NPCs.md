@@ -12,6 +12,9 @@ Spawned at runtime by `NPCService` from markers in `SBRMap.NPCSpawns`.
 | Rival Racer, Rookie Racer | Racer | jog the track waypoints |
 | Camp Cook, Wagon Driver, Saloon Owner, Shopkeeper, Townsfolk, Priest | Spectator | wander |
 | Sheriff | Guard | walks Main Street |
+| Bridge Keeper | Official | stands by the covered bridge |
+| Fort Captain, Fort Soldier | Guard | patrol Fort Dust |
+| Gold Prospector, Ranch Owner, Cowhand, Mysterious Drifter, Fisherman | Spectator | wander their places |
 
 - Press **E** ("Talk") to hear their lines (speech bubble)
 - They sometimes speak on their own when a player is nearby

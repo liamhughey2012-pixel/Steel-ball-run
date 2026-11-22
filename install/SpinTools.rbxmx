@@ -13,6 +13,9 @@
 	  * desert: sand terrain, mountain ring, rocks, cacti, grass patches
 	  * desert lighting, atmosphere, clouds, spawn point
 	  * NPC spawn markers (NPCService turns them into NPCs at runtime)
+	  * new places: Rattlesnake River with a mesa waterfall, covered bridge
+	    and railway trestle, gold-panning camp, Dustwater ghost town,
+	    Lucky Horseshoe Ranch, Fort Dust, and a signpost at the race start
 
 	HOW TO RUN (Studio, edit mode):
 	  View > Command Bar, paste and press Enter:
@@ -1048,6 +1051,419 @@ local function buildUpgrades()
 	wagon(f, -200, -120, 0.7)
 end
 
+---------------------------------------------------------------------------
+-- NEW PLACES: river + waterfall, covered bridge, railway trestle,
+-- gold-panning camp, ghost town, horse ranch, Fort Dust, signposts
+---------------------------------------------------------------------------
+local RIVER_Z = 290
+local function riverZ(x)
+	return RIVER_Z + math.sin(x / 90) * 18
+end
+
+-- Clear dunes/rocks above ground level so a place sits on flat sand.
+local function flatten(x, z, radius)
+	local terrain = workspace.Terrain
+	terrain:FillCylinder(CFrame.new(origin + Vector3.new(x, 20, z)), 40, radius, Enum.Material.Air)
+	terrain:FillCylinder(CFrame.new(origin + Vector3.new(x, -0.5, z)), 1, radius, Enum.Material.Sand)
+end
+
+local function road(x, z, sizeX, sizeZ, yaw)
+	workspace.Terrain:FillBlock(CFrame.new(origin + Vector3.new(x, -0.6, z)) * CFrame.Angles(0, yaw or 0, 0), Vector3.new(sizeX, 1.2, sizeZ), Enum.Material.Ground)
+end
+
+local function placeSign(parent, text, x, z, yaw)
+	local m = model(parent, "PlaceSign")
+	local base = CFrame.new(x, 0, z) * CFrame.Angles(0, yaw or 0, 0)
+	for _, dx in ipairs({ -4.5, 4.5 }) do
+		block(m, "Post", Vector3.new(0.7, 9, 0.7), base * CFrame.new(dx, 4.5, 0), C.WoodDark, Enum.Material.Wood)
+	end
+	local board = block(m, "Board", Vector3.new(11, 3.2, 0.4), base * CFrame.new(0, 7, 0), C.Wood, Enum.Material.WoodPlanks)
+	sign(board, Enum.NormalId.Front, text, Color3.fromRGB(240, 220, 170), nil, Enum.Font.Fondamento)
+	sign(board, Enum.NormalId.Back, text, Color3.fromRGB(240, 220, 170), nil, Enum.Font.Fondamento)
+	return m
+end
+
+local function lanternPost(parent, x, z, y)
+	y = y or 0
+	block(parent, "LanternPost", Vector3.new(0.5, 7, 0.5), CFrame.new(x, y + 3.5, z), C.WoodDark, Enum.Material.Wood)
+	local lantern = small(block(parent, "Lantern", Vector3.new(0.8, 1.1, 0.8), CFrame.new(x, y + 7.4, z), Color3.fromRGB(255, 190, 100), Enum.Material.Neon))
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 180, 90)
+	light.Range = 16
+	light.Brightness = 1
+	light.Parent = lantern
+end
+
+local function barrel(parent, x, z, y)
+	return cylinder(parent, "Barrel", 2.6, 2, upright(x, (y or 0) + 1.3, z), C.Wood, Enum.Material.Wood)
+end
+
+local function crate(parent, x, z, y, s)
+	s = s or 2.4
+	return block(parent, "Crate", Vector3.new(s, s, s), CFrame.new(x, (y or 0) + s / 2, z) * CFrame.Angles(0, rng:NextNumber(0, 1.5), 0), C.WoodLight, Enum.Material.WoodPlanks)
+end
+
+-- A black-and-white cow.
+local function cow(parent, cf)
+	local m = model(parent, "Cow")
+	local white, black = Color3.fromRGB(235, 232, 225), Color3.fromRGB(35, 32, 30)
+	local function at(o)
+		return cf * o
+	end
+	ellipsoid(m, "Body", Vector3.new(2.8, 2.6, 5), at(CFrame.new(0, 3.4, 0)), white)
+	for i = 1, 3 do
+		small(ellipsoid(m, "Spot", Vector3.new(1.4, 1.2, 1.6), at(CFrame.new((i % 2 == 0 and 1 or -1) * 0.9, 3.7 + (i - 2) * 0.2, (i - 2) * 1.4)), black))
+	end
+	ellipsoid(m, "Head", Vector3.new(1.3, 1.4, 2), at(CFrame.new(0, 4.2, -3.1) * CFrame.Angles(0.3, 0, 0)), black)
+	ellipsoid(m, "Muzzle", Vector3.new(1.1, 0.8, 0.8), at(CFrame.new(0, 3.7, -3.9)), Color3.fromRGB(220, 170, 160))
+	for _, side in ipairs({ -1, 1 }) do
+		small(block(m, "Horn", Vector3.new(0.6, 0.18, 0.18), at(CFrame.new(side * 0.8, 5, -2.9) * CFrame.Angles(0, 0, side * 0.4)), Color3.fromRGB(230, 220, 190)))
+	end
+	for _, x in ipairs({ -0.8, 0.8 }) do
+		for _, z in ipairs({ -1.6, 1.6 }) do
+			block(m, "Leg", Vector3.new(0.55, 2.2, 0.55), at(CFrame.new(x, 1.1, z)), white)
+		end
+	end
+	small(block(m, "Tail", Vector3.new(0.2, 2, 0.2), at(CFrame.new(0, 3, 2.6) * CFrame.Angles(0.2, 0, 0)), black))
+	return m
+end
+
+-- Round fence (corral).
+local function corral(parent, cx, cz, radius, gapAngle)
+	local posts = math.floor(radius * 2 * math.pi / 7)
+	for i = 0, posts - 1 do
+		local a0 = i / posts * math.pi * 2
+		local a1 = (i + 1) / posts * math.pi * 2
+		local skip = gapAngle and math.abs(((a0 - gapAngle + math.pi) % (2 * math.pi)) - math.pi) < 0.25
+		local p0 = Vector3.new(cx + math.cos(a0) * radius, 0, cz + math.sin(a0) * radius)
+		local p1 = Vector3.new(cx + math.cos(a1) * radius, 0, cz + math.sin(a1) * radius)
+		block(parent, "CorralPost", Vector3.new(0.6, 4, 0.6), CFrame.new(p0.X, 2, p0.Z), C.WoodDark, Enum.Material.Wood)
+		if not skip then
+			local mid = (p0 + p1) / 2
+			for _, y in ipairs({ 1.5, 3.1 }) do
+				block(parent, "CorralRail", Vector3.new(0.3, 0.35, (p1 - p0).Magnitude + 0.4), CFrame.lookAt(Vector3.new(mid.X, y, mid.Z), Vector3.new(p1.X, y, p1.Z)), C.WoodLight, Enum.Material.Wood)
+			end
+		end
+	end
+end
+
+local function buildRiver(f)
+	local terrain = workspace.Terrain
+	local o = origin
+	-- Carve the riverbed, then fill it with water, from the mesa waterfall to the mountains.
+	for x = -380, 560, 12 do
+		local z = riverZ(x)
+		terrain:FillBlock(CFrame.new(o + Vector3.new(x, 6, z)), Vector3.new(16, 26, 30), Enum.Material.Air)
+		terrain:FillBlock(CFrame.new(o + Vector3.new(x, -9, z)), Vector3.new(16, 4, 30), Enum.Material.Mud)
+		terrain:FillBlock(CFrame.new(o + Vector3.new(x, -5, z)), Vector3.new(16, 4, 26), Enum.Material.Water)
+		-- Muddy banks with reeds of grass.
+		for _, side in ipairs({ -1, 1 }) do
+			terrain:FillBlock(CFrame.new(o + Vector3.new(x, -0.6, z + side * 17)), Vector3.new(14, 1.2, 4), Enum.Material.Mud)
+			if rng:NextNumber() < 0.35 then
+				terrain:FillCylinder(CFrame.new(o + Vector3.new(x + rng:NextNumber(-5, 5), -0.5, z + side * rng:NextNumber(19, 24))), 1, rng:NextNumber(3, 6), Enum.Material.Grass)
+			end
+		end
+	end
+	-- Waterfall pouring off the mesa into the river.
+	local wz = riverZ(-380)
+	-- Rock cliff on the mesa's edge for the water to pour down.
+	terrain:FillBlock(CFrame.new(o + Vector3.new(-412, 23, wz)), Vector3.new(24, 48, 30), Enum.Material.Rock)
+	terrain:FillBlock(CFrame.new(o + Vector3.new(-412, 47.5, wz)), Vector3.new(24, 1, 10), Enum.Material.Water)
+	local fall = model(f, "Waterfall")
+	block(fall, "Fall", Vector3.new(2, 50, 10), CFrame.new(-399, 23, wz), Color3.fromRGB(110, 175, 210), Enum.Material.Glass, { Transparency = 0.25, CanCollide = false })
+	block(fall, "FallFoam", Vector3.new(1, 50, 6), CFrame.new(-397.6, 23, wz), Color3.fromRGB(230, 245, 255), Enum.Material.SmoothPlastic, { Transparency = 0.45, CanCollide = false })
+	local pool = block(fall, "Mist", Vector3.new(10, 3, 18), CFrame.new(-388, -2, wz), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, { Transparency = 1, CanCollide = false })
+	local mist = Instance.new("ParticleEmitter")
+	mist.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	mist.Color = ColorSequence.new(Color3.fromRGB(235, 245, 255))
+	mist.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3), NumberSequenceKeypoint.new(1, 8) })
+	mist.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 1) })
+	mist.Lifetime = NumberRange.new(1.5, 2.5)
+	mist.Speed = NumberRange.new(2, 5)
+	mist.Rate = 12
+	mist.Parent = pool
+	terrain:FillBall(o + Vector3.new(-388, -6, wz), 12, Enum.Material.Water)
+	placeSign(f, "RATTLESNAKE RIVER", -350, wz - 26, 0)
+end
+
+local function coveredBridge(f, x)
+	local m = model(f, "CoveredBridge")
+	local z = riverZ(x)
+	local length, width = 48, 12
+	local red = Color3.fromRGB(150, 50, 40)
+	block(m, "Deck", Vector3.new(width, 1, length), CFrame.new(x, 0.9, z), C.WoodLight, Enum.Material.WoodPlanks)
+	for _, side in ipairs({ -1, 1 }) do
+		-- Side walls with a window strip.
+		block(m, "WallLow", Vector3.new(0.6, 3.5, length), CFrame.new(x + side * width / 2, 3.15, z), red, Enum.Material.WoodPlanks)
+		block(m, "WallHigh", Vector3.new(0.6, 2.5, length), CFrame.new(x + side * width / 2, 8.3, z), red, Enum.Material.WoodPlanks)
+		for zz = -length / 2, length / 2, 6 do
+			block(m, "WallPost", Vector3.new(0.7, 9.6, 0.7), CFrame.new(x + side * width / 2, 5.6, z + zz), C.WoodDark, Enum.Material.Wood)
+		end
+		-- Gable roof.
+		block(m, "Roof", Vector3.new(width * 0.62, 0.6, length + 2), CFrame.new(x + side * width * 0.26, 11.6, z) * CFrame.Angles(0, 0, side * -0.5), C.Roof, Enum.Material.WoodPlanks)
+		-- Stone piers in the river.
+		block(m, "Pier", Vector3.new(4, 10, 4), CFrame.new(x + side * 4, -4.5, z), Color3.fromRGB(140, 130, 120), Enum.Material.Cobblestone)
+	end
+	for _, end_ in ipairs({ -1, 1 }) do
+		local gable = block(m, "Gable", Vector3.new(width, 2.4, 0.5), CFrame.new(x, 10.8, z + end_ * length / 2), red, Enum.Material.WoodPlanks)
+		if end_ == -1 then
+			sign(gable, Enum.NormalId.Front, "RIVER CROSSING", Color3.fromRGB(240, 220, 170), nil, Enum.Font.Fondamento)
+		end
+		-- Ramps down to the road.
+		block(m, "Ramp", Vector3.new(width, 0.8, 8), CFrame.new(x, 0.45, z + end_ * (length / 2 + 3.6)) * CFrame.Angles(end_ * 0.12, 0, 0), C.WoodLight, Enum.Material.WoodPlanks)
+	end
+	lanternPost(m, x - width / 2 - 1.5, z - length / 2 - 2)
+	lanternPost(m, x + width / 2 + 1.5, z + length / 2 + 2)
+end
+
+local function railwayTrestle(f, x)
+	local m = model(f, "RailwayTrestle")
+	local z = riverZ(x)
+	block(m, "TrestleDeck", Vector3.new(8, 0.6, 36), CFrame.new(x, -0.3, z), C.WoodDark, Enum.Material.WoodPlanks)
+	for zz = -15, 15, 6 do
+		for _, dx in ipairs({ -3, 3 }) do
+			block(m, "TrestleLeg", Vector3.new(0.8, 10, 0.8), CFrame.new(x + dx, -5, z + zz) * CFrame.Angles(0, 0, dx > 0 and -0.12 or 0.12), C.WoodDark, Enum.Material.Wood)
+		end
+		block(m, "Brace", Vector3.new(0.4, 0.4, 8.6), CFrame.new(x, -4.5, z + zz) * CFrame.Angles(0, math.pi / 2, 0.8), C.Wood, Enum.Material.Wood)
+		block(m, "Brace", Vector3.new(0.4, 0.4, 8.6), CFrame.new(x, -4.5, z + zz) * CFrame.Angles(0, math.pi / 2, -0.8), C.Wood, Enum.Material.Wood)
+	end
+end
+
+local function goldCamp(f, x)
+	local m = model(f, "GoldPanningCamp")
+	local z = riverZ(x) - 26 -- south bank
+	tent(m, x - 12, z - 8, 0.3, 0.9)
+	tent(m, x + 10, z - 10, -0.4, 1)
+	-- Sluice box running down into the river.
+	block(m, "Sluice", Vector3.new(2.4, 1, 18), CFrame.new(x, 1.6, z + 10) * CFrame.Angles(-0.14, 0, 0), C.Wood, Enum.Material.WoodPlanks)
+	for _, dx in ipairs({ -1.3, 1.3 }) do
+		block(m, "SluiceSide", Vector3.new(0.3, 1.4, 18), CFrame.new(x + dx, 2.1, z + 10) * CFrame.Angles(-0.14, 0, 0), C.WoodDark, Enum.Material.Wood)
+	end
+	block(m, "SluiceWater", Vector3.new(2, 0.2, 17), CFrame.new(x, 2.15, z + 10) * CFrame.Angles(-0.14, 0, 0), Color3.fromRGB(100, 160, 190), Enum.Material.Glass, { Transparency = 0.3, CanCollide = false })
+	for i = 1, 3 do
+		small(cylinder(m, "GoldPan", 0.25, 2, CFrame.new(x - 5 + i * 2.2, 0.2, z + 4) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(120, 110, 100), Enum.Material.Metal))
+	end
+	for i = 1, 6 do
+		small(block(m, "Nugget", Vector3.new(0.5, 0.4, 0.5), CFrame.new(x - 6 + rng:NextNumber(0, 6), 0.3, z + 3.5 + rng:NextNumber(-0.5, 0.5)), C.Gold, Enum.Material.Metal, { Shape = Enum.PartType.Ball }))
+	end
+	block(m, "Campfire", Vector3.new(2.4, 0.4, 2.4), CFrame.new(x - 1, 0.2, z - 14), Color3.fromRGB(60, 40, 30), Enum.Material.Slate)
+	local fire = small(block(m, "Fire", Vector3.new(1, 1, 1), CFrame.new(x - 1, 0.9, z - 14), Color3.fromRGB(255, 140, 40), Enum.Material.Neon, { Transparency = 0.3, CanCollide = false }))
+	local flame = Instance.new("Fire")
+	flame.Size = 4
+	flame.Heat = 6
+	flame.Parent = fire
+	barrel(m, x + 4, z - 16)
+	crate(m, x + 6.5, z - 15)
+	placeSign(m, "GOLD CLAIM · NO JUMPERS", x - 22, z, math.pi / 2)
+end
+
+-- A ruined, weathered building for the ghost town.
+local function ruin(parent, name, cf, width, depth, height, lean)
+	local m = model(parent, name:gsub(" ", ""))
+	local grey = Color3.fromRGB(128 + rng:NextInteger(-12, 12), 116, 100)
+	local function at(o)
+		return cf * o
+	end
+	-- Walls (one missing side wall, broken back wall).
+	block(m, "BackWall", Vector3.new(width, height * 0.7, 1), at(CFrame.new(0, height * 0.35, depth)), grey, Enum.Material.WoodPlanks)
+	block(m, "SideWall", Vector3.new(1, height, depth), at(CFrame.new(-width / 2, height / 2, depth / 2)), grey, Enum.Material.WoodPlanks)
+	block(m, "SideWallStub", Vector3.new(1, height * 0.4, depth * 0.5), at(CFrame.new(width / 2, height * 0.2, depth * 0.75)), grey, Enum.Material.WoodPlanks)
+	-- Leaning false front with a faded sign.
+	local front = block(m, "FalseFront", Vector3.new(width + 1, height + 5, 1), at(CFrame.new(0, (height + 5) / 2, -0.5) * CFrame.Angles(lean or 0.06, 0, (lean or 0.06) * 0.5)), grey, Enum.Material.WoodPlanks)
+	local board = block(m, "SignBoard", Vector3.new(width - 2, 3, 0.3), at(CFrame.new(0.4, height + 1.8, -1.2) * CFrame.Angles(lean or 0.06, 0, 0.12)), Color3.fromRGB(90, 76, 62), Enum.Material.Wood)
+	sign(board, Enum.NormalId.Front, name, Color3.fromRGB(200, 185, 160), nil, Enum.Font.Fondamento)
+	-- Boarded-up door and windows.
+	block(m, "Doorway", Vector3.new(3.2, 6.5, 0.3), at(CFrame.new(0, 3.25, -1.1)), Color3.fromRGB(20, 16, 14), Enum.Material.SmoothPlastic)
+	for i = -1, 1 do
+		block(m, "Board", Vector3.new(4, 0.5, 0.2), at(CFrame.new(0, 3 + i * 1.6, -1.3) * CFrame.Angles(0, 0, i * 0.2)), Color3.fromRGB(110, 92, 70), Enum.Material.Wood)
+	end
+	-- Collapsed roof: a few planks resting at angles, the rest on the floor.
+	for i = 1, 4 do
+		block(m, "RoofPlank", Vector3.new(width * 0.5, 0.4, 2), at(CFrame.new(rng:NextNumber(-width / 4, width / 4), height - i * 0.8, depth * i / 5) * CFrame.Angles(rng:NextNumber(-0.3, 0.3), 0, rng:NextNumber(-0.6, 0.6))), C.WoodDark, Enum.Material.WoodPlanks)
+	end
+	for _ = 1, 3 do
+		block(m, "Rubble", Vector3.new(rng:NextNumber(1, 3), 0.5, rng:NextNumber(2, 5)), at(CFrame.new(rng:NextNumber(-width / 3, width / 3), 0.25, depth * rng:NextNumber(0.2, 0.8)) * CFrame.Angles(0, rng:NextNumber(0, 3), 0)), grey, Enum.Material.WoodPlanks)
+	end
+	return m
+end
+
+local function ghostTown(f, cx, cz)
+	local m = model(f, "GhostTown")
+	local names = { "SALOON", "ASSAY OFFICE", "DRY GOODS", "UNDERTAKER", "HOTEL" }
+	for i, name in ipairs(names) do
+		local side = (i % 2 == 1) and -1 or 1
+		local z = cz + 40 - (i - 1) * 20
+		local cf = CFrame.new(cx + side * 20, 0, z) * CFrame.Angles(0, side * math.pi / 2, 0)
+		ruin(m, name, cf, 16, 18, 13, rng:NextNumber(0.03, 0.12) * (i % 2 == 0 and -1 or 1))
+	end
+	-- Broken water tower lying on its side.
+	cylinder(m, "FallenTank", 10, 8, CFrame.new(cx + 6, 3.5, cz - 52) * CFrame.Angles(0, 0.6, 0.15), C.WoodDark, Enum.Material.WoodPlanks)
+	-- Graveyard with crosses.
+	local gx, gz = cx - 52, cz - 30
+	for i = 0, 8 do
+		local x = gx + (i % 3) * 6 + rng:NextNumber(-1, 1)
+		local z = gz + math.floor(i / 3) * 7
+		local tilt = rng:NextNumber(-0.25, 0.25)
+		block(m, "CrossPost", Vector3.new(0.5, 4, 0.5), CFrame.new(x, 1.8, z) * CFrame.Angles(0, 0, tilt), C.WoodDark, Enum.Material.Wood)
+		block(m, "CrossBar", Vector3.new(2.2, 0.45, 0.5), CFrame.new(x, 2.8, z) * CFrame.Angles(0, 0, tilt), C.WoodDark, Enum.Material.Wood)
+		block(m, "Mound", Vector3.new(2.4, 0.6, 4), CFrame.new(x, 0.2, z + 2.4), Color3.fromRGB(150, 120, 90), Enum.Material.Ground)
+	end
+	fenceLine(m, gx - 4, gz - 4, gz + 22)
+	-- Abandoned wagon and barrels in the street.
+	wagon(m, cx - 4, cz + 8, 2.6)
+	barrel(m, cx + 8, cz - 10)
+	barrel(m, cx + 9.5, cz - 12)
+	placeSign(m, "DUSTWATER · POP. 0", cx, cz + 64, 0)
+end
+
+local function ranch(f, cx, cz)
+	local m = model(f, "HorseRanch")
+	local red = Color3.fromRGB(160, 46, 38)
+	-- Barn with a two-slope (gambrel) roof and big doors.
+	local bx, bz = cx + 34, cz + 8
+	block(m, "BarnBody", Vector3.new(26, 16, 32), CFrame.new(bx, 8, bz), red, Enum.Material.WoodPlanks)
+	for _, side in ipairs({ -1, 1 }) do
+		block(m, "BarnRoofLow", Vector3.new(9, 0.8, 34), CFrame.new(bx + side * 10.5, 18.5, bz) * CFrame.Angles(0, 0, side * -1), C.Roof, Enum.Material.WoodPlanks)
+		block(m, "BarnRoofHigh", Vector3.new(9, 0.8, 34), CFrame.new(bx + side * 4.4, 23.4, bz) * CFrame.Angles(0, 0, side * -0.35), C.Roof, Enum.Material.WoodPlanks)
+	end
+	block(m, "BarnDoor", Vector3.new(10, 11, 0.4), CFrame.new(bx, 5.5, bz - 16.1), C.WoodDark, Enum.Material.WoodPlanks)
+	for _, ang in ipairs({ 0.75, -0.75 }) do
+		block(m, "DoorX", Vector3.new(0.6, 14, 0.2), CFrame.new(bx, 5.5, bz - 16.4) * CFrame.Angles(0, 0, ang), C.White, Enum.Material.Wood)
+	end
+	local loft = block(m, "LoftSign", Vector3.new(12, 2.6, 0.3), CFrame.new(bx, 14, bz - 16.2), C.White, Enum.Material.Wood)
+	sign(loft, Enum.NormalId.Front, "LUCKY HORSESHOE RANCH", red, nil, Enum.Font.Fondamento)
+	for i = 1, 6 do
+		hayBale(m, bx - 18 + (i % 3) * 3.2, bz - 6 + math.floor(i / 4) * 2.6, math.pi / 2)
+	end
+	-- Ranch house with a porch.
+	westernBuilding(m, "RANCH HOUSE", CFrame.new(cx - 30, 0, cz - 4), 18, 16, 10, C.WoodLight)
+	-- Corral with horses.
+	local kx, kz = cx, cz + 34
+	corral(m, kx, kz, 16, -math.pi / 2)
+	for i = 1, 3 do
+		horse(m, CFrame.new(kx + rng:NextNumber(-8, 8), 0, kz + rng:NextNumber(-6, 8)) * CFrame.Angles(0, rng:NextNumber(0, 6.2), 0), HORSE_COATS[i])
+	end
+	block(m, "Trough", Vector3.new(2.4, 1.6, 7), CFrame.new(kx + 11, 0.8, kz), C.Wood, Enum.Material.WoodPlanks)
+	block(m, "TroughWater", Vector3.new(2, 0.2, 6.6), CFrame.new(kx + 11, 1.55, kz), Color3.fromRGB(80, 130, 160), Enum.Material.Glass, { Transparency = 0.2 })
+	-- Cows grazing beside the barn.
+	for i = 1, 4 do
+		cow(m, CFrame.new(bx + 22 + rng:NextNumber(-4, 6), 0, bz - 12 + i * 8) * CFrame.Angles(0, rng:NextNumber(0, 6.2), 0))
+	end
+	fenceLine(m, bx + 32, bz - 20, bz + 30)
+	windmill(m, cx - 10, cz + 4)
+	placeSign(m, "LUCKY HORSESHOE RANCH", cx - 8, cz - 40, 0)
+end
+
+local function fort(f, cx, cz)
+	local m = model(f, "FortDust")
+	local half = 30
+	local log = Color3.fromRGB(110, 78, 50)
+	-- Palisade walls of sharpened logs; the gate opens north toward the church.
+	for _, wall in ipairs({ { 0, -half, "X" }, { 0, half, "X" }, { -half, 0, "Z" }, { half, 0, "Z" } }) do
+		for t = -half, half, 2.2 do
+			local x = wall[3] == "X" and cx + t or cx + wall[1]
+			local z = wall[3] == "X" and cz + wall[2] or cz + t
+			local isGate = wall[3] == "X" and wall[2] > 0 and math.abs(t) < 6
+			if not isGate then
+				local h = 13 + rng:NextNumber(-0.6, 0.6)
+				cylinder(m, "Log", h, 2, upright(x, h / 2, z), log, Enum.Material.Wood)
+				small(block(m, "LogTip", Vector3.new(1.4, 1.4, 1.4), CFrame.new(x, h + 0.4, z) * CFrame.Angles(math.pi / 4, 0, math.pi / 4), log, Enum.Material.Wood))
+			end
+		end
+	end
+	-- Walkway along the inside of the walls.
+	for _, wall in ipairs({ { 0, -half + 2.5, 2 * half, 3 }, { 0, half - 2.5, 2 * half, 3 }, { -half + 2.5, 0, 3, 2 * half }, { half - 2.5, 0, 3, 2 * half } }) do
+		block(m, "Walkway", Vector3.new(wall[3], 0.6, wall[4]), CFrame.new(cx + wall[1], 8.5, cz + wall[2]), C.WoodLight, Enum.Material.WoodPlanks)
+	end
+	-- Gate doors (open) and a sign above.
+	for _, side in ipairs({ -1, 1 }) do
+		block(m, "GateDoor", Vector3.new(6, 12, 0.8), CFrame.new(cx + side * 9, 6, cz + half + 3) * CFrame.Angles(0, side * 1.1, 0), C.WoodDark, Enum.Material.WoodPlanks)
+	end
+	local gateSign = block(m, "GateSign", Vector3.new(14, 3, 0.5), CFrame.new(cx, 15, cz + half + 0.5), C.WoodDark, Enum.Material.Wood)
+	sign(gateSign, Enum.NormalId.Back, "FORT DUST", Color3.fromRGB(240, 220, 170), nil, Enum.Font.Fondamento)
+	-- Corner watchtowers.
+	for _, sx in ipairs({ -1, 1 }) do
+		for _, sz in ipairs({ -1, 1 }) do
+			local tx, tz = cx + sx * half, cz + sz * half
+			for _, lx in ipairs({ -2.5, 2.5 }) do
+				for _, lz in ipairs({ -2.5, 2.5 }) do
+					block(m, "TowerLeg", Vector3.new(0.8, 18, 0.8), CFrame.new(tx + lx, 9, tz + lz), C.WoodDark, Enum.Material.Wood)
+				end
+			end
+			block(m, "TowerFloor", Vector3.new(7, 0.6, 7), CFrame.new(tx, 16, tz), C.WoodLight, Enum.Material.WoodPlanks)
+			block(m, "TowerRail", Vector3.new(7, 2, 0.4), CFrame.new(tx, 17.3, tz - 3.3), C.Wood, Enum.Material.WoodPlanks)
+			block(m, "TowerRail", Vector3.new(7, 2, 0.4), CFrame.new(tx, 17.3, tz + 3.3), C.Wood, Enum.Material.WoodPlanks)
+			block(m, "TowerRoof", Vector3.new(8, 0.6, 8), CFrame.new(tx, 21, tz), C.Roof, Enum.Material.WoodPlanks)
+		end
+	end
+	-- Inside: barracks, flag, cannons, supplies.
+	westernBuilding(m, "BARRACKS", CFrame.new(cx, 0, cz - 10), 22, 14, 10, C.Wood)
+	flag(m, cx + 14, cz + 12, 22, FLAG_PALETTES[2], 0)
+	for _, side in ipairs({ -1, 1 }) do
+		local x, z = cx + side * 12, cz + 18
+		cylinder(m, "CannonBarrel", 6, 1.4, CFrame.new(x, 2.3, z) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.Angles(0, 0, 0.15), Color3.fromRGB(40, 40, 44), Enum.Material.Metal)
+		for _, dx in ipairs({ -1, 1 }) do
+			cylinder(m, "CannonWheel", 0.5, 3, CFrame.new(x + dx * 1.2, 1.5, z + 0.5), C.WoodDark, Enum.Material.Wood)
+		end
+		for k = 1, 3 do
+			small(block(m, "Cannonball", Vector3.new(1, 1, 1), CFrame.new(x + side * 3, 0.5, z - 1 + k * 1.1), Color3.fromRGB(30, 30, 30), Enum.Material.Metal, { Shape = Enum.PartType.Ball }))
+		end
+	end
+	for i = 1, 5 do
+		crate(m, cx - 22 + rng:NextNumber(-2, 2), cz + 14 + i * 2.6)
+	end
+	barrel(m, cx + 22, cz + 18)
+	barrel(m, cx + 22, cz + 21)
+	lanternPost(m, cx - 7, cz + half + 3)
+	lanternPost(m, cx + 7, cz + half + 3)
+end
+
+-- Signpost at the race start pointing to every place on the map.
+local function crossroads(f, x, z)
+	local m = model(f, "Signpost")
+	block(m, "Post", Vector3.new(0.8, 14, 0.8), CFrame.new(x, 7, z), C.WoodDark, Enum.Material.Wood)
+	local signs = {
+		{ "RIVER & BRIDGE", 0, 0 },
+		{ "RANCH", 0.5, 1 },
+		{ "TOWN · STATION", math.pi / 2, 2 },
+		{ "FORT DUST", math.pi, 3 },
+		{ "GHOST TOWN", -math.pi / 2 - 0.2, 4 },
+		{ "OASIS · MINE", -math.pi / 2 + 0.5, 5 },
+	}
+	for _, def in ipairs(signs) do
+		-- Arrow board pointing along its yaw (0 = north / +Z).
+		local cf = CFrame.new(x, 12.5 - def[3] * 1.5, z) * CFrame.Angles(0, -def[2] + math.pi / 2, 0) * CFrame.new(3.2, 0, 0)
+		local board = block(m, "Arrow", Vector3.new(6, 1.2, 0.3), cf, C.WoodLight, Enum.Material.WoodPlanks)
+		sign(board, Enum.NormalId.Front, def[1], Color3.fromRGB(50, 30, 15), nil, Enum.Font.Fondamento)
+		sign(board, Enum.NormalId.Back, def[1], Color3.fromRGB(50, 30, 15), nil, Enum.Font.Fondamento)
+	end
+end
+
+local function buildNewPlaces()
+	local f = folder("NewPlaces")
+	-- Flat ground for each place first.
+	flatten(140, 220, 75) -- ranch
+	flatten(10, -410, 50) -- fort
+	flatten(-170, -40, 70) -- ghost town
+	flatten(-200, riverZ(-200) - 30, 30) -- gold camp
+	buildRiver(f)
+	coveredBridge(f, 0)
+	railwayTrestle(f, 440)
+	goldCamp(f, -200)
+	ghostTown(f, -170, -40)
+	ranch(f, 140, 215)
+	fort(f, 10, -410)
+	crossroads(f, 30, 140)
+	-- Roads linking them up.
+	road(0, 210, 14, 100) -- race start -> bridge
+	road(0, riverZ(0) + 60, 14, 70) -- across the bridge, north
+	road(140, 150, 12, 100) -- town road -> ranch
+	road(-170, -40, 14, 150) -- ghost town main street
+	road(-170, 92, 14, 116) -- ghost town -> west road
+	road(5, -335, 12, 90) -- church -> fort
+	road(-200, riverZ(-200) - 60, 12, 70) -- west road -> gold camp
+end
+
 -- NPC markers: NPCService (runtime) spawns a character at each.
 local NPCS = {
 	{ "Race Announcer", "Announcer", Vector3.new(-6, 0, 118), 0, "Welcome, riders! The greatest horse race in history starts right here!|Six thousand kilometers of desert, mountains and rivers. Only one can win.|Keep your Spin steady and your eyes on the trail!" },
@@ -1066,6 +1482,14 @@ local NPCS = {
 	{ "Old Miner", "Spectator", Vector3.new(-320, 0, -335), 6, "Silver? Nah, the mine's been empty for years.|I heard strange spinning sounds down there last night.|Don't go in without a lantern." },
 	{ "Oasis Traveller", "Spectator", Vector3.new(-262, 0, 178), 10, "Fresh water! First I've seen in two days.|Rest here before you cross the dunes.|The mesas make good landmarks. Don't get lost." },
 	{ "Headquarters Clerk", "Official", Vector3.new(260, 18, -228), 8, "Registration is closed, I'm afraid.|The sponsors are watching every rider closely.|Prize money is fifty million dollars. Can you believe it?" },
+	{ "Bridge Keeper", "Official", Vector3.new(-9, 0, 258), 6, "Toll's free during the race. Lucky you.|This bridge has survived three floods.|Don't fight on my bridge. The river's colder than it looks." },
+	{ "Gold Prospector", "Spectator", Vector3.new(-196, 0, 240), 10, "Gold! There's gold in this river, I tell ya!|Keep your hands off my claim.|Found a nugget shaped like a horseshoe this morning." },
+	{ "Ranch Owner", "Spectator", Vector3.new(118, 0, 196), 10, "Welcome to the Lucky Horseshoe!|Best horses west of the Mississippi.|Need a fresh mount? Win the race first." },
+	{ "Cowhand", "Spectator", Vector3.new(196, 0, 214), 14, "Yee-haw! Watch the cows, they spook easy.|I rope cattle all day. Spinning? That's new.|The barn's got hay if your horse is hungry." },
+	{ "Fort Captain", "Guard", Vector3.new(4, 0, -392), 8, "Fort Dust stands guard over the southern trail.|Report any strange powers to me, rider.|My soldiers saw someone fire nails from his fingers!" },
+	{ "Fort Soldier", "Guard", Vector3.new(18, 0, -428), 10, "Halt! Oh, a racer. Carry on.|Watch duty again... nothing but sand.|The cannons haven't fired in years." },
+	{ "Mysterious Drifter", "Spectator", Vector3.new(-168, 0, -20), 12, "Nobody's lived in Dustwater for twenty years.|The well dried up and the people left.|Some say a Stand user drained it. Who knows." },
+	{ "Fisherman", "Spectator", Vector3.new(60, 0, 268), 6, "Shh, you'll scare the fish.|Caught a catfish this big yesterday!|The waterfall's to the west, if you like sightseeing." },
 }
 
 local function buildNPCMarkers()
@@ -1122,6 +1546,7 @@ function SBRMapBuilder.Build(options)
 	buildHeadquarters()
 	buildDesert()
 	buildUpgrades()
+	buildNewPlaces()
 	buildNPCMarkers()
 	root.Parent = workspace
 
