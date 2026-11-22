@@ -143,6 +143,20 @@ TuskAnimation.Poses = {
 	PalmPush = { Root = { -16, -14, 0, -0.2, 0.6 }, RightArm = { 98, 0, 0 }, LeftArm = { 76, 0, -18 }, LeftElbow = { 30, 0, 0 }, Waist = { -20, -14, 0 }, Neck = { 6, 8, 0 }, LeftHip = { 38, 0, 0 }, LeftKnee = { -38, 0, 0 }, RightHip = { -20, 0, 0 }, RightKnee = { -10, 0, 0 } },
 	BreakerWindA = { Root = { 0, 0, 0, -0.3 }, RightArm = { 122, 0, 62 }, RightElbow = { 30, 0, 0 }, Waist = { 0, 46, 0 }, Neck = { 0, -30, 0 }, LeftArm = { 60, 0, -40 }, LeftKnee = { -25, 0, 0 }, RightKnee = { -25, 0, 0 } },
 	BreakerWindB = { Root = { 0, 0, 0, -0.35 }, RightArm = { 132, 10, 70 }, RightElbow = { 40, 0, 0 }, Waist = { 0, 52, 0 }, Neck = { 0, -34, 0 }, LeftArm = { 64, 0, -44 }, LeftKnee = { -30, 0, 0 }, RightKnee = { -30, 0, 0 } },
+
+	-- DIEGO: a hunched, clawing predator (human form; the raptor animates itself).
+	DiegoStance = { RightArm = { 38, 0, 18 }, RightElbow = { 55, 0, 0 }, LeftArm = { 38, 0, -18 }, LeftElbow = { 55, 0, 0 }, Waist = { -8, 0, 0 }, Neck = { 6, 0, 0 } },
+	ClawWindR = { Root = { 0, 14, 0, -0.05 }, Waist = { 6, 18, 0 }, RightArm = { 152, 0, 32 }, RightElbow = { 50, 0, 0 }, LeftArm = { 42, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -10, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 } },
+	ClawR = { Root = { -10, -20, 0, -0.15, 0.35 }, Waist = { -16, -24, 0 }, RightArm = { 42, 0, -30 }, RightElbow = { 18, 0, 0 }, LeftArm = { 50, 0, -24 }, LeftElbow = { 45, 0, 0 }, Neck = { 4, 16, 0 }, RightHip = { 24, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -12, 0, 0 } },
+	TailWhipWind = { Root = { 0, 42, 0, -0.12 }, Waist = { 0, 30, 0 }, Neck = { 0, -20, 0 }, RightArm = { 40, 0, 40 }, LeftArm = { 40, 0, -40 }, RightElbow = { 40, 0, 0 }, LeftElbow = { 40, 0, 0 }, LeftKnee = { -22, 0, 0 }, RightKnee = { -22, 0, 0 }, LeftHip = { 12, 0, 0 }, RightHip = { 12, 0, 0 } },
+	TailWhip = { Root = { 0, -75, 0, -0.18 }, Waist = { 0, -40, 0 }, Neck = { 0, 45, 0 }, RightArm = { 50, 0, 62 }, LeftArm = { 30, 0, -52 }, RightKnee = { -20, 0, 0 }, LeftKnee = { -20, 0, 0 }, RightHip = { 12, 0, 0 }, LeftHip = { 12, 0, 0 } },
+	BiteWind = { Root = { 8, 0, 0, -0.12 }, Waist = { 14, 0, 0 }, Neck = { 22, 0, 0 }, RightArm = { 60, 0, 42 }, LeftArm = { 60, 0, -42 }, RightElbow = { 60, 0, 0 }, LeftElbow = { 60, 0, 0 }, RightKnee = { -22, 0, 0 }, LeftKnee = { -22, 0, 0 }, RightHip = { 14, 0, 0 }, LeftHip = { 14, 0, 0 } },
+	Bite = { Root = { -20, 0, 0, -0.25, 0.6 }, Waist = { -26, 0, 0 }, Neck = { -12, 0, 0 }, RightArm = { 96, 0, 26 }, LeftArm = { 96, 0, -26 }, RightElbow = { 30, 0, 0 }, LeftElbow = { 30, 0, 0 }, LeftHip = { 36, 0, 0 }, LeftKnee = { -40, 0, 0 }, RightHip = { -24, 0, 0 } },
+	PounceCrouch = { Root = { -14, 0, 0, -0.75 }, Waist = { -30, 0, 0 }, Neck = { 28, 0, 0 }, RightArm = { 40, 0, 30 }, LeftArm = { 40, 0, -30 }, RightElbow = { 70, 0, 0 }, LeftElbow = { 70, 0, 0 }, RightHip = { 70, 0, 0 }, LeftHip = { 70, 0, 0 }, RightKnee = { -100, 0, 0 }, LeftKnee = { -100, 0, 0 } },
+	PounceLeap = { Root = { -30, 0, 0, 0, 0.3 }, Waist = { -20, 0, 0 }, Neck = { 30, 0, 0 }, RightArm = { 152, 0, 25 }, LeftArm = { 152, 0, -25 }, RightElbow = { 30, 0, 0 }, LeftElbow = { 30, 0, 0 }, RightHip = { 60, 0, 0 }, LeftHip = { 20, 0, 0 }, RightKnee = { -80, 0, 0 }, LeftKnee = { -40, 0, 0 } },
+	PounceLand = { Root = { -18, 0, 0, -0.65, 0.3 }, Waist = { -28, 0, 0 }, Neck = { 22, 0, 0 }, RightArm = { 72, 0, 20 }, LeftArm = { 72, 0, -20 }, RightElbow = { 30, 0, 0 }, LeftElbow = { 30, 0, 0 }, RightHip = { 62, 0, 0 }, LeftHip = { 40, 0, 0 }, RightKnee = { -92, 0, 0 }, LeftKnee = { -60, 0, 0 } },
+	TransformHunch = { Root = { -10, 0, 0, -0.45 }, Waist = { -36, 0, 0 }, Neck = { -22, 0, 0 }, RightArm = { 20, 0, 42 }, LeftArm = { 20, 0, -42 }, RightElbow = { 92, 0, 0 }, LeftElbow = { 92, 0, 0 }, RightKnee = { -52, 0, 0 }, LeftKnee = { -52, 0, 0 }, RightHip = { 32, 0, 0 }, LeftHip = { 32, 0, 0 } },
+	Roar = { Root = { 10, 0, 0, 0.05 }, Waist = { 18, 0, 0 }, Neck = { 32, 0, 0 }, RightArm = { 100, 0, 72 }, LeftArm = { 100, 0, -72 }, RightElbow = { 40, 0, 0 }, LeftElbow = { 40, 0, 0 }, RightHip = { -10, 0, 0 }, LeftHip = { 10, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 }
 
 -- Left-handed version of a pose: swap Right/Left joints and flip Y/Z.
@@ -170,6 +184,8 @@ do
 	P.BarrageA = P.FlickR
 	P.BarrageB = P.FlickL
 	P.SpinPoke = P.FlickR
+	P.ClawWindL = mirror(P.ClawWindR)
+	P.ClawL = mirror(P.ClawR)
 end
 
 --[[
@@ -209,6 +225,17 @@ TuskAnimation.Actions = {
 		{ 1.05, "BreakerWindB", "Sine", 2 }, { 1.3, "BreakerWindA", "Sine" }, { 1.55, "BreakerWindB", "Sine", 3 }, { 1.75, "PitchBack", "In" },
 	},
 	SpinningNailRelease = { { 0, "ChargeNail" }, { 0.06, "PointRecoil", "Snap", 6 }, { 0.4, "Point", "Back" } },
+
+	-- DIEGO
+	D_M1_1 = { { 0, "Rest" }, { 0.06, "ClawWindR", "In" }, { 0.12, "ClawR", "Back", 3 }, { 0.26, "ClawR", "Sine" } },
+	D_M1_2 = { { 0, "Rest" }, { 0.06, "ClawWindL", "In" }, { 0.12, "ClawL", "Back", 3 }, { 0.26, "ClawL", "Sine" } },
+	D_M1_3 = { { 0, "Rest" }, { 0.07, "TailWhipWind", "In" }, { 0.16, "TailWhip", "Snap", 4 }, { 0.32, "TailWhip", "Sine" } },
+	D_M1_4 = { { 0, "Rest" }, { 0.12, "BiteWind", "In" }, { 0.2, "Bite", "Snap", 6 }, { 0.45, "Bite", "Sine" } },
+	DiegoPounce = { { 0, "Rest" }, { 0.16, "PounceCrouch", "In" }, { 0.24, "PounceLeap", "Snap", 3 }, { 0.5, "PounceLeap", "Sine" } },
+	DiegoLand = { { 0, "PounceLeap" }, { 0.06, "PounceLand", "Snap", 6 }, { 0.35, "PounceLand", "Sine" } },
+	DiegoBite = { { 0, "Rest" }, { 0.14, "BiteWind", "In" }, { 0.22, "Bite", "Snap", 6 }, { 0.5, "Bite", "Sine" } },
+	DiegoTransform = { { 0, "Rest" }, { 0.18, "TransformHunch", "In" }, { 0.35, "TransformHunch", "Linear", 4 }, { 0.5, "Roar", "Back", 6 } },
+	DiegoRoar = { { 0, "Rest" }, { 0.2, "BiteWind", "In" }, { 0.35, "Roar", "Back", 6 }, { 0.9, "Roar", "Linear", 4 }, { 1.2, "Roar", "Sine", 2 } },
 	Awakening = {
 		{ 0, "Rest" }, { 0.35, "AwakenCrouch", "In" }, { 0.7, "AwakenCrouch", "Linear", 1 }, { 1.0, "AwakenCrouch", "Linear", 2 },
 		{ 1.2, "AwakenCrouch", "Linear", 3 }, { 1.45, "AwakenRise", "Back", 6 }, { 2.2, "AwakenRise", "Sine" },

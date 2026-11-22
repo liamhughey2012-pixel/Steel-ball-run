@@ -109,6 +109,7 @@ TuskConfig.StandModels = {
 TuskConfig.Roster = {
 	{ Id = "Johnny", Name = "JOHNNY JOESTAR", Stand = "TUSK (ACT 1-4)", Available = true, Color = Color3.fromRGB(90, 230, 255) },
 	{ Id = "Gyro", Name = "GYRO ZEPPELI", Stand = "STEEL BALLS", Available = true, Color = Color3.fromRGB(110, 210, 90) },
+	{ Id = "Diego", Name = "DIEGO BRANDO", Stand = "SCARY MONSTERS", Available = true, Color = Color3.fromRGB(80, 210, 220) },
 }
 
 ---------------------------------------------------------------------------
@@ -293,6 +294,57 @@ TuskConfig.Act4 = {
 ---------------------------------------------------------------------------
 -- GYRO ZEPPELI — Steel Ball moveset (a separate character, "Act" 5 internally)
 ---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+-- Diego Brando: SCARY MONSTERS (dinosaur Stand)
+---------------------------------------------------------------------------
+TuskConfig.Diego = {
+	M1 = { -- CLAW COMBO: claw, claw, tail whip, bite
+		Interval = 0.28, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.09,
+		HitboxSize = Vector3.new(5.5, 5, 5.5), HitboxForward = 3.2, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4.5, Stun = 0.45, Knockback = 8 },
+			{ Damage = 7, Stun = 0.5, Knockback = 40, Launch = 10, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	-- Same combo with bigger numbers while transformed (Scary Monsters).
+	DinoM1 = {
+		Interval = 0.24, ResetAfter = 1.1, EndLag = 0.75, Windup = 0.08,
+		HitboxSize = Vector3.new(7, 6, 7), HitboxForward = 4, MaxTargets = 4,
+		Hits = {
+			{ Damage = 4.5, Stun = 0.45, Knockback = 4 },
+			{ Damage = 4.5, Stun = 0.45, Knockback = 4 },
+			{ Damage = 6, Stun = 0.5, Knockback = 14 },
+			{ Damage = 9, Stun = 0.55, Knockback = 50, Launch = 14, ShockwaveRadius = 9, AoeRadius = 8 },
+		},
+	},
+	RaptorPounce = {
+		Cooldown = 7, Windup = 0.18, Distance = 32, LeapTime = 0.36, LeapHeight = 7,
+		TargetCone = 70, -- leaps at the nearest enemy inside this cone
+		Damage = 9, Stun = 0.6, Knockback = 14, HitRadius = 6.5,
+	},
+	DinoInfection = {
+		Cooldown = 9, Windup = 0.2, Damage = 7, Stun = 0.5, Knockback = 6,
+		HitboxSize = Vector3.new(5, 6, 6), HitboxForward = 3,
+		InfectTime = 4, InfectSlow = 0.6, InfectTick = 0.5, InfectDamage = 1, -- slowed + damage over time
+	},
+	ScaryMonsters = { -- turn into a full raptor
+		Cooldown = 14, -- starts when the transformation ends
+		Duration = 10, Transform = 0.5,
+		SpeedMultiplier = 1.35, -- walk speed while transformed
+		PounceMultiplier = 1.3, -- Raptor Pounce damage while transformed
+		KineticVision = 90, -- studs: moving enemies glow for Diego while transformed
+	},
+	Ultimate = { -- RAPTOR PACK: roar, then a pack of raptors charges out
+		Windup = 1.2, RoarRadius = 16, RoarDamage = 3, RoarStun = 0.9,
+		Count = 5, Spread = 14, -- raptors, degrees between them
+		Speed = 48, Range = 75, Tick = 0.08, HitRadius = 5,
+		Damage = 12, Stun = 0.5, Knockback = 35, Launch = 14,
+		MaxHitsPerTarget = 2, -- one enemy can be bitten by at most this many raptors
+	},
+}
+
 TuskConfig.Gyro = {
 	M1 = {
 		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,

@@ -72,6 +72,25 @@ TuskActRegistry.Acts = {
 		Next = nil,
 		Module = "GyroZeppeli", -- server moves
 		ClientModule = "Gyro", -- client visuals (TuskActVFX.Gyro)
+		CardTitle = "STEEL BALL USER",
+	},
+	-- Diego Brando: Scary Monsters (dinosaur Stand). Same ability system.
+	[6] = {
+		Name = "SCARY MONSTERS",
+		Character = "Diego",
+		Tagline = "Dinosaur Stand",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(80, 210, 220), Secondary = Color3.fromRGB(35, 60, 190) },
+		M1 = "CLAW COMBO",
+		Abilities = { "RAPTOR POUNCE", "DINO INFECTION", "SCARY MONSTERS" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "RAPTOR PACK",
+		Next = nil,
+		Module = "DiegoBrando", -- server moves
+		ClientModule = "Diego", -- client visuals (TuskActVFX.Diego)
+		CardTitle = "STAND  ·  SCARY MONSTERS",
+		-- The HUD shows a timer on this slot while the buff attribute (server time) is in the future.
+		Buff = { Slot = 3, Attribute = "DinoModeUntil" },
 	},
 }
 
@@ -82,7 +101,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

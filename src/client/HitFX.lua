@@ -40,9 +40,14 @@ local function onHit(data)
 	end, function()
 		highlight:Destroy()
 	end)
-	-- Starburst coloured by who landed it: cyan for Johnny, green for Gyro.
+	-- Starburst coloured by who landed it: cyan for Johnny, green for Gyro, blue for Diego.
 	local source = tostring(data.Source or "")
-	local starColor = (source:sub(1, 4) == "Gyro") and Color3.fromRGB(120, 225, 95) or Color3.fromRGB(90, 230, 255)
+	local starColor = Color3.fromRGB(90, 230, 255)
+	if source:sub(1, 4) == "Gyro" then
+		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 5) == "Diego" then
+		starColor = Color3.fromRGB(60, 120, 255)
+	end
 	if data.Perfect then
 		starColor = colors.Gold
 	end

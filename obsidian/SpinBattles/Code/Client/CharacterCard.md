@@ -504,21 +504,21 @@ function CharacterCard.step()
 		local evolved = shownAct ~= nil and act ~= nil and act > shownAct
 		shownAct = act
 		local info = act and Registry.get(act)
-		local isGyro = act ~= nil and Registry.characterOf(act) == "Gyro"
+		local who = act ~= nil and Registry.characterOf(act) or "Johnny"
+		local isGyro = who ~= "Johnny" -- (any non-Tusk character: no Act pips / evolve pop)
 		-- Name plate follows the character (from TuskConfig.Roster).
-		local who = isGyro and "Gyro" or "Johnny"
 		for _, entry in ipairs(TuskConfig.Roster or {}) do
 			if entry.Id == who then
 				nameLabel.Text = entry.Name
 			end
 		end
-		if isGyro then
-			standLabel.Text = "STEEL BALL USER"
+		if info and info.CardTitle then
+			standLabel.Text = info.CardTitle
 		else
 			standLabel.Text = info and ("STAND  ·  " .. info.Name) or TuskConfig.Character.Title
 		end
 		standLabel.TextColor3 = info and info.Theme.Primary or Color3.fromRGB(200, 220, 255)
-		-- Act pips are Tusk's progression; hidden for Gyro.
+		-- Act pips are Tusk's progression; hidden for other characters.
 		for i, pip in ipairs(pips) do
 			pip.Visible = not isGyro
 			local on = act ~= nil and i <= act

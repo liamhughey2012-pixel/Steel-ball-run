@@ -161,7 +161,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("BARRAGE") then
+	if has("SCARY MONSTERS") then
+		return "dino"
+	elseif has("INFECTION") or has("BITE") then
+		return "fang"
+	elseif has("POUNCE") then
+		return "dash"
+	elseif has("BARRAGE") then
 		return "barrage"
 	elseif has("TORNADO") then
 		return "tornado"
@@ -251,6 +257,24 @@ local function drawIcon(icon, kind)
 		end
 		local c = bar(icon, 0.5, 0.5, 0.3, 0.3, 45)
 		corner(c, 999)
+	elseif kind == "fang" then
+		-- Two rows of fangs.
+		for i = -1, 1 do
+			bar(icon, 0.5 + i * 0.22, 0.34, 0.14, 0.34, 0)
+			bar(icon, 0.5 + i * 0.22 + 0.11, 0.68, 0.12, 0.28, 0)
+		end
+		bar(icon, 0.5, 0.16, 0.8, 0.08, 0)
+		bar(icon, 0.5, 0.86, 0.8, 0.08, 0)
+	elseif kind == "dino" then
+		-- Raptor head: skull, long snout, open jaw, crown pins.
+		local skull = bar(icon, 0.34, 0.42, 0.38, 0.34)
+		corner(skull, 999)
+		bar(icon, 0.64, 0.4, 0.5, 0.16, -6)
+		bar(icon, 0.6, 0.62, 0.44, 0.1, 18)
+		for i = 0, 2 do
+			bar(icon, 0.2 + i * 0.1, 0.16 - (i == 1 and 0.04 or 0), 0.05, 0.2, -30 + i * 30)
+		end
+		frame(icon, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.42, 0.36), Size = UDim2.fromScale(0.08, 0.08), BackgroundColor3 = DARK, Rotation = 45 })
 	elseif kind == "slash" then
 		for i = -1, 1 do
 			bar(icon, 0.5 + i * 0.18, 0.5, 0.08, 0.8 - math.abs(i) * 0.2, 30)
@@ -876,9 +900,20 @@ function TuskUI.step(act)
 				end)()) or ""
 				card.GlowStroke.Transparency = 1
 			end
+		elseif info.Buff and info.Buff.Slot == i and character and character:GetAttribute(info.Buff.Attribute) then
+			-- Active buff (e.g. Scary Monsters): draining timer bar + glow.
+			local untilT = character:GetAttribute(info.Buff.Attribute)
+			local left = math.max(0, untilT - workspace:GetServerTimeNow())
+			card.BuffMax = math.max(card.BuffMax or 0, left)
+			card.ChargeBack.Visible = true
+			card.ChargeFill.Size = UDim2.fromScale(left / math.max(card.BuffMax, 0.01), 1)
+			card.ChargeFill.BackgroundColor3 = theme.Primary
+			card.ChargeText.Text = "ACTIVE " .. math.ceil(left) .. "s"
+			card.GlowStroke.Transparency = 0.45 + (math.sin(now * 5) + 1) * 0.15
 		elseif card.ChargeBack.Visible then
 			card.ChargeBack.Visible = false
 			card.GlowStroke.Transparency = 1
+			card.BuffMax = nil
 		end
 	end
 

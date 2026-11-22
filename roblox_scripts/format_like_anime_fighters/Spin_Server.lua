@@ -334,6 +334,554 @@ return CooldownService
 end
 
 -- ======================================================================
+-- MODULE: DiegoBrando
+-- ======================================================================
+__modules["DiegoBrando"] = function()
+--[[
+	DiegoBrando  (ServerScriptService.SpinServer.TuskActs.DiegoBrando)
+
+	Diego Brando: SCARY MONSTERS (dinosaur Stand). Registered as "Act" 6 so it
+	reuses the Tusk ability system (cooldowns, HUD, ultimate meter, input).
+	  M1        CLAW COMBO: claw, claw, tail whip, bite (area). Stronger and
+	            faster while transformed.
+	  Ability 1 RAPTOR POUNCE: crouch, then leap at the nearest enemy in front
+	            and land on them (bite + area hit). Hits harder transformed.
+	  Ability 2 DINO INFECTION: a bite that infects: the target is slowed and
+	            takes damage over time while dinosaur scales spread on them
+	  Ability 3 SCARY MONSTERS: turn into a full raptor for a while: faster,
+	            stronger claws, and KINETIC VISION (moving enemies glow for
+	            Diego). Press again to change back early.
+	  Ultimate  RAPTOR PACK: a roar that stuns everyone close, then a pack of
+	            raptors charges out in a fan, mauling everything in their path
+	Numbers: TuskConfig.Diego. All damage goes through S.hit (CombatAdapter).
+]]
+
+local Shared = nil -- (bundled: modules are inlined)
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local Moves = __require("TuskMoves")
+
+local Diego = {}
+local cfg = TuskConfig.Diego
+local ACT = 6
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function ready(S, player, state, name, slot)
+	return not S.isBusy(state) and not state.Charging and S.cooldownReady(player, state, name, slot)
+end
+
+function Diego.M1(S, player, state, aim)
+	Moves.m1(S, player, state, aim, state.DinoMode and cfg.DinoM1 or cfg.M1, ACT)
+end
+
+---------------------------------------------------------------------------
+-- SCARY MONSTERS (transformation)
+---------------------------------------------------------------------------
+local function revert(S, player, state, startCooldown)
+	if not state.DinoMode then
+		return
+	end
+	state.DinoMode = nil
+	local character = state.Character
+	if character then
+		character:SetAttribute("DinoMode", nil)
+		character:SetAttribute("DinoModeUntil", nil)
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			S.Adapter.setMoveModifier(humanoid, "ScaryMonsters", nil)
+		end
+		S.fx("Ability", { Character = character, Act = ACT, Move = "ScaryMonsters", Phase = "Revert" })
+	end
+	if startCooldown then
+		S.startCooldown(player, state, "ScaryMonsters", cfg.ScaryMonsters.Cooldown, 3)
+	end
+end
+
+local function scaryMonsters(S, player, state)
+	local c = cfg.ScaryMonsters
+	if state.DinoMode then
+		revert(S, player, state, true) -- press again: change back early
+		return
+	end
+	if not ready(S, player, state, "ScaryMonsters", 3) then
+		return
+	end
+	local character, humanoid = alive(S, player)
+	local token = {}
+	state.DinoMode = token
+	S.lock(state, c.Transform)
+	character:SetAttribute("Armored", true)
+	S.fx("Ability", { Character = character, Act = ACT, Move = "ScaryMonsters", Phase = "Transform", Duration = c.Transform })
+	task.delay(c.Transform * 0.6, function()
+		if state.DinoMode ~= token or not character.Parent then
+			return
+		end
+		character:SetAttribute("DinoMode", true)
+		character:SetAttribute("DinoModeUntil", workspace:GetServerTimeNow() + c.Duration)
+		S.Adapter.setMoveModifier(humanoid, "ScaryMonsters", c.SpeedMultiplier)
+	end)
+	task.delay(c.Transform, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+	end)
+	task.delay(c.Duration + c.Transform * 0.6, function()
+		if state.DinoMode == token then
+			revert(S, player, state, true)
+		end
+	end)
+end
+
+---------------------------------------------------------------------------
+-- RAPTOR POUNCE
+---------------------------------------------------------------------------
+local function raptorPounce(S, player, state, aim)
+	local c = cfg.RaptorPounce
+	if not ready(S, player, state, "RaptorPounce", 1) then
+		return
+	end
+	S.startCooldown(player, state, "RaptorPounce", c.Cooldown, 1)
+	S.lock(state, c.Windup + c.LeapTime + 0.2)
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "RaptorPounce", Phase = "Startup", Windup = c.Windup, Direction = direction })
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		-- Leap at the nearest enemy in front, or straight ahead.
+		local distance = c.Distance
+		local target = Moves.findTarget(S, char, r, c.Distance, c.TargetCone, direction)
+		local targetRoot = target and target:FindFirstChild("HumanoidRootPart")
+		if targetRoot then
+			local offset = targetRoot.Position - r.Position
+			local flatOffset = Vector3.new(offset.X, 0, offset.Z)
+			if flatOffset.Magnitude > 0.5 then
+				direction = flatOffset.Unit
+				distance = math.max(4, flatOffset.Magnitude - 2.5)
+			end
+		end
+		local destination = Moves.safeStep(char, r, direction, distance)
+		local from = r.Position
+		local travel = destination and Vector3.new(destination.X - from.X, 0, destination.Z - from.Z) or Vector3.new()
+		-- Arc: rise for the first half, fall for the second (LinearVelocity, like knockback).
+		local attachment = Instance.new("Attachment")
+		attachment.Name = "DiegoPounce"
+		attachment.Parent = r
+		local velocity = Instance.new("LinearVelocity")
+		velocity.Attachment0 = attachment
+		velocity.RelativeTo = Enum.ActuatorRelativeTo.World
+		velocity.MaxForce = math.huge
+		local horizontal = travel / c.LeapTime
+		local up = c.LeapHeight / (c.LeapTime / 2)
+		velocity.VectorVelocity = horizontal + Vector3.new(0, up, 0)
+		velocity.Parent = attachment
+		r.CFrame = CFrame.lookAt(r.Position, r.Position + direction)
+		S.fx("Ability", { Character = char, Act = ACT, Move = "RaptorPounce", Phase = "Leap", From = from, To = destination or from, Time = c.LeapTime, Direction = direction })
+		task.delay(c.LeapTime / 2, function()
+			if velocity.Parent then
+				velocity.VectorVelocity = horizontal + Vector3.new(0, -up, 0)
+			end
+		end)
+		task.delay(c.LeapTime, function()
+			attachment:Destroy()
+			if state.Life ~= life then
+				return
+			end
+			local _, _, rr = alive(S, player)
+			if not rr then
+				return
+			end
+			rr.AssemblyLinearVelocity = Vector3.new(0, rr.AssemblyLinearVelocity.Y, 0)
+			local damage = c.Damage * (state.DinoMode and cfg.ScaryMonsters.PounceMultiplier or 1)
+			local landAt = rr.Position + direction * 1.5
+			local count = Moves.aoe(S, player, landAt, c.HitRadius, { Damage = damage, Stun = c.Stun, Knockback = c.Knockback, Direction = direction, Source = "DiegoPounce" }, 4)
+			S.fx("Ability", { Character = char, Act = ACT, Move = "RaptorPounce", Phase = "Land", Position = rr.Position, Direction = direction, Radius = c.HitRadius, Hit = count > 0 })
+		end)
+	end)
+end
+
+---------------------------------------------------------------------------
+-- DINO INFECTION
+---------------------------------------------------------------------------
+local function infect(S, player, target, c)
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	local token = tostring({})
+	target:SetAttribute("DinoInfected", token)
+	S.Adapter.setMoveModifier(humanoid, "DinoInfection", c.InfectSlow)
+	local ticks = math.floor(c.InfectTime / c.InfectTick)
+	for i = 1, ticks do
+		task.delay(i * c.InfectTick, function()
+			if target:GetAttribute("DinoInfected") == token and humanoid.Health > 0 then
+				local tr = target:FindFirstChild("HumanoidRootPart")
+				S.hit(player, target, { Damage = c.InfectDamage, Stun = 0, Knockback = 0, Direction = Vector3.new(0, 0, 0), Position = tr and tr.Position or nil, Source = "DiegoInfection" })
+			end
+		end)
+	end
+	task.delay(c.InfectTime, function()
+		if target:GetAttribute("DinoInfected") == token then
+			target:SetAttribute("DinoInfected", nil)
+			if humanoid.Parent then
+				S.Adapter.setMoveModifier(humanoid, "DinoInfection", nil)
+			end
+		end
+	end)
+end
+
+local function dinoInfection(S, player, state, aim)
+	local c = cfg.DinoInfection
+	if not ready(S, player, state, "DinoInfection", 2) then
+		return
+	end
+	S.startCooldown(player, state, "DinoInfection", c.Cooldown, 2)
+	S.lock(state, c.Windup + 0.35)
+	local character = alive(S, player)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "DinoInfection", Phase = "Startup", Windup = c.Windup })
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local _, _, r = alive(S, player)
+		local cf = r.CFrame * CFrame.new(0, 0, -c.HitboxForward)
+		local count, hitSet = Moves.boxHit(S, player, cf, c.HitboxSize, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Source = "DiegoInfection" }, 2)
+		for target in pairs(hitSet) do
+			infect(S, player, target, c)
+		end
+		S.fx("Ability", { Character = character, Act = ACT, Move = "DinoInfection", Phase = "Hit", Position = cf.Position, Hit = count > 0 })
+	end)
+end
+
+function Diego.Ability(S, player, state, slot, phase, aim)
+	if phase ~= "Press" then
+		return
+	end
+	if slot == 1 then
+		raptorPounce(S, player, state, aim)
+	elseif slot == 2 then
+		dinoInfection(S, player, state, aim)
+	elseif slot == 3 then
+		scaryMonsters(S, player, state)
+	end
+end
+
+---------------------------------------------------------------------------
+-- RAPTOR PACK (ultimate)
+---------------------------------------------------------------------------
+function Diego.Ultimate(S, player, state, aim)
+	local u = cfg.Ultimate
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	local life = state.Life
+	S.lock(state, u.Windup + 0.3)
+	character:SetAttribute("Armored", true)
+	S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Roar", Position = root.Position, Radius = u.RoarRadius, Windup = u.Windup, Direction = direction })
+	-- The roar: stuns everyone close.
+	task.delay(u.Windup * 0.35, function()
+		if state.Life ~= life then
+			return
+		end
+		local _, _, r = alive(S, player)
+		if r then
+			Moves.aoe(S, player, r.Position, u.RoarRadius, { Damage = u.RoarDamage, Stun = u.RoarStun, Knockback = 6, Source = "DiegoRoar" }, 8)
+		end
+	end)
+	task.delay(u.Windup, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+		if state.Life ~= life or not alive(S, player) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = { char }
+		local raptors = {}
+		local bitten = {} -- target -> how many raptors have bitten it
+		local maxBites = u.MaxHitsPerTarget or 2
+		local baseId = tostring(os.clock()) .. player.UserId
+		for i = 1, u.Count do
+			local angle = math.rad((i - (u.Count + 1) / 2) * u.Spread)
+			local dir = (CFrame.Angles(0, angle, 0) * CFrame.lookAt(Vector3.new(), direction)).LookVector
+			dir = Moves.flat(dir)
+			local origin = Moves.groundBelow(r.Position + dir * 2, { char })
+			raptors[i] = { Id = baseId .. "_" .. i, Origin = origin, Direction = dir, Pos = origin, Traveled = 0, Hit = {}, Done = false }
+		end
+		local payload = {}
+		for i, rp in ipairs(raptors) do
+			payload[i] = { Id = rp.Id, Origin = rp.Origin, Direction = rp.Direction }
+		end
+		S.fx("Ultimate", { Character = char, Act = ACT, Phase = "Release", Raptors = payload, Speed = u.Speed, Range = u.Range })
+		local ticks = math.ceil(u.Range / (u.Speed * u.Tick))
+		for t = 1, ticks do
+			task.delay(t * u.Tick, function()
+				for _, rp in ipairs(raptors) do
+					if not rp.Done then
+						local step = rp.Direction * u.Speed * u.Tick
+						local wall = workspace:Raycast(rp.Pos + Vector3.new(0, 2.5, 0), step * 1.2, params)
+						rp.Traveled = rp.Traveled + step.Magnitude
+						if wall or rp.Traveled >= u.Range then
+							rp.Done = true
+							S.fx("Ultimate", { Act = ACT, Phase = "RaptorEnd", Id = rp.Id, Position = rp.Pos })
+						else
+							rp.Pos = Moves.groundBelow(rp.Pos + step, { char })
+							for _, target in ipairs(S.Hitbox.inRadius(player.Character, rp.Pos + Vector3.new(0, 2.5, 0), u.HitRadius, 4)) do
+								if not rp.Hit[target] and (bitten[target] or 0) < maxBites and S.Adapter.canBeHit(player, target) then
+									rp.Hit[target] = true
+									bitten[target] = (bitten[target] or 0) + 1
+									local tr = target:FindFirstChild("HumanoidRootPart")
+									S.hit(player, target, { Damage = u.Damage, Stun = u.Stun, Knockback = u.Knockback, Launch = u.Launch, Direction = rp.Direction, Position = tr and tr.Position or rp.Pos, Source = "DiegoRaptorPack" })
+									S.fx("Ultimate", { Act = ACT, Phase = "RaptorBite", Id = rp.Id, Position = tr and tr.Position or rp.Pos })
+								end
+							end
+						end
+					end
+				end
+			end)
+		end
+		S.finishUltimate(player, state)
+	end)
+end
+
+function Diego.Cleanup(S, player, state)
+	revert(S, player, state, false)
+	if state.Character then
+		state.Character:SetAttribute("Armored", nil)
+	end
+end
+
+return Diego
+end
+
+-- ======================================================================
+-- MODULE: DiegoOutfit
+-- ======================================================================
+__modules["DiegoOutfit"] = function()
+--[[
+	DiegoOutfit  (ServerScriptService.SpinServer.DiegoOutfit)
+
+	Gives a character Diego Brando's half-dinosaur look while they play Diego
+	(TuskAct 6), built from parts so no catalog asset ids are needed
+	(from the owner's references):
+	  * green scaled racing cap with "DIO" on the front
+	  * spiky blond hair sticking out under it
+	  * a long blue dinosaur tail with a pale belly and yellow markings
+	The player's own clothes stay on. Their own hats/hair are hidden while
+	they play Diego and come back when they switch. Built on the server so
+	every player sees it. (In full raptor form the client hides all of this
+	and draws the raptor instead.)
+]]
+
+local Players = game:GetService("Players")
+
+local DiegoOutfit = {}
+DiegoOutfit.DiegoAct = 6
+
+local C = {
+	Cap = Color3.fromRGB(70, 160, 120),
+	CapDark = Color3.fromRGB(40, 110, 85),
+	Scale = Color3.fromRGB(110, 200, 150),
+	Letters = Color3.fromRGB(240, 230, 200),
+	Hair = Color3.fromRGB(245, 214, 110),
+	HairDark = Color3.fromRGB(214, 176, 72),
+	TailTeal = Color3.fromRGB(95, 205, 212),
+	TailBlue = Color3.fromRGB(38, 62, 190),
+	Pale = Color3.fromRGB(242, 234, 172),
+	Yellow = Color3.fromRGB(246, 212, 62),
+}
+
+local saved = setmetatable({}, { __mode = "k" })
+
+local function piece(parent, outfit, props, offset, ellipsoid)
+	local p = Instance.new("Part")
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.SmoothPlastic
+	for k, v in pairs(props) do
+		p[k] = v
+	end
+	if ellipsoid then
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = p
+	end
+	p.CFrame = parent.CFrame * offset
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = parent
+	weld.Part1 = p
+	weld.Parent = p
+	p.Parent = outfit
+	return p
+end
+
+local function cap(head, outfit)
+	local s = head.Size.Y / 1.2
+	local top = head.Size.Y * 0.5
+	-- Dome with a ridge of scales, short brim, "DIO" on the front.
+	piece(head, outfit, { Name = "CapDome", Size = Vector3.new(1.42, 0.95, 1.42) * s, Color = C.Cap }, CFrame.new(0, top - 0.12 * s, 0.02 * s), true)
+	piece(head, outfit, { Name = "CapBand", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.22 * s, 1.36 * s, 1.36 * s), Color = C.CapDark }, CFrame.new(0, top - 0.32 * s, 0.02 * s) * CFrame.Angles(0, 0, math.pi / 2))
+	piece(head, outfit, { Name = "CapBrim", Size = Vector3.new(1.0, 0.08, 0.5) * s, Color = C.CapDark }, CFrame.new(0, top - 0.36 * s, -0.78 * s) * CFrame.Angles(-0.12, 0, 0))
+	for i = 0, 6 do
+		local a = (i / 6 - 0.5) * 2.2
+		piece(head, outfit, { Name = "CapScale", Size = Vector3.new(0.3, 0.16, 0.3) * s, Color = C.Scale }, CFrame.new(0, top - 0.12 * s, 0.02 * s) * CFrame.Angles(a, 0, 0) * CFrame.new(0, 0.46 * s, 0), true)
+	end
+	local plate = piece(head, outfit, { Name = "CapLetters", Size = Vector3.new(1.0, 0.36, 0.05) * s, Color = C.Cap, Transparency = 1 }, CFrame.new(0, top + 0.02 * s, -0.68 * s) * CFrame.Angles(-0.35, 0, 0))
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 60
+	gui.Parent = plate
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.Bangers
+	label.TextScaled = true
+	label.TextColor3 = C.Letters
+	label.TextStrokeTransparency = 0.3
+	label.Text = "DIO"
+	label.Parent = gui
+end
+
+local function hair(head, outfit)
+	local s = head.Size.Y / 1.2
+	-- Spiky blond hair sticking out the sides and back under the cap.
+	local spikes = {
+		{ -0.62, 0.05, 0.1, 0, 0, 0.9 }, { 0.62, 0.05, 0.1, 0, 0, -0.9 },
+		{ -0.55, -0.2, 0.35, 0.4, 0, 0.7 }, { 0.55, -0.2, 0.35, 0.4, 0, -0.7 },
+		{ 0, -0.1, 0.62, 1.0, 0, 0 }, { -0.3, -0.25, 0.58, 1.1, 0, 0.4 }, { 0.3, -0.25, 0.58, 1.1, 0, -0.4 },
+		{ -0.35, 0.15, -0.6, -0.9, 0, 0.3 }, { 0.35, 0.15, -0.6, -0.9, 0, -0.3 },
+	}
+	for i, sp in ipairs(spikes) do
+		piece(head, outfit, { Name = "HairSpike", Size = Vector3.new(0.3, 0.8, 0.3) * s, Color = (i % 2 == 0) and C.Hair or C.HairDark },
+			CFrame.new(sp[1] * s, sp[2] * s, sp[3] * s) * CFrame.Angles(sp[4], sp[5], sp[6]) * CFrame.new(0, 0.25 * s, 0), true)
+	end
+	piece(head, outfit, { Name = "HairBack", Size = Vector3.new(1.25, 0.9, 0.5) * s, Color = C.Hair }, CFrame.new(0, 0.05 * s, 0.45 * s), true)
+end
+
+local function tail(character, outfit)
+	local hip = character:FindFirstChild("LowerTorso") or character:FindFirstChild("Torso")
+	if not hip then
+		return
+	end
+	local s = hip.Size.X / 2
+	local back = hip.Size.Z / 2
+	-- Starts at the lower back, sweeps down and back, the tip curls up.
+	local cf = CFrame.new(0, -hip.Size.Y * 0.2, back) * CFrame.Angles(0.75, 0, 0) -- (+X tips the backward-pointing tail down)
+	local count = 8
+	for i = 1, count do
+		local k = (i - 1) / count
+		local d = 0.85 * (1 - k * 0.8) * s
+		local len = 0.85 * s
+		local color = i <= 2 and C.TailTeal:Lerp(C.TailBlue, (i - 1) / 2) or C.TailBlue
+		local segCF = cf * CFrame.new(0, 0, len / 2)
+		piece(hip, outfit, { Name = "Tail", Size = Vector3.new(d, d * 0.92, len * 1.6), Color = color }, segCF, true)
+		piece(hip, outfit, { Name = "TailBelly", Size = Vector3.new(d * 0.7, d * 0.4, len * 1.5), Color = C.Pale }, segCF * CFrame.new(0, -d * 0.3, 0), true)
+		if i >= 2 and i <= 7 then
+			piece(hip, outfit, { Name = "TailMark", Size = Vector3.new(d * 0.35, d * 0.12, len * 0.7), Color = C.Yellow }, segCF * CFrame.new(0, d * 0.44, 0), true)
+		end
+		local bend = (i <= 4) and -0.16 or (i >= 6 and -0.22 or 0) -- level out, then the tip curls up
+		cf = cf * CFrame.new(0, 0, len) * CFrame.Angles(bend, 0, 0)
+	end
+end
+
+function DiegoOutfit.apply(character)
+	if character:FindFirstChild("DiegoOutfit") then
+		return
+	end
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local store = { Hidden = {} }
+	saved[character] = store
+	for _, d in ipairs(character:GetChildren()) do
+		if d:IsA("Accessory") then
+			local handle = d:FindFirstChild("Handle")
+			local kind = d.AccessoryType
+			if handle and (kind == Enum.AccessoryType.Hat or kind == Enum.AccessoryType.Hair or kind == Enum.AccessoryType.Unknown) then
+				store.Hidden[handle] = handle.Transparency
+				handle.Transparency = 1
+			end
+		end
+	end
+	local outfit = Instance.new("Model")
+	outfit.Name = "DiegoOutfit"
+	outfit.Parent = character
+	cap(head, outfit)
+	hair(head, outfit)
+	tail(character, outfit)
+end
+
+function DiegoOutfit.remove(character)
+	local outfit = character:FindFirstChild("DiegoOutfit")
+	if outfit then
+		outfit:Destroy()
+	end
+	local store = saved[character]
+	if not store then
+		return
+	end
+	saved[character] = nil
+	for handle, transparency in pairs(store.Hidden) do
+		if handle.Parent then
+			handle.Transparency = transparency
+		end
+	end
+end
+
+local function watch(character)
+	local function update()
+		if character:GetAttribute("TuskAct") == DiegoOutfit.DiegoAct then
+			task.delay(0.3, function()
+				if character.Parent and character:GetAttribute("TuskAct") == DiegoOutfit.DiegoAct then
+					DiegoOutfit.apply(character)
+				end
+			end)
+		else
+			DiegoOutfit.remove(character)
+		end
+	end
+	character:GetAttributeChangedSignal("TuskAct"):Connect(update)
+	update()
+end
+
+function DiegoOutfit.init()
+	local function onPlayer(player)
+		player.CharacterAppearanceLoaded:Connect(watch)
+		if player.Character then
+			watch(player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	for _, player in ipairs(Players:GetPlayers()) do
+		onPlayer(player)
+	end
+end
+
+return DiegoOutfit
+end
+
+-- ======================================================================
 -- MODULE: GyroOutfit
 -- ======================================================================
 __modules["GyroOutfit"] = function()
@@ -1481,6 +2029,326 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return ProjectileService
+end
+
+-- ======================================================================
+-- MODULE: RaptorModel
+-- ======================================================================
+__modules["RaptorModel"] = function()
+--[[
+	RaptorModel  (ReplicatedStorage.SpinShared.RaptorModel)
+
+	Scary Monsters' raptor, built from parts (from the owner's references):
+	  * teal head, neck and chest with dark navy stripe rings
+	  * deep blue haunches, legs and tail; pale yellow tail underside
+	  * yellow "0101" markings along the tail
+	  * open jaws with rows of white teeth and a pink mouth/tongue
+	  * the yellow pin crown around the back of the skull
+	  * small clawed arms, digitigrade legs with yellow toe and sickle claws
+
+	RaptorModel.build(scale, opts) -> rig
+	  opts.Lite = true   fewer details (teeth, crown, markings) for crowds
+	  rig.Model          the Model (all parts anchored, no collision)
+	  rig:Pose(groundCF, s)  place every part. groundCF = point on the ground
+	                         under the hips, facing the way the raptor looks.
+	      s.Phase  walk cycle (radians)     s.Speed  0..1 run amount
+	      s.Jaw    0..1 mouth open          s.Lunge  0..1 head/body thrust
+	      s.Claw   0..1 arm swipe           s.Crouch 0..1 low stance
+	      s.Whip   -1..1 tail whip          s.Time   seconds (idle motion)
+	      s.HeadYaw / s.HeadPitch  radians
+	  rig:Destroy()
+	Size: about 8 studs tall at the head and 15 long at scale 1.
+]]
+
+local RaptorModel = {}
+
+local C = {
+	Teal = Color3.fromRGB(95, 205, 212),
+	TealDark = Color3.fromRGB(55, 150, 170),
+	Navy = Color3.fromRGB(22, 32, 72),
+	Blue = Color3.fromRGB(38, 62, 190),
+	BlueDark = Color3.fromRGB(24, 40, 140),
+	Pale = Color3.fromRGB(242, 234, 172),
+	Yellow = Color3.fromRGB(246, 212, 62),
+	Gold = Color3.fromRGB(232, 190, 58),
+	Mouth = Color3.fromRGB(215, 95, 108),
+	Tongue = Color3.fromRGB(230, 130, 140),
+	Teeth = Color3.fromRGB(246, 246, 236),
+	Eye = Color3.fromRGB(250, 240, 200),
+	Pupil = Color3.fromRGB(15, 15, 20),
+}
+RaptorModel.Colors = C
+
+local TAIL_SEGMENTS = 9
+local TAIL_LENGTH = 1.25
+
+local function newPart(model, name, size, color, opts)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = (opts and opts.Material) or Enum.Material.SmoothPlastic
+	p.Color = color
+	p.Size = size
+	p.CastShadow = not (opts and opts.NoShadow)
+	if opts and opts.Ellipsoid then
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = p
+	end
+	if opts and opts.Cylinder then
+		p.Shape = Enum.PartType.Cylinder
+	end
+	if opts and opts.Ball then
+		p.Shape = Enum.PartType.Ball
+	end
+	p.Parent = model
+	return p
+end
+
+function RaptorModel.build(scale, opts)
+	scale = scale or 1
+	opts = opts or {}
+	local lite = opts.Lite == true
+	local model = Instance.new("Model")
+	model.Name = "ScaryMonstersRaptor"
+
+	local entries = {} -- { Part, Bone, Offset }
+	local function add(bone, name, size, color, offset, partOpts)
+		local p = newPart(model, name, size * scale, color, partOpts)
+		local o = offset or CFrame.new()
+		table.insert(entries, { Part = p, Bone = bone, Offset = o - o.Position + o.Position * scale })
+		return p
+	end
+	local E = { Ellipsoid = true }
+	local function ell(extra)
+		local t = { Ellipsoid = true }
+		for k, v in pairs(extra or {}) do
+			t[k] = v
+		end
+		return t
+	end
+
+	-- BODY (bone origin = middle of the torso)
+	add("Body", "Torso", Vector3.new(2.6, 2.7, 4.6), C.Teal, CFrame.new(0, 0, 0), E)
+	add("Body", "Chest", Vector3.new(2.35, 2.55, 2.5), C.Teal, CFrame.new(0, 0.25, -2.0), E)
+	add("Body", "Belly", Vector3.new(2.1, 1.6, 3.4), C.TealDark, CFrame.new(0, -0.65, -0.6), E)
+	for _, side in ipairs({ -1, 1 }) do
+		add("Body", "Haunch", Vector3.new(1.5, 2.5, 2.8), C.Blue, CFrame.new(side * 0.85, -0.2, 1.0), E)
+	end
+	-- Dark stripe rings around the chest and torso.
+	for i, z in ipairs({ -2.5, -1.7, -0.9, -0.1 }) do
+		local k = 1 - math.abs(z + 1) * 0.08
+		add("Body", "Stripe", Vector3.new(2.66 * k, 2.76 * k, 0.24), C.Navy, CFrame.new(0, 0.12, z), E)
+	end
+	add("Body", "Spine", Vector3.new(0.5, 0.4, 5.6), C.TealDark, CFrame.new(0, 1.3, -0.6), E)
+
+	-- NECK (pitched up)
+	add("Neck", "NeckLow", Vector3.new(1.6, 1.7, 2.4), C.Teal, CFrame.new(0, 0, -0.8), E)
+	add("Neck", "NeckHigh", Vector3.new(1.4, 1.5, 2.2), C.Teal, CFrame.new(0, 0, -1.9), E)
+	for _, z in ipairs({ -0.5, -1.3, -2.1 }) do
+		add("Neck", "Stripe", Vector3.new(1.62, 1.72, 0.2), C.Navy, CFrame.new(0, 0, z), E)
+	end
+
+	-- HEAD
+	add("Head", "Skull", Vector3.new(2.0, 1.8, 2.6), C.Teal, CFrame.new(0, 0.15, -0.6), E)
+	add("Head", "Snout", Vector3.new(1.45, 1.0, 2.7), C.Teal, CFrame.new(0, 0.1, -2.2), E)
+	add("Head", "MouthRoof", Vector3.new(0.95, 0.12, 2.1), C.Mouth, CFrame.new(0, -0.32, -1.9))
+	add("Head", "Brow", Vector3.new(1.85, 0.35, 0.9), C.TealDark, CFrame.new(0, 0.62, -1.0), E)
+	for _, side in ipairs({ -1, 1 }) do
+		add("Head", "Eye", Vector3.new(0.18, 0.36, 0.42), C.Eye, CFrame.new(side * 0.78, 0.42, -0.95), E)
+		add("Head", "Pupil", Vector3.new(0.1, 0.2, 0.12), C.Pupil, CFrame.new(side * 0.86, 0.43, -1.0), ell({ NoShadow = true }))
+		add("Head", "Nostril", Vector3.new(0.12, 0.1, 0.16), C.Navy, CFrame.new(side * 0.32, 0.4, -3.1), ell({ NoShadow = true }))
+		add("Head", "Cheek", Vector3.new(0.3, 0.6, 1.2), C.TealDark, CFrame.new(side * 0.7, -0.15, -0.6), E)
+		if not lite then
+			for k = 0, 5 do
+				local tooth = add("Head", "Tooth", Vector3.new(0.1, 0.32, 0.12), C.Teeth, CFrame.new(side * (0.5 - k * 0.04), -0.42, -1.1 - k * 0.36) * CFrame.Angles(0, 0, side * 0.1), { NoShadow = true })
+				tooth.Material = Enum.Material.SmoothPlastic
+			end
+		end
+	end
+	-- The yellow pin crown fanned around the back of the skull.
+	local pins = lite and 4 or 7
+	for k = 1, pins do
+		local a = -1.25 + (k - 1) / (pins - 1) * 2.5 -- side to side over the top
+		local dir = Vector3.new(math.sin(a), math.cos(a), 0.35).Unit
+		local base = Vector3.new(0, 0.2, -0.3) + dir * 0.72
+		local pinCF = CFrame.lookAt(base + dir * 0.55, base + dir * 2) * CFrame.Angles(0, math.pi / 2, 0)
+		add("Head", "CrownPin", Vector3.new(1.1, 0.12, 0.12), C.Gold, pinCF, { Cylinder = true, Material = Enum.Material.Metal })
+		add("Head", "CrownBall", Vector3.new(0.3, 0.3, 0.3), C.Yellow, CFrame.new(base + dir * 1.15), { Ball = true, Material = Enum.Material.Metal })
+	end
+
+	-- JAW
+	add("Jaw", "LowerJaw", Vector3.new(1.35, 0.55, 2.7), C.Teal, CFrame.new(0, -0.12, -1.55), E)
+	add("Jaw", "Tongue", Vector3.new(0.7, 0.16, 1.7), C.Tongue, CFrame.new(0, 0.04, -1.3), E)
+	add("Jaw", "Throat", Vector3.new(0.9, 0.5, 1.0), C.Pale, CFrame.new(0, -0.25, -0.4), E)
+	if not lite then
+		for _, side in ipairs({ -1, 1 }) do
+			for k = 0, 4 do
+				add("Jaw", "Tooth", Vector3.new(0.1, 0.28, 0.12), C.Teeth, CFrame.new(side * (0.42 - k * 0.04), 0.18, -0.95 - k * 0.36), { NoShadow = true })
+			end
+		end
+	end
+
+	-- TAIL (bone i starts at segment i and points backward, +Z)
+	for i = 1, TAIL_SEGMENTS do
+		local k = (i - 1) / TAIL_SEGMENTS
+		local d = 1.95 * (1 - k * 0.85)
+		local color = i <= 2 and C.Teal:Lerp(C.Blue, (i - 1) / 2) or C.Blue
+		add("Tail" .. i, "Tail", Vector3.new(d, d * 0.92, TAIL_LENGTH * 1.75), color, CFrame.new(0, 0, TAIL_LENGTH / 2), E)
+		add("Tail" .. i, "TailBelly", Vector3.new(d * 0.72, d * 0.4, TAIL_LENGTH * 1.7), C.Pale, CFrame.new(0, -d * 0.3, TAIL_LENGTH / 2), E)
+		if not lite and i >= 2 and i <= 8 then
+			-- Yellow "0101" markings riding on top of the tail.
+			local strip = add("Tail" .. i, "Marking", Vector3.new(d * 0.55, 0.05, TAIL_LENGTH), C.Yellow, CFrame.new(0, d * 0.47, TAIL_LENGTH / 2), { NoShadow = true })
+			strip.Transparency = 1
+			local gui = Instance.new("SurfaceGui")
+			gui.Face = Enum.NormalId.Top
+			gui.LightInfluence = 0.3
+			gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+			gui.PixelsPerStud = 30
+			gui.Parent = strip
+			local label = Instance.new("TextLabel")
+			label.BackgroundTransparency = 1
+			label.Size = UDim2.fromScale(1, 1)
+			label.Font = Enum.Font.Arcade
+			label.TextScaled = true
+			label.TextColor3 = C.Yellow
+			label.Rotation = 90
+			label.Text = (i % 2 == 0) and "0101" or "1010"
+			label.Parent = gui
+		end
+	end
+
+	-- LEGS
+	for _, side in ipairs({ -1, 1 }) do
+		local s = side > 0 and "R" or "L"
+		add("Thigh" .. s, "Thigh", Vector3.new(1.2, 2.4, 1.5), C.Blue, CFrame.new(0, -0.95, 0), E)
+		add("Shin" .. s, "Shin", Vector3.new(0.75, 2.3, 0.85), C.Blue, CFrame.new(0, -1.0, 0), E)
+		add("Meta" .. s, "Metatarsal", Vector3.new(0.55, 1.4, 0.6), C.BlueDark, CFrame.new(0, -0.6, 0), E)
+		for t = -1, 1 do
+			add("Foot" .. s, "Toe", Vector3.new(0.28, 0.26, 1.0), C.BlueDark, CFrame.new(t * 0.3, 0.14, -0.45 - math.abs(t) * -0.05) * CFrame.Angles(0, -t * 0.25, 0), E)
+			add("Foot" .. s, "ToeClaw", Vector3.new(0.18, 0.34, 0.36), C.Yellow, CFrame.new(t * 0.3 - t * 0.12, 0.12, -1.02) * CFrame.Angles(-0.5, -t * 0.25, 0), { NoShadow = true })
+		end
+		-- The big curved sickle claw on the second toe.
+		add("Foot" .. s, "SickleClaw", Vector3.new(0.16, 0.55, 0.5), C.Yellow, CFrame.new(-side * 0.08, 0.5, -0.15) * CFrame.Angles(0.6, 0, 0), { NoShadow = true })
+	end
+
+	-- ARMS
+	for _, side in ipairs({ -1, 1 }) do
+		local s = side > 0 and "R" or "L"
+		add("UpperArm" .. s, "UpperArm", Vector3.new(0.55, 1.3, 0.6), C.Teal, CFrame.new(0, -0.55, 0), E)
+		add("Forearm" .. s, "Forearm", Vector3.new(0.45, 1.15, 0.5), C.Teal, CFrame.new(0, -0.5, 0), E)
+		for c = -1, 1 do
+			add("Forearm" .. s, "Claw", Vector3.new(0.12, 0.55, 0.14), C.Yellow, CFrame.new(c * 0.15, -1.2, -0.12) * CFrame.Angles(0.6, 0, 0), { NoShadow = true })
+		end
+	end
+
+	local rig = { Model = model, Scale = scale, Entries = entries }
+
+	local function bonesFor(ground, s)
+		local sc = scale
+		local t = s.Time or 0
+		local speed = s.Speed or 0
+		local phase = s.Phase or 0
+		local lunge = s.Lunge or 0
+		local crouch = s.Crouch or 0
+		local claw = s.Claw or 0
+		local jaw = s.Jaw or 0
+		local whip = s.Whip or 0
+		local idle = 1 - math.min(speed, 1)
+		local breath = math.sin(t * 2.4) * 0.04 * idle
+		local bob = math.abs(math.sin(phase)) * 0.18 * speed
+		local bones = {}
+		local function at(x, y, z)
+			return CFrame.new(x * sc, y * sc, z * sc)
+		end
+		local body = ground * at(0, 4.6 + bob - crouch * 0.9, -0.3 - lunge * 1.3)
+			* CFrame.Angles(0.1 - lunge * 0.3 - crouch * 0.12 + breath, whip * 0.5, math.sin(phase) * 0.04 * speed)
+		bones.Body = body
+		local neck = body * at(0, 0.5, -2.6) * CFrame.Angles(0.8 - lunge * 0.45 + (s.HeadPitch or 0) * 0.5 + breath * 2, (s.HeadYaw or 0) * 0.5, 0)
+		bones.Neck = neck
+		local head = neck * at(0, 0, -2.5) * CFrame.Angles(-0.85 + lunge * 0.2 + (s.HeadPitch or 0) * 0.5 + jaw * 0.2, (s.HeadYaw or 0) * 0.5, 0)
+		bones.Head = head
+		bones.Jaw = head * at(0, -0.3, 0.2) * CFrame.Angles(-0.06 - jaw * 0.8, 0, 0)
+		-- Tail: sways while idle, swings harder when running, whips on attacks.
+		local tail = body * at(0, 0.15, 2.1)
+		for i = 1, TAIL_SEGMENTS do
+			local k = i / TAIL_SEGMENTS
+			local sway = math.sin(t * 2.2 - i * 0.55) * (0.06 + 0.08 * speed) + whip * 0.35 * (1 - k * 0.5)
+			local lift = (i == 1 and 0.12 or 0) + (i >= 2 and i <= 4 and 0.04 or 0) + (i >= 6 and -0.12 or 0) - speed * 0.02
+			tail = tail * CFrame.Angles(lift, sway, 0)
+			bones["Tail" .. i] = tail
+			tail = tail * at(0, 0, TAIL_LENGTH * 0.92)
+		end
+		-- Legs (digitigrade): hip -> knee -> ankle -> toes.
+		local flatGround = ground - ground.Position
+		for _, side in ipairs({ -1, 1 }) do
+			local s2 = side > 0 and "R" or "L"
+			local off = side > 0 and 0 or math.pi
+			local swing = math.sin(phase + off) * 0.65 * speed
+			local liftAmt = math.max(0, math.cos(phase + off)) * speed
+			local hip = body * at(side * 0.95, -0.25, 1.0)
+			local thigh = hip * CFrame.Angles(math.rad(28) + swing - crouch * 0.55 + lunge * 0.2, 0, side * 0.05)
+			bones["Thigh" .. s2] = thigh
+			local knee = thigh * at(0, -2.0, 0) * CFrame.Angles(math.rad(-78) - liftAmt * 0.7 - crouch * 0.7, 0, 0)
+			bones["Shin" .. s2] = knee
+			local ankle = knee * at(0, -2.0, 0) * CFrame.Angles(math.rad(62) + liftAmt * 0.6 + crouch * 0.6, 0, 0)
+			bones["Meta" .. s2] = ankle
+			local toe = ankle * at(0, -1.2, 0)
+			bones["Foot" .. s2] = CFrame.new(toe.Position) * flatGround * CFrame.Angles(liftAmt * 0.5, 0, 0)
+		end
+		-- Arms: tucked, raking forward on claw attacks.
+		for _, side in ipairs({ -1, 1 }) do
+			local s2 = side > 0 and "R" or "L"
+			local shoulder = body * at(side * 0.95, 0.15, -2.5)
+			local upper = shoulder * CFrame.Angles(math.rad(35) + claw * 1.4 + math.sin(phase + (side > 0 and math.pi or 0)) * 0.12 * speed, 0, side * (0.2 + claw * 0.2))
+			bones["UpperArm" .. s2] = upper
+			bones["Forearm" .. s2] = upper * at(0, -1.1, 0) * CFrame.Angles(math.rad(70) - claw * 0.9, 0, 0)
+		end
+		return bones
+	end
+
+	local parts, cframes = {}, {}
+	for i, e in ipairs(entries) do
+		parts[i] = e.Part
+	end
+
+	function rig:Pose(ground, s)
+		local bones = bonesFor(ground, s or {})
+		for i, e in ipairs(entries) do
+			cframes[i] = bones[e.Bone] * e.Offset
+		end
+		local ok = pcall(function()
+			workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
+		end)
+		if not ok then
+			for i, p in ipairs(parts) do
+				p.CFrame = cframes[i]
+			end
+		end
+	end
+
+	function rig:SetTransparency(t)
+		for _, e in ipairs(entries) do
+			if e.Part.Name ~= "Marking" then
+				e.Part.Transparency = t
+			end
+		end
+	end
+
+	function rig:Destroy()
+		model:Destroy()
+	end
+
+	return rig
+end
+
+return RaptorModel
 end
 
 -- ======================================================================
@@ -4586,6 +5454,25 @@ TuskActRegistry.Acts = {
 		Next = nil,
 		Module = "GyroZeppeli", -- server moves
 		ClientModule = "Gyro", -- client visuals (TuskActVFX.Gyro)
+		CardTitle = "STEEL BALL USER",
+	},
+	-- Diego Brando: Scary Monsters (dinosaur Stand). Same ability system.
+	[6] = {
+		Name = "SCARY MONSTERS",
+		Character = "Diego",
+		Tagline = "Dinosaur Stand",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(80, 210, 220), Secondary = Color3.fromRGB(35, 60, 190) },
+		M1 = "CLAW COMBO",
+		Abilities = { "RAPTOR POUNCE", "DINO INFECTION", "SCARY MONSTERS" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "RAPTOR PACK",
+		Next = nil,
+		Module = "DiegoBrando", -- server moves
+		ClientModule = "Diego", -- client visuals (TuskActVFX.Diego)
+		CardTitle = "STAND  ·  SCARY MONSTERS",
+		-- The HUD shows a timer on this slot while the buff attribute (server time) is in the future.
+		Buff = { Slot = 3, Attribute = "DinoModeUntil" },
 	},
 }
 
@@ -4596,7 +5483,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -7004,6 +7891,7 @@ __require("StandAssetLoader").init()
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
 __require("GyroOutfit").init()
+__require("DiegoOutfit").init()
 if BUILD_MAP_ON_START and not workspace:FindFirstChild("SBRMap") then
 	local ok, err = pcall(function()
 		__require("SBRMapBuilder").Build({ Origin = MAP_ORIGIN })
