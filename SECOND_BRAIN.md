@@ -7,49 +7,107 @@ A polished Steel Ball Run-inspired anime Battlegrounds game on Roblox: Spin mech
 
 ## 2. Ground rules
 1. Inspect the existing project before changing it.
-2. Keep existing working systems. Never build a second combat framework.
+2. Keep existing working systems. Never build a second combat framework. All Spin damage goes through `CombatAdapter`, which can call the game's own combat code.
 3. Use modular Luau: small ModuleScripts, no giant scripts.
-4. Server decides all damage, hits, cooldowns and teleports.
+4. The server decides all damage, hits, cooldowns and teleports. The client only sends "pressed", "released" and an aim direction.
 5. Every VFX instance cleans itself up and respects the Low/Medium/High quality setting.
 6. No fake UI buttons and no unexplained placeholder abilities.
-7. Use original assets and sounds only.
-8. **Ask the owner before building any weapon or Stand model** (Steel Ball, Tusk Acts, Wrecking Ball), so they can send a model or reference image first.
+7. Use original assets and sounds only. Models are procedural or supplied by the owner.
+8. **Ask the owner before building any weapon or Stand model**, so they can send a model or reference first.
 
 ## 3. Current project state
 | Item | Status |
 |---|---|
-| GitHub repo `liamhughey2012-pixel/Steel-ball-run` | Only has a README. No game files yet. |
-| Roblox place file / scripts | **Not received yet** |
-| Reference screenshots (Tusk Sneak, Spin/Wrecking Balls) | **Not received yet** |
-| Existing combat, M1, UI, cooldown systems | Unknown until the place is shared |
+| GitHub repo | Has the Rojo project below. The owner's existing place file has **still not been shared**. |
+| Reference images received | Tusk Act 1 (pink, star-covered, heart feet), Steel Ball (orange with gold studs), Steel Ball spinning with golden rings, Johnny firing a nail with Tusk Act 1 |
+| Phase 2: core foundations | **Built**: Net, CombatAdapter, CooldownService, ProjectileService, VFXLib, CameraFX, VFXQuality |
+| Phase 3: Spin charge system and Steel Ball | **Built and logic-tested, not yet tested in Studio** |
+| Tusk, Wrecking Balls, full HUD, map | Not started |
 
-## 4. Waiting on the owner
-- [ ] Place file (`.rbxl` / `.rbxlx`) or a Rojo export of the scripts
-- [ ] Screenshot 1: Tusk Sneak
-- [ ] Screenshot 2: Spin / Wrecking Balls placeholder
-- [ ] Reference or model: Steel Ball
-- [ ] Reference or model: Tusk Act 1 / 2 / 3 / 4
-- [ ] Reference or model: Wrecking Ball
-- [ ] Decision: how Acts unlock (quests, progression, or a selection menu). The system will be configurable either way.
-- [ ] Sync method: Rojo (recommended) or copy-paste into Studio
+## 4. File map (Rojo: `default.project.json`)
+```
+ReplicatedStorage.SpinShared            (src/shared)
+  SpinConfig       every Spin number: levels, Perfect window, input, colours, sound ids
+  VFXQuality       Low / Medium / High presets (client visuals only)
+  Net              creates and gets ReplicatedStorage.SpinRemotes (SpinRequest, SpinFX)
+  Maid             cleanup helper
+  SteelBallModel   procedural Steel Ball (or clones SpinShared.Assets.SteelBall if one is added)
+ServerScriptService.SpinServer          (src/server, Script)
+  CombatAdapter    damage / stun / block / knockback / team checks + Hooks for the existing combat system
+  CooldownService  server cooldowns (reusable for every ability)
+  ProjectileService server-simulated spherecast projectiles (reusable for nails and wrecking balls)
+  SpinService      charge, release, validation, rate limit, auto-release, interruption
+  TestDummies      Studio-only practice dummies
+StarterPlayerScripts.SpinClient         (src/client, LocalScript)
+  VFXLib           scheduler, beam rings, shockwaves, ground discs, bursts, flashes, afterimages, sound
+  CameraFX         shake, FOV punch, speed lines, impact frames
+  ProceduralPose   arm wind-up and throw poses via Motor6D C0 (no uploaded animations needed)
+  SpinVFX          all Spin visuals for all players
+  SpinController   input for PC (R), controller (RT) and mobile (SPIN button)
+  UI/SpinMeter     charge bar, Perfect zone, cooldown, popup, VFX quality toggle
+assets/audio       original synthesized sounds (upload to Roblox)
+docs/steel_ball_preview.png
+```
 
-## 5. Planned build phases
-Each phase is built and tested before the next one starts.
-1. Audit the existing project. Map its combat, M1, abilities, UI, remotes, Tusk and Spin code.
-2. Core foundations: config modules, server validation, cooldown service, hitbox service, VFX module with quality levels, projectile service.
-3. Spin charge system: Quick, Power and Perfect levels, timing window, charge meter UI. Reusable by other characters.
-4. Tusk framework: Act registry, progression config, Act transformation.
-5. Tusk Sneak and the underground Sneak Attack, with counterplay.
-6. Tusk Act 2 moveset, then Act 3, then Act 4 (Infinite World ultimate).
-7. Wrecking Balls: Throw, Returning Spin, Double Wrecking, and the Wrecking Crash ultimate.
-8. UI pass for PC, mobile and controller.
-9. Map atmosphere pass. The map stays as it is; only lighting, dust and decorations are added.
-10. Multiplayer, respawn, low-graphics and mobile testing, then the final report.
+## 5. Spin design (current numbers in SpinConfig)
+| Level | Charge | Damage | Stun | Cooldown | Notes |
+|---|---|---|---|---|---|
+| QUICK SPIN | 0–0.6s | 7 | 0.2s | 2.5s | 1 ring |
+| POWER SPIN | 0.6s+ | 13 | 0.4s | 4.5s | 2 rings |
+| PERFECT SPIN | release at 1.35–1.57s | 22 | 0.65s | 7s | 3 rings, impact frame |
 
-## 6. Decision log
+- Holding past the Perfect window drops the throw back to POWER (overcharge). Auto-release at 3s.
+- The server measures charge time itself and allows ±0.05s for lag.
+- Counterplay: the thrower moves at half speed while charging, getting hit interrupts the charge (with a short cooldown), the projectile is visible and dodgeable, blocking cuts damage to 35% with no stun, and a 0.5s stun immunity window prevents stun-locks.
+
+## 6. Installation (for the owner)
+**Option A: Rojo (recommended)**
+1. Install the Rojo plugin in Studio and the Rojo CLI.
+2. In this folder, run `rojo serve`, then press Connect in the plugin.
+
+**Option B: by hand.** Recreate the tree in section 4:
+- `init.server.lua` becomes a Script named SpinServer.
+- `init.client.lua` becomes a LocalScript named SpinClient.
+- Every other `.lua` file becomes a ModuleScript with the same name, parented as shown.
+
+**Sounds:** upload `assets/audio/*.ogg` in Creator Hub > Asset Manager, then paste the ids into `SpinConfig.Sounds`.
+
+**Existing combat:** fill in `CombatAdapter.Hooks` (ApplyDamage, IsBlocking, ApplyStun, CanAct) so Spin uses the game's own systems.
+
+## 7. Test checklist (to run in Studio)
+- [ ] Hold R: ball appears in hand, rings add per level, meter fills, Perfect zone flashes
+- [ ] Release at each level: projectile size, rings and trail change; damage numbers 7 / 13 / 22 on dummies
+- [ ] Perfect release: popup, speed lines, FOV punch, impact frame on hit
+- [ ] Overcharge (hold past the gold zone) gives POWER; holding 3s auto-throws
+- [ ] Cooldown blocks re-use and the UI shows the time left
+- [ ] Getting hit while charging shows INTERRUPTED and applies a 0.75s cooldown
+- [ ] Throwing at a wall stops the ball with an impact and no damage
+- [ ] Two players throwing at each other; same-team players can't hit each other
+- [ ] Dying mid-charge leaves no stuck ball or slow after respawn
+- [ ] Mobile SPIN button works; controller RT works
+- [ ] VFX: LOW / MEDIUM / HIGH all work; Low has no grooves, no screen effects
+
+## 8. Waiting on the owner
+- [ ] The existing place file (`.rbxl`), so the adapter can be wired into the real combat system
+- [ ] Screenshot of the Tusk Sneak mechanic
+- [ ] Screenshot of the Wrecking Balls placeholder
+- [ ] Go-ahead plus references for Tusk Act 2, 3 and 4 (Act 1 reference received)
+- [ ] Wrecking Ball design: in Steel Ball Run the "wrecking balls" are the small studs that fly off the Steel Ball. Separate weapon, or studs that detach?
+- [ ] How Acts unlock: quests, progression, or a selection menu
+- [ ] Push access for Claude to the GitHub repo
+
+## 9. Decision log
 | Date | Decision |
 |---|---|
-| 2026-11-22 | Second Brain created. Work is paused until the place file and screenshots arrive. |
+| 2026-11-22 | Second Brain created. |
+| 2026-11-22 | No place file received, so Spin was built as a standalone drop-in with `CombatAdapter` as the single integration point, to avoid a duplicate combat system. |
+| 2026-11-22 | Models are procedural so nothing needs uploading; a custom mesh can replace the procedural one via `SpinShared.Assets`. |
+| 2026-11-22 | Poses are procedural (Motor6D C0), because animations must be uploaded by the owner's account. Real animations can replace them later. |
+| 2026-11-22 | Sounds are synthesized originals in `assets/audio`; they need uploading. |
+| 2026-11-22 | Spin key is R (configurable). The client measures charge only for the meter; the server's timing is final. |
 
-## 7. Known issues and open questions
-- What does "Chat New Game" mean? Confirm what the owner expects from this Second Brain.
+## 10. Known issues and limits
+- Nothing has been run in Roblox Studio yet. The code passes a Lua syntax check, and the charge-level logic was unit-tested. Pose angles and ring look may need tuning after the first Studio test.
+- Server projectiles have no lag compensation, so very high-ping targets can be hit slightly behind where they appear.
+- Default stun uses WalkSpeed multipliers. If the game has a sprint system that sets WalkSpeed, use `CombatAdapter.Hooks.ApplyStun`.
+- Sounds are silent until ids are pasted into `SpinConfig.Sounds`.

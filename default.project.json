@@ -1,0 +1,17 @@
+{
+  "name": "SpinBattlegrounds",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "SpinShared": { "$path": "src/shared" }
+    },
+    "ServerScriptService": {
+      "SpinServer": { "$path": "src/server" }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "SpinClient": { "$path": "src/client" }
+      }
+    }
+  }
+}
