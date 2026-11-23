@@ -95,7 +95,7 @@ TuskConfig.BlockyModels = true
 TuskConfig.StandModels = {
 	[1] = {
 		AssetId = 0, -- set 8768080824 to use the "Tusk1" store model instead
-		Style = "Classic", -- built-in look: "Classic" (pink star creature from the drawings) or "Mascot" (small blue/cyan toy-like humanoid)
+		Style = "Model", -- built-in look: "Model" (smooth lilac Tusk from the owner's Studio screenshots), "Classic" (pink star creature from the drawings) or "Mascot" (small blue/cyan toy-like humanoid)
 		Height = 3.2,
 		Rotation = Vector3.new(0, 0, 0),
 	},

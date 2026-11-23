@@ -1309,7 +1309,7 @@ TuskConfig.BlockyModels = true
 TuskConfig.StandModels = {
 	[1] = {
 		AssetId = 0, -- set 8768080824 to use the "Tusk1" store model instead
-		Style = "Classic", -- built-in look: "Classic" (pink star creature from the drawings) or "Mascot" (small blue/cyan toy-like humanoid)
+		Style = "Model", -- built-in look: "Model" (smooth lilac Tusk from the owner's Studio screenshots), "Classic" (pink star creature from the drawings) or "Mascot" (small blue/cyan toy-like humanoid)
 		Height = 3.2,
 		Rotation = Vector3.new(0, 0, 0),
 	},
@@ -2544,10 +2544,144 @@ end
 
 -- Act 1 has two looks: "Mascot" (default) or "Classic" (the pink star
 -- creature from the drawings). Switch in TuskConfig.StandModels[1].Style.
+-- ACT 1, "Model" style: from the owner's Studio screenshots (front, both
+-- sides, back). Smooth lilac creature: a wide domed head with two little
+-- antler horns, a gold star with dark rays on the forehead (and one on the
+-- back of the head), small blue eyes under a brow ridge, a dark grey beak,
+-- big bat-wing ears with gold stars, two spiky fins under each wing,
+-- a teardrop body that tapers to a point, stubby arms with a gold star,
+-- and four pink balls hanging on thin stalks.
+local function buildAct1Model(scale)
+	local s = scale * 0.82
+	local lilac = Color3.fromRGB(226, 184, 234)
+	local light = Color3.fromRGB(242, 214, 246)
+	local shade = Color3.fromRGB(204, 156, 218)
+	local pinkBall = Color3.fromRGB(226, 82, 196)
+	local gold = Color3.fromRGB(236, 216, 60)
+	local fur = Color3.fromRGB(70, 44, 96)
+	local eyeBlue = Color3.fromRGB(70, 56, 205)
+	local beak = Color3.fromRGB(72, 74, 82)
+	local stalk = Color3.fromRGB(240, 236, 244)
+
+	local model = Instance.new("Model")
+	model.Name = "TuskAct1"
+	local headSize = Vector3.new(2.15, 1.8, 2.15) * s
+	local h = headSize / 2
+	local body = part(model, { Name = "Body", Size = headSize, Color = lilac, Ellipsoid = true, Massless = false })
+	body.CFrame = CFrame.new()
+	body.Anchored = true
+	model.PrimaryPart = body
+	local rig = { Body = body, Joints = {} }
+
+	local function blob(name, size, cf, color, parent)
+		local p = part(model, { Name = name, Size = size * s, Color = color or lilac, Ellipsoid = true })
+		attach(parent or body, p, cf)
+		return p
+	end
+	-- A star with dark rays around it, on `parent` at `center` facing `normal` (parent space).
+	local function rayStar(parent, center, normal, size)
+		local n = normal.Unit
+		local helper = math.abs(n.Y) > 0.9 and Vector3.new(1, 0, 0) or Vector3.new(0, 1, 0)
+		local u = (helper - n * helper:Dot(n)).Unit
+		local v = n:Cross(u)
+		for i = 0, 9 do
+			local a = i / 10 * math.pi * 2 + 0.3
+			local dir = u * math.cos(a) + v * math.sin(a)
+			local ray = part(model, { Name = "Fur", Size = Vector3.new(0.03, 0.03, size * 0.45), Color = fur })
+			local p = center + dir * size * 0.62
+			attach(parent, ray, CFrame.lookAt(p, p + dir))
+		end
+		star5(model, parent, center + n * 0.02 * s, n, size, gold, 0)
+	end
+
+	-- Head shading: lighter dome, brow ridge over the eyes.
+	blob("Highlight", Vector3.new(1.75, 1.2, 1.8), CFrame.new(0, 0.3 * s, -0.06 * s), light)
+	blob("Brow", Vector3.new(1.3, 0.3, 0.45), CFrame.new(0, -0.14 * s, -0.86 * s) * CFrame.Angles(-0.2, 0, 0), lilac)
+	for _, side in ipairs({ -1, 1 }) do
+		blob("Eye", Vector3.new(0.22, 0.22, 0.16), CFrame.new(side * 0.34 * s, -0.32 * s, -0.98 * s), eyeBlue)
+		blob("Shine", Vector3.new(0.06, 0.06, 0.03), CFrame.new(side * 0.34 * s + 0.04 * s, -0.28 * s, -1.06 * s), Color3.new(1, 1, 1))
+	end
+	-- Dark grey beak pointing down and forward.
+	cone(model, body, Vector3.new(0, -0.52 * s, -0.9 * s), Vector3.new(0, -0.85, -0.55), 0.55 * s, 0.17 * s, beak, Enum.Material.Metal)
+	-- Stars: forehead and back of the head.
+	local front = Vector3.new(0, 0.5, -1)
+	rayStar(body, onSurface(h, front, 1.0), front, 0.55 * s)
+	local back = Vector3.new(0, 0.25, 1)
+	rayStar(body, onSurface(h, back, 1.0), back, 0.5 * s)
+	-- Two little antler horns on top.
+	for _, side in ipairs({ -1, 1 }) do
+		blob("Horn", Vector3.new(0.34, 0.8, 0.34), CFrame.new(side * 0.36 * s, 1.05 * s, 0.05 * s) * CFrame.Angles(0, 0, -side * 0.22))
+		blob("Horn", Vector3.new(0.24, 0.6, 0.24), CFrame.new(side * 0.52 * s, 1.58 * s, 0.05 * s) * CFrame.Angles(0, 0, -side * 0.45))
+		blob("HornNub", Vector3.new(0.17, 0.36, 0.17), CFrame.new(side * 0.25 * s, 1.42 * s, 0.05 * s) * CFrame.Angles(0, 0, side * 0.5))
+	end
+
+	-- Bat-wing ears (animated: they flap). Pointed blades made of three
+	-- shrinking flat pieces, angled down and out, a gold star near the root.
+	for _, e in ipairs({ { "EarL", -1 }, { "EarR", 1 } }) do
+		local side = e[2]
+		local base = CFrame.new(side * 0.9 * s, 0.35 * s, 0.1 * s)
+		local root = part(model, { Name = "Wing", Size = Vector3.new(1.5, 1.05, 0.16) * s, Color = lilac, Ellipsoid = true })
+		local offset = CFrame.Angles(0, 0, -side * 0.38) * CFrame.new(side * 0.7 * s, 0, 0)
+		local weld = attach(body, root, base * offset)
+		rig.Joints[e[1]] = { Weld = weld, Base = base, Offset = offset }
+		blob("Wing", Vector3.new(1.3, 0.68, 0.14), CFrame.new(side * 1.0 * s, -0.1 * s, 0) * CFrame.Angles(0, 0, -side * 0.1), lilac, root)
+		blob("WingTip", Vector3.new(1.1, 0.3, 0.11), CFrame.new(side * 1.75 * s, -0.22 * s, 0) * CFrame.Angles(0, 0, -side * 0.15), lilac, root)
+		blob("WingTip", Vector3.new(0.5, 0.1, 0.08), CFrame.new(side * 2.35 * s, -0.3 * s, 0) * CFrame.Angles(0, 0, -side * 0.2), shade, root)
+		star5(model, root, Vector3.new(-side * 0.1 * s, 0.12 * s, -0.1 * s), Vector3.new(0, 0.35, -1), 0.3 * s, gold, 0.2)
+		-- Two spiky fins under the wing; the lower one ends in a gold star.
+		local f1 = blob("Fin", Vector3.new(0.95, 0.16, 0.14), CFrame.new(side * 1.25 * s, -0.25 * s, -0.05 * s) * CFrame.Angles(0, 0, -side * 0.35))
+		local f2 = blob("Fin", Vector3.new(0.9, 0.14, 0.13), CFrame.new(side * 1.15 * s, -0.55 * s, -0.05 * s) * CFrame.Angles(0, 0, -side * 0.15))
+		blob("FinSpike", Vector3.new(0.4, 0.09, 0.09), CFrame.new(side * 0.35 * s, 0.06 * s, 0) * CFrame.Angles(0, 0, side * 0.6), lilac, f1)
+		star5(model, f2, Vector3.new(side * 0.45 * s, 0, -0.06 * s), Vector3.new(0, 0, -1), 0.24 * s, gold, 0)
+	end
+
+	-- Teardrop body under the head, tapering to a point.
+	local torso = blob("Torso", Vector3.new(1.55, 1.7, 1.55), CFrame.new(0, -1.3 * s, 0.15 * s))
+	blob("Belly", Vector3.new(1.1, 1.2, 0.9), CFrame.new(0, -0.05 * s, -0.32 * s), light, torso)
+	rayStar(torso, Vector3.new(0, 0.15 * s, 0.77 * s), Vector3.new(0, 0, 1), 0.45 * s)
+	local t1 = blob("Tail", Vector3.new(1.0, 1.15, 1.0), CFrame.new(0, -0.95 * s, 0.1 * s), lilac, torso)
+	blob("Tail", Vector3.new(0.55, 0.9, 0.55), CFrame.new(0, -0.65 * s, 0.08 * s), lilac, t1)
+	blob("TailTip", Vector3.new(0.22, 0.6, 0.22), CFrame.new(0, -1.15 * s, 0.12 * s), shade, t1)
+	blob("Band", Vector3.new(0.6, 0.07, 0.52), CFrame.new(0, -0.42 * s, 0.03 * s), gold, t1)
+
+	-- Stubby arms (animated) with a gold star; a pink ball hangs under each.
+	for _, a in ipairs({ { "ArmL", -1 }, { "ArmR", 1 } }) do
+		local side = a[2]
+		local base = CFrame.new(side * 0.72 * s, -0.95 * s, 0.05 * s)
+		local arm = part(model, { Name = a[1], Size = Vector3.new(0.62, 1.35, 0.66) * s, Color = lilac, Ellipsoid = true })
+		local offset = CFrame.Angles(0, 0, side * 0.12) * CFrame.new(0, -0.5 * s, 0)
+		local weld = attach(body, arm, base * offset)
+		rig.Joints[a[1]] = { Weld = weld, Base = base, Offset = offset }
+		star5(model, arm, Vector3.new(side * 0.29 * s, 0.05 * s, 0), Vector3.new(side, 0, 0), 0.24 * s, gold, 0)
+		local st = part(model, { Name = "Stalk", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, 0.06, 0.06) * s, Color = stalk })
+		attach(arm, st, CFrame.new(0, -0.82 * s, 0) * CFrame.Angles(0, 0, math.pi / 2))
+		local ball = part(model, { Name = "HeartLobe", Size = Vector3.new(0.4, 0.38, 0.4) * s, Color = pinkBall, Ellipsoid = true })
+		attach(arm, ball, CFrame.new(0, -1.1 * s, 0))
+		if a[1] == "ArmR" then
+			rig.NailPoint = Instance.new("Attachment")
+			rig.NailPoint.Name = "NailPoint"
+			rig.NailPoint.Parent = ball
+		end
+	end
+	-- Two thin legs near the tail with pink balls (animated: they swing).
+	for i, side in ipairs({ -1, 1 }) do
+		local base = CFrame.new(side * 0.34 * s, -2.25 * s, 0.15 * s)
+		local leg = part(model, { Name = "Leg" .. i, Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 0.07, 0.07) * s, Color = stalk })
+		local offset = CFrame.new(0, -0.3 * s, 0) * CFrame.Angles(0, 0, math.pi / 2)
+		local weld = attach(body, leg, base * offset)
+		rig.Joints["Leg" .. i] = { Weld = weld, Base = base, Offset = offset }
+		local ball = part(model, { Name = "HeartLobe", Size = Vector3.new(0.44, 0.42, 0.44) * s, Color = pinkBall, Ellipsoid = true })
+		attach(leg, ball, CFrame.new(-0.5 * s, 0, 0))
+	end
+	return model, rig
+end
+
 local function buildAct1(scale)
 	local settings = TuskConfig.StandModels and TuskConfig.StandModels[1] or {}
 	if settings.Style == "Classic" then
 		return buildAct1Classic(scale)
+	elseif settings.Style == "Model" or settings.Style == nil then
+		return buildAct1Model(scale)
 	end
 	return buildAct1Mascot(scale)
 end
@@ -2800,7 +2934,9 @@ function TuskStandModels.build(act, scale)
 	local built, rig = builder(scale)
 	-- Blocky (classic Roblox) look for the procedural Stands; custom models are
 	-- left as they are. Only the eyes stay round.
-	if built and Blockify.enabled(TuskConfig) then
+	local style = act == 1 and TuskConfig.StandModels and TuskConfig.StandModels[1] and TuskConfig.StandModels[1].Style
+	local smooth = act == 1 and (style == "Model" or style == nil) -- the Studio-model look is smooth, like the screenshots
+	if built and Blockify.enabled(TuskConfig) and not smooth then
 		Blockify.apply(built, { KeepRound = SIGNATURE_ROUND[act] })
 	end
 	return built, rig
@@ -17769,6 +17905,7 @@ local GOLD = Color3.fromRGB(255, 205, 90)
 
 local gui, dim, board, grid, confirm, tracker, banner, marker
 local current -- the active bounty
+local confirmEntry -- the poster the Accept/Decline card is asking about
 local FAST = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local SOFT = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
@@ -17832,7 +17969,7 @@ local function showConfirm(entry)
 	body:FindFirstChild("Who").Text = string.upper(entry.Name)
 	body:FindFirstChild("Pay").Text = "REWARD  $" .. entry.Reward
 	body:FindFirstChild("Note").Text = (current and current.Key ~= entry.Key) and ("This replaces your bounty on " .. current.Name .. ".") or "Land the final hit to claim it."
-	confirm.Entry = entry
+	confirmEntry = entry
 	local scale = confirm:FindFirstChildOfClass("UIScale")
 	scale.Scale = 0.6
 	TweenService:Create(scale, FAST, { Scale = 1 }):Play()
@@ -17956,8 +18093,8 @@ local function buildBoard()
 		return b
 	end
 	button("ACCEPT", GREEN, 0.07).Activated:Connect(function()
-		if confirm.Entry then
-			Remote:FireServer("Accept", confirm.Entry.Key)
+		if confirmEntry then
+			Remote:FireServer("Accept", confirmEntry.Key)
 		end
 		closeBoard()
 	end)

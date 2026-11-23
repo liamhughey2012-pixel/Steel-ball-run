@@ -32,3 +32,8 @@ Cyan glowing nails with **blue Spin whirls** (3-armed spirals, cyan centre fadin
 - Five legs fanned out under the body with bigger hearts.
 - Act 1 keeps all its round shapes (only the thin legs are square rods in the blocky look).
 ![[act1_vs_picture.png]]
+
+## Studio-model look (2026-11-23)
+Rebuilt from the owner's Studio screenshots (front, both sides, back): smooth lilac body, wide domed head with two antler horns, a gold star with dark rays on the forehead and the back, small blue eyes under a brow ridge, a dark grey beak, broad bat-wing ears with gold stars (they flap), two spiky fins under each wing, a teardrop body tapering to a point, stubby arms with gold stars, four pink balls on thin stalks. This is the default (`TuskConfig.StandModels[1].Style = "Model"`); "Classic" and "Mascot" are still there. It stays smooth (not blocky) to match the screenshots.
+![[tusk_act1_vs_studio_model.png]]
+*(top: owner's screenshots; bottom: the rebuilt Stand in the stand-in renderer)*

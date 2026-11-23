@@ -37,6 +37,7 @@ local GOLD = Color3.fromRGB(255, 205, 90)
 
 local gui, dim, board, grid, confirm, tracker, banner, marker
 local current -- the active bounty
+local confirmEntry -- the poster the Accept/Decline card is asking about
 local FAST = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local SOFT = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
@@ -100,7 +101,7 @@ local function showConfirm(entry)
 	body:FindFirstChild("Who").Text = string.upper(entry.Name)
 	body:FindFirstChild("Pay").Text = "REWARD  $" .. entry.Reward
 	body:FindFirstChild("Note").Text = (current and current.Key ~= entry.Key) and ("This replaces your bounty on " .. current.Name .. ".") or "Land the final hit to claim it."
-	confirm.Entry = entry
+	confirmEntry = entry
 	local scale = confirm:FindFirstChildOfClass("UIScale")
 	scale.Scale = 0.6
 	TweenService:Create(scale, FAST, { Scale = 1 }):Play()
@@ -224,8 +225,8 @@ local function buildBoard()
 		return b
 	end
 	button("ACCEPT", GREEN, 0.07).Activated:Connect(function()
-		if confirm.Entry then
-			Remote:FireServer("Accept", confirm.Entry.Key)
+		if confirmEntry then
+			Remote:FireServer("Accept", confirmEntry.Key)
 		end
 		closeBoard()
 	end)
