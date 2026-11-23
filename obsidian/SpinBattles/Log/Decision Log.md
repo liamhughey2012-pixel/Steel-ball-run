@@ -73,3 +73,4 @@ updated: 2026-11-22
 | 2026-11-23 | Tusk Act 1 rebuilt from the owner's Studio screenshots (smooth lilac, bat-wing ears); bounty Accept button bug fixed |
 | 2026-11-23 | Bounty posters show NPC faces (live viewport); the Accept/Decline card sits on its own top layer |
 | 2026-11-23 | Bounty board UI polished: framed board, tabs, cash, richer posters, contract card with ACCEPTED stamp |
+| 2026-11-23 | Sandman walks 30% faster (Registry WalkSpeed); Mountain Tim (Oh! Lonesome Me) added, also as an NPC and bounty target |

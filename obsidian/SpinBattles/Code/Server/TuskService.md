@@ -262,6 +262,33 @@ function TuskService.fireWord(player, state, spec)
 	})
 end
 
+-- Server projectile with a lasso visual (Mountain Tim).
+function TuskService.fireLasso(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "TimLasso",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Lasso" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Some characters walk faster or slower (Registry WalkSpeed, e.g. Sandman).
+function TuskService.applyCharacterSpeed(state)
+	local character = state and state.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	local info = state.Act and Registry.get(state.Act)
+	local mult = info and info.WalkSpeed or 1
+	Adapter.setMoveModifier(humanoid, "CharacterSpeed", mult ~= 1 and mult or nil)
+end
+
 -- Charge helpers (hold abilities): sets the replicated TuskCharge attribute.
 function TuskService.beginCharge(player, state, move, slot, multiplier)
 	local character, humanoid = Adapter.getAlive(player)
@@ -364,6 +391,7 @@ function TuskService.select(player, act, internal)
 	if state.Character then
 		state.Character:SetAttribute("TuskAct", act)
 	end
+	TuskService.applyCharacterSpeed(state)
 	TuskService.tell(player, "Equipped", { Act = act })
 end
 
@@ -386,6 +414,7 @@ function TuskService.evolve(player, state, toAct)
 	if state.Character then
 		state.Character:SetAttribute("TuskAct", toAct)
 	end
+	TuskService.applyCharacterSpeed(state)
 	TuskService.fx("Evolve", { Character = state.Character, From = from, To = toAct })
 	TuskService.tell(player, "Evolved", { Act = toAct })
 end
@@ -525,6 +554,7 @@ local function onCharacter(player, character)
 	if state.Act then
 		character:SetAttribute("TuskAct", state.Act)
 	end
+	TuskService.applyCharacterSpeed(state)
 	humanoid.Died:Connect(function()
 		if state.Character == character then
 			cleanupAct(player, state)

@@ -139,6 +139,7 @@ TuskConfig.Roster = {
 	{ Id = "Diego", Name = "DIEGO BRANDO", Stand = "SCARY MONSTERS", Available = true, Color = Color3.fromRGB(80, 210, 220) },
 	{ Id = "PorkPie", Name = "PORK PIE HAT KID", Stand = "WIRED", Available = true, Color = Color3.fromRGB(165, 215, 80) },
 	{ Id = "Sandman", Name = "SANDMAN", Stand = "IN A SILENT WAY", Available = true, Color = Color3.fromRGB(245, 185, 80) },
+	{ Id = "MountainTim", Name = "MOUNTAIN TIM", Stand = "OH! LONESOME ME", Available = true, Color = Color3.fromRGB(214, 156, 84) },
 }
 
 ---------------------------------------------------------------------------
@@ -165,7 +166,7 @@ TuskConfig.Bounty = {
 TuskConfig.StandBots = {
 	Enabled = true,
 	Count = 6, -- how many at once (each takes a free spot below)
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman" }, -- picked at random (only installed ones)
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim" }, -- picked at random (only installed ones)
 	Health = 200,
 	WalkSpeed = 15,
 	-- Where they hang out, scattered round the SBR map (offsets from the map's
@@ -513,6 +514,44 @@ TuskConfig.Sandman = {
 		Windup = 1.0, Distance = 16, Radius = 13,
 		Waves = 4, WaveEvery = 0.3, WaveDamage = 5, WaveStun = 0.6,
 		FinalDamage = 14, FinalKnockback = 55, FinalLaunch = 30, FinalStun = 0.8,
+	},
+}
+
+---------------------------------------------------------------------------
+-- Mountain Tim: OH! LONESOME ME
+---------------------------------------------------------------------------
+TuskConfig.MountainTim = {
+	M1 = { -- LASSO COMBO: jab, jab, rope whip, overhead rope slam
+		Interval = 0.29, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.09,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 6 },
+			{ Damage = 7, Stun = 0.5, Knockback = 40, Launch = 14, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	LassoSnare = { -- throw the lasso: a hit ropes the enemy and drags them in
+		Cooldown = 7, Startup = 0.28,
+		Speed = 105, Radius = 1.6, Range = 60,
+		Damage = 6, Stun = 1.0,
+		ReelTime = 0.6, ReelTick = 0.15, ReelStopDistance = 5,
+	},
+	RopeSplit = { -- split into pieces that slide along the rope to a new spot, slicing through enemies
+		Cooldown = 8, Windup = 0.15,
+		Distance = 34, Travel = 0.35, Width = 5,
+		Damage = 7, Stun = 0.6, Knockback = 10,
+	},
+	SplitPunch = { -- his fist flies off along the rope and punches down a line, then returns
+		Cooldown = 6, Windup = 0.18,
+		Range = 26, Width = 4, Hits = 3, HitEvery = 0.12,
+		Damage = 3.5, Stun = 0.5, FinalKnockback = 26,
+	},
+	Ultimate = { -- LONESOME ROUNDUP: ropes to everyone nearby, his pieces ride them in, then he yanks everyone together
+		Windup = 0.9, Radius = 24, MaxTargets = 6,
+		RideHits = 4, RideEvery = 0.18, RideDamage = 3, RideStun = 0.6,
+		ReelTime = 0.8, ReelTick = 0.15,
+		SlamDamage = 12, SlamRadius = 9, SlamKnockback = 55, SlamLaunch = 28, SlamStun = 0.8,
 	},
 }
 

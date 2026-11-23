@@ -1206,8 +1206,26 @@ TuskActRegistry.Acts = {
 		Ultimate = "SILENT SYMPHONY",
 		Next = nil,
 		Module = "Sandman", -- server moves
+		WalkSpeed = 1.3, -- he's a runner: 30% faster than everyone else
 		ClientModule = "SandmanVFX", -- client visuals (TuskActVFX.SandmanVFX)
 		CardTitle = "STAND  ·  IN A SILENT WAY",
+	},
+	-- Mountain Tim: OH! LONESOME ME (splits his body into pieces that slide
+	-- along his lasso rope).
+	[9] = {
+		Name = "OH! LONESOME ME",
+		Character = "MountainTim",
+		Tagline = "Split along the rope",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 156, 84), Secondary = Color3.fromRGB(96, 62, 38) },
+		M1 = "LASSO COMBO",
+		Abilities = { "LASSO SNARE", "ROPE SPLIT", "SPLIT PUNCH" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "LONESOME ROUNDUP",
+		Next = nil,
+		Module = "MountainTim", -- server moves
+		ClientModule = "MountainTimVFX", -- client visuals (TuskActVFX.MountainTimVFX)
+		CardTitle = "STAND  ·  OH! LONESOME ME",
 	},
 }
 
@@ -1218,7 +1236,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -1351,6 +1369,7 @@ TuskConfig.Roster = {
 	{ Id = "Diego", Name = "DIEGO BRANDO", Stand = "SCARY MONSTERS", Available = true, Color = Color3.fromRGB(80, 210, 220) },
 	{ Id = "PorkPie", Name = "PORK PIE HAT KID", Stand = "WIRED", Available = true, Color = Color3.fromRGB(165, 215, 80) },
 	{ Id = "Sandman", Name = "SANDMAN", Stand = "IN A SILENT WAY", Available = true, Color = Color3.fromRGB(245, 185, 80) },
+	{ Id = "MountainTim", Name = "MOUNTAIN TIM", Stand = "OH! LONESOME ME", Available = true, Color = Color3.fromRGB(214, 156, 84) },
 }
 
 ---------------------------------------------------------------------------
@@ -1377,7 +1396,7 @@ TuskConfig.Bounty = {
 TuskConfig.StandBots = {
 	Enabled = true,
 	Count = 6, -- how many at once (each takes a free spot below)
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman" }, -- picked at random (only installed ones)
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim" }, -- picked at random (only installed ones)
 	Health = 200,
 	WalkSpeed = 15,
 	-- Where they hang out, scattered round the SBR map (offsets from the map's
@@ -1725,6 +1744,44 @@ TuskConfig.Sandman = {
 		Windup = 1.0, Distance = 16, Radius = 13,
 		Waves = 4, WaveEvery = 0.3, WaveDamage = 5, WaveStun = 0.6,
 		FinalDamage = 14, FinalKnockback = 55, FinalLaunch = 30, FinalStun = 0.8,
+	},
+}
+
+---------------------------------------------------------------------------
+-- Mountain Tim: OH! LONESOME ME
+---------------------------------------------------------------------------
+TuskConfig.MountainTim = {
+	M1 = { -- LASSO COMBO: jab, jab, rope whip, overhead rope slam
+		Interval = 0.29, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.09,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 6 },
+			{ Damage = 7, Stun = 0.5, Knockback = 40, Launch = 14, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	LassoSnare = { -- throw the lasso: a hit ropes the enemy and drags them in
+		Cooldown = 7, Startup = 0.28,
+		Speed = 105, Radius = 1.6, Range = 60,
+		Damage = 6, Stun = 1.0,
+		ReelTime = 0.6, ReelTick = 0.15, ReelStopDistance = 5,
+	},
+	RopeSplit = { -- split into pieces that slide along the rope to a new spot, slicing through enemies
+		Cooldown = 8, Windup = 0.15,
+		Distance = 34, Travel = 0.35, Width = 5,
+		Damage = 7, Stun = 0.6, Knockback = 10,
+	},
+	SplitPunch = { -- his fist flies off along the rope and punches down a line, then returns
+		Cooldown = 6, Windup = 0.18,
+		Range = 26, Width = 4, Hits = 3, HitEvery = 0.12,
+		Damage = 3.5, Stun = 0.5, FinalKnockback = 26,
+	},
+	Ultimate = { -- LONESOME ROUNDUP: ropes to everyone nearby, his pieces ride them in, then he yanks everyone together
+		Windup = 0.9, Radius = 24, MaxTargets = 6,
+		RideHits = 4, RideEvery = 0.18, RideDamage = 3, RideStun = 0.6,
+		ReelTime = 0.8, ReelTick = 0.15,
+		SlamDamage = 12, SlamRadius = 9, SlamKnockback = 55, SlamLaunch = 28, SlamStun = 0.8,
 	},
 }
 
@@ -3257,6 +3314,7 @@ local GyroOutfit = require(script.GyroOutfit)
 local DiegoOutfit = require(script.DiegoOutfit)
 local PorkPieOutfit = require(script.PorkPieOutfit)
 local SandmanOutfit = require(script.SandmanOutfit)
+local MountainTimOutfit = require(script.MountainTimOutfit)
 local StandBots = require(script.StandBots)
 local BountyService = require(script.BountyService)
 
@@ -3269,6 +3327,7 @@ GyroOutfit.init()
 DiegoOutfit.init()
 PorkPieOutfit.init()
 SandmanOutfit.init()
+MountainTimOutfit.init()
 StandBots.init(TuskService)
 BountyService.init()
 NPCService.init()
@@ -4688,7 +4747,207 @@ end
 return GyroOutfit
 ```
 
-## 21. NPCService  (ModuleScript)
+## 21. MountainTimOutfit  (ModuleScript)
+**Put it in:** `ServerScriptService › SpinServer`
+
+```lua
+--[[
+	MountainTimOutfit  (ServerScriptService.SpinServer.MountainTimOutfit)
+
+	Gives a character Mountain Tim's cowboy look while they play him (TuskAct 9),
+	built from blocky parts (no catalog asset ids):
+	  * a tall brown cowboy hat with a wide brim and a dark band
+	  * a red bandana round the neck
+	  * an open leather vest, a belt with a gold buckle and a coiled lasso
+	    at his hip
+	  * leather chaps, dark boots with silver spurs
+	The player's own hats/hair are hidden while they play him and come back
+	when they switch. Built on the server so every player sees it.
+]]
+
+local Players = game:GetService("Players")
+
+local MountainTimOutfit = {}
+MountainTimOutfit.Act = 9
+
+local C = {
+	Hat = Color3.fromRGB(150, 100, 58),
+	HatDark = Color3.fromRGB(110, 70, 40),
+	Band = Color3.fromRGB(45, 30, 22),
+	Bandana = Color3.fromRGB(190, 40, 38),
+	Vest = Color3.fromRGB(120, 78, 44),
+	VestTrim = Color3.fromRGB(80, 50, 28),
+	Belt = Color3.fromRGB(60, 38, 22),
+	Buckle = Color3.fromRGB(230, 190, 70),
+	Rope = Color3.fromRGB(205, 170, 110),
+	Chaps = Color3.fromRGB(138, 92, 52),
+	Boot = Color3.fromRGB(70, 44, 28),
+	Spur = Color3.fromRGB(200, 205, 215),
+}
+
+local saved = setmetatable({}, { __mode = "k" })
+
+local function piece(parent, outfit, name, size, color, offset)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.SmoothPlastic
+	p.Size = size
+	p.Color = color
+	p.CFrame = parent.CFrame * offset
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = parent
+	weld.Part1 = p
+	weld.Parent = p
+	p.Parent = outfit
+	return p
+end
+
+local function headPieces(head, outfit)
+	local s = head.Size.Y / 1.2
+	local top = head.Size.Y / 2
+	-- Cowboy hat: wide brim, tall crown with a dent, dark band.
+	piece(head, outfit, "Brim", Vector3.new(head.Size.X + 1.3 * s, 0.14 * s, head.Size.Z + 1.1 * s), C.HatDark, CFrame.new(0, top + 0.02 * s, 0.02 * s))
+	piece(head, outfit, "BrimFront", Vector3.new(head.Size.X + 0.9 * s, 0.12 * s, 0.4 * s), C.Hat, CFrame.new(0, top + 0.08 * s, -head.Size.Z / 2 - 0.45 * s) * CFrame.Angles(0.18, 0, 0))
+	piece(head, outfit, "Crown", Vector3.new(head.Size.X * 0.85, 0.85 * s, head.Size.Z * 0.8), C.Hat, CFrame.new(0, top + 0.5 * s, 0.03 * s))
+	piece(head, outfit, "Dent", Vector3.new(0.18 * s, 0.12 * s, head.Size.Z * 0.6), C.HatDark, CFrame.new(0, top + 0.92 * s, 0.03 * s))
+	piece(head, outfit, "Band", Vector3.new(head.Size.X * 0.87, 0.18 * s, head.Size.Z * 0.82), C.Band, CFrame.new(0, top + 0.18 * s, 0.03 * s))
+	-- Bandana: knotted round the neck, a triangle hanging in front.
+	piece(head, outfit, "Bandana", Vector3.new(head.Size.X * 0.95, 0.22 * s, head.Size.Z * 0.95), C.Bandana, CFrame.new(0, -top - 0.08 * s, 0))
+	piece(head, outfit, "BandanaTip", Vector3.new(0.6 * s, 0.5 * s, 0.08 * s), C.Bandana, CFrame.new(0, -top - 0.35 * s, -head.Size.Z / 2 - 0.02 * s) * CFrame.Angles(0, 0, math.pi / 4))
+end
+
+local function body(character, outfit)
+	local upper = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	local lower = character:FindFirstChild("LowerTorso")
+	if upper then
+		local s = upper.Size
+		for _, side in ipairs({ -1, 1 }) do
+			piece(upper, outfit, "Vest", Vector3.new(s.X * 0.4, s.Y + 0.04, s.Z + 0.1), C.Vest, CFrame.new(side * s.X * 0.3, 0, 0))
+			piece(upper, outfit, "VestTrim", Vector3.new(0.1, s.Y + 0.06, 0.06), C.VestTrim, CFrame.new(side * s.X * 0.1, 0, -s.Z / 2 - 0.07))
+		end
+		piece(upper, outfit, "VestBack", Vector3.new(s.X + 0.06, s.Y + 0.04, 0.08), C.Vest, CFrame.new(0, 0, s.Z / 2 + 0.04))
+	end
+	local waist = lower or upper
+	if waist then
+		local y = lower and 0 or -upper.Size.Y / 2 + 0.15
+		piece(waist, outfit, "Belt", Vector3.new(waist.Size.X + 0.12, 0.3, waist.Size.Z + 0.12), C.Belt, CFrame.new(0, y, 0))
+		piece(waist, outfit, "Buckle", Vector3.new(0.45, 0.32, 0.06), C.Buckle, CFrame.new(0, y, -waist.Size.Z / 2 - 0.09))
+		-- Coiled lasso hanging at the right hip (a stepped ring of rope).
+		local hip = CFrame.new(waist.Size.X / 2 + 0.25, y - 0.4, 0) * CFrame.Angles(0, 0, math.pi / 2)
+		for i = 0, 7 do
+			local a = i / 8 * math.pi * 2
+			piece(waist, outfit, "Lasso", Vector3.new(0.14, 0.42, 0.14), C.Rope, hip * CFrame.new(math.cos(a) * 0.5, 0, math.sin(a) * 0.5) * CFrame.Angles(0, -a, 0) * CFrame.Angles(0, 0, math.pi / 2))
+		end
+	end
+	-- Chaps and boots with spurs.
+	for _, name in ipairs({ "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
+		local leg = character:FindFirstChild(name)
+		if leg then
+			piece(leg, outfit, "Chaps", leg.Size + Vector3.new(0.1, 0.02, 0.1), C.Chaps, CFrame.new())
+		end
+	end
+	for _, name in ipairs({ "LeftFoot", "RightFoot", "Left Leg", "Right Leg" }) do
+		local foot = character:FindFirstChild(name)
+		if foot then
+			local tall = foot.Size.Y > 1.8
+			local y = -foot.Size.Y / 2 + (tall and 0.35 or foot.Size.Y / 2)
+			piece(foot, outfit, "Boot", Vector3.new(foot.Size.X + 0.12, tall and 0.7 or foot.Size.Y + 0.1, foot.Size.Z + 0.2), C.Boot, CFrame.new(0, y, -0.05))
+			piece(foot, outfit, "Spur", Vector3.new(0.12, 0.12, 0.3), C.Spur, CFrame.new(0, y - 0.1, foot.Size.Z / 2 + 0.2))
+		end
+	end
+end
+
+function MountainTimOutfit.apply(character)
+	if character:FindFirstChild("MountainTimOutfit") then
+		return
+	end
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local store = { Hidden = {} }
+	saved[character] = store
+	for _, d in ipairs(character:GetChildren()) do
+		if d:IsA("Accessory") then
+			local handle = d:FindFirstChild("Handle")
+			local kind = d.AccessoryType
+			if handle and (kind == Enum.AccessoryType.Hat or kind == Enum.AccessoryType.Hair or kind == Enum.AccessoryType.Unknown) then
+				store.Hidden[handle] = handle.Transparency
+				handle.Transparency = 1
+			end
+		end
+	end
+	local outfit = Instance.new("Model")
+	outfit.Name = "MountainTimOutfit"
+	outfit.Parent = character
+	headPieces(head, outfit)
+	body(character, outfit)
+end
+
+function MountainTimOutfit.remove(character)
+	local outfit = character:FindFirstChild("MountainTimOutfit")
+	if outfit then
+		outfit:Destroy()
+	end
+	local store = saved[character]
+	if not store then
+		return
+	end
+	saved[character] = nil
+	for thing, transparency in pairs(store.Hidden) do
+		if thing.Parent then
+			thing.Transparency = transparency
+		end
+	end
+end
+
+local function watch(character)
+	local function update()
+		if character:GetAttribute("TuskAct") == MountainTimOutfit.Act then
+			task.delay(0.3, function()
+				if character.Parent and character:GetAttribute("TuskAct") == MountainTimOutfit.Act then
+					MountainTimOutfit.apply(character)
+				end
+			end)
+		else
+			MountainTimOutfit.remove(character)
+		end
+	end
+	character:GetAttributeChangedSignal("TuskAct"):Connect(update)
+	update()
+end
+
+function MountainTimOutfit.init()
+	local function onPlayer(player)
+		player.CharacterAppearanceLoaded:Connect(watch)
+		if player.Character then
+			watch(player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	-- Stand-user NPCs (StandBots) wear the outfit too.
+	local CollectionService = game:GetService("CollectionService")
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		watch(model)
+	end
+	CollectionService:GetInstanceAddedSignal("SpinFighter"):Connect(watch)
+	for _, player in ipairs(Players:GetPlayers()) do
+		onPlayer(player)
+	end
+end
+
+return MountainTimOutfit
+```
+
+## 22. NPCService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -4908,7 +5167,7 @@ end
 return NPCService
 ```
 
-## 22. PorkPieOutfit  (ModuleScript)
+## 23. PorkPieOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5184,7 +5443,7 @@ end
 return PorkPieOutfit
 ```
 
-## 23. ProjectileService  (ModuleScript)
+## 24. ProjectileService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5385,7 +5644,7 @@ end)
 return ProjectileService
 ```
 
-## 24. SandmanOutfit  (ModuleScript)
+## 25. SandmanOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5600,7 +5859,7 @@ end
 return SandmanOutfit
 ```
 
-## 25. StandAssetLoader  (ModuleScript)
+## 26. StandAssetLoader  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5690,7 +5949,7 @@ end
 return StandAssetLoader
 ```
 
-## 26. StandBots  (ModuleScript)
+## 27. StandBots  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5698,8 +5957,8 @@ return StandAssetLoader
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman: whichever are
-	installed) through exactly the same move code as players, so their M1s,
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim:
+	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
 	    any player who comes within AggroRange and walk back to their spot
@@ -5735,6 +5994,7 @@ local LOOKS = {
 	Diego = { Skin = Color3.fromRGB(240, 200, 165), Torso = Color3.fromRGB(60, 120, 90), Legs = Color3.fromRGB(40, 50, 45) },
 	PorkPie = { Skin = Color3.fromRGB(205, 150, 110), Torso = Color3.fromRGB(95, 115, 45), Legs = Color3.fromRGB(95, 115, 45) },
 	Sandman = { Skin = Color3.fromRGB(170, 115, 80), Torso = Color3.fromRGB(200, 160, 100), Legs = Color3.fromRGB(120, 85, 55) },
+	MountainTim = { Skin = Color3.fromRGB(226, 180, 140), Torso = Color3.fromRGB(70, 90, 130), Legs = Color3.fromRGB(60, 50, 70) },
 }
 
 local usedSpots = {} -- [spot index] = slot using it
@@ -6025,7 +6285,7 @@ end
 return StandBots
 ```
 
-## 27. TestDummies  (ModuleScript)
+## 28. TestDummies  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6195,12 +6455,12 @@ end
 return TestDummies
 ```
 
-## 28. TuskActs  (Folder)
+## 29. TuskActs  (Folder)
 **Put it in:** `ServerScriptService › SpinServer`
 
 _Empty folder: nothing to paste._
 
-## 29. DiegoBrando  (ModuleScript)
+## 30. DiegoBrando  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -6658,7 +6918,7 @@ end
 return Diego
 ```
 
-## 30. GyroZeppeli  (ModuleScript)
+## 31. GyroZeppeli  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -6982,7 +7242,295 @@ end
 return Gyro
 ```
 
-## 31. PorkPieHatKid  (ModuleScript)
+## 32. MountainTim  (ModuleScript)
+**Put it in:** `ServerScriptService › SpinServer › TuskActs`
+
+```lua
+--[[
+	MountainTim  (ServerScriptService.SpinServer.TuskActs.MountainTim)
+
+	Mountain Tim: OH! LONESOME ME. The cowboy's Stand splits his body into
+	pieces that slide along his lasso rope. Registered as "Act" 9 so it
+	reuses the Tusk ability system.
+	  M1        LASSO COMBO: jab, jab, rope whip, overhead rope slam
+	  Ability 1 LASSO SNARE: throw the lasso; a hit ropes the enemy and drags them in
+	  Ability 2 ROPE SPLIT: he splits into pieces that slide along a rope to a
+	            spot ahead (can't be hit on the way), slicing through enemies
+	  Ability 3 SPLIT PUNCH: his fist comes off and flies along the rope,
+	            punching everyone in a line, then flies back
+	  Ultimate  LONESOME ROUNDUP: ropes shoot to everyone nearby, his pieces
+	            ride them in hitting over and over, then he yanks everyone
+	            together and slams the rope down
+	Numbers: TuskConfig.MountainTim. All damage goes through S.hit (CombatAdapter).
+]]
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+local Moves = require(script.Parent.Parent.TuskMoves)
+
+local Tim = {}
+local cfg = TuskConfig.MountainTim
+local ACT = 9
+local HAND = CFrame.new(0.9, 0.6, -1.4)
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function ready(S, player, state, name, slot)
+	return not S.isBusy(state) and not state.Charging and S.cooldownReady(player, state, name, slot)
+end
+
+function Tim.M1(S, player, state, aim)
+	Moves.m1(S, player, state, aim, cfg.M1, ACT)
+end
+
+-- Rope pull toward `point` (one tick; the knockback lasts ~0.18 s).
+local function pull(S, target, point, stopDistance)
+	local tr = target:FindFirstChild("HumanoidRootPart")
+	if not tr then
+		return true
+	end
+	local offset = point - tr.Position
+	local distance = offset.Magnitude
+	if distance <= (stopDistance or 4) then
+		return true
+	end
+	S.Adapter.applyKnockback(target, offset, math.min(distance / 0.18 * 0.6, 90), math.clamp(offset.Y * 3, 4, 30))
+	return false
+end
+
+---------------------------------------------------------------------------
+-- LASSO SNARE
+---------------------------------------------------------------------------
+local function lassoSnare(S, player, state, aim)
+	local c = cfg.LassoSnare
+	if not ready(S, player, state, "LassoSnare", 1) then
+		return
+	end
+	S.startCooldown(player, state, "LassoSnare", c.Cooldown, 1)
+	S.lock(state, c.Startup + 0.3)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "LassoSnare", Phase = "Startup", Startup = c.Startup })
+	task.delay(c.Startup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local caught = false
+		S.fireLasso(player, state, {
+			Origin = S.origin(char, r, HAND),
+			Direction = direction,
+			Speed = c.Speed,
+			Radius = c.Radius,
+			Range = c.Range,
+			OnHit = function(target, position)
+				if caught then
+					return
+				end
+				caught = true
+				if not S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Direction = direction, Position = position, Source = "MountainTimLasso" }) then
+					return
+				end
+				S.fx("Ability", { Character = char, Act = ACT, Move = "LassoSnare", Phase = "Snag", Target = target, Duration = c.ReelTime })
+				local done = false
+				for i = 0, math.max(1, math.floor(c.ReelTime / c.ReelTick)) - 1 do
+					task.delay(i * c.ReelTick, function()
+						local _, _, rr = alive(S, player)
+						if done or not rr or state.Life ~= life then
+							return
+						end
+						done = pull(S, target, rr.Position + rr.CFrame.LookVector * 2, c.ReelStopDistance)
+					end)
+				end
+			end,
+		})
+	end)
+end
+
+---------------------------------------------------------------------------
+-- ROPE SPLIT
+---------------------------------------------------------------------------
+local function ropeSplit(S, player, state, aim)
+	local c = cfg.RopeSplit
+	if not ready(S, player, state, "RopeSplit", 2) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	if not Moves.safeStep(character, root, direction, c.Distance) then
+		S.tell(player, "Denied", { Reason = "Blocked" })
+		return
+	end
+	S.startCooldown(player, state, "RopeSplit", c.Cooldown, 2)
+	S.lock(state, c.Windup + c.Travel + 0.2)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "RopeSplit", Phase = "Startup", Windup = c.Windup })
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local from = r.Position
+		local to = Moves.safeStep(char, r, direction, c.Distance)
+		if not to then
+			return
+		end
+		local iframes = S.Adapter.Settings.IFrameAttribute
+		char:SetAttribute(iframes, true)
+		char:SetAttribute("RopeSplit", true)
+		S.fx("Ability", { Character = char, Act = ACT, Move = "RopeSplit", Phase = "Split", From = from, To = to, Direction = direction, Travel = c.Travel })
+		-- Everyone along the rope gets sliced by the passing pieces.
+		local length = (to - from).Magnitude
+		local mid = (from + to) / 2
+		Moves.boxHit(S, player, CFrame.lookAt(mid, mid + direction), Vector3.new(c.Width, 6, length + 2), { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = direction, Source = "MountainTimSplit" }, 5)
+		task.delay(c.Travel, function()
+			char:SetAttribute("RopeSplit", nil)
+			char:SetAttribute(iframes, nil)
+			if char.Parent and state.Life == life then
+				char:PivotTo(CFrame.lookAt(to, to + direction))
+				S.fx("Ability", { Character = char, Act = ACT, Move = "RopeSplit", Phase = "Rejoin", Position = to })
+			end
+		end)
+	end)
+end
+
+---------------------------------------------------------------------------
+-- SPLIT PUNCH
+---------------------------------------------------------------------------
+local function splitPunch(S, player, state, aim)
+	local c = cfg.SplitPunch
+	if not ready(S, player, state, "SplitPunch", 3) then
+		return
+	end
+	S.startCooldown(player, state, "SplitPunch", c.Cooldown, 3)
+	S.lock(state, c.Windup + c.Hits * c.HitEvery + 0.3)
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "SplitPunch", Phase = "Startup", Windup = c.Windup })
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		S.fx("Ability", { Character = character, Act = ACT, Move = "SplitPunch", Phase = "Fly", Direction = direction, Range = c.Range, Hits = c.Hits, HitEvery = c.HitEvery })
+		for i = 1, c.Hits do
+			task.delay((i - 1) * c.HitEvery, function()
+				local char, _, r = alive(S, player)
+				if not char or state.Life ~= life then
+					return
+				end
+				local mid = r.Position + direction * (c.Range / 2)
+				local last = i == c.Hits
+				Moves.boxHit(S, player, CFrame.lookAt(mid, mid + direction), Vector3.new(c.Width, 5, c.Range), { Damage = c.Damage, Stun = c.Stun, Knockback = last and c.FinalKnockback or 2, Launch = last and 10 or nil, Direction = direction, Source = "MountainTimPunch" }, 4)
+			end)
+		end
+	end)
+end
+
+function Tim.Ability(S, player, state, slot, phase, aim)
+	if phase ~= "Press" then
+		return
+	end
+	if slot == 1 then
+		lassoSnare(S, player, state, aim)
+	elseif slot == 2 then
+		ropeSplit(S, player, state, aim)
+	elseif slot == 3 then
+		splitPunch(S, player, state, aim)
+	end
+end
+
+---------------------------------------------------------------------------
+-- LONESOME ROUNDUP (ultimate)
+---------------------------------------------------------------------------
+function Tim.Ultimate(S, player, state, aim)
+	local u = cfg.Ultimate
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local life = state.Life
+	S.lock(state, u.Windup + u.RideHits * u.RideEvery + u.ReelTime + 0.4)
+	character:SetAttribute("Armored", true)
+	S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Start", Windup = u.Windup, Radius = u.Radius })
+	task.delay(u.Windup, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+		if state.Life ~= life or not alive(S, player) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local roped = {}
+		for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, u.Radius, u.MaxTargets)) do
+			local tr = target:FindFirstChild("HumanoidRootPart")
+			if tr and S.Adapter.canBeHit(player, target) and S.Hitbox.lineOfSight(r.Position + Vector3.new(0, 2, 0), tr.Position, { char, target }) then
+				table.insert(roped, target)
+			end
+		end
+		S.finishUltimate(player, state)
+		S.fx("Ultimate", { Character = char, Act = ACT, Phase = "Rope", Targets = roped, RideHits = u.RideHits, RideEvery = u.RideEvery, ReelTime = u.ReelTime })
+		-- His pieces ride the ropes and hit, again and again.
+		for i = 1, u.RideHits do
+			task.delay((i - 1) * u.RideEvery, function()
+				if state.Life ~= life then
+					return
+				end
+				for _, target in ipairs(roped) do
+					local tr = target:FindFirstChild("HumanoidRootPart")
+					if tr then
+						S.hit(player, target, { Damage = u.RideDamage, Stun = u.RideStun, Knockback = 0, Direction = tr.Position - r.Position, Position = tr.Position, Source = "MountainTimRoundup" })
+					end
+				end
+			end)
+		end
+		-- Then the rope yanks everyone together in front of him...
+		local reelStart = u.RideHits * u.RideEvery
+		for i = 0, math.floor(u.ReelTime / u.ReelTick) - 1 do
+			task.delay(reelStart + i * u.ReelTick, function()
+				local _, _, rr = alive(S, player)
+				if not rr or state.Life ~= life then
+					return
+				end
+				local point = rr.Position + rr.CFrame.LookVector * 5
+				for _, target in ipairs(roped) do
+					if target.Parent then
+						pull(S, target, point, 3)
+					end
+				end
+			end)
+		end
+		-- ...and slams the rope down on them.
+		task.delay(reelStart + u.ReelTime + 0.05, function()
+			local _, _, rr = alive(S, player)
+			if not rr or state.Life ~= life then
+				return
+			end
+			local pos = rr.Position + rr.CFrame.LookVector * 5
+			Moves.aoe(S, player, pos, u.SlamRadius, { Damage = u.SlamDamage, Stun = u.SlamStun, Knockback = u.SlamKnockback, Launch = u.SlamLaunch, Source = "MountainTimRoundup" }, 8)
+			S.fx("Ultimate", { Character = char, Act = ACT, Phase = "Slam", Position = pos, Radius = u.SlamRadius })
+		end)
+	end)
+end
+
+function Tim.Cleanup(S, player, state)
+	if state.Character then
+		state.Character:SetAttribute("Armored", nil)
+		state.Character:SetAttribute("RopeSplit", nil)
+		state.Character:SetAttribute(S.Adapter.Settings.IFrameAttribute, nil)
+	end
+end
+
+return Tim
+```
+
+## 33. PorkPieHatKid  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -7372,7 +7920,7 @@ end
 return PorkPie
 ```
 
-## 32. Sandman  (ModuleScript)
+## 34. Sandman  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -7645,7 +8193,7 @@ end
 return Sandman
 ```
 
-## 33. TuskAct1  (ModuleScript)
+## 35. TuskAct1  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -8005,7 +8553,7 @@ end
 return Act1
 ```
 
-## 34. TuskAct2  (ModuleScript)
+## 36. TuskAct2  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -8278,7 +8826,7 @@ end
 return Act2
 ```
 
-## 35. TuskAct3  (ModuleScript)
+## 37. TuskAct3  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -8469,7 +9017,7 @@ end
 return Act3
 ```
 
-## 36. TuskAct4  (ModuleScript)
+## 38. TuskAct4  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -8742,7 +9290,7 @@ end
 return Act4
 ```
 
-## 37. TuskHitbox  (ModuleScript)
+## 39. TuskHitbox  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -8823,7 +9371,7 @@ end
 return TuskHitbox
 ```
 
-## 38. TuskMoves  (ModuleScript)
+## 40. TuskMoves  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -9085,7 +9633,7 @@ TuskMoves.Config = TuskConfig
 return TuskMoves
 ```
 
-## 39. TuskService  (ModuleScript)
+## 41. TuskService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -9327,6 +9875,33 @@ function TuskService.fireWord(player, state, spec)
 	})
 end
 
+-- Server projectile with a lasso visual (Mountain Tim).
+function TuskService.fireLasso(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "TimLasso",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Lasso" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Some characters walk faster or slower (Registry WalkSpeed, e.g. Sandman).
+function TuskService.applyCharacterSpeed(state)
+	local character = state and state.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	local info = state.Act and Registry.get(state.Act)
+	local mult = info and info.WalkSpeed or 1
+	Adapter.setMoveModifier(humanoid, "CharacterSpeed", mult ~= 1 and mult or nil)
+end
+
 -- Charge helpers (hold abilities): sets the replicated TuskCharge attribute.
 function TuskService.beginCharge(player, state, move, slot, multiplier)
 	local character, humanoid = Adapter.getAlive(player)
@@ -9429,6 +10004,7 @@ function TuskService.select(player, act, internal)
 	if state.Character then
 		state.Character:SetAttribute("TuskAct", act)
 	end
+	TuskService.applyCharacterSpeed(state)
 	TuskService.tell(player, "Equipped", { Act = act })
 end
 
@@ -9451,6 +10027,7 @@ function TuskService.evolve(player, state, toAct)
 	if state.Character then
 		state.Character:SetAttribute("TuskAct", toAct)
 	end
+	TuskService.applyCharacterSpeed(state)
 	TuskService.fx("Evolve", { Character = state.Character, From = from, To = toAct })
 	TuskService.tell(player, "Evolved", { Act = toAct })
 end
@@ -9590,6 +10167,7 @@ local function onCharacter(player, character)
 	if state.Act then
 		character:SetAttribute("TuskAct", state.Act)
 	end
+	TuskService.applyCharacterSpeed(state)
 	humanoid.Died:Connect(function()
 		if state.Character == character then
 			cleanupAct(player, state)
@@ -9737,7 +10315,7 @@ end
 return TuskService
 ```
 
-## 40. TuskSneakService  (ModuleScript)
+## 42. TuskSneakService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -10000,7 +10578,7 @@ end
 return TuskSneakService
 ```
 
-## 41. SpinClient  (LocalScript)
+## 43. SpinClient  (LocalScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts`
 
 ```lua
@@ -10035,7 +10613,7 @@ DefenseClient.init()
 BountyUI.init()
 ```
 
-## 42. CameraFX  (ModuleScript)
+## 44. CameraFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -10214,7 +10792,7 @@ end
 return CameraFX
 ```
 
-## 43. DefenseClient  (ModuleScript)
+## 45. DefenseClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -10515,7 +11093,7 @@ end
 return DefenseClient
 ```
 
-## 44. Fighters  (ModuleScript)
+## 46. Fighters  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -10550,7 +11128,7 @@ end
 return Fighters
 ```
 
-## 45. HitFX  (ModuleScript)
+## 47. HitFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -10607,6 +11185,8 @@ local function onHit(data)
 		starColor = Color3.fromRGB(165, 215, 80)
 	elseif source:sub(1, 7) == "Sandman" then
 		starColor = Color3.fromRGB(245, 185, 80)
+	elseif source:sub(1, 11) == "MountainTim" then
+		starColor = Color3.fromRGB(214, 156, 84)
 	end
 	if data.Perfect then
 		starColor = colors.Gold
@@ -10691,7 +11271,7 @@ end
 return HitFX
 ```
 
-## 46. JointCache  (ModuleScript)
+## 48. JointCache  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -10746,7 +11326,7 @@ end
 return JointCache
 ```
 
-## 47. TuskActCommon  (ModuleScript)
+## 49. TuskActCommon  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -10790,6 +11370,7 @@ Common.Palettes = {
 	[6] = { Main = Color3.fromRGB(80, 210, 220), Second = Color3.fromRGB(35, 60, 190), Light = Color3.fromRGB(215, 255, 250) }, -- Diego
 	[7] = { Main = Color3.fromRGB(165, 215, 80), Second = Color3.fromRGB(95, 105, 125), Light = Color3.fromRGB(225, 232, 245) }, -- Pork Pie Hat Kid (bamboo green + steel)
 	[8] = { Main = Color3.fromRGB(245, 185, 80), Second = Color3.fromRGB(50, 140, 160), Light = Color3.fromRGB(255, 240, 205) }, -- Sandman (sand + turquoise)
+	[9] = { Main = Color3.fromRGB(214, 156, 84), Second = Color3.fromRGB(96, 62, 38), Light = Color3.fromRGB(255, 232, 196) }, -- Mountain Tim (leather + rope)
 }
 
 function Common.palette(act)
@@ -10996,12 +11577,12 @@ end
 return Common
 ```
 
-## 48. TuskActVFX  (Folder)
+## 50. TuskActVFX  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 49. Act1  (ModuleScript)
+## 51. Act1  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -11383,7 +11964,7 @@ end
 return Act1
 ```
 
-## 50. Act2  (ModuleScript)
+## 52. Act2  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -11495,7 +12076,7 @@ end
 return Act2
 ```
 
-## 51. Act3  (ModuleScript)
+## 53. Act3  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -11673,7 +12254,7 @@ end
 return Act3
 ```
 
-## 52. Act4  (ModuleScript)
+## 54. Act4  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -11983,7 +12564,7 @@ end
 return Act4
 ```
 
-## 53. Diego  (ModuleScript)
+## 55. Diego  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -12875,7 +13456,7 @@ end
 return Diego
 ```
 
-## 54. Gyro  (ModuleScript)
+## 56. Gyro  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -14010,7 +14591,500 @@ end)
 return Gyro
 ```
 
-## 55. PorkPie  (ModuleScript)
+## 57. MountainTimVFX  (ModuleScript)
+**Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
+
+```lua
+--[[
+	TuskActVFX.MountainTimVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.MountainTimVFX)
+
+	Client visuals for Mountain Tim / OH! LONESOME ME (his body splits into
+	pieces that slide along his lasso rope). Blocky like the rest of the game.
+	  * M1: jabs, a rope whip, an overhead rope slam
+	  * LASSO SNARE: a spinning loop on a rope; a catch wraps the loop round
+	    the enemy and the rope drags them in
+	  * ROPE SPLIT: his body vanishes and blocky pieces (in his own colours)
+	    slide along a rope to the far end, then he reappears there
+	  * SPLIT PUNCH: his fist flies off along the rope, punching down a line
+	  * LONESOME ROUNDUP: he spins the lasso overhead, ropes shoot to everyone
+	    nearby, his pieces ride the ropes in, then a rope slam
+]]
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local Net = require(Shared.Net)
+local VFXLib = require(script.Parent.Parent.VFXLib)
+local CameraFX = require(script.Parent.Parent.CameraFX)
+local TuskVFX = require(script.Parent.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
+local Common = require(script.Parent.Parent.TuskActCommon)
+local Fighters = require(script.Parent.Parent.Fighters)
+local Players = game:GetService("Players")
+
+local TimVFX = {}
+local ACT = 9
+local pal = Common.palette(ACT)
+local sounds = TuskConfig.Sounds
+local ROPE = Color3.fromRGB(205, 170, 110)
+local ROPE_DARK = Color3.fromRGB(150, 115, 70)
+
+local lassos = {} -- [projectile id] = flying lasso
+local lines = {} -- ropes held between two moving points
+local stanced = {}
+
+---------------------------------------------------------------------------
+-- Rope pieces
+---------------------------------------------------------------------------
+local function newRope(width)
+	return VFXLib.part({ Size = Vector3.new(width or 0.14, width or 0.14, 1), Color = ROPE, Material = Enum.Material.Fabric })
+end
+
+local function setRope(rope, a, b)
+	local d = (b - a).Magnitude
+	if d < 0.05 then
+		rope.Transparency = 1
+		return
+	end
+	rope.Transparency = 0
+	local w = rope.Size.X
+	rope.Size = Vector3.new(w, w, d)
+	rope.CFrame = CFrame.lookAt((a + b) / 2, b)
+end
+
+-- The lasso loop: a stepped ring of rope.
+local function newLoop(radius)
+	local m = Instance.new("Model")
+	m.Name = "Lasso"
+	m.Parent = VFXLib.Folder
+	local first
+	for i = 0, 9 do
+		local a = i / 10 * math.pi * 2
+		local p = VFXLib.part({ Size = Vector3.new(0.16, 0.16, radius * 0.66), Color = i % 2 == 0 and ROPE or ROPE_DARK, Material = Enum.Material.Fabric })
+		p.CFrame = CFrame.new(math.cos(a) * radius, 0, math.sin(a) * radius) * CFrame.Angles(0, -a, 0)
+		p.Parent = m
+		first = first or p
+	end
+	local center = VFXLib.part({ Size = Vector3.new(0.1, 0.1, 0.1), Transparency = 1 })
+	center.CFrame = CFrame.new()
+	center.Parent = m
+	m.PrimaryPart = center
+	return m
+end
+
+local function handPos(character)
+	local hand = character and (character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm"))
+	if hand then
+		return hand.Position
+	end
+	local root = Common.rootOf(character)
+	return root and (root.CFrame * CFrame.new(0.9, 0.4, -1)).Position
+end
+
+local function torsoPos(model)
+	local part = model and (model:FindFirstChild("UpperTorso") or model:FindFirstChild("Torso") or model:FindFirstChild("HumanoidRootPart"))
+	return part and part.Position
+end
+
+-- A rope between two moving points for `duration` seconds, with an optional
+-- loop wrapped round the far end.
+local function holdRope(getA, getB, duration, loopRadius)
+	local entry = { GetA = getA, GetB = getB, Rope = newRope(0.15), Loop = loopRadius and newLoop(loopRadius) or nil, Expire = os.clock() + duration, T = 0 }
+	table.insert(lines, entry)
+	return entry
+end
+
+local function stepLines(dt)
+	local now = os.clock()
+	for i = #lines, 1, -1 do
+		local e = lines[i]
+		local a, b = e.GetA(), e.GetB()
+		if now > e.Expire or not a or not b then
+			table.remove(lines, i)
+			e.Rope:Destroy()
+			if e.Loop then
+				e.Loop:Destroy()
+			end
+		else
+			e.T = e.T + dt
+			-- A taut rope sags a little and thrums.
+			setRope(e.Rope, a, b + Vector3.new(0, math.sin(e.T * 30) * 0.05, 0))
+			if e.Loop then
+				e.Loop:PivotTo(CFrame.new(b) * CFrame.Angles(0, e.T * 3, 0))
+			end
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Body pieces (Oh! Lonesome Me)
+---------------------------------------------------------------------------
+local hiddenUntil = {} -- [character] = os.clock() after which it must be visible again
+
+local function hideBody(character, hidden, seconds)
+	hiddenUntil[character] = hidden and (os.clock() + (seconds or 0.4) + 0.6) or nil
+	for _, d in ipairs(character:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.LocalTransparencyModifier = hidden and 1 or 0
+		elseif d:IsA("Decal") then
+			d.Transparency = hidden and 1 or 0
+		end
+	end
+end
+
+-- Blocky pieces cut from the character, in its own colours.
+local function bodyPieces(character)
+	local pieces = {}
+	local names = {
+		{ "Head", Vector3.new(1, 1, 1) }, { "UpperTorso", Vector3.new(1.8, 1.4, 1) }, { "Torso", Vector3.new(1.8, 1.8, 1) }, { "LowerTorso", Vector3.new(1.6, 0.6, 1) },
+		{ "RightUpperArm", Vector3.new(0.8, 1.1, 0.8) }, { "LeftUpperArm", Vector3.new(0.8, 1.1, 0.8) }, { "Right Arm", Vector3.new(0.9, 1.8, 0.9) }, { "Left Arm", Vector3.new(0.9, 1.8, 0.9) },
+		{ "RightUpperLeg", Vector3.new(0.8, 1.2, 0.8) }, { "LeftUpperLeg", Vector3.new(0.8, 1.2, 0.8) }, { "Right Leg", Vector3.new(0.9, 1.8, 0.9) }, { "Left Leg", Vector3.new(0.9, 1.8, 0.9) },
+	}
+	for _, n in ipairs(names) do
+		local src = character:FindFirstChild(n[1])
+		if src and src:IsA("BasePart") then
+			local p = VFXLib.part({ Size = n[2], Color = src.Color, Material = Enum.Material.SmoothPlastic })
+			table.insert(pieces, p)
+		end
+	end
+	return pieces
+end
+
+---------------------------------------------------------------------------
+-- Lasso projectile (server Kind "TimLasso")
+---------------------------------------------------------------------------
+local function spawnLasso(data)
+	local owner
+	local p = data.OwnerId and Players:GetPlayerByUserId(data.OwnerId)
+	owner = p and p.Character
+	lassos[data.Id] = {
+		Loop = newLoop(1.2),
+		Rope = newRope(0.14),
+		Owner = owner,
+		Origin = data.Origin,
+		Direction = data.Direction,
+		Speed = data.Speed,
+		Range = data.Range,
+		ServerTime = data.ServerTime,
+		Spin = 0,
+		Expire = os.clock() + data.Range / math.max(data.Speed, 1) + 1,
+	}
+end
+
+local function removeLasso(v)
+	v.Loop:Destroy()
+	v.Rope:Destroy()
+end
+
+local function endLasso(data)
+	local v = lassos[data.Id]
+	if not v then
+		return
+	end
+	lassos[data.Id] = nil
+	removeLasso(v)
+	if not data.HitCharacter then
+		-- Miss: the loop flops and the rope snaps back.
+		local loop, rope = newLoop(1.2), newRope(0.14)
+		local from = data.Position
+		VFXLib.animate(0.3, function(a)
+			local h = v.Owner and v.Owner.Parent and handPos(v.Owner)
+			if not h then
+				return
+			end
+			local p = from:Lerp(h, a * a)
+			loop:PivotTo(CFrame.new(p) * CFrame.Angles(a * 2, a * 6, 0))
+			loop:ScaleTo(math.max(0.1, 1 - a))
+			setRope(rope, h, p)
+		end, function()
+			loop:Destroy()
+			rope:Destroy()
+		end)
+	end
+end
+
+local function stepLassos(dt)
+	local now = os.clock()
+	local serverNow = workspace:GetServerTimeNow()
+	for id, v in pairs(lassos) do
+		local distance = math.min(v.Speed * (serverNow - v.ServerTime), v.Range)
+		local pos = v.Origin + v.Direction * math.max(distance, 0)
+		v.Spin = v.Spin + dt * 14
+		v.Loop:PivotTo(CFrame.lookAt(pos, pos + v.Direction) * CFrame.Angles(math.pi / 2, v.Spin, 0))
+		local h = v.Owner and v.Owner.Parent and handPos(v.Owner)
+		setRope(v.Rope, h or v.Origin, pos)
+		if now > v.Expire then
+			lassos[id] = nil
+			removeLasso(v)
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Moves
+---------------------------------------------------------------------------
+local function onM1(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if not root then
+		return
+	end
+	local index = data.Index
+	TuskAnimation.play(character, "T_M1_" .. index)
+	VFXLib.sound(sounds.Swing, root, 0.5, 1 + index * 0.06)
+	if index <= 2 then
+		Common.swipe(root, index == 1 and 1 or -1, index == 1 and pal.Main or pal.Light)
+	elseif index == 3 then
+		-- Rope whip: a crack of rope out in front.
+		local rope = newRope(0.12)
+		VFXLib.animate(0.25, function(a)
+			local h = root.Parent and handPos(character)
+			if not h then
+				return
+			end
+			local reach = math.sin(a * math.pi) * 7
+			local tip = (root.CFrame * CFrame.new(math.sin(a * math.pi * 2) * 2.5, 0.5, -reach)).Position
+			setRope(rope, h, tip)
+		end, function()
+			rope:Destroy()
+		end)
+		TuskVFX.CreateCrescent(root.CFrame * CFrame.new(0, 0.6, -2.6), { Radius = 3.4, Width = 0.25, Color = ROPE, Color2 = pal.Light, Sweep = 2.2, Duration = 0.22 })
+		VFXLib.burst((root.CFrame * CFrame.new(0, 0.6, -6)).Position, { Count = 6, Color = pal.Light, Speed = 16, Lifetime = 0.2 })
+	end
+end
+
+local function onAbility(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	local move, phase = data.Move, data.Phase
+	if move == "LassoSnare" then
+		if phase == "Startup" and character then
+			TuskAnimation.play(character, "TimLassoThrow")
+			-- The loop whirls over his head before the throw.
+			if root then
+				local loop = newLoop(1.3)
+				VFXLib.animate(data.Startup or 0.28, function(a)
+					if root.Parent then
+						loop:PivotTo(root.CFrame * CFrame.new(0.6, 3.2, 0) * CFrame.Angles(0, a * 14, 0))
+					end
+				end, function()
+					loop:Destroy()
+				end)
+			end
+		elseif phase == "Snag" and data.Target then
+			TuskAnimation.play(character, "TimReel")
+			holdRope(function()
+				return character.Parent and handPos(character)
+			end, function()
+				return data.Target.Parent and torsoPos(data.Target)
+			end, (data.Duration or 0.6) + 0.15, 1.3)
+			local tp = torsoPos(data.Target)
+			if tp then
+				VFXLib.burst(tp, { Count = 12, Color = ROPE, Speed = 18, Lifetime = 0.3 })
+				TuskVFX.CreateImpactStar(tp, { Size = 4, Rays = 7, Color = pal.Main, Color2 = Color3.new(1, 1, 1), Duration = 0.2 })
+			end
+			VFXLib.sound(sounds.Hit, root or data.Target, 0.6, 1)
+		end
+	elseif move == "RopeSplit" then
+		if phase == "Startup" and character then
+			TuskAnimation.play(character, "TimSplit")
+		elseif phase == "Split" and character then
+			-- He comes apart: the body vanishes, the pieces ride a rope to the end.
+			local from, to = data.From, data.To
+			local travel = data.Travel or 0.35
+			hideBody(character, true, travel)
+			local rope = newRope(0.12)
+			setRope(rope, from + Vector3.new(0, 0.5, 0), to + Vector3.new(0, 0.5, 0))
+			local pieces = bodyPieces(character)
+			VFXLib.burst(from, { Count = 14, Color = pal.Main, Speed = 16, Lifetime = 0.35 })
+			VFXLib.animate(travel, function(a)
+				for i, p in ipairs(pieces) do
+					local k = math.clamp(a * 1.4 - (i - 1) * 0.04, 0, 1)
+					local pos = from:Lerp(to, k) + Vector3.new(0, 0.6 + math.sin(k * math.pi) * (1 + (i % 3) * 0.4), 0)
+					p.CFrame = CFrame.new(pos) * CFrame.Angles(k * 6 + i, k * 4, 0)
+				end
+			end, function()
+				for _, p in ipairs(pieces) do
+					p:Destroy()
+				end
+				task.delay(0.15, function()
+					rope:Destroy()
+				end)
+			end)
+			if Common.isLocal(character) then
+				CameraFX.fovPunch(6, 0.25)
+			end
+		elseif phase == "Rejoin" and character then
+			hideBody(character, false)
+			local pos = data.Position
+			VFXLib.burst(pos, { Count = 16, Color = pal.Main, Speed = 18, Lifetime = 0.35 })
+			TuskVFX.CreateRotationalShockwave(CFrame.new(pos - Vector3.new(0, 2.5, 0)), { Radius = 4, Layers = 1, Color = pal.Main, Color2 = ROPE, Ground = true, Particles = 0.4, Width = 0.15, Duration = 0.3 })
+		end
+	elseif move == "SplitPunch" then
+		if phase == "Startup" and character then
+			TuskAnimation.play(character, "TimPunch")
+		elseif phase == "Fly" and root then
+			-- The fist comes off and rides the rope out and back.
+			local skin = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+			local fist = VFXLib.part({ Size = Vector3.new(0.9, 0.9, 1.1), Color = skin and skin.Color or pal.Main, Material = Enum.Material.SmoothPlastic })
+			local rope = newRope(0.12)
+			local range = data.Range or 26
+			local total = (data.Hits or 3) * (data.HitEvery or 0.12) + 0.2
+			local hitEvery = data.HitEvery or 0.12
+			local nextBurst = 0
+			VFXLib.animate(total, function(a, dt)
+				local h = root.Parent and handPos(character)
+				if not h then
+					return
+				end
+				local out = math.sin(math.min(a, 1) * math.pi)
+				local dir = data.Direction
+				local pos = h + dir * range * out + Vector3.new(0, math.sin(a * 30) * 0.2, 0)
+				fist.CFrame = CFrame.lookAt(pos, pos + dir)
+				setRope(rope, h, pos)
+				nextBurst = nextBurst - (dt or 1 / 60)
+				if nextBurst <= 0 and out > 0.3 then
+					nextBurst = hitEvery
+					TuskVFX.CreateImpactStar(pos, { Size = 3, Rays = 6, Color = pal.Main, Color2 = Color3.new(1, 1, 1), Duration = 0.15 })
+					VFXLib.sound(sounds.Hit, pos, 0.4, 1.2)
+				end
+			end, function()
+				fist:Destroy()
+				rope:Destroy()
+			end)
+		end
+	end
+end
+
+local function onUltimate(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Phase == "Start" then
+		TuskAnimation.play(character, "TimRoundup")
+		if root then
+			-- A huge loop spinning overhead, growing.
+			local loop = newLoop(1.2)
+			VFXLib.animate(data.Windup or 0.9, function(a)
+				if root.Parent then
+					loop:PivotTo(root.CFrame * CFrame.new(0, 4.2, 0) * CFrame.Angles(0, a * 22, 0))
+					loop:ScaleTo(1 + a * 2)
+				end
+			end, function()
+				loop:Destroy()
+			end)
+			VFXLib.flash(root.Position, pal.Main, 3, 25, 0.4)
+		end
+		if Common.isLocal(character) then
+			CameraFX.fovPunch(-6, 0.4)
+		end
+	elseif data.Phase == "Rope" then
+		local hold = (data.RideHits or 4) * (data.RideEvery or 0.18) + (data.ReelTime or 0.8) + 0.1
+		for _, target in ipairs(data.Targets or {}) do
+			holdRope(function()
+				return character.Parent and handPos(character)
+			end, function()
+				return target.Parent and torsoPos(target)
+			end, hold, 1.4)
+			-- His pieces ride the rope in, again and again.
+			local pieces = bodyPieces(character)
+			VFXLib.animate(hold - 0.1, function(a)
+				local h = character.Parent and handPos(character)
+				local t = target.Parent and torsoPos(target)
+				if not h or not t then
+					return
+				end
+				for i, p in ipairs(pieces) do
+					local k = ((a * 4) + i * 0.17) % 1
+					p.CFrame = CFrame.new(h:Lerp(t, k) + Vector3.new(0, math.sin(k * math.pi) * 0.8, 0)) * CFrame.Angles(k * 8, i, 0)
+				end
+			end, function()
+				for _, p in ipairs(pieces) do
+					p:Destroy()
+				end
+			end)
+		end
+		if root then
+			VFXLib.sound(sounds.Hit, root, 0.8, 0.9)
+		end
+		if Common.isLocal(character) then
+			CameraFX.shake(0.5, hold)
+		end
+	elseif data.Phase == "Slam" then
+		Common.finisher({ Character = character, Position = data.Position, Radius = data.Radius, Hit = true }, pal, { Size = 1.6, Layers = 3, Shake = 0.9 })
+		VFXLib.burst(data.Position, { Count = 24, Color = ROPE, Speed = 30, Lifetime = 0.5 })
+		if Common.isLocal(character) then
+			CameraFX.impactFrame(pal.Light)
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+local function stepStance()
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		if character then
+			local want = character:GetAttribute("TuskAct") == ACT
+			if want and not stanced[character] then
+				stanced[character] = true
+				TuskAnimation.hold(character, "TimStance")
+			elseif not want and stanced[character] then
+				stanced[character] = nil
+				TuskAnimation.stopHold(character, "TimStance")
+			end
+		end
+	end
+	for character in pairs(stanced) do
+		if not character.Parent then
+			stanced[character] = nil
+		end
+	end
+	-- Never leave anyone invisible (e.g. if a Rejoin event was missed).
+	local now = os.clock()
+	for character, untilT in pairs(hiddenUntil) do
+		if now > untilT and not character:GetAttribute("RopeSplit") then
+			hideBody(character, false)
+		end
+	end
+end
+
+function TimVFX.handle(name, data)
+	if name == "M1" then
+		onM1(data)
+	elseif name == "M1Finisher" then
+		Common.finisher(data, pal)
+	elseif name == "Ability" then
+		onAbility(data)
+	elseif name == "Ultimate" then
+		onUltimate(data)
+	end
+end
+
+local slowTimer = 0
+function TimVFX.step(dt)
+	dt = dt or 1 / 60
+	stepLassos(dt)
+	stepLines(dt)
+	slowTimer = slowTimer + dt
+	if slowTimer > 0.2 then
+		slowTimer = 0
+		stepStance()
+	end
+end
+
+Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+	if typeof(data) ~= "table" or data.Kind ~= "TimLasso" then
+		return
+	end
+	if name == "ProjectileSpawn" then
+		spawnLasso(data)
+	elseif name == "ProjectileEnd" then
+		endLasso(data)
+	end
+end)
+
+return TimVFX
+```
+
+## 58. PorkPie  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -14669,7 +15743,7 @@ end)
 return PorkPie
 ```
 
-## 56. SandmanVFX  (ModuleScript)
+## 59. SandmanVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -15071,7 +16145,7 @@ end)
 return SandmanVFX
 ```
 
-## 57. TuskAnimation  (ModuleScript)
+## 60. TuskAnimation  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -15238,6 +16312,12 @@ TuskAnimation.Poses = {
 	DashRight = { Root = { 0, 0, -22, -0.3 }, Waist = { 0, 0, -14 }, Neck = { 0, 0, 10 }, RightArm = { 20, 0, 70 }, LeftArm = { 40, 0, -20 }, LeftHip = { 0, 0, -30 }, RightKnee = { -40, 0, 0 }, LeftKnee = { -20, 0, 0 } },
 	ParryPose = { Root = { 6, 0, 0, -0.1, -0.15 }, Waist = { 12, 0, 0 }, RightArm = { 140, 0, -20 }, RightElbow = { 30, 0, 0 }, LeftArm = { 60, 0, 30 }, LeftElbow = { 50, 0, 0 }, Neck = { 6, 0, 0 } },
 	GuardBroken = { Root = { 14, 0, 0, -0.35, -0.3 }, Waist = { 22, 0, 0 }, Neck = { 28, 0, 0 }, RightArm = { 60, 0, 60 }, LeftArm = { 60, 0, -60 }, RightElbow = { 20, 0, 0 }, LeftElbow = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftKnee = { -30, 0, 0 } },
+	-- MOUNTAIN TIM: a cowboy with a lasso.
+	TimStance = { Root = { 0, 6, 0, -0.08 }, Waist = { -4, 6, 0 }, Neck = { 4, -4, 0 }, RightArm = { 18, 0, 22 }, RightElbow = { 40, 0, 0 }, LeftArm = { 10, 0, -18 }, LeftElbow = { 30, 0, 0 }, RightHip = { 6, 0, 0 }, LeftKnee = { -8, 0, 0 } },
+	LassoSpin = { Root = { 0, 10, 0, -0.1 }, Waist = { 4, 12, 0 }, RightArm = { 175, 0, 20 }, RightElbow = { 25, 0, 0 }, LeftArm = { 40, 0, -30 }, LeftElbow = { 40, 0, 0 }, Neck = { 12, -6, 0 }, LeftKnee = { -14, 0, 0 } },
+	RopeWhipWind = { Root = { 0, 34, 0, -0.08 }, Waist = { 0, 34, 0 }, RightArm = { 120, 0, 70 }, RightElbow = { 20, 0, 0 }, LeftArm = { 30, 0, -30 }, Neck = { 0, -18, 0 } },
+	RopeWhip = { Root = { 0, -36, 0, -0.1, 0.35 }, Waist = { 0, -40, 0 }, RightArm = { 90, -40, -30 }, RightElbow = { 0, 0, 0 }, LeftArm = { 24, 0, -36 }, Neck = { 0, 26, 0 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	SplitPose = { Root = { -16, 0, 0, -0.3, 0.3 }, Waist = { -18, 0, 0 }, Neck = { 12, 0, 0 }, RightArm = { 100, 0, 60 }, LeftArm = { 100, 0, -60 }, RightHip = { 30, 0, 0 }, RightKnee = { -40, 0, 0 }, LeftHip = { -20, 0, 0 } },
 	-- SANDMAN: a light-footed runner; knife-hand chops and spinning kicks.
 	SandStance = { Root = { 0, 10, 0, -0.18 }, Waist = { -8, 8, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, 18 }, RightElbow = { 70, 0, 0 }, LeftArm = { 55, 0, -22 }, LeftElbow = { 60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -8, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 	ChopCoil = { Root = { 0, 26, 0, -0.14 }, Waist = { 6, 30, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 60, 0, 0 }, LeftArm = { 60, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -14, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightKnee = { -12, 0, 0 } },
@@ -15290,6 +16370,8 @@ do
 	P.ChopCoilL = mirror(P.ChopCoil)
 	P.ChopStrikeL = mirror(P.ChopStrike)
 	P.DashLeft = mirror(P.DashRight)
+	P.JabCoilL = mirror(P.JabCoil)
+	P.JabStrikeL = mirror(P.JabStrike)
 end
 
 --[[
@@ -15353,6 +16435,17 @@ TuskAnimation.Actions = {
 	DashL = { { 0, "Rest" }, { 0.05, "DashLeft", "Snap", 2 }, { 0.22, "DashLeft", "Linear" }, { 0.32, "Rest", "Sine" } },
 	Parry = { { 0, "BlockPose" }, { 0.06, "ParryPose", "Snap", 4 }, { 0.3, "ParryPose", "Sine" } },
 	GuardBreak = { { 0, "BlockPose" }, { 0.08, "GuardBroken", "Snap", 6 }, { 0.8, "GuardBroken", "Linear" }, { 1.0, "Rest", "Sine" } },
+
+	-- MOUNTAIN TIM
+	T_M1_1 = { { 0, "Rest" }, { 0.06, "JabCoil", "In" }, { 0.11, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.28, "TimStance", "Sine" } },
+	T_M1_2 = { { 0, "JabStrike" }, { 0.06, "JabCoilL", "In" }, { 0.11, "JabStrikeL", "Back", 4 }, { 0.16, "JabStrikeL", "Linear" }, { 0.28, "TimStance", "Sine" } },
+	T_M1_3 = { { 0, "Rest" }, { 0.08, "RopeWhipWind", "In" }, { 0.15, "RopeWhip", "Snap", 5 }, { 0.2, "RopeWhip", "Linear" }, { 0.34, "TimStance", "Sine" } },
+	T_M1_4 = { { 0, "Rest" }, { 0.12, "OverheadWind", "In" }, { 0.21, "OverheadSmash", "Snap", 8 }, { 0.27, "OverheadSmash", "Linear" }, { 0.46, "SmashFollow", "Sine" }, { 0.58, "TimStance", "Sine" } },
+	TimLassoThrow = { { 0, "Rest" }, { 0.08, "LassoSpin", "Out" }, { 0.26, "LassoSpin", "Linear", 1 }, { 0.34, "PitchRelease", "Snap", 4 }, { 0.5, "PitchFollow", "Sine" } },
+	TimReel = { { 0, "PitchFollow" }, { 0.1, "ReelBack", "Snap", 3 }, { 0.5, "ReelBack", "Linear", 2 }, { 0.65, "TimStance", "Sine" } },
+	TimSplit = { { 0, "Rest" }, { 0.1, "SplitPose", "Snap", 3 }, { 0.5, "SplitPose", "Linear" }, { 0.65, "TimStance", "Sine" } },
+	TimPunch = { { 0, "Rest" }, { 0.1, "JabCoil", "In" }, { 0.18, "JabStrike", "Snap", 4 }, { 0.6, "JabStrike", "Linear", 2 }, { 0.75, "TimStance", "Sine" } },
+	TimRoundup = { { 0, "Rest" }, { 0.15, "LassoSpin", "Out" }, { 0.85, "LassoSpin", "Linear", 2 }, { 0.95, "Spread", "Snap", 5 }, { 1.6, "ReelBack", "Snap", 3 }, { 2.2, "ReelBack", "Linear", 2 }, { 2.35, "HoistSlam", "Snap", 8 }, { 2.7, "HoistSlam", "Sine" } },
 
 	-- SANDMAN
 	S_M1_1 = { { 0, "Rest" }, { 0.07, "ChopCoil", "In" }, { 0.12, "ChopStrike", "Back", 4 }, { 0.17, "ChopStrike", "Linear" }, { 0.3, "SandStance", "Sine" } },
@@ -15725,7 +16818,7 @@ end)
 return TuskAnimation
 ```
 
-## 58. TuskController  (ModuleScript)
+## 61. TuskController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -15973,7 +17066,7 @@ end
 return TuskController
 ```
 
-## 59. TuskProjectiles  (ModuleScript)
+## 62. TuskProjectiles  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -16249,7 +17342,7 @@ end
 return TuskProjectiles
 ```
 
-## 60. TuskSneakController  (ModuleScript)
+## 63. TuskSneakController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -16534,7 +17627,7 @@ end
 return TuskSneakController
 ```
 
-## 61. TuskStand  (ModuleScript)
+## 64. TuskStand  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -16899,7 +17992,7 @@ end
 return TuskStand
 ```
 
-## 62. TuskVFX  (ModuleScript)
+## 65. TuskVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -18143,12 +19236,12 @@ end
 return TuskVFX
 ```
 
-## 63. UI  (Folder)
+## 66. UI  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 64. BountyUI  (ModuleScript)
+## 67. BountyUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -18750,7 +19843,7 @@ end
 return BountyUI
 ```
 
-## 65. CharacterCard  (ModuleScript)
+## 68. CharacterCard  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -19244,7 +20337,7 @@ end
 return CharacterCard
 ```
 
-## 66. CombatUI  (ModuleScript)
+## 69. CombatUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -19590,7 +20683,7 @@ end
 return CombatUI
 ```
 
-## 67. SettingsUI  (ModuleScript)
+## 70. SettingsUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -19665,7 +20758,7 @@ end
 return SettingsUI
 ```
 
-## 68. TuskUI  (ModuleScript)
+## 71. TuskUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -19806,7 +20899,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("SOUND TRAP") then
+	if has("LASSO") or has("ROUNDUP") then
+		return "lasso"
+	elseif has("ROPE SPLIT") then
+		return "dash"
+	elseif has("SPLIT PUNCH") then
+		return "barrage"
+	elseif has("SOUND TRAP") then
 		return "word"
 	elseif has("SOUND") or has("SILENT") then
 		return "slash"
@@ -19957,6 +21056,11 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "lasso" then
+		-- A lasso loop on a rope.
+		ring(icon, 0.56, 3, UDim2.fromScale(0.42, 0.4))
+		bar(icon, 0.68, 0.72, 0.07, 0.42, -40)
+		bar(icon, 0.6, 0.62, 0.12, 0.12, 45)
 	elseif kind == "word" then
 		-- A written sound effect: three bold blocks with a burst behind.
 		for i = 0, 3 do
@@ -20768,7 +21872,7 @@ end
 return TuskUI
 ```
 
-## 69. VFXLib  (ModuleScript)
+## 72. VFXLib  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -21134,7 +22238,7 @@ end
 return VFXLib
 ```
 
-## 70. WorldClient  (ModuleScript)
+## 73. WorldClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -21371,12 +22475,12 @@ end
 return WorldClient
 ```
 
-## 71. SpinTools  (Folder)
+## 74. SpinTools  (Folder)
 **Put it in:** `ServerStorage`
 
 _Empty folder: nothing to paste._
 
-## 72. SBRMapBuilder  (ModuleScript)
+## 75. SBRMapBuilder  (ModuleScript)
 **Put it in:** `ServerStorage › SpinTools`
 
 ```lua

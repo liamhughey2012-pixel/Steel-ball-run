@@ -24,3 +24,5 @@ Built from the character's description (no reference images yet). Send pictures 
 | G | SILENT SYMPHONY | sounds gather and orbit him, then 4 waves of written sounds rain down on the area in front (5 each), and a final "DOOOOM!!" explosion (14, launches) |
 
 - Light runner's stance while equipped. Hit sparks are sand-gold.
+
+- **Faster than everyone:** Sandman walks 30% faster than the other characters (`WalkSpeed = 1.3` in his registry entry).

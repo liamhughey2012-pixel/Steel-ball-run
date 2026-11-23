@@ -22,6 +22,7 @@ Make a **Folder** named `SpinCharacters` in **ServerScriptService** and another 
 | Diego Brando (Scary Monsters) | `Diego_Server` | `Diego_Client` |
 | Pork Pie Hat Kid (Wired) | `PorkPie_Server` | `PorkPie_Client` |
 | Sandman (In a Silent Way) | `Sandman_Server` | `Sandman_Client` |
+| Mountain Tim (Oh! Lonesome Me) | `MountainTim_Server` | `MountainTim_Client` |
 
 1. Explorer › right-click the place (or the folder) › ➕ Insert Object › pick the type › rename it exactly.
 2. Open it, Ctrl+A, paste the matching file.

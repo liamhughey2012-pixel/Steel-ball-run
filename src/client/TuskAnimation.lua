@@ -161,6 +161,12 @@ TuskAnimation.Poses = {
 	DashRight = { Root = { 0, 0, -22, -0.3 }, Waist = { 0, 0, -14 }, Neck = { 0, 0, 10 }, RightArm = { 20, 0, 70 }, LeftArm = { 40, 0, -20 }, LeftHip = { 0, 0, -30 }, RightKnee = { -40, 0, 0 }, LeftKnee = { -20, 0, 0 } },
 	ParryPose = { Root = { 6, 0, 0, -0.1, -0.15 }, Waist = { 12, 0, 0 }, RightArm = { 140, 0, -20 }, RightElbow = { 30, 0, 0 }, LeftArm = { 60, 0, 30 }, LeftElbow = { 50, 0, 0 }, Neck = { 6, 0, 0 } },
 	GuardBroken = { Root = { 14, 0, 0, -0.35, -0.3 }, Waist = { 22, 0, 0 }, Neck = { 28, 0, 0 }, RightArm = { 60, 0, 60 }, LeftArm = { 60, 0, -60 }, RightElbow = { 20, 0, 0 }, LeftElbow = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftKnee = { -30, 0, 0 } },
+	-- MOUNTAIN TIM: a cowboy with a lasso.
+	TimStance = { Root = { 0, 6, 0, -0.08 }, Waist = { -4, 6, 0 }, Neck = { 4, -4, 0 }, RightArm = { 18, 0, 22 }, RightElbow = { 40, 0, 0 }, LeftArm = { 10, 0, -18 }, LeftElbow = { 30, 0, 0 }, RightHip = { 6, 0, 0 }, LeftKnee = { -8, 0, 0 } },
+	LassoSpin = { Root = { 0, 10, 0, -0.1 }, Waist = { 4, 12, 0 }, RightArm = { 175, 0, 20 }, RightElbow = { 25, 0, 0 }, LeftArm = { 40, 0, -30 }, LeftElbow = { 40, 0, 0 }, Neck = { 12, -6, 0 }, LeftKnee = { -14, 0, 0 } },
+	RopeWhipWind = { Root = { 0, 34, 0, -0.08 }, Waist = { 0, 34, 0 }, RightArm = { 120, 0, 70 }, RightElbow = { 20, 0, 0 }, LeftArm = { 30, 0, -30 }, Neck = { 0, -18, 0 } },
+	RopeWhip = { Root = { 0, -36, 0, -0.1, 0.35 }, Waist = { 0, -40, 0 }, RightArm = { 90, -40, -30 }, RightElbow = { 0, 0, 0 }, LeftArm = { 24, 0, -36 }, Neck = { 0, 26, 0 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	SplitPose = { Root = { -16, 0, 0, -0.3, 0.3 }, Waist = { -18, 0, 0 }, Neck = { 12, 0, 0 }, RightArm = { 100, 0, 60 }, LeftArm = { 100, 0, -60 }, RightHip = { 30, 0, 0 }, RightKnee = { -40, 0, 0 }, LeftHip = { -20, 0, 0 } },
 	-- SANDMAN: a light-footed runner; knife-hand chops and spinning kicks.
 	SandStance = { Root = { 0, 10, 0, -0.18 }, Waist = { -8, 8, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, 18 }, RightElbow = { 70, 0, 0 }, LeftArm = { 55, 0, -22 }, LeftElbow = { 60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -8, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 	ChopCoil = { Root = { 0, 26, 0, -0.14 }, Waist = { 6, 30, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 60, 0, 0 }, LeftArm = { 60, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -14, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightKnee = { -12, 0, 0 } },
@@ -213,6 +219,8 @@ do
 	P.ChopCoilL = mirror(P.ChopCoil)
 	P.ChopStrikeL = mirror(P.ChopStrike)
 	P.DashLeft = mirror(P.DashRight)
+	P.JabCoilL = mirror(P.JabCoil)
+	P.JabStrikeL = mirror(P.JabStrike)
 end
 
 --[[
@@ -276,6 +284,17 @@ TuskAnimation.Actions = {
 	DashL = { { 0, "Rest" }, { 0.05, "DashLeft", "Snap", 2 }, { 0.22, "DashLeft", "Linear" }, { 0.32, "Rest", "Sine" } },
 	Parry = { { 0, "BlockPose" }, { 0.06, "ParryPose", "Snap", 4 }, { 0.3, "ParryPose", "Sine" } },
 	GuardBreak = { { 0, "BlockPose" }, { 0.08, "GuardBroken", "Snap", 6 }, { 0.8, "GuardBroken", "Linear" }, { 1.0, "Rest", "Sine" } },
+
+	-- MOUNTAIN TIM
+	T_M1_1 = { { 0, "Rest" }, { 0.06, "JabCoil", "In" }, { 0.11, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.28, "TimStance", "Sine" } },
+	T_M1_2 = { { 0, "JabStrike" }, { 0.06, "JabCoilL", "In" }, { 0.11, "JabStrikeL", "Back", 4 }, { 0.16, "JabStrikeL", "Linear" }, { 0.28, "TimStance", "Sine" } },
+	T_M1_3 = { { 0, "Rest" }, { 0.08, "RopeWhipWind", "In" }, { 0.15, "RopeWhip", "Snap", 5 }, { 0.2, "RopeWhip", "Linear" }, { 0.34, "TimStance", "Sine" } },
+	T_M1_4 = { { 0, "Rest" }, { 0.12, "OverheadWind", "In" }, { 0.21, "OverheadSmash", "Snap", 8 }, { 0.27, "OverheadSmash", "Linear" }, { 0.46, "SmashFollow", "Sine" }, { 0.58, "TimStance", "Sine" } },
+	TimLassoThrow = { { 0, "Rest" }, { 0.08, "LassoSpin", "Out" }, { 0.26, "LassoSpin", "Linear", 1 }, { 0.34, "PitchRelease", "Snap", 4 }, { 0.5, "PitchFollow", "Sine" } },
+	TimReel = { { 0, "PitchFollow" }, { 0.1, "ReelBack", "Snap", 3 }, { 0.5, "ReelBack", "Linear", 2 }, { 0.65, "TimStance", "Sine" } },
+	TimSplit = { { 0, "Rest" }, { 0.1, "SplitPose", "Snap", 3 }, { 0.5, "SplitPose", "Linear" }, { 0.65, "TimStance", "Sine" } },
+	TimPunch = { { 0, "Rest" }, { 0.1, "JabCoil", "In" }, { 0.18, "JabStrike", "Snap", 4 }, { 0.6, "JabStrike", "Linear", 2 }, { 0.75, "TimStance", "Sine" } },
+	TimRoundup = { { 0, "Rest" }, { 0.15, "LassoSpin", "Out" }, { 0.85, "LassoSpin", "Linear", 2 }, { 0.95, "Spread", "Snap", 5 }, { 1.6, "ReelBack", "Snap", 3 }, { 2.2, "ReelBack", "Linear", 2 }, { 2.35, "HoistSlam", "Snap", 8 }, { 2.7, "HoistSlam", "Sine" } },
 
 	-- SANDMAN
 	S_M1_1 = { { 0, "Rest" }, { 0.07, "ChopCoil", "In" }, { 0.12, "ChopStrike", "Back", 4 }, { 0.17, "ChopStrike", "Linear" }, { 0.3, "SandStance", "Sine" } },

@@ -3302,8 +3302,8 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman: whichever are
-	installed) through exactly the same move code as players, so their M1s,
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim:
+	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
 	    any player who comes within AggroRange and walk back to their spot
@@ -3339,6 +3339,7 @@ local LOOKS = {
 	Diego = { Skin = Color3.fromRGB(240, 200, 165), Torso = Color3.fromRGB(60, 120, 90), Legs = Color3.fromRGB(40, 50, 45) },
 	PorkPie = { Skin = Color3.fromRGB(205, 150, 110), Torso = Color3.fromRGB(95, 115, 45), Legs = Color3.fromRGB(95, 115, 45) },
 	Sandman = { Skin = Color3.fromRGB(170, 115, 80), Torso = Color3.fromRGB(200, 160, 100), Legs = Color3.fromRGB(120, 85, 55) },
+	MountainTim = { Skin = Color3.fromRGB(226, 180, 140), Torso = Color3.fromRGB(70, 90, 130), Legs = Color3.fromRGB(60, 50, 70) },
 }
 
 local usedSpots = {} -- [spot index] = slot using it
@@ -5030,8 +5031,26 @@ TuskActRegistry.Acts = {
 		Ultimate = "SILENT SYMPHONY",
 		Next = nil,
 		Module = "Sandman", -- server moves
+		WalkSpeed = 1.3, -- he's a runner: 30% faster than everyone else
 		ClientModule = "SandmanVFX", -- client visuals (TuskActVFX.SandmanVFX)
 		CardTitle = "STAND  ·  IN A SILENT WAY",
+	},
+	-- Mountain Tim: OH! LONESOME ME (splits his body into pieces that slide
+	-- along his lasso rope).
+	[9] = {
+		Name = "OH! LONESOME ME",
+		Character = "MountainTim",
+		Tagline = "Split along the rope",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 156, 84), Secondary = Color3.fromRGB(96, 62, 38) },
+		M1 = "LASSO COMBO",
+		Abilities = { "LASSO SNARE", "ROPE SPLIT", "SPLIT PUNCH" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "LONESOME ROUNDUP",
+		Next = nil,
+		Module = "MountainTim", -- server moves
+		ClientModule = "MountainTimVFX", -- client visuals (TuskActVFX.MountainTimVFX)
+		CardTitle = "STAND  ·  OH! LONESOME ME",
 	},
 }
 
@@ -5042,7 +5061,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -5641,6 +5660,33 @@ function TuskService.fireWord(player, state, spec)
 	})
 end
 
+-- Server projectile with a lasso visual (Mountain Tim).
+function TuskService.fireLasso(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "TimLasso",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Lasso" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Some characters walk faster or slower (Registry WalkSpeed, e.g. Sandman).
+function TuskService.applyCharacterSpeed(state)
+	local character = state and state.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	local info = state.Act and Registry.get(state.Act)
+	local mult = info and info.WalkSpeed or 1
+	Adapter.setMoveModifier(humanoid, "CharacterSpeed", mult ~= 1 and mult or nil)
+end
+
 -- Charge helpers (hold abilities): sets the replicated TuskCharge attribute.
 function TuskService.beginCharge(player, state, move, slot, multiplier)
 	local character, humanoid = Adapter.getAlive(player)
@@ -5743,6 +5789,7 @@ function TuskService.select(player, act, internal)
 	if state.Character then
 		state.Character:SetAttribute("TuskAct", act)
 	end
+	TuskService.applyCharacterSpeed(state)
 	TuskService.tell(player, "Equipped", { Act = act })
 end
 
@@ -5765,6 +5812,7 @@ function TuskService.evolve(player, state, toAct)
 	if state.Character then
 		state.Character:SetAttribute("TuskAct", toAct)
 	end
+	TuskService.applyCharacterSpeed(state)
 	TuskService.fx("Evolve", { Character = state.Character, From = from, To = toAct })
 	TuskService.tell(player, "Evolved", { Act = toAct })
 end
@@ -5904,6 +5952,7 @@ local function onCharacter(player, character)
 	if state.Act then
 		character:SetAttribute("TuskAct", state.Act)
 	end
+	TuskService.applyCharacterSpeed(state)
 	humanoid.Died:Connect(function()
 		if state.Character == character then
 			cleanupAct(player, state)
@@ -6377,7 +6426,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit" }) do
+for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

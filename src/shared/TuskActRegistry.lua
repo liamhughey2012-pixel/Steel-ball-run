@@ -128,8 +128,26 @@ TuskActRegistry.Acts = {
 		Ultimate = "SILENT SYMPHONY",
 		Next = nil,
 		Module = "Sandman", -- server moves
+		WalkSpeed = 1.3, -- he's a runner: 30% faster than everyone else
 		ClientModule = "SandmanVFX", -- client visuals (TuskActVFX.SandmanVFX)
 		CardTitle = "STAND  ·  IN A SILENT WAY",
+	},
+	-- Mountain Tim: OH! LONESOME ME (splits his body into pieces that slide
+	-- along his lasso rope).
+	[9] = {
+		Name = "OH! LONESOME ME",
+		Character = "MountainTim",
+		Tagline = "Split along the rope",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 156, 84), Secondary = Color3.fromRGB(96, 62, 38) },
+		M1 = "LASSO COMBO",
+		Abilities = { "LASSO SNARE", "ROPE SPLIT", "SPLIT PUNCH" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "LONESOME ROUNDUP",
+		Next = nil,
+		Module = "MountainTim", -- server moves
+		ClientModule = "MountainTimVFX", -- client visuals (TuskActVFX.MountainTimVFX)
+		CardTitle = "STAND  ·  OH! LONESOME ME",
 	},
 }
 
@@ -140,7 +158,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

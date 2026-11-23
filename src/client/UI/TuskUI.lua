@@ -135,7 +135,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("SOUND TRAP") then
+	if has("LASSO") or has("ROUNDUP") then
+		return "lasso"
+	elseif has("ROPE SPLIT") then
+		return "dash"
+	elseif has("SPLIT PUNCH") then
+		return "barrage"
+	elseif has("SOUND TRAP") then
 		return "word"
 	elseif has("SOUND") or has("SILENT") then
 		return "slash"
@@ -286,6 +292,11 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "lasso" then
+		-- A lasso loop on a rope.
+		ring(icon, 0.56, 3, UDim2.fromScale(0.42, 0.4))
+		bar(icon, 0.68, 0.72, 0.07, 0.42, -40)
+		bar(icon, 0.6, 0.62, 0.12, 0.12, 45)
 	elseif kind == "word" then
 		-- A written sound effect: three bold blocks with a burst behind.
 		for i = 0, 3 do
