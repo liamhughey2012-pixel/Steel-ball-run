@@ -2,7 +2,7 @@
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -12,7 +12,12 @@
 	  * M1 combo up close, abilities on cooldown, ultimate when their meter is full
 	  * hold abilities are charged and released automatically
 	  * they block now and then, dash in to close the gap, and dash away when hurt
-	  * they respawn RespawnTime seconds after dying, as a random character
+	  * every installed character has an NPC out: a new NPC is whichever
+	    character has the fewest right now (TuskConfig.StandBots.Characters)
+	  * Blackmore NPCs rain walk while it rains: they step up onto frozen
+	    raindrops (an invisible step only NPCs collide with) and climb
+	    toward players above them
+	  * they respawn RespawnTime seconds after dying, as whoever is missing
 	Settings: TuskConfig.StandBots (Enabled = false turns them off).
 	Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
 ]]
@@ -20,6 +25,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
+local PhysicsService = game:GetService("PhysicsService")
 
 local Shared = game:GetService("ReplicatedStorage").SpinShared
 local TuskConfig = require(Shared.TuskConfig)
@@ -131,7 +137,10 @@ end
 
 local spawnBot -- (defined below; respawn calls it)
 
+local endRainWalk -- (rain walk, below)
+
 local function removeBot(bot)
+	endRainWalk(bot, false)
 	bots[bot.Slot] = nil
 	if bot.Spot and usedSpots[bot.Spot] == bot.Slot then
 		usedSpots[bot.Spot] = nil
@@ -147,7 +156,24 @@ function spawnBot(slot)
 	if #choices == 0 then
 		return
 	end
-	local pick = choices[math.random(1, #choices)]
+	-- Whoever has the fewest NPCs out right now, so every character shows up.
+	local counts = {}
+	for _, other in pairs(bots) do
+		if other.Slot ~= slot then
+			counts[other.Who] = (counts[other.Who] or 0) + 1
+		end
+	end
+	local fewest = math.huge
+	for _, c in ipairs(choices) do
+		fewest = math.min(fewest, counts[c.Who] or 0)
+	end
+	local pool = {}
+	for _, c in ipairs(choices) do
+		if (counts[c.Who] or 0) == fewest then
+			table.insert(pool, c)
+		end
+	end
+	local pick = pool[math.random(1, #pool)]
 	local model = buildModel(pick.Who)
 	if not model then
 		return
@@ -183,6 +209,7 @@ function spawnBot(slot)
 	bot.State = S.addBot(botPlayer, pick.Act)
 	CollectionService:AddTag(model, "SpinFighter")
 	humanoid.Died:Connect(function()
+		endRainWalk(bot, false)
 		task.delay(cfg.RespawnTime or 10, function()
 			if bots[slot] == bot then
 				removeBot(bot)
@@ -190,6 +217,154 @@ function spawnBot(slot)
 			end
 		end)
 	end)
+end
+
+---------------------------------------------------------------------------
+-- Blackmore NPCs: RAIN WALK (the server moves NPCs, so the server does it).
+-- An invisible step under his feet that only Stand-user NPCs collide with.
+---------------------------------------------------------------------------
+local STEP_GROUP, BOT_GROUP = "SpinRainStep", "SpinStandBot"
+local groupsReady = false
+
+local function setupGroups()
+	if groupsReady then
+		return true
+	end
+	groupsReady = pcall(function()
+		for _, g in ipairs({ STEP_GROUP, BOT_GROUP }) do
+			if not PhysicsService:IsCollisionGroupRegistered(g) then
+				PhysicsService:RegisterCollisionGroup(g)
+			end
+		end
+		for _, g in ipairs(PhysicsService:GetRegisteredCollisionGroups()) do
+			PhysicsService:CollisionGroupSetCollidable(STEP_GROUP, g.name, g.name == BOT_GROUP)
+		end
+	end)
+	return groupsReady
+end
+
+local function rainingFor(model)
+	if game:GetService("ReplicatedStorage"):GetAttribute("SpinRaining") == true then
+		return true
+	end
+	return (model:GetAttribute("RainStormUntil") or 0) > workspace:GetServerTimeNow()
+end
+
+local function feetY(bot, root)
+	return root.Position.Y - (bot.Humanoid.HipHeight + root.Size.Y / 2)
+end
+
+local function walkCfg()
+	return (TuskConfig.Blackmore and TuskConfig.Blackmore.RainWalk) or { FloatTime = 6, MaxSteps = 8, Cooldown = 3 }
+end
+
+function endRainWalk(bot, cooldown)
+	local rw = bot.RainWalk
+	if not rw then
+		return
+	end
+	bot.RainWalk = nil
+	if rw.Step then
+		rw.Step:Destroy()
+	end
+	if bot.Model and bot.Model.Parent then
+		bot.Model:SetAttribute("RainFloating", nil)
+	end
+	if cooldown then
+		bot.RainWalkReady = os.clock() + walkCfg().Cooldown + 2
+	end
+end
+
+-- Jump, then a frozen raindrop catches his feet near the top of the jump.
+local function rainHop(bot)
+	local rw = bot.RainWalk
+	if not rw or rw.Steps >= walkCfg().MaxSteps then
+		return
+	end
+	rw.Steps = rw.Steps + 1
+	rw.Hopping = true
+	bot.Humanoid.Jump = true
+	task.delay(0.32, function()
+		if bot.RainWalk ~= rw then
+			return
+		end
+		rw.Hopping = false
+		local root = bot.Model:FindFirstChild("HumanoidRootPart")
+		if not root then
+			return
+		end
+		rw.Y = math.max(feetY(bot, root), rw.Y or -math.huge)
+		local v = root.AssemblyLinearVelocity
+		root.AssemblyLinearVelocity = Vector3.new(v.X, 0, v.Z)
+	end)
+end
+
+local function startRainWalk(bot, root)
+	if not setupGroups() then
+		return
+	end
+	for _, d in ipairs(bot.Model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.CollisionGroup = BOT_GROUP
+		end
+	end
+	local step = Instance.new("Part")
+	step.Name = "RainStep"
+	step.Anchored = true
+	step.CanCollide = true
+	step.CanQuery = false
+	step.CanTouch = false
+	step.Transparency = 1
+	step.Size = Vector3.new(5, 0.4, 5)
+	step.CollisionGroup = STEP_GROUP
+	step.CFrame = CFrame.new(root.Position.X, -10000, root.Position.Z)
+	step.Parent = folder
+	local token = tostring({})
+	bot.RainWalk = { Step = step, Start = os.clock(), Steps = 0, Token = token }
+	bot.Model:SetAttribute("RainFloating", token)
+	rainHop(bot)
+end
+
+-- Every frame: keep the step under his feet.
+local function stepRainWalks()
+	for _, bot in pairs(bots) do
+		local rw = bot.RainWalk
+		if rw and rw.Step and rw.Y then
+			local root = bot.Model and bot.Model:FindFirstChild("HumanoidRootPart")
+			if root then
+				rw.Step.CFrame = CFrame.new(root.Position.X, rw.Y - 0.2, root.Position.Z)
+			end
+		end
+	end
+end
+
+-- Each think: start, climb toward a target above him, or end.
+local function thinkRainWalk(bot, root, target)
+	if bot.Who ~= "Blackmore" then
+		return
+	end
+	local now = os.clock()
+	local rw = bot.RainWalk
+	if rw then
+		if now - rw.Start > walkCfg().FloatTime or not rainingFor(bot.Model) or bot.Model:GetAttribute("Stunned") or bot.Humanoid.Health <= 0 then
+			endRainWalk(bot, true)
+			return
+		end
+		-- Climb toward someone above him.
+		local tr = target and target:FindFirstChild("HumanoidRootPart")
+		if tr and not rw.Hopping and rw.Y and tr.Position.Y - 1 > feetY(bot, root) + 2 then
+			rainHop(bot)
+		end
+		return
+	end
+	if not target or now < (bot.RainWalkReady or 0) or not rainingFor(bot.Model) then
+		return
+	end
+	local tr = target:FindFirstChild("HumanoidRootPart")
+	local above = tr and tr.Position.Y > root.Position.Y + 4
+	if above or math.random() < (cfg.RainWalkChance or 0.05) then
+		startRainWalk(bot, root)
+	end
 end
 
 -- Nearest player in range.
@@ -237,11 +412,15 @@ local function think(bot, now)
 	end
 	local target, dist = findTarget(bot, root)
 	if not target then
+		if bot.RainWalk then
+			endRainWalk(bot, false)
+		end
 		if (root.Position - bot.Home).Magnitude > 6 then
 			humanoid:MoveTo(bot.Home)
 		end
 		return
 	end
+	thinkRainWalk(bot, root, target)
 	local tr = target:FindFirstChild("HumanoidRootPart")
 	local flatTarget = Vector3.new(tr.Position.X, root.Position.Y, tr.Position.Z)
 	local reach = cfg.AttackRange or 6
@@ -314,6 +493,7 @@ function StandBots.init(TuskService)
 	end)
 	local accumulator = 0
 	RunService.Heartbeat:Connect(function(dt)
+		stepRainWalks()
 		accumulator = accumulator + dt
 		if accumulator < (cfg.ThinkEvery or 0.15) then
 			return

@@ -12,3 +12,11 @@ Enemy NPCs that fight you with a Stand. Code: `StandBots` (server, built into Sp
 - Turn them off with `TuskConfig.StandBots.Enabled = false`, or change `Count`, `Health`, `AggroRange` and the rest there.
 
 How it works: a bot is a stand-in "player" table, so the server's move code runs for it unchanged. The bot model is tagged `SpinFighter`, so every client draws its Stand, outfit and move effects (`Fighters` client helper).
+
+## 2026-11-23
+- **Every character has an NPC:** `Count = 8`, and each new or respawned NPC is whichever installed character has the fewest NPCs out (ties random), so all 8 are always on the map.
+- **Blackmore NPCs rain walk** while it rains (or in their own storm):
+  - they start when a player is above them, or now and then while chasing (`RainWalkChance`);
+  - they climb toward players above them;
+  - same limits as players (`TuskConfig.Blackmore.RainWalk`);
+  - the step is server-side, in collision group `SpinRainStep`, which only collides with `SpinStandBot` (the NPC's parts), so players can't stand on it.
