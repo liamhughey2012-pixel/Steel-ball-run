@@ -31,6 +31,7 @@ __modules["PorkPie"] = function()
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = __require("Fighters")
 
 local Shared = nil -- (bundled: modules are inlined)
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
@@ -606,7 +607,7 @@ local function stepPans(dt)
 end
 
 local function stepStance()
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		if character then
 			local want = character:GetAttribute("TuskAct") == ACT

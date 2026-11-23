@@ -39,6 +39,7 @@ Back to [[Where To Put Code]]
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = require(script.Parent.Fighters)
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
@@ -62,6 +63,7 @@ Common.Palettes = {
 	[5] = { Main = Color3.fromRGB(120, 225, 95), Second = Color3.fromRGB(40, 120, 50), Light = Color3.fromRGB(225, 255, 205) }, -- Gyro
 	[6] = { Main = Color3.fromRGB(80, 210, 220), Second = Color3.fromRGB(35, 60, 190), Light = Color3.fromRGB(215, 255, 250) }, -- Diego
 	[7] = { Main = Color3.fromRGB(165, 215, 80), Second = Color3.fromRGB(95, 105, 125), Light = Color3.fromRGB(225, 232, 245) }, -- Pork Pie Hat Kid (bamboo green + steel)
+	[8] = { Main = Color3.fromRGB(245, 185, 80), Second = Color3.fromRGB(50, 140, 160), Light = Color3.fromRGB(255, 240, 205) }, -- Sandman (sand + turquoise)
 }
 
 function Common.palette(act)
@@ -227,7 +229,7 @@ function Common.chargeDriver(act, move, makeEffect, update, finish)
 	local active = {}
 	return function()
 		local seen = {}
-		for _, player in ipairs(Players:GetPlayers()) do
+		for _, player in ipairs(Fighters.list()) do
 			local character = player.Character
 			local start = character and character:GetAttribute("TuskCharge")
 			if start and character:GetAttribute("TuskAct") == act and character:GetAttribute("TuskChargeMove") == move then

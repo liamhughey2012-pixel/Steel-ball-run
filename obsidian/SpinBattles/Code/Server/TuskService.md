@@ -84,6 +84,9 @@ function TuskService.fx(name, data)
 end
 
 function TuskService.tell(player, kind, data)
+	if typeof(player) ~= "Instance" then
+		return -- a Stand-user NPC (StandBots): nobody to tell
+	end
 	data = data or {}
 	data.Kind = kind
 	FX:FireClient(player, "TuskState", data)
@@ -238,6 +241,21 @@ function TuskService.fireHook(player, state, spec)
 		Radius = spec.Radius,
 		Range = spec.Range,
 		Visual = { Style = spec.Style or "Hook" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Server projectile with a written-sound visual (Sandman: In a Silent Way).
+function TuskService.fireWord(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "SoundWord",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Text = spec.Text or "ZBAAK!", Style = spec.Style or "Slash" },
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd,
 	})
@@ -539,6 +557,54 @@ local function onPlayer(player)
 	end
 	if TuskConfig.Progression.AutoEquip then
 		task.defer(TuskService.select, player, TuskConfig.Progression.DefaultAct, true)
+	end
+end
+
+-- Stand-user NPCs (StandBots): a bot is a table that looks enough like a
+-- Player for the move code ({ Name, UserId < 0, Character, Neutral,
+-- GetAttribute, SetAttribute }). It gets a normal state and plays an Act.
+function TuskService.hasAct(act)
+	return actModules[act] ~= nil
+end
+
+function TuskService.actModule(act)
+	return actModules[act]
+end
+
+function TuskService.addBot(bot, act)
+	local state = {
+		Act = nil,
+		Character = bot.Character,
+		Life = 0,
+		Combo = 0,
+		LastM1 = 0,
+		LockUntil = 0,
+		LastSwitch = -math.huge,
+		Charging = nil,
+		Sneaking = false,
+		Burrowed = false,
+		Awakened = false,
+		IsBot = true,
+	}
+	states[bot] = state
+	bot:SetAttribute("TuskUlt", 0)
+	TuskService.select(bot, act, true)
+	local humanoid = bot.Character and bot.Character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.Died:Connect(function()
+			if states[bot] == state then
+				cleanupAct(bot, state)
+			end
+		end)
+	end
+	return state
+end
+
+function TuskService.removeBot(bot)
+	local state = states[bot]
+	if state then
+		cleanupAct(bot, state)
+		states[bot] = nil
 	end
 end
 

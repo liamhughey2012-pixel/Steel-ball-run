@@ -15,6 +15,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = require(script.Parent.Fighters)
 local RunService = game:GetService("RunService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
@@ -320,7 +321,7 @@ function TuskStand.init()
 	RunService.RenderStepped:Connect(function(dt)
 		local now = os.clock()
 		local seen = {}
-		for _, player in ipairs(Players:GetPlayers()) do
+		for _, player in ipairs(Fighters.list()) do
 			local character = player.Character
 			local act = character and character:GetAttribute("TuskAct")
 			local root = character and character:FindFirstChild("HumanoidRootPart")

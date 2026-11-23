@@ -282,6 +282,12 @@ function PorkPieOutfit.init()
 		end
 	end
 	Players.PlayerAdded:Connect(onPlayer)
+	-- Stand-user NPCs (StandBots) wear the outfit too.
+	local CollectionService = game:GetService("CollectionService")
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		watch(model)
+	end
+	CollectionService:GetInstanceAddedSignal("SpinFighter"):Connect(watch)
 	for _, player in ipairs(Players:GetPlayers()) do
 		onPlayer(player)
 	end

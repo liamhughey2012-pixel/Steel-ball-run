@@ -91,6 +91,8 @@ PACKS = [
      "Diego Brando: Scary Monsters."),
     ("PorkPie", {"server": ["PorkPieHatKid", "PorkPieOutfit"], "client": ["PorkPie"]},
      "Pork Pie Hat Kid: Wired."),
+    ("Sandman", {"server": ["Sandman", "SandmanOutfit"], "client": ["SandmanVFX"]},
+     "Sandman (Soundman): In a Silent Way."),
 ]
 
 def deps(code):
@@ -225,7 +227,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit" }) do
+for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end
@@ -238,6 +240,7 @@ if BUILD_MAP_ON_START and __hasModule("SBRMapBuilder") and not workspace:FindFir
 		warn("[Spin] Map build failed: " .. tostring(err))
 	end
 end
+__require("StandBots").init(TuskService)
 NPCService.init()
 TestDummies.init()
 print("[Spin] Server ready")

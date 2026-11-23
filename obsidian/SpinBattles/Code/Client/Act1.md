@@ -35,6 +35,7 @@ Back to [[Where To Put Code]]
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = require(script.Parent.Parent.Fighters)
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
@@ -160,7 +161,7 @@ local charges = {} -- [character] = { Effect, Full, Sound }
 
 local function updateCharges()
 	local seen = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		local start = character and character:GetAttribute("TuskCharge")
 		if start and character:GetAttribute("TuskAct") == 1 and character:GetAttribute("TuskChargeMove") == "SpinningNail" then
@@ -226,7 +227,7 @@ local auras = {}
 
 local function updateAuras()
 	local seen = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		if character and character:GetAttribute("TuskAwakened") and character:GetAttribute("TuskAct") == 1 then
 			seen[character] = true

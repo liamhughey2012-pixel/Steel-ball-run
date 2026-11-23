@@ -33,6 +33,7 @@ Back to [[Where To Put Code]]
 
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
+local Fighters = require(script.Parent.Parent.Fighters)
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
@@ -284,7 +285,7 @@ end
 local standRings = {}
 local function updateStandRings()
 	local seen = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		local stand = character and character:GetAttribute("TuskAct") == 4 and TuskStand.get(character)
 		if stand and stand.Visible then

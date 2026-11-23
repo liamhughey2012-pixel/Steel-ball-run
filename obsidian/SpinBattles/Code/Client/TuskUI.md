@@ -161,7 +161,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("BAIT") then
+	if has("SOUND TRAP") then
+		return "word"
+	elseif has("SOUND") or has("SILENT") then
+		return "slash"
+	elseif has("SAND RUN") then
+		return "dash"
+	elseif has("BAIT") then
 		return "bait"
 	elseif has("HOOK") or has("WIRED") then
 		return "hook"
@@ -306,6 +312,14 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "word" then
+		-- A written sound effect: three bold blocks with a burst behind.
+		for i = 0, 3 do
+			bar(icon, 0.5, 0.5, 0.06, 0.95, i * 45)
+		end
+		for i = -1, 1 do
+			bar(icon, 0.5 + i * 0.24, 0.5 + (i == 0 and -0.04 or 0.04), 0.18, 0.34, i * 8)
+		end
 	elseif kind == "slash" then
 		for i = -1, 1 do
 			bar(icon, 0.5 + i * 0.18, 0.5, 0.08, 0.8 - math.abs(i) * 0.2, 30)

@@ -1191,6 +1191,23 @@ TuskActRegistry.Acts = {
 			{ Slot = 2, Attribute = "BaitPanUntil", Text = "BAITED" },
 		},
 	},
+	-- Sandman (Soundman): IN A SILENT WAY (sounds written as solid words that
+	-- cut, burn and explode when touched).
+	[8] = {
+		Name = "IN A SILENT WAY",
+		Character = "Sandman",
+		Tagline = "Sounds made solid",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(245, 185, 80), Secondary = Color3.fromRGB(50, 140, 160) },
+		M1 = "SOUND CUT COMBO",
+		Abilities = { "SOUND SLASH", "SOUND TRAP", "SAND RUN" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "SILENT SYMPHONY",
+		Next = nil,
+		Module = "Sandman", -- server moves
+		ClientModule = "SandmanVFX", -- client visuals (TuskActVFX.SandmanVFX)
+		CardTitle = "STAND  ·  IN A SILENT WAY",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -1200,7 +1217,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -1305,10 +1322,32 @@ TuskConfig.StandModels = {
 -- Available = false shows the character as IN DEVELOPMENT (not selectable).
 ---------------------------------------------------------------------------
 TuskConfig.Roster = {
-	{ Id = "Johnny", Name = "JOHNNY JOESTAR", Stand = "TUSK (ACT 1-4)", Available = true, Color = Color3.fromRGB(90, 230, 255) },
+	{ Id = "Johnny", Name = "JOHNNY JOESTAR", Stand = "TUSK", Available = true, Color = Color3.fromRGB(90, 230, 255) },
 	{ Id = "Gyro", Name = "GYRO ZEPPELI", Stand = "BALL BREAKER", Available = true, Color = Color3.fromRGB(110, 210, 90) },
 	{ Id = "Diego", Name = "DIEGO BRANDO", Stand = "SCARY MONSTERS", Available = true, Color = Color3.fromRGB(80, 210, 220) },
 	{ Id = "PorkPie", Name = "PORK PIE HAT KID", Stand = "WIRED", Available = true, Color = Color3.fromRGB(165, 215, 80) },
+	{ Id = "Sandman", Name = "SANDMAN", Stand = "IN A SILENT WAY", Available = true, Color = Color3.fromRGB(245, 185, 80) },
+}
+
+---------------------------------------------------------------------------
+-- Stand-user NPCs that fight you (StandBots). They wait at a camp away from
+-- the spawn, chase players who come close and use a real character's moves.
+---------------------------------------------------------------------------
+TuskConfig.StandBots = {
+	Enabled = true,
+	Count = 2, -- how many at once
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman" }, -- picked at random (only installed ones)
+	Health = 200,
+	WalkSpeed = 15,
+	Distance = 70, -- studs from the spawn to their camp
+	Spacing = 14, -- studs between them at the camp
+	AggroRange = 60, -- they chase players this close
+	LeashRange = 120, -- and give up past this far from their camp
+	AttackRange = 6, -- M1 range
+	AbilityRange = 35, AbilityEvery = 2.5, -- seconds between abilities (roughly)
+	RespawnTime = 10,
+	StartDelay = 3,
+	ThinkEvery = 0.15,
 }
 
 ---------------------------------------------------------------------------
@@ -1590,6 +1629,44 @@ TuskConfig.PorkPie = {
 		SnagDamage = 6, SnagStun = 1.0, SnagLift = 55,
 		ReelTime = 1.35, ReelTick = 0.15, TickDamage = 1.5, TickEvery = 0.3,
 		SlamDamage = 14, SlamRadius = 10, SlamKnockback = 60, SlamLaunch = 30, SlamStun = 0.8,
+	},
+}
+
+---------------------------------------------------------------------------
+-- Sandman (Soundman): IN A SILENT WAY
+---------------------------------------------------------------------------
+TuskConfig.Sandman = {
+	M1 = { -- SOUND CUT COMBO: chop, chop, spinning kick, a written sound that bursts
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.8, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 6 },
+			{ Damage = 7, Stun = 0.5, Knockback = 42, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	SoundSlash = { -- a written sound ("ZBAAK!") flies along the ground and cuts
+		Cooldown = 6, Startup = 0.2,
+		Speed = 95, Radius = 1.8, Range = 65,
+		Damage = 9, Stun = 0.55, Knockback = 16,
+	},
+	SoundTrap = { -- plant a written explosion ("DOGOOON") on the ground; stepping on it sets it off
+		Cooldown = 5, Startup = 0.25,
+		Distance = 12, MaxTraps = 3, Lifetime = 15,
+		TriggerRadius = 5, CheckEvery = 0.15,
+		Radius = 8, Damage = 10, Stun = 0.6, Knockback = 30, Launch = 25,
+		ChainBonus = 2, -- traps in the blast go off together: one hit, +2 damage each
+	},
+	SandRun = { -- sprint straight through enemies, leaving sand and sound behind
+		Cooldown = 7, Windup = 0.12,
+		Distance = 38, Width = 6,
+		Damage = 7, Stun = 0.6, Knockback = 12,
+	},
+	Ultimate = { -- SILENT SYMPHONY: gathers sound, then rains written sounds down, last one explodes
+		Windup = 1.0, Distance = 16, Radius = 13,
+		Waves = 4, WaveEvery = 0.3, WaveDamage = 5, WaveStun = 0.6,
+		FinalDamage = 14, FinalKnockback = 55, FinalLaunch = 30, FinalStun = 0.8,
 	},
 }
 
@@ -2954,7 +3031,8 @@ return WreckingBallModel
 --[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
 	Boots every server system: characters (Johnny/Tusk, Gyro/Ball Breaker,
-	Diego/Scary Monsters),
+	Diego/Scary Monsters, Pork Pie Hat Kid/Wired, Sandman/In a Silent Way),
+	Stand-user NPCs that fight you,
 	custom Stand models, NPCs and Studio test dummies.
 ]]
 
@@ -2966,6 +3044,8 @@ local StandAssetLoader = require(script.StandAssetLoader)
 local GyroOutfit = require(script.GyroOutfit)
 local DiegoOutfit = require(script.DiegoOutfit)
 local PorkPieOutfit = require(script.PorkPieOutfit)
+local SandmanOutfit = require(script.SandmanOutfit)
+local StandBots = require(script.StandBots)
 
 -- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
@@ -2975,6 +3055,8 @@ TuskService.init()
 GyroOutfit.init()
 DiegoOutfit.init()
 PorkPieOutfit.init()
+SandmanOutfit.init()
+StandBots.init(TuskService)
 NPCService.init()
 TestDummies.init()
 ```
@@ -3220,7 +3302,7 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 		Source = info.Source,
 		AttackerId = attackerPlayer and attackerPlayer.UserId or 0,
 	})
-	if attackerPlayer then
+	if attackerPlayer and typeof(attackerPlayer) == "Instance" then
 		FX:FireClient(attackerPlayer, "Damage", {
 			Position = info.Position,
 			Amount = math.floor(damage + 0.5),
@@ -3501,6 +3583,12 @@ function DiegoOutfit.init()
 		end
 	end
 	Players.PlayerAdded:Connect(onPlayer)
+	-- Stand-user NPCs (StandBots) wear the outfit too.
+	local CollectionService = game:GetService("CollectionService")
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		watch(model)
+	end
+	CollectionService:GetInstanceAddedSignal("SpinFighter"):Connect(watch)
 	for _, player in ipairs(Players:GetPlayers()) do
 		onPlayer(player)
 	end
@@ -3697,6 +3785,12 @@ function GyroOutfit.init()
 		end
 	end
 	Players.PlayerAdded:Connect(onPlayer)
+	-- Stand-user NPCs (StandBots) wear the outfit too.
+	local CollectionService = game:GetService("CollectionService")
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		watch(model)
+	end
+	CollectionService:GetInstanceAddedSignal("SpinFighter"):Connect(watch)
 	for _, player in ipairs(Players:GetPlayers()) do
 		onPlayer(player)
 	end
@@ -4187,6 +4281,12 @@ function PorkPieOutfit.init()
 		end
 	end
 	Players.PlayerAdded:Connect(onPlayer)
+	-- Stand-user NPCs (StandBots) wear the outfit too.
+	local CollectionService = game:GetService("CollectionService")
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		watch(model)
+	end
+	CollectionService:GetInstanceAddedSignal("SpinFighter"):Connect(watch)
 	for _, player in ipairs(Players:GetPlayers()) do
 		onPlayer(player)
 	end
@@ -4396,7 +4496,222 @@ end)
 return ProjectileService
 ```
 
-## 22. StandAssetLoader  (ModuleScript)
+## 22. SandmanOutfit  (ModuleScript)
+**Put it in:** `ServerScriptService › SpinServer`
+
+```lua
+--[[
+	SandmanOutfit  (ServerScriptService.SpinServer.SandmanOutfit)
+
+	Gives a character Sandman's look while they play him (TuskAct 8), built
+	from blocky parts (no catalog asset ids):
+	  * long straight black hair down his back with side locks
+	  * a red-and-white beaded headband with a feather at the back
+	  * a sand-coloured scarf, a sleeveless sand vest with a dark trim
+	  * a red sash with a hanging pouch, wrapped forearms and shins
+	The player's own hats/hair are hidden while they play him and come back
+	when they switch. Built on the server so every player sees it.
+]]
+
+local Players = game:GetService("Players")
+
+local SandmanOutfit = {}
+SandmanOutfit.Act = 8
+
+local C = {
+	Hair = Color3.fromRGB(25, 22, 24),
+	HairShine = Color3.fromRGB(55, 50, 55),
+	Band = Color3.fromRGB(190, 50, 45),
+	Bead = Color3.fromRGB(240, 235, 220),
+	Feather = Color3.fromRGB(245, 240, 230),
+	FeatherTip = Color3.fromRGB(40, 35, 35),
+	Scarf = Color3.fromRGB(230, 200, 140),
+	Vest = Color3.fromRGB(205, 165, 105),
+	Trim = Color3.fromRGB(110, 70, 40),
+	Sash = Color3.fromRGB(180, 45, 40),
+	Pouch = Color3.fromRGB(120, 80, 45),
+	Wrap = Color3.fromRGB(235, 220, 190),
+}
+
+local saved = setmetatable({}, { __mode = "k" })
+
+local function piece(parent, outfit, name, size, color, offset)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.SmoothPlastic
+	p.Size = size
+	p.Color = color
+	p.CFrame = parent.CFrame * offset
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = parent
+	weld.Part1 = p
+	weld.Parent = p
+	p.Parent = outfit
+	return p
+end
+
+local function headPieces(head, outfit)
+	local s = head.Size.Y / 1.2
+	local w, h, d = head.Size.X / 2, head.Size.Y / 2, head.Size.Z / 2
+	-- Hair: a cap over the top, a long sheet down the back, locks at the sides.
+	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.12 * s, 0.3 * s, head.Size.Z + 0.12 * s), C.Hair, CFrame.new(0, h - 0.05 * s, 0.02 * s))
+	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.12 * s, head.Size.Y * 0.9, 0.2 * s), C.Hair, CFrame.new(0, 0.05 * s, d + 0.08 * s))
+	piece(head, outfit, "HairLong", Vector3.new(head.Size.X * 0.9, 2.2 * s, 0.22 * s), C.Hair, CFrame.new(0, -1.5 * s, d + 0.2 * s) * CFrame.Angles(-0.12, 0, 0))
+	piece(head, outfit, "HairShine", Vector3.new(0.12 * s, 2.0 * s, 0.05 * s), C.HairShine, CFrame.new(0.2 * s, -1.4 * s, d + 0.33 * s) * CFrame.Angles(-0.12, 0, 0))
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, "HairLock", Vector3.new(0.2 * s, 1.2 * s, 0.35 * s), C.Hair, CFrame.new(side * (w + 0.08 * s), -0.25 * s, -0.05 * s))
+	end
+	-- Beaded headband round the forehead.
+	local bandY = h * 0.42
+	piece(head, outfit, "Band", Vector3.new(head.Size.X + 0.18 * s, 0.18 * s, head.Size.Z + 0.18 * s), C.Band, CFrame.new(0, bandY, 0))
+	for i = -2, 2 do
+		piece(head, outfit, "Bead", Vector3.new(0.1, 0.1, 0.04) * s, C.Bead, CFrame.new(i * 0.2 * s, bandY, -d - 0.1 * s))
+	end
+	-- Feather tucked in at the back.
+	local feather = CFrame.new(0.25 * s, bandY + 0.5 * s, d + 0.15 * s) * CFrame.Angles(-0.35, 0, -0.3)
+	piece(head, outfit, "Feather", Vector3.new(0.08, 1.1, 0.26) * s, C.Feather, feather)
+	piece(head, outfit, "FeatherTip", Vector3.new(0.09, 0.28, 0.27) * s, C.FeatherTip, feather * CFrame.new(0, 0.45 * s, 0))
+end
+
+local function body(character, outfit)
+	local upper = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	local lower = character:FindFirstChild("LowerTorso")
+	if upper then
+		local s = upper.Size
+		-- Sleeveless vest, open down the front.
+		for _, side in ipairs({ -1, 1 }) do
+			piece(upper, outfit, "Vest", Vector3.new(s.X * 0.42, s.Y + 0.04, s.Z + 0.1), C.Vest, CFrame.new(side * s.X * 0.29, 0, 0))
+			piece(upper, outfit, "Trim", Vector3.new(0.12, s.Y + 0.06, 0.06), C.Trim, CFrame.new(side * s.X * 0.08, 0, -s.Z / 2 - 0.07))
+		end
+		piece(upper, outfit, "VestBack", Vector3.new(s.X + 0.06, s.Y + 0.04, 0.08), C.Vest, CFrame.new(0, 0, s.Z / 2 + 0.04))
+		-- Scarf round the neck, one end hanging.
+		piece(upper, outfit, "Scarf", Vector3.new(s.X * 0.75, 0.3, s.Z + 0.25), C.Scarf, CFrame.new(0, s.Y / 2 + 0.05, 0))
+		piece(upper, outfit, "ScarfEnd", Vector3.new(0.35, 0.9, 0.1), C.Scarf, CFrame.new(-s.X * 0.18, s.Y / 2 - 0.45, -s.Z / 2 - 0.1) * CFrame.Angles(0, 0, 0.15))
+	end
+	local waist = lower or upper
+	if waist then
+		local y = lower and 0 or -upper.Size.Y / 2 + 0.15
+		piece(waist, outfit, "Sash", Vector3.new(waist.Size.X + 0.12, 0.3, waist.Size.Z + 0.12), C.Sash, CFrame.new(0, y, 0))
+		piece(waist, outfit, "SashTail", Vector3.new(0.3, 0.9, 0.08), C.Sash, CFrame.new(waist.Size.X * 0.3, y - 0.5, -waist.Size.Z / 2 - 0.08))
+		piece(waist, outfit, "Pouch", Vector3.new(0.45, 0.5, 0.3), C.Pouch, CFrame.new(-waist.Size.X / 2 - 0.1, y - 0.25, 0))
+	end
+	-- Sleeveless: bare arms over whatever shirt the avatar wears.
+	local headPart = character:FindFirstChild("Head")
+	local skin = headPart and headPart.Color or Color3.fromRGB(170, 115, 80)
+	for _, name in ipairs({ "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm", "Left Arm", "Right Arm" }) do
+		local arm = character:FindFirstChild(name)
+		if arm then
+			piece(arm, outfit, "Skin", arm.Size + Vector3.new(0.04, 0.02, 0.04), skin, CFrame.new())
+		end
+	end
+	-- Wrapped forearms and shins.
+	for _, name in ipairs({ "LeftLowerArm", "RightLowerArm", "Left Arm", "Right Arm" }) do
+		local arm = character:FindFirstChild(name)
+		if arm then
+			local y = -arm.Size.Y / 2 + (arm.Size.Y > 1.8 and 0.7 or 0.35)
+			piece(arm, outfit, "Wrap", Vector3.new(arm.Size.X + 0.1, arm.Size.Y > 1.8 and 0.9 or 0.6, arm.Size.Z + 0.1), C.Wrap, CFrame.new(0, y, 0))
+		end
+	end
+	for _, name in ipairs({ "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
+		local leg = character:FindFirstChild(name)
+		if leg then
+			local y = -leg.Size.Y / 2 + (leg.Size.Y > 1.8 and 0.6 or 0.4)
+			piece(leg, outfit, "Wrap", Vector3.new(leg.Size.X + 0.1, leg.Size.Y > 1.8 and 0.8 or 0.6, leg.Size.Z + 0.1), C.Wrap, CFrame.new(0, y, 0))
+		end
+	end
+end
+
+function SandmanOutfit.apply(character)
+	if character:FindFirstChild("SandmanOutfit") then
+		return
+	end
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local store = { Hidden = {} }
+	saved[character] = store
+	for _, d in ipairs(character:GetChildren()) do
+		if d:IsA("Accessory") then
+			local handle = d:FindFirstChild("Handle")
+			local kind = d.AccessoryType
+			if handle and (kind == Enum.AccessoryType.Hat or kind == Enum.AccessoryType.Hair or kind == Enum.AccessoryType.Unknown) then
+				store.Hidden[handle] = handle.Transparency
+				handle.Transparency = 1
+			end
+		end
+	end
+	local outfit = Instance.new("Model")
+	outfit.Name = "SandmanOutfit"
+	outfit.Parent = character
+	headPieces(head, outfit)
+	body(character, outfit)
+end
+
+function SandmanOutfit.remove(character)
+	local outfit = character:FindFirstChild("SandmanOutfit")
+	if outfit then
+		outfit:Destroy()
+	end
+	local store = saved[character]
+	if not store then
+		return
+	end
+	saved[character] = nil
+	for thing, transparency in pairs(store.Hidden) do
+		if thing.Parent then
+			thing.Transparency = transparency
+		end
+	end
+end
+
+local function watch(character)
+	local function update()
+		if character:GetAttribute("TuskAct") == SandmanOutfit.Act then
+			task.delay(0.3, function()
+				if character.Parent and character:GetAttribute("TuskAct") == SandmanOutfit.Act then
+					SandmanOutfit.apply(character)
+				end
+			end)
+		else
+			SandmanOutfit.remove(character)
+		end
+	end
+	character:GetAttributeChangedSignal("TuskAct"):Connect(update)
+	update()
+end
+
+function SandmanOutfit.init()
+	local function onPlayer(player)
+		player.CharacterAppearanceLoaded:Connect(watch)
+		if player.Character then
+			watch(player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	-- Stand-user NPCs (StandBots) wear the outfit too.
+	local CollectionService = game:GetService("CollectionService")
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		watch(model)
+	end
+	CollectionService:GetInstanceAddedSignal("SpinFighter"):Connect(watch)
+	for _, player in ipairs(Players:GetPlayers()) do
+		onPlayer(player)
+	end
+end
+
+return SandmanOutfit
+```
+
+## 23. StandAssetLoader  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -4486,7 +4801,289 @@ end
 return StandAssetLoader
 ```
 
-## 23. TestDummies  (ModuleScript)
+## 24. StandBots  (ModuleScript)
+**Put it in:** `ServerScriptService › SpinServer`
+
+```lua
+--[[
+	StandBots  (ServerScriptService.SpinServer.StandBots)
+
+	Enemy NPCs that fight you with a Stand. Each one plays a real character
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman: whichever are
+	installed) through exactly the same move code as players, so their M1s,
+	abilities and ultimates hit, stun and look the same.
+	  * they wait at their camp, chase any player who comes within AggroRange
+	    and walk back home when the player gets away
+	  * M1 combo up close, abilities on cooldown, ultimate when their meter is full
+	  * hold abilities are charged and released automatically
+	  * they respawn RespawnTime seconds after dying, as a random character
+	Settings: TuskConfig.StandBots (Enabled = false turns them off).
+	Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+local Registry = require(Shared.TuskActRegistry)
+
+local StandBots = {}
+local S -- TuskService
+local cfg
+local folder
+local bots = {}
+local nextId = 0
+
+-- Body colours per character so you can tell them apart before they attack.
+local LOOKS = {
+	Johnny = { Skin = Color3.fromRGB(234, 190, 150), Torso = Color3.fromRGB(60, 110, 190), Legs = Color3.fromRGB(40, 40, 60) },
+	Gyro = { Skin = Color3.fromRGB(226, 180, 140), Torso = Color3.fromRGB(102, 64, 150), Legs = Color3.fromRGB(70, 46, 110) },
+	Diego = { Skin = Color3.fromRGB(240, 200, 165), Torso = Color3.fromRGB(60, 120, 90), Legs = Color3.fromRGB(40, 50, 45) },
+	PorkPie = { Skin = Color3.fromRGB(205, 150, 110), Torso = Color3.fromRGB(95, 115, 45), Legs = Color3.fromRGB(95, 115, 45) },
+	Sandman = { Skin = Color3.fromRGB(170, 115, 80), Torso = Color3.fromRGB(200, 160, 100), Legs = Color3.fromRGB(120, 85, 55) },
+}
+
+local function findHome(index, count)
+	local spawn = workspace:FindFirstChildWhichIsA("SpawnLocation", true)
+	local base = spawn and spawn.CFrame or CFrame.new(0, 5, 0)
+	local spread = (index - (count + 1) / 2) * (cfg.Spacing or 14)
+	local pos = (base * CFrame.new(spread, 0, cfg.Distance or 70)).Position
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { folder }
+	local hit = workspace:Raycast(pos + Vector3.new(0, 60, 0), Vector3.new(0, -200, 0), params)
+	return hit and hit.Position + Vector3.new(0, 3, 0) or pos
+end
+
+-- Characters this server can actually play, as their start Acts.
+local function playableActs()
+	local list = {}
+	for _, who in ipairs(cfg.Characters or {}) do
+		local act = Registry.StartAct[who]
+		if act and S.hasAct(act) then
+			table.insert(list, { Who = who, Act = act })
+		end
+	end
+	return list
+end
+
+-- A table that looks enough like a Player for the move code.
+local function newBotPlayer(name, model)
+	nextId = nextId + 1
+	local attrs = {}
+	return {
+		Name = name,
+		DisplayName = name,
+		UserId = -1000 - nextId,
+		Character = model,
+		Neutral = true,
+		IsBot = true,
+		GetAttribute = function(_, k)
+			return attrs[k]
+		end,
+		SetAttribute = function(_, k, v)
+			attrs[k] = v
+		end,
+	}
+end
+
+local function buildModel(who)
+	local look = LOOKS[who] or LOOKS.Johnny
+	local desc = Instance.new("HumanoidDescription")
+	desc.HeadColor = look.Skin
+	desc.LeftArmColor = look.Skin
+	desc.RightArmColor = look.Skin
+	desc.TorsoColor = look.Torso
+	desc.LeftLegColor = look.Legs
+	desc.RightLegColor = look.Legs
+	local ok, model = pcall(function()
+		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not model then
+		warn("[StandBots] couldn't create an NPC body: " .. tostring(model))
+		return nil
+	end
+	return model
+end
+
+local spawnBot -- (defined below; respawn calls it)
+
+local function removeBot(bot)
+	bots[bot.Slot] = nil
+	S.removeBot(bot.Player)
+	if bot.Model then
+		bot.Model:Destroy()
+	end
+end
+
+function spawnBot(slot)
+	local choices = playableActs()
+	if #choices == 0 then
+		return
+	end
+	local pick = choices[math.random(1, #choices)]
+	local model = buildModel(pick.Who)
+	if not model then
+		return
+	end
+	local roster
+	for _, entry in ipairs(TuskConfig.Roster or {}) do
+		if entry.Id == pick.Who then
+			roster = entry
+		end
+	end
+	local name = "Stand User: " .. (roster and roster.Name or pick.Who)
+	model.Name = name
+	local home = findHome(slot, cfg.Count)
+	model:PivotTo(CFrame.new(home))
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	humanoid.DisplayName = name
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+	humanoid.NameDisplayDistance = 80
+	humanoid.HealthDisplayDistance = 80
+	humanoid.MaxHealth = cfg.Health or 200
+	humanoid.Health = humanoid.MaxHealth
+	humanoid.WalkSpeed = cfg.WalkSpeed or 15
+	model.Parent = folder
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if root then
+		pcall(function()
+			root:SetNetworkOwner(nil) -- the server drives NPCs
+		end)
+	end
+	local botPlayer = newBotPlayer(name, model)
+	local bot = { Slot = slot, Player = botPlayer, Model = model, Humanoid = humanoid, Home = home, Who = pick.Who, NextThink = 0, NextAbility = os.clock() + 2, NextUlt = 0 }
+	bots[slot] = bot
+	bot.State = S.addBot(botPlayer, pick.Act)
+	CollectionService:AddTag(model, "SpinFighter")
+	humanoid.Died:Connect(function()
+		task.delay(cfg.RespawnTime or 10, function()
+			if bots[slot] == bot then
+				removeBot(bot)
+				spawnBot(slot)
+			end
+		end)
+	end)
+end
+
+-- Nearest player in range.
+local function findTarget(bot, root)
+	local best, bestDist
+	for _, player in ipairs(Players:GetPlayers()) do
+		local character = player.Character
+		local tr = character and character:FindFirstChild("HumanoidRootPart")
+		local hum = character and character:FindFirstChildOfClass("Humanoid")
+		if tr and hum and hum.Health > 0 and S.Adapter.canBeHit(bot.Player, character) then
+			local d = (tr.Position - root.Position).Magnitude
+			local fromHome = (tr.Position - bot.Home).Magnitude
+			if d <= (cfg.AggroRange or 70) and fromHome <= (cfg.LeashRange or 120) and (not bestDist or d < bestDist) then
+				best, bestDist = character, d
+			end
+		end
+	end
+	return best, bestDist
+end
+
+local function useAbility(bot, module, slot, aim)
+	local info = Registry.get(bot.State.Act)
+	local kind = info and info.AbilityKinds and info.AbilityKinds[slot] or "Press"
+	module.Ability(S, bot.Player, bot.State, slot, "Press", aim)
+	if kind == "Hold" then
+		local hold = 0.5 + math.random() * 0.9
+		task.delay(hold, function()
+			if bots[bot.Slot] == bot then
+				module.Ability(S, bot.Player, bot.State, slot, "Release", aim)
+			end
+		end)
+	end
+end
+
+local function think(bot, now)
+	local model, humanoid = bot.Model, bot.Humanoid
+	local root = model and model:FindFirstChild("HumanoidRootPart")
+	if not root or humanoid.Health <= 0 then
+		return
+	end
+	local state = bot.State
+	local module = state.Act and S.actModule(state.Act)
+	if not module then
+		return
+	end
+	local target, dist = findTarget(bot, root)
+	if not target then
+		if (root.Position - bot.Home).Magnitude > 6 then
+			humanoid:MoveTo(bot.Home)
+		end
+		return
+	end
+	local tr = target:FindFirstChild("HumanoidRootPart")
+	local flatTarget = Vector3.new(tr.Position.X, root.Position.Y, tr.Position.Z)
+	local reach = cfg.AttackRange or 6
+	if dist > reach - 1 then
+		humanoid:MoveTo(tr.Position - (tr.Position - root.Position).Unit * (reach - 2))
+	else
+		humanoid:MoveTo(root.Position)
+	end
+	if not S.Adapter.canAct(bot.Player) or S.isBusy(state) or state.Charging then
+		return
+	end
+	-- Face the target and attack.
+	if (flatTarget - root.Position).Magnitude > 0.5 then
+		root.CFrame = CFrame.lookAt(root.Position, flatTarget)
+	end
+	local aim = (tr.Position - root.Position).Unit
+	if bot.Player:GetAttribute("TuskUlt") and bot.Player:GetAttribute("TuskUlt") >= TuskConfig.Ultimate.MaxMeter and dist < 22 and now >= bot.NextUlt then
+		bot.NextUlt = now + 5
+		module.Ultimate(S, bot.Player, state, aim)
+		return
+	end
+	if now >= bot.NextAbility and dist < (cfg.AbilityRange or 35) then
+		bot.NextAbility = now + (cfg.AbilityEvery or 2.5) * (0.7 + math.random() * 0.6)
+		useAbility(bot, module, math.random(1, 3), aim)
+		return
+	end
+	if dist <= reach then
+		module.M1(S, bot.Player, state, aim)
+	end
+end
+
+function StandBots.init(TuskService)
+	S = TuskService
+	cfg = TuskConfig.StandBots or {}
+	if cfg.Enabled == false or (cfg.Count or 0) <= 0 then
+		return
+	end
+	folder = Instance.new("Folder")
+	folder.Name = "SpinStandBots"
+	folder.Parent = workspace
+	task.delay(cfg.StartDelay or 3, function()
+		for slot = 1, cfg.Count do
+			spawnBot(slot)
+		end
+	end)
+	local accumulator = 0
+	RunService.Heartbeat:Connect(function(dt)
+		accumulator = accumulator + dt
+		if accumulator < (cfg.ThinkEvery or 0.15) then
+			return
+		end
+		accumulator = 0
+		local now = os.clock()
+		for _, bot in pairs(bots) do
+			local ok, err = pcall(think, bot, now)
+			if not ok then
+				warn("[StandBots] " .. tostring(err))
+			end
+		end
+	end)
+end
+
+return StandBots
+```
+
+## 25. TestDummies  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -4551,12 +5148,12 @@ end
 return TestDummies
 ```
 
-## 24. TuskActs  (Folder)
+## 26. TuskActs  (Folder)
 **Put it in:** `ServerScriptService › SpinServer`
 
 _Empty folder: nothing to paste._
 
-## 25. DiegoBrando  (ModuleScript)
+## 27. DiegoBrando  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -5014,7 +5611,7 @@ end
 return Diego
 ```
 
-## 26. GyroZeppeli  (ModuleScript)
+## 28. GyroZeppeli  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -5338,7 +5935,7 @@ end
 return Gyro
 ```
 
-## 27. PorkPieHatKid  (ModuleScript)
+## 29. PorkPieHatKid  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -5728,7 +6325,280 @@ end
 return PorkPie
 ```
 
-## 28. TuskAct1  (ModuleScript)
+## 30. Sandman  (ModuleScript)
+**Put it in:** `ServerScriptService › SpinServer › TuskActs`
+
+```lua
+--[[
+	Sandman  (ServerScriptService.SpinServer.TuskActs.Sandman)
+
+	Sandman (Soundman): IN A SILENT WAY. His Stand turns sounds into solid,
+	written sound effects that do what they say when touched (cut, burn,
+	explode). Registered as "Act" 8 so it reuses the Tusk ability system.
+	  M1        SOUND CUT COMBO: chop, chop, spinning kick, a written sound that bursts
+	  Ability 1 SOUND SLASH: a written "ZBAAK!" flies along the ground and cuts
+	  Ability 2 SOUND TRAP: plants a written "DOGOOON" on the ground (up to 3);
+	            the first enemy to step near it sets it off
+	  Ability 3 SAND RUN: sprints straight through enemies (he's a runner),
+	            hitting everyone in his path
+	  Ultimate  SILENT SYMPHONY: gathers sound, rains written sounds down on the
+	            area in front, the last one explodes
+	Numbers: TuskConfig.Sandman. All damage goes through S.hit (CombatAdapter).
+]]
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+local Moves = require(script.Parent.Parent.TuskMoves)
+
+local Sandman = {}
+local cfg = TuskConfig.Sandman
+local ACT = 8
+local HAND = CFrame.new(0.9, 0.2, -1.8)
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function ready(S, player, state, name, slot)
+	return not S.isBusy(state) and not state.Charging and S.cooldownReady(player, state, name, slot)
+end
+
+function Sandman.M1(S, player, state, aim)
+	Moves.m1(S, player, state, aim, cfg.M1, ACT)
+end
+
+---------------------------------------------------------------------------
+-- SOUND SLASH
+---------------------------------------------------------------------------
+local function soundSlash(S, player, state, aim)
+	local c = cfg.SoundSlash
+	if not ready(S, player, state, "SoundSlash", 1) then
+		return
+	end
+	S.startCooldown(player, state, "SoundSlash", c.Cooldown, 1)
+	S.lock(state, c.Startup + 0.25)
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "SoundSlash", Phase = "Startup", Startup = c.Startup, Direction = direction })
+	task.delay(c.Startup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		S.fireWord(player, state, {
+			Origin = S.origin(char, r, HAND) - Vector3.new(0, 1, 0),
+			Direction = direction,
+			Speed = c.Speed,
+			Radius = c.Radius,
+			Range = c.Range,
+			Text = "ZBAAK!",
+			Style = "Slash",
+			OnHit = function(target, position)
+				S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = direction, Position = position, Source = "SandmanSlash" })
+			end,
+		})
+	end)
+end
+
+---------------------------------------------------------------------------
+-- SOUND TRAP
+---------------------------------------------------------------------------
+local function clearTraps(S, state)
+	for _, trap in ipairs(state.SoundTraps or {}) do
+		S.fx("Ability", { Act = ACT, Move = "SoundTrap", Phase = "Expire", Id = trap.Id, Position = trap.Position })
+	end
+	state.SoundTraps = {}
+end
+
+local function soundTrap(S, player, state, aim)
+	local c = cfg.SoundTrap
+	if not ready(S, player, state, "SoundTrap", 2) then
+		return
+	end
+	S.startCooldown(player, state, "SoundTrap", c.Cooldown, 2)
+	S.lock(state, c.Startup + 0.2)
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "SoundTrap", Phase = "Startup", Startup = c.Startup, Direction = direction })
+	task.delay(c.Startup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		state.SoundTraps = state.SoundTraps or {}
+		-- Oldest trap goes when the limit is reached.
+		if #state.SoundTraps >= c.MaxTraps then
+			local old = table.remove(state.SoundTraps, 1)
+			S.fx("Ability", { Act = ACT, Move = "SoundTrap", Phase = "Expire", Id = old.Id, Position = old.Position })
+		end
+		local spot = Moves.safeStep(char, r, direction, c.Distance) or (r.Position + direction * 3)
+		local ground = Moves.groundBelow(spot, { char })
+		local trap = { Id = tostring(os.clock()) .. player.UserId, Position = ground, Until = os.clock() + c.Lifetime }
+		table.insert(state.SoundTraps, trap)
+		S.fx("Ability", { Character = char, Act = ACT, Move = "SoundTrap", Phase = "Place", Id = trap.Id, Position = ground, Lifetime = c.Lifetime })
+
+		local function remove()
+			for i, t in ipairs(state.SoundTraps or {}) do
+				if t == trap then
+					table.remove(state.SoundTraps, i)
+					return true
+				end
+			end
+			return false
+		end
+		local function check()
+			if state.Life ~= life or not table.find(state.SoundTraps or {}, trap) then
+				return
+			end
+			if os.clock() >= trap.Until then
+				remove()
+				S.fx("Ability", { Act = ACT, Move = "SoundTrap", Phase = "Expire", Id = trap.Id, Position = trap.Position })
+				return
+			end
+			local center = trap.Position + Vector3.new(0, 2.5, 0)
+			for _, target in ipairs(S.Hitbox.inRadius(player.Character, center, c.TriggerRadius, 1)) do
+				if S.Adapter.canBeHit(player, target) then
+					remove()
+					S.fx("Ability", { Act = ACT, Move = "SoundTrap", Phase = "Boom", Id = trap.Id, Position = trap.Position, Radius = c.Radius })
+					-- His other traps in the blast go off with it (one hit, a bit harder).
+					local chained = 0
+					for k = #state.SoundTraps, 1, -1 do
+						local other = state.SoundTraps[k]
+						if (other.Position - trap.Position).Magnitude <= c.Radius then
+							table.remove(state.SoundTraps, k)
+							chained = chained + 1
+							S.fx("Ability", { Act = ACT, Move = "SoundTrap", Phase = "Boom", Id = other.Id, Position = other.Position, Radius = c.Radius })
+						end
+					end
+					Moves.aoe(S, player, center, c.Radius, { Damage = c.Damage + chained * (c.ChainBonus or 2), Stun = c.Stun, Knockback = c.Knockback, Launch = c.Launch, Source = "SandmanTrap" }, 6)
+					return
+				end
+			end
+			task.delay(c.CheckEvery, check)
+		end
+		task.delay(c.CheckEvery, check)
+	end)
+end
+
+---------------------------------------------------------------------------
+-- SAND RUN
+---------------------------------------------------------------------------
+local function sandRun(S, player, state, aim)
+	local c = cfg.SandRun
+	if not ready(S, player, state, "SandRun", 3) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	local destination = Moves.safeStep(character, root, direction, c.Distance)
+	if not destination then
+		S.tell(player, "Denied", { Reason = "Blocked" })
+		return
+	end
+	S.startCooldown(player, state, "SandRun", c.Cooldown, 3)
+	S.lock(state, c.Windup + 0.3)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "SandRun", Phase = "Startup", Windup = c.Windup, Direction = direction })
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local from = r.Position
+		local to = Moves.safeStep(char, r, direction, c.Distance) or destination
+		local length = (to - from).Magnitude
+		char:SetAttribute(S.Adapter.Settings.IFrameAttribute, true)
+		char:PivotTo(CFrame.lookAt(to, to + direction))
+		-- Everyone along the path gets hit.
+		local mid = (from + to) / 2
+		local box = CFrame.lookAt(mid, mid + direction)
+		local _, hitSet = Moves.boxHit(S, player, box, Vector3.new(c.Width, 6, length + 2), { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = direction, Source = "SandmanRun" }, 5)
+		local hits = {}
+		for target in pairs(hitSet) do
+			table.insert(hits, target)
+		end
+		S.fx("Ability", { Character = char, Act = ACT, Move = "SandRun", Phase = "Run", From = from, To = to, Direction = direction, Targets = hits })
+		task.delay(0.25, function()
+			if char.Parent then
+				char:SetAttribute(S.Adapter.Settings.IFrameAttribute, nil)
+			end
+		end)
+	end)
+end
+
+function Sandman.Ability(S, player, state, slot, phase, aim)
+	if phase ~= "Press" then
+		return
+	end
+	if slot == 1 then
+		soundSlash(S, player, state, aim)
+	elseif slot == 2 then
+		soundTrap(S, player, state, aim)
+	elseif slot == 3 then
+		sandRun(S, player, state, aim)
+	end
+end
+
+---------------------------------------------------------------------------
+-- SILENT SYMPHONY (ultimate)
+---------------------------------------------------------------------------
+function Sandman.Ultimate(S, player, state, aim)
+	local u = cfg.Ultimate
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	local life = state.Life
+	local center = Moves.groundBelow(root.Position + direction * u.Distance, { character })
+	S.lock(state, u.Windup + u.Waves * u.WaveEvery + 0.4)
+	character:SetAttribute("Armored", true)
+	S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Start", Windup = u.Windup, Position = center, Radius = u.Radius, Direction = direction })
+	task.delay(u.Windup, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+		if state.Life ~= life or not alive(S, player) then
+			return
+		end
+		S.finishUltimate(player, state)
+		local up = center + Vector3.new(0, 2.5, 0)
+		for wave = 1, u.Waves do
+			task.delay((wave - 1) * u.WaveEvery, function()
+				if state.Life ~= life then
+					return
+				end
+				S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Wave", Wave = wave, Position = center, Radius = u.Radius })
+				Moves.aoe(S, player, up, u.Radius, { Damage = u.WaveDamage, Stun = u.WaveStun, Knockback = 0, Source = "SandmanSymphony" }, 8)
+			end)
+		end
+		task.delay(u.Waves * u.WaveEvery, function()
+			if state.Life ~= life then
+				return
+			end
+			Moves.aoe(S, player, up, u.Radius + 1, { Damage = u.FinalDamage, Stun = u.FinalStun, Knockback = u.FinalKnockback, Launch = u.FinalLaunch, Source = "SandmanSymphony" }, 8)
+			S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Final", Position = center, Radius = u.Radius + 1 })
+		end)
+	end)
+end
+
+function Sandman.Cleanup(S, player, state)
+	if state.Character then
+		state.Character:SetAttribute("Armored", nil)
+		state.Character:SetAttribute(S.Adapter.Settings.IFrameAttribute, nil)
+	end
+	clearTraps(S, state)
+end
+
+return Sandman
+```
+
+## 31. TuskAct1  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -6088,7 +6958,7 @@ end
 return Act1
 ```
 
-## 29. TuskAct2  (ModuleScript)
+## 32. TuskAct2  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -6361,7 +7231,7 @@ end
 return Act2
 ```
 
-## 30. TuskAct3  (ModuleScript)
+## 33. TuskAct3  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -6552,7 +7422,7 @@ end
 return Act3
 ```
 
-## 31. TuskAct4  (ModuleScript)
+## 34. TuskAct4  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -6825,7 +7695,7 @@ end
 return Act4
 ```
 
-## 32. TuskHitbox  (ModuleScript)
+## 35. TuskHitbox  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6906,7 +7776,7 @@ end
 return TuskHitbox
 ```
 
-## 33. TuskMoves  (ModuleScript)
+## 36. TuskMoves  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -7168,7 +8038,7 @@ TuskMoves.Config = TuskConfig
 return TuskMoves
 ```
 
-## 34. TuskService  (ModuleScript)
+## 37. TuskService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -7232,6 +8102,9 @@ function TuskService.fx(name, data)
 end
 
 function TuskService.tell(player, kind, data)
+	if typeof(player) ~= "Instance" then
+		return -- a Stand-user NPC (StandBots): nobody to tell
+	end
 	data = data or {}
 	data.Kind = kind
 	FX:FireClient(player, "TuskState", data)
@@ -7386,6 +8259,21 @@ function TuskService.fireHook(player, state, spec)
 		Radius = spec.Radius,
 		Range = spec.Range,
 		Visual = { Style = spec.Style or "Hook" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Server projectile with a written-sound visual (Sandman: In a Silent Way).
+function TuskService.fireWord(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "SoundWord",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Text = spec.Text or "ZBAAK!", Style = spec.Style or "Slash" },
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd,
 	})
@@ -7690,6 +8578,54 @@ local function onPlayer(player)
 	end
 end
 
+-- Stand-user NPCs (StandBots): a bot is a table that looks enough like a
+-- Player for the move code ({ Name, UserId < 0, Character, Neutral,
+-- GetAttribute, SetAttribute }). It gets a normal state and plays an Act.
+function TuskService.hasAct(act)
+	return actModules[act] ~= nil
+end
+
+function TuskService.actModule(act)
+	return actModules[act]
+end
+
+function TuskService.addBot(bot, act)
+	local state = {
+		Act = nil,
+		Character = bot.Character,
+		Life = 0,
+		Combo = 0,
+		LastM1 = 0,
+		LockUntil = 0,
+		LastSwitch = -math.huge,
+		Charging = nil,
+		Sneaking = false,
+		Burrowed = false,
+		Awakened = false,
+		IsBot = true,
+	}
+	states[bot] = state
+	bot:SetAttribute("TuskUlt", 0)
+	TuskService.select(bot, act, true)
+	local humanoid = bot.Character and bot.Character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.Died:Connect(function()
+			if states[bot] == state then
+				cleanupAct(bot, state)
+			end
+		end)
+	end
+	return state
+end
+
+function TuskService.removeBot(bot)
+	local state = states[bot]
+	if state then
+		cleanupAct(bot, state)
+		states[bot] = nil
+	end
+end
+
 function TuskService.init()
 	local actsFolder = script.Parent:WaitForChild("TuskActs")
 	for act, info in pairs(Registry.Acts) do
@@ -7700,6 +8636,19 @@ function TuskService.init()
 	end
 	Sneak = require(script.Parent.TuskSneakService)
 	Sneak.init(TuskService)
+	-- Tell every client which characters this server can actually play (each
+	-- non-Johnny character is an optional script), so the menu can say so.
+	local installed, seen = {}, {}
+	for act in pairs(actModules) do
+		local who = Registry.characterOf(act)
+		if not seen[who] then
+			seen[who] = true
+			table.insert(installed, who)
+		end
+	end
+	table.sort(installed)
+	game:GetService("ReplicatedStorage"):SetAttribute("SpinInstalledCharacters", table.concat(installed, ","))
+	print("[Spin] Characters installed: " .. table.concat(installed, ", "))
 
 	Request.OnServerEvent:Connect(onRequest)
 	Players.PlayerAdded:Connect(onPlayer)
@@ -7719,7 +8668,7 @@ end
 return TuskService
 ```
 
-## 35. TuskSneakService  (ModuleScript)
+## 38. TuskSneakService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -7982,7 +8931,7 @@ end
 return TuskSneakService
 ```
 
-## 36. SpinClient  (LocalScript)
+## 39. SpinClient  (LocalScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts`
 
 ```lua
@@ -8011,7 +8960,7 @@ WorldClient.init()
 CharacterCard.init()
 ```
 
-## 37. CameraFX  (ModuleScript)
+## 40. CameraFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -8190,7 +9139,42 @@ end
 return CameraFX
 ```
 
-## 38. HitFX  (ModuleScript)
+## 41. Fighters  (ModuleScript)
+**Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
+
+```lua
+--[[
+	Fighters  (StarterPlayerScripts.SpinClient.Fighters)
+
+	Everyone who can use a Stand: the players plus the Stand-user NPCs
+	(StandBots, tagged "SpinFighter" on the server). Returned in the same
+	shape as Players:GetPlayers() ({ Character = model }), so visual code
+	that loops over players draws the NPCs' Stands and effects too.
+]]
+
+local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
+
+local Fighters = {}
+Fighters.Tag = "SpinFighter"
+
+function Fighters.list()
+	local out = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		table.insert(out, player)
+	end
+	for _, model in ipairs(CollectionService:GetTagged(Fighters.Tag)) do
+		if model.Parent then
+			table.insert(out, { Character = model })
+		end
+	end
+	return out
+end
+
+return Fighters
+```
+
+## 42. HitFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -8245,6 +9229,8 @@ local function onHit(data)
 		starColor = Color3.fromRGB(60, 120, 255)
 	elseif source:sub(1, 7) == "PorkPie" then
 		starColor = Color3.fromRGB(165, 215, 80)
+	elseif source:sub(1, 7) == "Sandman" then
+		starColor = Color3.fromRGB(245, 185, 80)
 	end
 	if data.Perfect then
 		starColor = colors.Gold
@@ -8304,7 +9290,7 @@ end
 return HitFX
 ```
 
-## 39. JointCache  (ModuleScript)
+## 43. JointCache  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -8359,7 +9345,7 @@ end
 return JointCache
 ```
 
-## 40. TuskActCommon  (ModuleScript)
+## 44. TuskActCommon  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -8378,6 +9364,7 @@ return JointCache
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = require(script.Parent.Fighters)
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
@@ -8401,6 +9388,7 @@ Common.Palettes = {
 	[5] = { Main = Color3.fromRGB(120, 225, 95), Second = Color3.fromRGB(40, 120, 50), Light = Color3.fromRGB(225, 255, 205) }, -- Gyro
 	[6] = { Main = Color3.fromRGB(80, 210, 220), Second = Color3.fromRGB(35, 60, 190), Light = Color3.fromRGB(215, 255, 250) }, -- Diego
 	[7] = { Main = Color3.fromRGB(165, 215, 80), Second = Color3.fromRGB(95, 105, 125), Light = Color3.fromRGB(225, 232, 245) }, -- Pork Pie Hat Kid (bamboo green + steel)
+	[8] = { Main = Color3.fromRGB(245, 185, 80), Second = Color3.fromRGB(50, 140, 160), Light = Color3.fromRGB(255, 240, 205) }, -- Sandman (sand + turquoise)
 }
 
 function Common.palette(act)
@@ -8566,7 +9554,7 @@ function Common.chargeDriver(act, move, makeEffect, update, finish)
 	local active = {}
 	return function()
 		local seen = {}
-		for _, player in ipairs(Players:GetPlayers()) do
+		for _, player in ipairs(Fighters.list()) do
 			local character = player.Character
 			local start = character and character:GetAttribute("TuskCharge")
 			if start and character:GetAttribute("TuskAct") == act and character:GetAttribute("TuskChargeMove") == move then
@@ -8598,12 +9586,12 @@ end
 return Common
 ```
 
-## 41. TuskActVFX  (Folder)
+## 45. TuskActVFX  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 42. Act1  (ModuleScript)
+## 46. Act1  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -8618,6 +9606,7 @@ _Empty folder: nothing to paste._
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = require(script.Parent.Parent.Fighters)
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
@@ -8743,7 +9732,7 @@ local charges = {} -- [character] = { Effect, Full, Sound }
 
 local function updateCharges()
 	local seen = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		local start = character and character:GetAttribute("TuskCharge")
 		if start and character:GetAttribute("TuskAct") == 1 and character:GetAttribute("TuskChargeMove") == "SpinningNail" then
@@ -8809,7 +9798,7 @@ local auras = {}
 
 local function updateAuras()
 	local seen = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		if character and character:GetAttribute("TuskAwakened") and character:GetAttribute("TuskAct") == 1 then
 			seen[character] = true
@@ -8984,7 +9973,7 @@ end
 return Act1
 ```
 
-## 43. Act2  (ModuleScript)
+## 47. Act2  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -9096,7 +10085,7 @@ end
 return Act2
 ```
 
-## 44. Act3  (ModuleScript)
+## 48. Act3  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -9274,7 +10263,7 @@ end
 return Act3
 ```
 
-## 45. Act4  (ModuleScript)
+## 49. Act4  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -9287,6 +10276,7 @@ return Act3
 
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
+local Fighters = require(script.Parent.Parent.Fighters)
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
@@ -9538,7 +10528,7 @@ end
 local standRings = {}
 local function updateStandRings()
 	local seen = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		local stand = character and character:GetAttribute("TuskAct") == 4 and TuskStand.get(character)
 		if stand and stand.Visible then
@@ -9583,7 +10573,7 @@ end
 return Act4
 ```
 
-## 46. Diego  (ModuleScript)
+## 50. Diego  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -9605,6 +10595,7 @@ return Act4
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = require(script.Parent.Parent.Fighters)
 local Debris = game:GetService("Debris")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
@@ -9637,7 +10628,7 @@ local visionTint
 
 local function candidates()
 	local list = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		if player.Character then
 			table.insert(list, player.Character)
 		end
@@ -9807,7 +10798,7 @@ end
 local function stepDinos(dt)
 	local now = os.clock()
 	local alive = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -9997,7 +10988,7 @@ end
 -- Human stance (hunched predator) while playing Diego untransformed
 ---------------------------------------------------------------------------
 local function stepStance()
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		if character then
 			local want = character:GetAttribute("TuskAct") == DIEGO_ACT and not character:GetAttribute("DinoMode")
@@ -10316,7 +11307,7 @@ groundParams.FilterType = Enum.RaycastFilterType.Exclude
 
 local function groundAt(pos)
 	local ignore = { VFXLib.Folder }
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		if player.Character then
 			table.insert(ignore, player.Character)
 		end
@@ -10474,7 +11465,7 @@ end
 return Diego
 ```
 
-## 47. Gyro  (ModuleScript)
+## 51. Gyro  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -10493,6 +11484,7 @@ return Diego
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = require(script.Parent.Parent.Fighters)
 local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 
@@ -10545,7 +11537,7 @@ end
 local function updateHeld(dt)
 	local seen = {}
 	local now = os.clock()
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		if character and character:GetAttribute("TuskAct") == GYRO_ACT then
 			local hand, grip = handOf(character)
@@ -10591,7 +11583,7 @@ end
 local function updateShakes()
 	local seen = {}
 	local candidates = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		if player.Character then
 			table.insert(candidates, player.Character)
 		end
@@ -11608,7 +12600,7 @@ end)
 return Gyro
 ```
 
-## 48. PorkPie  (ModuleScript)
+## 52. PorkPie  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -11630,6 +12622,7 @@ return Gyro
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = require(script.Parent.Parent.Fighters)
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
@@ -12205,7 +13198,7 @@ local function stepPans(dt)
 end
 
 local function stepStance()
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		if character then
 			local want = character:GetAttribute("TuskAct") == ACT
@@ -12266,7 +13259,409 @@ end)
 return PorkPie
 ```
 
-## 49. TuskAnimation  (ModuleScript)
+## 53. SandmanVFX  (ModuleScript)
+**Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
+
+```lua
+--[[
+	TuskActVFX.SandmanVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.SandmanVFX)
+
+	Client visuals for Sandman (Soundman) / IN A SILENT WAY: sounds become
+	solid, written sound effects (blocky 3D words) that do what they say.
+	  * M1: chops and a kick, each hit pops a written sound ("ZAN!", "DOGO!")
+	  * SOUND SLASH: "ZBAAK!" skims along the ground, cutting what it touches
+	  * SOUND TRAP: "DOGOOON" lies on the ground, pulsing; it explodes when stepped near
+	  * SAND RUN: a sprint with a sand trail, "ZAZAZA" along the path
+	  * SILENT SYMPHONY: sounds gather around him, rain down, then "DOOOOM!!"
+]]
+
+local Fighters = require(script.Parent.Parent.Fighters)
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local Net = require(Shared.Net)
+local VFXLib = require(script.Parent.Parent.VFXLib)
+local CameraFX = require(script.Parent.Parent.CameraFX)
+local TuskVFX = require(script.Parent.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
+local Common = require(script.Parent.Parent.TuskActCommon)
+
+local SandmanVFX = {}
+local ACT = 8
+local pal = Common.palette(ACT)
+local sounds = TuskConfig.Sounds
+
+local SAND = Color3.fromRGB(225, 190, 130)
+local INK = Color3.fromRGB(30, 25, 35)
+local FIRE = Color3.fromRGB(255, 120, 50)
+
+local words = {} -- [projectile id] = flying word
+local traps = {} -- [trap id] = word lying on the ground
+local stanced = {}
+
+---------------------------------------------------------------------------
+-- Written sounds: a blocky 3D word (front face + a darker "extruded" back)
+---------------------------------------------------------------------------
+local function face(part, normal, text, color, stroke)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = normal
+	gui.LightInfluence = 0
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 40
+	gui.Parent = part
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.Bangers
+	label.TextScaled = true
+	label.Text = text
+	label.TextColor3 = color
+	label.TextStrokeColor3 = stroke
+	label.TextStrokeTransparency = 0
+	label.Parent = gui
+	return label
+end
+
+local function newWord(text, height, color)
+	color = color or pal.Main
+	local m = Instance.new("Model")
+	m.Name = "SoundWord"
+	m.Parent = VFXLib.Folder
+	local size = Vector3.new(math.max(#text, 2) * height * 0.62, height, 0.1)
+	local front = VFXLib.part({ Size = size, Transparency = 1 })
+	front.Parent = m
+	local labels = { face(front, Enum.NormalId.Front, text, color, INK), face(front, Enum.NormalId.Back, text, color, INK) }
+	-- The "solid" depth: the same word, darker, a little behind.
+	for k = 1, 2 do
+		local depth = VFXLib.part({ Size = size, Transparency = 1, CFrame = front.CFrame * CFrame.new(0, -0.06 * k * height, 0.12 * k * height) })
+		depth.Parent = m
+		local dark = color:Lerp(INK, 0.35 + k * 0.2)
+		table.insert(labels, face(depth, Enum.NormalId.Front, text, dark, dark))
+		table.insert(labels, face(depth, Enum.NormalId.Back, text, dark, dark))
+	end
+	m.PrimaryPart = front
+	return { Model = m, Labels = labels, Height = height }
+end
+
+local function setWordFade(w, t)
+	for _, l in ipairs(w.Labels) do
+		l.TextTransparency = t
+		l.TextStrokeTransparency = math.max(t, 0)
+	end
+end
+
+-- A word that pops out at `position`, grows, floats up and fades.
+local function popWord(text, position, height, color, facing, duration)
+	local w = newWord(text, height or 1.6, color)
+	local look = facing or (workspace.CurrentCamera and workspace.CurrentCamera.CFrame.Position) or position + Vector3.new(0, 0, -1)
+	local tilt = (math.random() - 0.5) * 0.5
+	VFXLib.animate(duration or 0.55, function(a)
+		local grow = a < 0.2 and VFXLib.easeOut(a / 0.2) * 1.15 or 1.15 - (a - 0.2) * 0.2
+		local p = position + Vector3.new(0, a * 1.6, 0)
+		w.Model:PivotTo(CFrame.lookAt(p, Vector3.new(look.X, p.Y, look.Z)) * CFrame.Angles(0, 0, tilt) * CFrame.new(0, 0, 0))
+		w.Model:ScaleTo(math.max(grow, 0.05))
+		setWordFade(w, a > 0.65 and (a - 0.65) / 0.35 or 0)
+	end, function()
+		w.Model:Destroy()
+	end)
+end
+
+local function sandBurst(position, count, speed)
+	VFXLib.burst(position, { Count = count or 12, Texture = VFXLib.Textures.Smoke, Color = SAND, LightEmission = 0, Speed = speed or 14, Lifetime = 0.7, Acceleration = Vector3.new(0, -10, 0) })
+end
+
+---------------------------------------------------------------------------
+-- Flying words (server Kind "SoundWord")
+---------------------------------------------------------------------------
+local function spawnWord(data)
+	local text = data.Visual and data.Visual.Text or "ZBAAK!"
+	words[data.Id] = {
+		Word = newWord(text, 2.2, pal.Main),
+		Origin = data.Origin,
+		Direction = data.Direction,
+		Speed = data.Speed,
+		Range = data.Range,
+		ServerTime = data.ServerTime,
+		Expire = os.clock() + data.Range / math.max(data.Speed, 1) + 1,
+		NextDust = 0,
+	}
+end
+
+local function endWord(data)
+	local v = words[data.Id]
+	if v then
+		words[data.Id] = nil
+		v.Word.Model:Destroy()
+	end
+	local pos = data.Position
+	TuskVFX.CreateCrescent(CFrame.lookAt(pos, pos + (v and v.Direction or Vector3.new(0, 0, -1))), { Radius = 3, Width = 0.35, Color = pal.Main, Color2 = Color3.new(1, 1, 1), Sweep = 2.4, Duration = 0.22 })
+	popWord(data.HitCharacter and "ZAN!!" or "ZAK", pos + Vector3.new(0, 1.5, 0), data.HitCharacter and 1.8 or 1.2, data.HitCharacter and pal.Main or SAND)
+	sandBurst(pos, 10, 16)
+	VFXLib.sound(sounds.NailImpact, pos, 0.4, 1.2)
+	if data.HitCharacter then
+		CameraFX.shakeAt(pos, 0.35, 40)
+	end
+end
+
+local function stepWords()
+	local now = os.clock()
+	local serverNow = workspace:GetServerTimeNow()
+	for id, v in pairs(words) do
+		local distance = math.min(v.Speed * (serverNow - v.ServerTime), v.Range)
+		local pos = v.Origin + v.Direction * math.max(distance, 0)
+		local wobble = math.sin(distance * 0.6) * 0.15
+		-- Skims along edge-on like a blade, tilted slightly.
+		v.Word.Model:PivotTo(CFrame.lookAt(pos, pos + v.Direction) * CFrame.Angles(0, math.pi / 2, wobble))
+		if now >= v.NextDust then
+			v.NextDust = now + 0.06
+			sandBurst(pos - Vector3.new(0, 1, 0), 3, 6)
+		end
+		if now > v.Expire then
+			words[id] = nil
+			v.Word.Model:Destroy()
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Moves
+---------------------------------------------------------------------------
+local M1_WORDS = { "ZAN!", "ZASH!", "DOGO!", "DOGOOO!" }
+
+local function onM1(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if not root then
+		return
+	end
+	local index = data.Index
+	TuskAnimation.play(character, "S_M1_" .. index)
+	VFXLib.sound(sounds.Swing, root, 0.5, 1.05 + index * 0.06)
+	local side = index % 2 == 1 and 1 or -1
+	if index <= 2 then
+		Common.swipe(root, side, index == 1 and pal.Main or pal.Light)
+	elseif index == 3 then
+		TuskVFX.CreateCrescent(root.CFrame * CFrame.new(0, -1.4, 0), { Radius = 4, Width = 0.4, Arc = math.rad(220), Sweep = 3, Color = pal.Main, Color2 = SAND, Duration = 0.26 })
+		sandBurst(root.Position - Vector3.new(0, 2.6, 0), 10, 12)
+	end
+	task.delay(0.1, function()
+		if root.Parent and index < 4 then
+			popWord(M1_WORDS[index], (root.CFrame * CFrame.new(side * 0.8, 1, -3)).Position, 1.1, index == 3 and SAND or pal.Main)
+		end
+	end)
+end
+
+local function onAbility(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	local move, phase = data.Move, data.Phase
+	if move == "SoundSlash" and phase == "Startup" and character then
+		TuskAnimation.play(character, "SandSlash")
+		if root then
+			popWord("SHH...", (root.CFrame * CFrame.new(0, 2.5, -1)).Position, 0.9, pal.Light, nil, 0.4)
+		end
+	elseif move == "SoundTrap" then
+		if phase == "Startup" and character then
+			TuskAnimation.play(character, "SandTrap")
+		elseif phase == "Place" then
+			local w = newWord("DOGOOON", 1.6, FIRE)
+			local spin = math.random() * math.pi * 2
+			traps[data.Id] = { Word = w, Position = data.Position, Spin = spin, T = 0, Expire = os.clock() + (data.Lifetime or 15) + 1 }
+			sandBurst(data.Position, 8, 8)
+			VFXLib.sound(sounds.Warning, data.Position, 0.25, 0.8)
+		elseif phase == "Boom" or phase == "Expire" then
+			local trap = traps[data.Id]
+			if trap then
+				traps[data.Id] = nil
+				trap.Word.Model:Destroy()
+			end
+			if phase == "Boom" then
+				local pos = data.Position + Vector3.new(0, 1, 0)
+				TuskVFX.CreateImpact(pos, Vector3.new(0, 1, 0), { Size = 1.8, Radius = data.Radius or 8, Layers = 3, Color = FIRE, Color2 = pal.Light, Sound = sounds.Finisher, Pitch = 0.8 })
+				VFXLib.burst(pos, { Count = 30, Color = FIRE, Speed = 40, Lifetime = 0.6 })
+				VFXLib.burst(pos, { Count = 16, Texture = VFXLib.Textures.Smoke, Color = Color3.fromRGB(70, 60, 55), LightEmission = 0, Speed = 18, Lifetime = 1.2, Acceleration = Vector3.new(0, 8, 0) })
+				TuskVFX.CreateGroundCracks(data.Position, { Radius = (data.Radius or 8) * 0.9, Count = 7, Color = FIRE, Duration = 1.4 })
+				VFXLib.flash(pos, FIRE, 6, 30, 0.3)
+				popWord("DOGOOON!!", pos + Vector3.new(0, 3, 0), 3, FIRE, nil, 0.8)
+				CameraFX.shakeAt(pos, 0.7, 60)
+			end
+		end
+	elseif move == "SandRun" then
+		if phase == "Startup" and character then
+			TuskAnimation.play(character, "SandRun")
+			if root then
+				sandBurst(root.Position - Vector3.new(0, 2.6, 0), 14, 18)
+			end
+		elseif phase == "Run" then
+			local from, to = data.From, data.To
+			local steps = math.max(3, math.floor((to - from).Magnitude / 4))
+			for i = 0, steps do
+				local p = from:Lerp(to, i / steps)
+				task.delay(i * 0.015, function()
+					sandBurst(p - Vector3.new(0, 2.4, 0), 6, 10)
+					VFXLib.afterimage(CFrame.lookAt(p, p + data.Direction), 2, SAND)
+				end)
+			end
+			popWord("ZAZAZAZA", from:Lerp(to, 0.5) + Vector3.new(0, 3, 0), 1.6, SAND, nil, 0.7)
+			for _, target in ipairs(data.Targets or {}) do
+				local tr = Common.rootOf(target)
+				if tr then
+					popWord("DOM!", tr.Position + Vector3.new(0, 2, 0), 1.4, pal.Main)
+					TuskVFX.CreateImpactStar(tr.Position, { Size = 4, Rays = 7, Color = pal.Main, Color2 = SAND, Duration = 0.2 })
+				end
+			end
+			VFXLib.sound(sounds.Swing, to, 0.6, 0.8)
+			if Common.isLocal(character) then
+				CameraFX.speedLines(0.3, SAND)
+				CameraFX.fovPunch(8, 0.25)
+			end
+		end
+	end
+end
+
+local GATHER = { "GOGOGO", "ZZZ", "DOOO", "KIN", "BAAN", "ZAA" }
+
+local function onUltimate(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Phase == "Start" then
+		TuskAnimation.play(character, "SandSymphony")
+		if root then
+			-- Sounds gather round him, orbiting.
+			local list = {}
+			for i, text in ipairs(GATHER) do
+				list[i] = newWord(text, 1.2, i % 2 == 0 and pal.Main or pal.Light)
+			end
+			VFXLib.animate(data.Windup or 1, function(a)
+				if not root.Parent then
+					return
+				end
+				for i, w in ipairs(list) do
+					local ang = i / #list * math.pi * 2 + a * 6
+					local r = 6 - a * 3
+					local p = root.Position + Vector3.new(math.cos(ang) * r, 1 + math.sin(a * 8 + i) * 0.6, math.sin(ang) * r)
+					w.Model:PivotTo(CFrame.lookAt(p, root.Position + Vector3.new(0, 1, 0)))
+					setWordFade(w, a > 0.85 and (a - 0.85) / 0.15 or 0)
+				end
+			end, function()
+				for _, w in ipairs(list) do
+					w.Model:Destroy()
+				end
+			end)
+			TuskVFX.CreateGroundCracks(data.Position, { Radius = data.Radius or 13, Count = 4, Color = pal.Second, Duration = (data.Windup or 1) + 1.5 })
+		end
+		if Common.isLocal(character) then
+			TuskVFX.ScreenTint(data.Windup or 1, { Tint = Color3.fromRGB(255, 230, 190), Saturation = -0.5 })
+		end
+	elseif data.Phase == "Wave" then
+		-- Written sounds rain down on the area.
+		local center, radius = data.Position, data.Radius or 13
+		for k = 1, 3 do
+			local a = math.random() * math.pi * 2
+			local d = math.random() * radius * 0.8
+			local spot = center + Vector3.new(math.cos(a) * d, 0, math.sin(a) * d)
+			local w = newWord(GATHER[math.random(1, #GATHER)], 1.8, k % 2 == 0 and pal.Main or FIRE)
+			VFXLib.animate(0.22, function(t)
+				local p = spot + Vector3.new(0, 14 * (1 - t), 0)
+				w.Model:PivotTo(CFrame.new(p) * CFrame.Angles(-math.pi / 2 * t, a, 0))
+			end, function()
+				w.Model:Destroy()
+				VFXLib.burst(spot + Vector3.new(0, 0.5, 0), { Count = 10, Color = k % 2 == 0 and pal.Main or FIRE, Speed = 24, Lifetime = 0.35 })
+				sandBurst(spot, 6, 10)
+			end)
+		end
+		CameraFX.shakeAt(center, 0.35, 50)
+	elseif data.Phase == "Final" then
+		local pos = data.Position + Vector3.new(0, 1, 0)
+		Common.finisher({ Character = character, Position = pos, Radius = data.Radius, Hit = true }, pal, { Size = 1.8, Layers = 3, Shake = 1 })
+		VFXLib.burst(pos, { Count = 40, Color = FIRE, Speed = 50, Lifetime = 0.7 })
+		popWord("DOOOOM!!", pos + Vector3.new(0, 5, 0), 4, FIRE, nil, 1.1)
+		if Common.isLocal(character) then
+			CameraFX.impactFrame(pal.Light)
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Every frame
+---------------------------------------------------------------------------
+local function stepTraps(dt)
+	local now = os.clock()
+	for id, trap in pairs(traps) do
+		if now > trap.Expire then
+			traps[id] = nil
+			trap.Word.Model:Destroy()
+		else
+			trap.T = trap.T + dt
+			-- Lies flat on the ground, breathing like it's about to go off.
+			local p = trap.Position + Vector3.new(0, 0.25, 0)
+			trap.Word.Model:PivotTo(CFrame.new(p) * CFrame.Angles(0, trap.Spin, 0) * CFrame.Angles(-math.pi / 2, 0, 0))
+			trap.Word.Model:ScaleTo(1 + math.sin(trap.T * 6) * 0.08)
+		end
+	end
+end
+
+local function stepStance()
+	for _, player in ipairs(Fighters.list()) do
+		local character = player.Character
+		if character then
+			local want = character:GetAttribute("TuskAct") == ACT
+			if want and not stanced[character] then
+				stanced[character] = true
+				TuskAnimation.hold(character, "SandStance")
+			elseif not want and stanced[character] then
+				stanced[character] = nil
+				TuskAnimation.stopHold(character, "SandStance")
+			end
+		end
+	end
+	for character in pairs(stanced) do
+		if not character.Parent then
+			stanced[character] = nil
+		end
+	end
+end
+
+function SandmanVFX.handle(name, data)
+	if name == "M1" then
+		onM1(data)
+	elseif name == "M1Finisher" then
+		Common.finisher(data, pal)
+		popWord("DOGOOO!", data.Position + Vector3.new(0, 2, 0), 2, pal.Main, nil, 0.7)
+	elseif name == "Ability" then
+		onAbility(data)
+	elseif name == "Ultimate" then
+		onUltimate(data)
+	end
+end
+
+local slowTimer = 0
+function SandmanVFX.step(dt)
+	dt = dt or 1 / 60
+	stepWords()
+	stepTraps(dt)
+	slowTimer = slowTimer + dt
+	if slowTimer > 0.2 then
+		slowTimer = 0
+		stepStance()
+	end
+end
+
+Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+	if typeof(data) ~= "table" or data.Kind ~= "SoundWord" then
+		return
+	end
+	if name == "ProjectileSpawn" then
+		spawnWord(data)
+	elseif name == "ProjectileEnd" then
+		endWord(data)
+	end
+end)
+
+return SandmanVFX
+```
+
+## 54. TuskAnimation  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -12414,6 +13809,31 @@ TuskAnimation.Poses = {
 	Slap = { Root = { 0, -26, 0, -0.08, 0.3 }, Waist = { 0, -34, 0 }, RightArm = { 88, -40, -10 }, RightElbow = { 10, 0, 0 }, LeftArm = { 24, 0, -30 }, Neck = { 0, 20, 0 }, LeftHip = { 18, 0, 0 }, LeftKnee = { -18, 0, 0 } },
 	FlyKickWind = { Root = { -6, 0, 0, -0.3 }, RightHip = { 60, 0, 0 }, RightKnee = { -100, 0, 0 }, LeftHip = { 40, 0, 0 }, LeftKnee = { -80, 0, 0 }, Waist = { -10, 0, 0 }, RightArm = { 40, 0, 50 }, LeftArm = { 40, 0, -50 } },
 	FlyKick = { Root = { 24, 0, 0, 0.3, 0.6 }, RightHip = { 96, 0, 0 }, RightKnee = { 0, 0, 0 }, LeftHip = { -10, 0, 0 }, LeftKnee = { -70, 0, 0 }, Waist = { 16, 0, 0 }, Neck = { -10, 0, 0 }, RightArm = { 20, 0, 70 }, LeftArm = { 20, 0, -70 } },
+
+	-- M1 POLISH: a coil before every strike (twist away, weight back), a
+	-- strike that drives the hips through with a forward step, then a
+	-- follow-through. Used by every character's M1 combo.
+	FlickRCoil = { Root = { 0, 24, 0, -0.14 }, Waist = { 4, 28, 0 }, RightArm = { 72, 0, -40 }, RightElbow = { 88, 0, 0 }, LeftArm = { 40, 0, -26 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -18, 0 }, LeftHip = { 18, 0, 0 }, LeftKnee = { -20, 0, 0 }, RightKnee = { -16, 0, 0 } },
+	FlickRStrike = { Root = { -4, -24, 0, -0.1, 0.55 }, RightArm = { 98, -10, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -32 }, LeftElbow = { 62, 0, 0 }, Waist = { -6, -30, 0 }, Neck = { 0, 22, 0 }, RightHip = { 28, 0, 0 }, RightKnee = { -28, 0, 0 }, LeftHip = { -18, 0, 0 }, LeftKnee = { -6, 0, 0 } },
+	SlamLeap = { Root = { 14, 18, 0, 0.25, -0.1 }, RightArm = { 178, 0, 14 }, RightElbow = { 36, 0, 0 }, LeftArm = { 120, 0, -30 }, LeftElbow = { 30, 0, 0 }, Waist = { 18, 20, 0 }, Neck = { 12, -8, 0 }, LeftHip = { 40, 0, 0 }, LeftKnee = { -60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 } },
+	JabCoil = { Root = { 0, 16, 0, -0.12 }, Waist = { 0, 18, 0 }, RightArm = { 34, 0, 22 }, RightElbow = { 95, 0, 0 }, LeftArm = { 52, 0, -26 }, LeftElbow = { 70, 0, 0 }, Neck = { 0, -10, 0 }, RightKnee = { -18, 0, 0 }, LeftKnee = { -12, 0, 0 }, LeftHip = { 10, 0, 0 } },
+	JabStrike = { Root = { -4, -24, 0, -0.08, 0.6 }, RightArm = { 92, 0, 10 }, RightElbow = { 0, 0, 0 }, Waist = { -4, -34, 0 }, Neck = { 0, 24, 0 }, LeftArm = { 30, 0, -22 }, LeftElbow = { 80, 0, 0 }, LeftHip = { 26, 0, 0 }, LeftKnee = { -22, 0, 0 }, RightHip = { -16, 0, 0 }, RightKnee = { -8, 0, 0 } },
+	ClawRStrike = { Root = { -14, -24, 0, -0.2, 0.55 }, Waist = { -20, -28, 0 }, RightArm = { 36, 0, -36 }, RightElbow = { 14, 0, 0 }, LeftArm = { 52, 0, -26 }, LeftElbow = { 48, 0, 0 }, Neck = { 6, 18, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -36, 0, 0 }, LeftHip = { -14, 0, 0 } },
+	SlapCoil = { Root = { 0, 26, 0, -0.18 }, Waist = { 0, 30, 0 }, RightArm = { 110, 0, 100 }, RightElbow = { 40, 0, 0 }, LeftArm = { 20, 0, -34 }, Neck = { 0, -14, 0 }, RightKnee = { -22, 0, 0 }, LeftKnee = { -16, 0, 0 } },
+	SlapStrike = { Root = { 0, -32, 0, -0.12, 0.45 }, Waist = { 0, -40, 0 }, RightArm = { 86, -48, -14 }, RightElbow = { 6, 0, 0 }, LeftArm = { 24, 0, -34 }, Neck = { 0, 24, 0 }, LeftHip = { 22, 0, 0 }, LeftKnee = { -22, 0, 0 }, RightHip = { -10, 0, 0 } },
+	-- SANDMAN: a light-footed runner; knife-hand chops and spinning kicks.
+	SandStance = { Root = { 0, 10, 0, -0.18 }, Waist = { -8, 8, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, 18 }, RightElbow = { 70, 0, 0 }, LeftArm = { 55, 0, -22 }, LeftElbow = { 60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -8, 0, 0 }, LeftKnee = { -14, 0, 0 } },
+	ChopCoil = { Root = { 0, 26, 0, -0.14 }, Waist = { 6, 30, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 60, 0, 0 }, LeftArm = { 60, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -14, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightKnee = { -12, 0, 0 } },
+	ChopStrike = { Root = { -12, -26, 0, -0.16, 0.55 }, Waist = { -16, -30, 0 }, RightArm = { 62, 0, -28 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -40 }, LeftElbow = { 60, 0, 0 }, Neck = { 4, 20, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -34, 0, 0 }, LeftHip = { -16, 0, 0 } },
+	SpinKickWind = { Root = { 0, 60, 0, -0.3 }, Waist = { 0, 40, 0 }, Neck = { 0, -30, 0 }, RightArm = { 50, 0, 60 }, LeftArm = { 50, 0, -60 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -50, 0, 0 }, RightKnee = { -30, 0, 0 } },
+	SpinKick = { Root = { 0, -110, 0, -0.35, 0.3 }, Waist = { 0, -30, 0 }, Neck = { 0, 50, 0 }, RightHip = { 80, 0, 30 }, RightKnee = { -10, 0, 0 }, LeftKnee = { -60, 0, 0 }, LeftHip = { 40, 0, 0 }, RightArm = { 40, 0, 80 }, LeftArm = { 40, 0, -80 } },
+	AxeWind = { Root = { 10, 0, 0, 0.2 }, RightHip = { 130, 0, 0 }, RightKnee = { -10, 0, 0 }, LeftKnee = { -20, 0, 0 }, Waist = { 14, 0, 0 }, Neck = { -6, 0, 0 }, RightArm = { 40, 0, 60 }, LeftArm = { 40, 0, -60 } },
+	AxeKick = { Root = { -16, 0, 0, -0.25, 0.6 }, RightHip = { 20, 0, 0 }, RightKnee = { -10, 0, 0 }, LeftHip = { 40, 0, 0 }, LeftKnee = { -60, 0, 0 }, Waist = { -24, 0, 0 }, Neck = { -10, 0, 0 }, RightArm = { 20, 0, 50 }, LeftArm = { 20, 0, -50 } },
+	SlashThrow = { Root = { -10, -40, 0, -0.35, 0.4 }, Waist = { -20, -40, 0 }, RightArm = { 40, -60, -20 }, RightElbow = { 0, 0, 0 }, LeftArm = { 20, 0, -50 }, Neck = { 0, 30, 0 }, RightHip = { 50, 0, 0 }, RightKnee = { -60, 0, 0 }, LeftHip = { -20, 0, 0 } },
+	TrapPress = { Root = { -20, 0, 0, -1.0, 0.3 }, Waist = { -36, 0, 0 }, Neck = { 20, 0, 0 }, RightArm = { 60, 0, 10 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -40 }, RightHip = { 80, 0, 0 }, RightKnee = { -110, 0, 0 }, LeftHip = { 40, 0, 0 }, LeftKnee = { -100, 0, 0 } },
+	Sprint = { Root = { -26, 0, 0, -0.2, 0.4 }, Waist = { -20, 0, 0 }, Neck = { 22, 0, 0 }, RightArm = { -50, 0, 10 }, RightElbow = { 80, 0, 0 }, LeftArm = { 80, 0, -10 }, LeftElbow = { 80, 0, 0 }, RightHip = { 70, 0, 0 }, RightKnee = { -90, 0, 0 }, LeftHip = { -30, 0, 0 }, LeftKnee = { -40, 0, 0 } },
+	ConductUp = { Root = { 8, 0, 0, 0.1 }, Waist = { 16, 0, 0 }, Neck = { 30, 0, 0 }, RightArm = { 170, 0, 30 }, LeftArm = { 170, 0, -30 }, RightElbow = { 10, 0, 0 }, LeftElbow = { 10, 0, 0 } },
+	ConductDown = { Root = { -16, 0, 0, -0.4, 0.3 }, Waist = { -28, 0, 0 }, Neck = { -10, 0, 0 }, RightArm = { 70, 0, 30 }, LeftArm = { 70, 0, -30 }, RightHip = { 40, 0, 0 }, RightKnee = { -50, 0, 0 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -40, 0, 0 } },
 }
 
 -- Left-handed version of a pose: swap Right/Left joints and flip Y/Z.
@@ -12445,6 +13865,13 @@ do
 	P.ClawL = mirror(P.ClawR)
 	P.SlapWindL = mirror(P.SlapWind)
 	P.SlapL = mirror(P.Slap)
+	P.FlickLCoil = mirror(P.FlickRCoil)
+	P.FlickLStrike = mirror(P.FlickRStrike)
+	P.ClawLStrike = mirror(P.ClawRStrike)
+	P.SlapCoilL = mirror(P.SlapCoil)
+	P.SlapStrikeL = mirror(P.SlapStrike)
+	P.ChopCoilL = mirror(P.ChopCoil)
+	P.ChopStrikeL = mirror(P.ChopStrike)
 end
 
 --[[
@@ -12453,10 +13880,10 @@ end
 ]]
 TuskAnimation.Actions = {
 	-- JOHNNY
-	M1_1 = { { 0, "Rest" }, { 0.05, "FlickRWind", "In" }, { 0.11, "FlickR", "Back", 3 }, { 0.26, "FlickRFollow", "Sine" } },
-	M1_2 = { { 0, "Rest" }, { 0.05, "FlickLWind", "In" }, { 0.11, "FlickL", "Back", 3 }, { 0.26, "FlickLFollow", "Sine" } },
-	M1_3 = { { 0, "Rest" }, { 0.06, "FlickRWind", "In" }, { 0.11, "FingerGun", "Snap" }, { 0.16, "FingerGunRecoil", "Snap", 4 }, { 0.3, "FingerGun", "Sine" } },
-	M1_4 = { { 0, "Rest" }, { 0.14, "SlamWindup", "In" }, { 0.22, "Slam", "Snap", 6 }, { 0.42, "SlamFollow", "Sine" }, { 0.55, "SlamFollow" } },
+	M1_1 = { { 0, "Rest" }, { 0.07, "FlickRCoil", "In" }, { 0.12, "FlickRStrike", "Back", 4 }, { 0.17, "FlickRStrike", "Linear" }, { 0.3, "FlickRFollow", "Sine" } },
+	M1_2 = { { 0, "FlickRFollow" }, { 0.07, "FlickLCoil", "In" }, { 0.12, "FlickLStrike", "Back", 4 }, { 0.17, "FlickLStrike", "Linear" }, { 0.3, "FlickLFollow", "Sine" } },
+	M1_3 = { { 0, "Rest" }, { 0.06, "FlickRCoil", "In" }, { 0.1, "FingerGun", "Snap" }, { 0.14, "FingerGunRecoil", "Snap", 4 }, { 0.2, "FingerGun", "Out" }, { 0.24, "FingerGunRecoil", "Snap", 3 }, { 0.36, "FingerGun", "Sine" } },
+	M1_4 = { { 0, "Rest" }, { 0.08, "SlamWindup", "In" }, { 0.16, "SlamLeap", "Out" }, { 0.24, "Slam", "Snap", 8 }, { 0.3, "Slam", "Linear" }, { 0.48, "SlamFollow", "Sine" }, { 0.6, "SlamFollow" } },
 	NailShot = { { 0, "Rest" }, { 0.12, "FingerGun", "Sine" }, { 0.2, "FingerGunRecoil", "Snap", 5 }, { 0.45, "FingerGun", "Back" } },
 	NailBarrage = {
 		{ 0, "Rest" }, { 0.08, "FlickRWind", "In" }, { 0.12, "FlickR", "Snap", 2 }, { 0.2, "FlickL", "Snap", 2 }, { 0.28, "FlickR", "Snap", 2 },
@@ -12472,10 +13899,10 @@ TuskAnimation.Actions = {
 	GoldenPursuit = { { 0, "Rest" }, { 0.12, "SlamWindup", "In" }, { 0.24, "DashPunch", "Snap", 5 }, { 0.7, "DashPunch", "Sine" } },
 
 	-- GYRO
-	G_M1_1 = { { 0, "Rest" }, { 0.05, "JabWind", "In" }, { 0.1, "Jab", "Back", 3 }, { 0.24, "JabRecover", "Sine" } },
-	G_M1_2 = { { 0, "Rest" }, { 0.06, "GHookWind", "In" }, { 0.12, "GHook", "Snap", 4 }, { 0.28, "GHookFollow", "Sine" } },
-	G_M1_3 = { { 0, "Rest" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 4 }, { 0.24, "KickRechamber", "Sine" }, { 0.34, "Rest", "Sine" } },
-	G_M1_4 = { { 0, "Rest" }, { 0.14, "OverheadWind", "In" }, { 0.23, "OverheadSmash", "Snap", 7 }, { 0.42, "SmashFollow", "Sine" }, { 0.55, "SmashFollow" } },
+	G_M1_1 = { { 0, "Rest" }, { 0.06, "JabCoil", "In" }, { 0.11, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.28, "JabRecover", "Sine" } },
+	G_M1_2 = { { 0, "JabRecover" }, { 0.07, "GHookWind", "In" }, { 0.13, "GHook", "Back", 5 }, { 0.18, "GHook", "Linear" }, { 0.32, "GHookFollow", "Sine" } },
+	G_M1_3 = { { 0, "Rest" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.27, "KickRechamber", "Sine" }, { 0.38, "Rest", "Sine" } },
+	G_M1_4 = { { 0, "Rest" }, { 0.1, "PitchSet", "Sine" }, { 0.17, "OverheadWind", "In" }, { 0.25, "OverheadSmash", "Snap", 8 }, { 0.31, "OverheadSmash", "Linear" }, { 0.48, "SmashFollow", "Sine" }, { 0.6, "SmashFollow" } },
 	GyroThrow = { { 0, "Rest" }, { 0.06, "PitchSet", "Sine" }, { 0.16, "PitchBack", "In" }, { 0.24, "PitchRelease", "Snap", 5 }, { 0.42, "PitchFollow", "Sine" }, { 0.58, "PitchFollow" } },
 	GyroBowl = { { 0, "Rest" }, { 0.14, "BowlWind", "In" }, { 0.27, "BowlRelease", "Snap", 4 }, { 0.45, "BowlFollow", "Sine" }, { 0.6, "BowlFollow" } },
 	GyroPalm = { { 0, "Rest" }, { 0.12, "PalmWind", "In" }, { 0.2, "PalmPress", "Snap", 4 }, { 0.32, "PalmPush", "Linear", 7 }, { 0.6, "PalmPush", "Sine", 3 } },
@@ -12486,10 +13913,10 @@ TuskAnimation.Actions = {
 	SpinningNailRelease = { { 0, "ChargeNail" }, { 0.06, "PointRecoil", "Snap", 6 }, { 0.4, "Point", "Back" } },
 
 	-- DIEGO
-	D_M1_1 = { { 0, "Rest" }, { 0.06, "ClawWindR", "In" }, { 0.12, "ClawR", "Back", 3 }, { 0.26, "ClawR", "Sine" } },
-	D_M1_2 = { { 0, "Rest" }, { 0.06, "ClawWindL", "In" }, { 0.12, "ClawL", "Back", 3 }, { 0.26, "ClawL", "Sine" } },
-	D_M1_3 = { { 0, "Rest" }, { 0.07, "TailWhipWind", "In" }, { 0.16, "TailWhip", "Snap", 4 }, { 0.32, "TailWhip", "Sine" } },
-	D_M1_4 = { { 0, "Rest" }, { 0.12, "BiteWind", "In" }, { 0.2, "Bite", "Snap", 6 }, { 0.45, "Bite", "Sine" } },
+	D_M1_1 = { { 0, "Rest" }, { 0.07, "ClawWindR", "In" }, { 0.12, "ClawRStrike", "Back", 4 }, { 0.17, "ClawRStrike", "Linear" }, { 0.3, "ClawR", "Sine" } },
+	D_M1_2 = { { 0, "ClawR" }, { 0.07, "ClawWindL", "In" }, { 0.12, "ClawLStrike", "Back", 4 }, { 0.17, "ClawLStrike", "Linear" }, { 0.3, "ClawL", "Sine" } },
+	D_M1_3 = { { 0, "Rest" }, { 0.08, "TailWhipWind", "In" }, { 0.17, "TailWhip", "Snap", 5 }, { 0.22, "TailWhip", "Linear" }, { 0.36, "TailWhip", "Sine" } },
+	D_M1_4 = { { 0, "Rest" }, { 0.13, "BiteWind", "In" }, { 0.21, "Bite", "Snap", 7 }, { 0.27, "Bite", "Linear" }, { 0.48, "Bite", "Sine" } },
 	DiegoPounce = { { 0, "Rest" }, { 0.16, "PounceCrouch", "In" }, { 0.24, "PounceLeap", "Snap", 3 }, { 0.5, "PounceLeap", "Sine" } },
 	DiegoLand = { { 0, "PounceLeap" }, { 0.06, "PounceLand", "Snap", 6 }, { 0.35, "PounceLand", "Sine" } },
 	DiegoBite = { { 0, "Rest" }, { 0.14, "BiteWind", "In" }, { 0.22, "Bite", "Snap", 6 }, { 0.5, "Bite", "Sine" } },
@@ -12497,10 +13924,20 @@ TuskAnimation.Actions = {
 	DiegoRoar = { { 0, "Rest" }, { 0.2, "BiteWind", "In" }, { 0.35, "Roar", "Back", 6 }, { 0.9, "Roar", "Linear", 4 }, { 1.2, "Roar", "Sine", 2 } },
 
 	-- PORK PIE HAT KID
-	P_M1_1 = { { 0, "Rest" }, { 0.05, "SlapWind", "In" }, { 0.11, "Slap", "Back", 3 }, { 0.26, "Slap", "Sine" } },
-	P_M1_2 = { { 0, "Rest" }, { 0.05, "SlapWindL", "In" }, { 0.11, "SlapL", "Back", 3 }, { 0.26, "SlapL", "Sine" } },
-	P_M1_3 = { { 0, "Rest" }, { 0.07, "SpitWind", "In" }, { 0.13, "Spit", "Snap", 4 }, { 0.3, "Spit", "Sine" } },
-	P_M1_4 = { { 0, "Rest" }, { 0.12, "FlyKickWind", "In" }, { 0.2, "FlyKick", "Snap", 6 }, { 0.42, "FlyKick", "Sine" }, { 0.55, "FlyKick" } },
+	P_M1_1 = { { 0, "Rest" }, { 0.06, "SlapCoil", "In" }, { 0.11, "SlapStrike", "Back", 4 }, { 0.16, "SlapStrike", "Linear" }, { 0.28, "Slap", "Sine" } },
+	P_M1_2 = { { 0, "Slap" }, { 0.06, "SlapCoilL", "In" }, { 0.11, "SlapStrikeL", "Back", 4 }, { 0.16, "SlapStrikeL", "Linear" }, { 0.28, "SlapL", "Sine" } },
+	P_M1_3 = { { 0, "Rest" }, { 0.08, "SpitWind", "In" }, { 0.14, "Spit", "Snap", 5 }, { 0.19, "Spit", "Linear" }, { 0.32, "Spit", "Sine" } },
+	P_M1_4 = { { 0, "Rest" }, { 0.12, "FlyKickWind", "In" }, { 0.2, "FlyKick", "Snap", 7 }, { 0.26, "FlyKick", "Linear" }, { 0.45, "FlyKick", "Sine" }, { 0.58, "FlyKick" } },
+	-- SANDMAN
+	S_M1_1 = { { 0, "Rest" }, { 0.07, "ChopCoil", "In" }, { 0.12, "ChopStrike", "Back", 4 }, { 0.17, "ChopStrike", "Linear" }, { 0.3, "SandStance", "Sine" } },
+	S_M1_2 = { { 0, "ChopStrike" }, { 0.07, "ChopCoilL", "In" }, { 0.12, "ChopStrikeL", "Back", 4 }, { 0.17, "ChopStrikeL", "Linear" }, { 0.3, "SandStance", "Sine" } },
+	S_M1_3 = { { 0, "Rest" }, { 0.08, "SpinKickWind", "In" }, { 0.16, "SpinKick", "Snap", 5 }, { 0.21, "SpinKick", "Linear" }, { 0.36, "SandStance", "Sine" } },
+	S_M1_4 = { { 0, "Rest" }, { 0.13, "AxeWind", "In" }, { 0.21, "AxeKick", "Snap", 8 }, { 0.27, "AxeKick", "Linear" }, { 0.46, "AxeKick", "Sine" }, { 0.58, "SandStance", "Sine" } },
+	SandSlash = { { 0, "Rest" }, { 0.12, "ChopCoil", "In" }, { 0.2, "SlashThrow", "Snap", 5 }, { 0.42, "SlashThrow", "Sine" } },
+	SandTrap = { { 0, "Rest" }, { 0.14, "TrapPress", "In" }, { 0.25, "TrapPress", "Snap", 5 }, { 0.45, "TrapPress", "Sine" } },
+	SandRun = { { 0, "Rest" }, { 0.1, "Sprint", "Snap", 2 }, { 0.4, "Sprint", "Linear" }, { 0.55, "SandStance", "Sine" } },
+	SandSymphony = { { 0, "Rest" }, { 0.3, "ConductUp", "Back", 3 }, { 0.9, "ConductUp", "Linear", 2 }, { 1.05, "ConductDown", "Snap", 6 }, { 1.6, "ConductUp", "Back", 2 }, { 2.2, "ConductDown", "Snap", 8 }, { 2.5, "ConductDown", "Sine" } },
+
 	PPHookSpit = { { 0, "Rest" }, { 0.18, "SpitWind", "In" }, { 0.26, "Spit", "Snap", 5 }, { 0.42, "Spit", "Sine" } },
 	PPReel = { { 0, "Spit" }, { 0.1, "ReelBack", "Snap", 3 }, { 0.3, "ReelBack", "Linear", 2 }, { 0.55, "ReelBack", "Sine" } },
 	PPBaitToss = { { 0, "Rest" }, { 0.14, "BowlWind", "In" }, { 0.26, "BowlRelease", "Snap", 3 }, { 0.42, "BowlFollow", "Sine" } },
@@ -12857,7 +14294,7 @@ end)
 return TuskAnimation
 ```
 
-## 50. TuskController  (ModuleScript)
+## 55. TuskController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -13105,7 +14542,7 @@ end
 return TuskController
 ```
 
-## 51. TuskProjectiles  (ModuleScript)
+## 56. TuskProjectiles  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -13381,7 +14818,7 @@ end
 return TuskProjectiles
 ```
 
-## 52. TuskSneakController  (ModuleScript)
+## 57. TuskSneakController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -13666,7 +15103,7 @@ end
 return TuskSneakController
 ```
 
-## 53. TuskStand  (ModuleScript)
+## 58. TuskStand  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -13687,6 +15124,7 @@ return TuskSneakController
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = require(script.Parent.Fighters)
 local RunService = game:GetService("RunService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
@@ -13992,7 +15430,7 @@ function TuskStand.init()
 	RunService.RenderStepped:Connect(function(dt)
 		local now = os.clock()
 		local seen = {}
-		for _, player in ipairs(Players:GetPlayers()) do
+		for _, player in ipairs(Fighters.list()) do
 			local character = player.Character
 			local act = character and character:GetAttribute("TuskAct")
 			local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -14030,7 +15468,7 @@ end
 return TuskStand
 ```
 
-## 54. TuskVFX  (ModuleScript)
+## 59. TuskVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -15274,12 +16712,12 @@ end
 return TuskVFX
 ```
 
-## 55. UI  (Folder)
+## 60. UI  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 56. CharacterCard  (ModuleScript)
+## 61. CharacterCard  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -15296,9 +16734,9 @@ _Empty folder: nothing to paste._
 	Pops and flashes when Tusk evolves.
 
 	DROPDOWN: tap/click the card to open the character list
-	(TuskConfig.Roster). Johnny Joestar expands into his four Tusk Acts,
-	each with its moves, showing which Act you are on now. Characters that
-	aren't finished are shown as IN DEVELOPMENT (not selectable).
+	(TuskConfig.Roster), one row per character. Characters whose scripts
+	aren't in the game are shown as NOT INSTALLED, and characters that aren't
+	finished as IN DEVELOPMENT (neither is selectable).
 ]]
 
 local Players = game:GetService("Players")
@@ -15315,7 +16753,7 @@ local DARK = Color3.fromRGB(14, 12, 20)
 local GOLD = Color3.fromRGB(255, 205, 90)
 
 local gui, card, portrait, viewport, nameLabel, standLabel, pips, hpFill, hpText, scale, arrow
-local dropdown, dropdownList, actRows, rosterRows
+local dropdown, dropdownList, rosterRows
 -- Declared up here so init() can call them (they are defined further down).
 local buildDropdown, refreshDropdown
 local shownAct
@@ -15609,7 +17047,7 @@ function buildDropdown()
 		Text = "CHARACTERS",
 	})
 
-	rosterRows, actRows = {}, {}
+	rosterRows = {}
 	local order = 1
 	for _, entry in ipairs(TuskConfig.Roster or {}) do
 		local row = Instance.new("Frame")
@@ -15642,7 +17080,9 @@ function buildDropdown()
 			status.Parent = row
 			corner(status, 6)
 			status.Activated:Connect(function()
-				Net.get("TuskRequest"):FireServer("Character", entry.Id)
+				if status.Active then
+					Net.get("TuskRequest"):FireServer("Character", entry.Id)
+				end
 			end)
 		else
 			status = chip(row, "IN DEVELOPMENT", Color3.fromRGB(60, 58, 72), Color3.fromRGB(190, 185, 200))
@@ -15651,65 +17091,39 @@ function buildDropdown()
 		end
 		rosterRows[entry.Id] = { Row = row, Status = status, Entry = entry }
 
-		-- Johnny expands into the four Tusk Acts.
-		if entry.Id == "Johnny" then
-			for act = 1, 4 do
-				local info = Registry.get(act)
-				local actRow = Instance.new("Frame")
-				actRow.LayoutOrder = order
-				order = order + 1
-				actRow.Size = UDim2.new(1, 0, 0, 52)
-				actRow.BackgroundColor3 = Color3.fromRGB(20, 18, 30)
-				actRow.Parent = dropdownList
-				corner(actRow, 8)
-				local edge = stroke(actRow, info.Theme.Primary, 1.5)
-				label(actRow, { Position = UDim2.fromOffset(12, 3), Size = UDim2.new(1, -120, 0, 20), Font = Enum.Font.Bangers, TextSize = 18, TextColor3 = info.Theme.Primary, Text = info.Name })
-				label(actRow, { Position = UDim2.fromOffset(12, 22), Size = UDim2.new(1, -20, 0, 13), Font = Enum.Font.GothamBold, TextSize = 9, TextColor3 = Color3.fromRGB(200, 205, 220), TextTruncate = Enum.TextTruncate.AtEnd, Text = "1 " .. info.Abilities[1] .. " · 2 " .. info.Abilities[2] .. " · 3 " .. info.Abilities[3] })
-				label(actRow, { Position = UDim2.fromOffset(12, 35), Size = UDim2.new(1, -20, 0, 13), Font = Enum.Font.GothamBold, TextSize = 9, TextColor3 = GOLD, TextTruncate = Enum.TextTruncate.AtEnd, Text = "G " .. info.Ultimate .. (info.Next and (" → ACT " .. info.Next) or "  (FINAL FORM)") })
-				local state = label(actRow, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 5), Size = UDim2.fromOffset(100, 16), Font = Enum.Font.GothamBlack, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Right, Text = "" })
-				actRows[act] = { Row = actRow, Edge = edge, State = state }
-			end
-		end
 	end
+end
+
+-- Which characters the server can play (the others' scripts aren't installed).
+local function installedSet()
+	local text = game:GetService("ReplicatedStorage"):GetAttribute("SpinInstalledCharacters")
+	if type(text) ~= "string" then
+		return nil -- not known yet: treat everyone as installed
+	end
+	local set = {}
+	for id in string.gmatch(text, "[^,]+") do
+		set[id] = true
+	end
+	return set
 end
 
 function refreshDropdown(act)
 	if not dropdown then
 		return
 	end
-	-- Each character row: PLAYING (green) or SELECT (blue).
+	-- Each character row: PLAYING (green), SELECT (blue), or NOT INSTALLED (grey:
+	-- that character's _Server/_Client scripts aren't in the game).
 	local current = act and Registry.characterOf(act)
+	local installed = installedSet()
 	for id, row in pairs(rosterRows) do
 		if row.Entry.Available then
 			local playing = current == id
-			row.Status.Text = playing and "PLAYING" or "SELECT"
-			row.Status.BackgroundColor3 = playing and Color3.fromRGB(40, 120, 70) or Color3.fromRGB(40, 90, 200)
-			row.Status.TextColor3 = Color3.new(1, 1, 1)
-			row.Status.Active = not playing
-		end
-	end
-	if current ~= "Johnny" then
-		act = nil -- Tusk Act rows only light up while playing Johnny
-	end
-	for i, r in pairs(actRows) do
-		if act == i then
-			r.State.Text = "◆ YOU ARE HERE"
-			r.State.TextColor3 = Color3.new(1, 1, 1)
-			r.Row.BackgroundColor3 = Color3.fromRGB(40, 34, 64)
-			r.Edge.Thickness = 2.5
-			r.Edge.Transparency = 0
-		elseif act and i < act then
-			r.State.Text = "AWAKENED ✓"
-			r.State.TextColor3 = Color3.fromRGB(120, 220, 140)
-			r.Row.BackgroundColor3 = Color3.fromRGB(20, 18, 30)
-			r.Edge.Thickness = 1
-			r.Edge.Transparency = 0.4
-		else
-			r.State.Text = i == 1 and "START" or "AWAKEN WITH G"
-			r.State.TextColor3 = Color3.fromRGB(160, 160, 180)
-			r.Row.BackgroundColor3 = Color3.fromRGB(20, 18, 30)
-			r.Edge.Thickness = 1
-			r.Edge.Transparency = 0.6
+			local missing = installed ~= nil and not installed[id]
+			row.Status.Text = playing and "PLAYING" or (missing and "NOT INSTALLED" or "SELECT")
+			row.Status.BackgroundColor3 = playing and Color3.fromRGB(40, 120, 70) or (missing and Color3.fromRGB(60, 58, 72) or Color3.fromRGB(40, 90, 200))
+			row.Status.TextColor3 = missing and Color3.fromRGB(190, 185, 200) or Color3.new(1, 1, 1)
+			row.Status.Active = not playing and not missing
+			row.Status.AutoButtonColor = not playing and not missing
 		end
 	end
 end
@@ -15797,7 +17211,7 @@ end
 return CharacterCard
 ```
 
-## 57. SettingsUI  (ModuleScript)
+## 62. SettingsUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -15872,7 +17286,7 @@ end
 return SettingsUI
 ```
 
-## 58. TuskUI  (ModuleScript)
+## 63. TuskUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -16013,7 +17427,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("BAIT") then
+	if has("SOUND TRAP") then
+		return "word"
+	elseif has("SOUND") or has("SILENT") then
+		return "slash"
+	elseif has("SAND RUN") then
+		return "dash"
+	elseif has("BAIT") then
 		return "bait"
 	elseif has("HOOK") or has("WIRED") then
 		return "hook"
@@ -16158,6 +17578,14 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "word" then
+		-- A written sound effect: three bold blocks with a burst behind.
+		for i = 0, 3 do
+			bar(icon, 0.5, 0.5, 0.06, 0.95, i * 45)
+		end
+		for i = -1, 1 do
+			bar(icon, 0.5 + i * 0.24, 0.5 + (i == 0 and -0.04 or 0.04), 0.18, 0.34, i * 8)
+		end
 	elseif kind == "slash" then
 		for i = -1, 1 do
 			bar(icon, 0.5 + i * 0.18, 0.5, 0.08, 0.8 - math.abs(i) * 0.2, 30)
@@ -16895,7 +18323,7 @@ end
 local DENY_TEXT = {
 	Cooldown = "ON COOLDOWN",
 	UltNotReady = "ULTIMATE NOT READY",
-	NotAvailable = "THAT ACT IS IN DEVELOPMENT",
+	NotAvailable = "THAT CHARACTER ISN'T INSTALLED",
 	Locked = "ACT LOCKED",
 	SwitchCooldown = "WAIT BEFORE SWITCHING ACTS",
 	SneakCooldown = "SNEAK ON COOLDOWN",
@@ -16959,7 +18387,7 @@ end
 return TuskUI
 ```
 
-## 59. VFXLib  (ModuleScript)
+## 64. VFXLib  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -17325,7 +18753,7 @@ end
 return VFXLib
 ```
 
-## 60. WorldClient  (ModuleScript)
+## 65. WorldClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -17562,12 +18990,12 @@ end
 return WorldClient
 ```
 
-## 61. SpinTools  (Folder)
+## 66. SpinTools  (Folder)
 **Put it in:** `ServerStorage`
 
 _Empty folder: nothing to paste._
 
-## 62. SBRMapBuilder  (ModuleScript)
+## 67. SBRMapBuilder  (ModuleScript)
 **Put it in:** `ServerStorage › SpinTools`
 
 ```lua

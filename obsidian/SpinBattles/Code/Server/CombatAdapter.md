@@ -261,7 +261,7 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 		Source = info.Source,
 		AttackerId = attackerPlayer and attackerPlayer.UserId or 0,
 	})
-	if attackerPlayer then
+	if attackerPlayer and typeof(attackerPlayer) == "Instance" then
 		FX:FireClient(attackerPlayer, "Damage", {
 			Position = info.Position,
 			Amount = math.floor(damage + 0.5),

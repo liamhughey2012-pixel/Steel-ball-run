@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService` |
 | **Exact name** | `SpinServer` (capitals matter) |
 
-**What it does:** Boots every server system: characters (Johnny/Tusk, Gyro/Ball Breaker, Diego/Scary Monsters), custom Stand models, NPCs and Studio test dummies.
+**What it does:** Boots every server system: characters (Johnny/Tusk, Gyro/Ball Breaker, Diego/Scary Monsters, Pork Pie Hat Kid/Wired, Sandman/In a Silent Way), Stand-user NPCs that fight you, custom Stand models, NPCs and Studio test dummies.
 
 ## How to add it
 1. In Studio's Explorer, find **ServerScriptService** (ServerScriptService).
@@ -27,7 +27,8 @@ Back to [[Where To Put Code]]
 --[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
 	Boots every server system: characters (Johnny/Tusk, Gyro/Ball Breaker,
-	Diego/Scary Monsters),
+	Diego/Scary Monsters, Pork Pie Hat Kid/Wired, Sandman/In a Silent Way),
+	Stand-user NPCs that fight you,
 	custom Stand models, NPCs and Studio test dummies.
 ]]
 
@@ -39,6 +40,8 @@ local StandAssetLoader = require(script.StandAssetLoader)
 local GyroOutfit = require(script.GyroOutfit)
 local DiegoOutfit = require(script.DiegoOutfit)
 local PorkPieOutfit = require(script.PorkPieOutfit)
+local SandmanOutfit = require(script.SandmanOutfit)
+local StandBots = require(script.StandBots)
 
 -- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
@@ -48,6 +51,8 @@ TuskService.init()
 GyroOutfit.init()
 DiegoOutfit.init()
 PorkPieOutfit.init()
+SandmanOutfit.init()
+StandBots.init(TuskService)
 NPCService.init()
 TestDummies.init()
 ```

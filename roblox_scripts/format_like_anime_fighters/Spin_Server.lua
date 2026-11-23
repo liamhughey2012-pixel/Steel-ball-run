@@ -417,7 +417,7 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 		Source = info.Source,
 		AttackerId = attackerPlayer and attackerPlayer.UserId or 0,
 	})
-	if attackerPlayer then
+	if attackerPlayer and typeof(attackerPlayer) == "Instance" then
 		FX:FireClient(attackerPlayer, "Damage", {
 			Position = info.Position,
 			Amount = math.floor(damage + 0.5),
@@ -2619,6 +2619,288 @@ return StandAssetLoader
 end
 
 -- ======================================================================
+-- MODULE: StandBots
+-- ======================================================================
+__modules["StandBots"] = function()
+--[[
+	StandBots  (ServerScriptService.SpinServer.StandBots)
+
+	Enemy NPCs that fight you with a Stand. Each one plays a real character
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman: whichever are
+	installed) through exactly the same move code as players, so their M1s,
+	abilities and ultimates hit, stun and look the same.
+	  * they wait at their camp, chase any player who comes within AggroRange
+	    and walk back home when the player gets away
+	  * M1 combo up close, abilities on cooldown, ultimate when their meter is full
+	  * hold abilities are charged and released automatically
+	  * they respawn RespawnTime seconds after dying, as a random character
+	Settings: TuskConfig.StandBots (Enabled = false turns them off).
+	Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
+
+local Shared = nil -- (bundled: modules are inlined)
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local Registry = __require("TuskActRegistry")
+
+local StandBots = {}
+local S -- TuskService
+local cfg
+local folder
+local bots = {}
+local nextId = 0
+
+-- Body colours per character so you can tell them apart before they attack.
+local LOOKS = {
+	Johnny = { Skin = Color3.fromRGB(234, 190, 150), Torso = Color3.fromRGB(60, 110, 190), Legs = Color3.fromRGB(40, 40, 60) },
+	Gyro = { Skin = Color3.fromRGB(226, 180, 140), Torso = Color3.fromRGB(102, 64, 150), Legs = Color3.fromRGB(70, 46, 110) },
+	Diego = { Skin = Color3.fromRGB(240, 200, 165), Torso = Color3.fromRGB(60, 120, 90), Legs = Color3.fromRGB(40, 50, 45) },
+	PorkPie = { Skin = Color3.fromRGB(205, 150, 110), Torso = Color3.fromRGB(95, 115, 45), Legs = Color3.fromRGB(95, 115, 45) },
+	Sandman = { Skin = Color3.fromRGB(170, 115, 80), Torso = Color3.fromRGB(200, 160, 100), Legs = Color3.fromRGB(120, 85, 55) },
+}
+
+local function findHome(index, count)
+	local spawn = workspace:FindFirstChildWhichIsA("SpawnLocation", true)
+	local base = spawn and spawn.CFrame or CFrame.new(0, 5, 0)
+	local spread = (index - (count + 1) / 2) * (cfg.Spacing or 14)
+	local pos = (base * CFrame.new(spread, 0, cfg.Distance or 70)).Position
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { folder }
+	local hit = workspace:Raycast(pos + Vector3.new(0, 60, 0), Vector3.new(0, -200, 0), params)
+	return hit and hit.Position + Vector3.new(0, 3, 0) or pos
+end
+
+-- Characters this server can actually play, as their start Acts.
+local function playableActs()
+	local list = {}
+	for _, who in ipairs(cfg.Characters or {}) do
+		local act = Registry.StartAct[who]
+		if act and S.hasAct(act) then
+			table.insert(list, { Who = who, Act = act })
+		end
+	end
+	return list
+end
+
+-- A table that looks enough like a Player for the move code.
+local function newBotPlayer(name, model)
+	nextId = nextId + 1
+	local attrs = {}
+	return {
+		Name = name,
+		DisplayName = name,
+		UserId = -1000 - nextId,
+		Character = model,
+		Neutral = true,
+		IsBot = true,
+		GetAttribute = function(_, k)
+			return attrs[k]
+		end,
+		SetAttribute = function(_, k, v)
+			attrs[k] = v
+		end,
+	}
+end
+
+local function buildModel(who)
+	local look = LOOKS[who] or LOOKS.Johnny
+	local desc = Instance.new("HumanoidDescription")
+	desc.HeadColor = look.Skin
+	desc.LeftArmColor = look.Skin
+	desc.RightArmColor = look.Skin
+	desc.TorsoColor = look.Torso
+	desc.LeftLegColor = look.Legs
+	desc.RightLegColor = look.Legs
+	local ok, model = pcall(function()
+		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not model then
+		warn("[StandBots] couldn't create an NPC body: " .. tostring(model))
+		return nil
+	end
+	return model
+end
+
+local spawnBot -- (defined below; respawn calls it)
+
+local function removeBot(bot)
+	bots[bot.Slot] = nil
+	S.removeBot(bot.Player)
+	if bot.Model then
+		bot.Model:Destroy()
+	end
+end
+
+function spawnBot(slot)
+	local choices = playableActs()
+	if #choices == 0 then
+		return
+	end
+	local pick = choices[math.random(1, #choices)]
+	local model = buildModel(pick.Who)
+	if not model then
+		return
+	end
+	local roster
+	for _, entry in ipairs(TuskConfig.Roster or {}) do
+		if entry.Id == pick.Who then
+			roster = entry
+		end
+	end
+	local name = "Stand User: " .. (roster and roster.Name or pick.Who)
+	model.Name = name
+	local home = findHome(slot, cfg.Count)
+	model:PivotTo(CFrame.new(home))
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	humanoid.DisplayName = name
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+	humanoid.NameDisplayDistance = 80
+	humanoid.HealthDisplayDistance = 80
+	humanoid.MaxHealth = cfg.Health or 200
+	humanoid.Health = humanoid.MaxHealth
+	humanoid.WalkSpeed = cfg.WalkSpeed or 15
+	model.Parent = folder
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if root then
+		pcall(function()
+			root:SetNetworkOwner(nil) -- the server drives NPCs
+		end)
+	end
+	local botPlayer = newBotPlayer(name, model)
+	local bot = { Slot = slot, Player = botPlayer, Model = model, Humanoid = humanoid, Home = home, Who = pick.Who, NextThink = 0, NextAbility = os.clock() + 2, NextUlt = 0 }
+	bots[slot] = bot
+	bot.State = S.addBot(botPlayer, pick.Act)
+	CollectionService:AddTag(model, "SpinFighter")
+	humanoid.Died:Connect(function()
+		task.delay(cfg.RespawnTime or 10, function()
+			if bots[slot] == bot then
+				removeBot(bot)
+				spawnBot(slot)
+			end
+		end)
+	end)
+end
+
+-- Nearest player in range.
+local function findTarget(bot, root)
+	local best, bestDist
+	for _, player in ipairs(Players:GetPlayers()) do
+		local character = player.Character
+		local tr = character and character:FindFirstChild("HumanoidRootPart")
+		local hum = character and character:FindFirstChildOfClass("Humanoid")
+		if tr and hum and hum.Health > 0 and S.Adapter.canBeHit(bot.Player, character) then
+			local d = (tr.Position - root.Position).Magnitude
+			local fromHome = (tr.Position - bot.Home).Magnitude
+			if d <= (cfg.AggroRange or 70) and fromHome <= (cfg.LeashRange or 120) and (not bestDist or d < bestDist) then
+				best, bestDist = character, d
+			end
+		end
+	end
+	return best, bestDist
+end
+
+local function useAbility(bot, module, slot, aim)
+	local info = Registry.get(bot.State.Act)
+	local kind = info and info.AbilityKinds and info.AbilityKinds[slot] or "Press"
+	module.Ability(S, bot.Player, bot.State, slot, "Press", aim)
+	if kind == "Hold" then
+		local hold = 0.5 + math.random() * 0.9
+		task.delay(hold, function()
+			if bots[bot.Slot] == bot then
+				module.Ability(S, bot.Player, bot.State, slot, "Release", aim)
+			end
+		end)
+	end
+end
+
+local function think(bot, now)
+	local model, humanoid = bot.Model, bot.Humanoid
+	local root = model and model:FindFirstChild("HumanoidRootPart")
+	if not root or humanoid.Health <= 0 then
+		return
+	end
+	local state = bot.State
+	local module = state.Act and S.actModule(state.Act)
+	if not module then
+		return
+	end
+	local target, dist = findTarget(bot, root)
+	if not target then
+		if (root.Position - bot.Home).Magnitude > 6 then
+			humanoid:MoveTo(bot.Home)
+		end
+		return
+	end
+	local tr = target:FindFirstChild("HumanoidRootPart")
+	local flatTarget = Vector3.new(tr.Position.X, root.Position.Y, tr.Position.Z)
+	local reach = cfg.AttackRange or 6
+	if dist > reach - 1 then
+		humanoid:MoveTo(tr.Position - (tr.Position - root.Position).Unit * (reach - 2))
+	else
+		humanoid:MoveTo(root.Position)
+	end
+	if not S.Adapter.canAct(bot.Player) or S.isBusy(state) or state.Charging then
+		return
+	end
+	-- Face the target and attack.
+	if (flatTarget - root.Position).Magnitude > 0.5 then
+		root.CFrame = CFrame.lookAt(root.Position, flatTarget)
+	end
+	local aim = (tr.Position - root.Position).Unit
+	if bot.Player:GetAttribute("TuskUlt") and bot.Player:GetAttribute("TuskUlt") >= TuskConfig.Ultimate.MaxMeter and dist < 22 and now >= bot.NextUlt then
+		bot.NextUlt = now + 5
+		module.Ultimate(S, bot.Player, state, aim)
+		return
+	end
+	if now >= bot.NextAbility and dist < (cfg.AbilityRange or 35) then
+		bot.NextAbility = now + (cfg.AbilityEvery or 2.5) * (0.7 + math.random() * 0.6)
+		useAbility(bot, module, math.random(1, 3), aim)
+		return
+	end
+	if dist <= reach then
+		module.M1(S, bot.Player, state, aim)
+	end
+end
+
+function StandBots.init(TuskService)
+	S = TuskService
+	cfg = TuskConfig.StandBots or {}
+	if cfg.Enabled == false or (cfg.Count or 0) <= 0 then
+		return
+	end
+	folder = Instance.new("Folder")
+	folder.Name = "SpinStandBots"
+	folder.Parent = workspace
+	task.delay(cfg.StartDelay or 3, function()
+		for slot = 1, cfg.Count do
+			spawnBot(slot)
+		end
+	end)
+	local accumulator = 0
+	RunService.Heartbeat:Connect(function(dt)
+		accumulator = accumulator + dt
+		if accumulator < (cfg.ThinkEvery or 0.15) then
+			return
+		end
+		accumulator = 0
+		local now = os.clock()
+		for _, bot in pairs(bots) do
+			local ok, err = pcall(think, bot, now)
+			if not ok then
+				warn("[StandBots] " .. tostring(err))
+			end
+		end
+	end)
+end
+
+return StandBots
+end
+
+-- ======================================================================
 -- MODULE: TestDummies
 -- ======================================================================
 __modules["TestDummies"] = function()
@@ -3900,6 +4182,23 @@ TuskActRegistry.Acts = {
 			{ Slot = 2, Attribute = "BaitPanUntil", Text = "BAITED" },
 		},
 	},
+	-- Sandman (Soundman): IN A SILENT WAY (sounds written as solid words that
+	-- cut, burn and explode when touched).
+	[8] = {
+		Name = "IN A SILENT WAY",
+		Character = "Sandman",
+		Tagline = "Sounds made solid",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(245, 185, 80), Secondary = Color3.fromRGB(50, 140, 160) },
+		M1 = "SOUND CUT COMBO",
+		Abilities = { "SOUND SLASH", "SOUND TRAP", "SAND RUN" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "SILENT SYMPHONY",
+		Next = nil,
+		Module = "Sandman", -- server moves
+		ClientModule = "SandmanVFX", -- client visuals (TuskActVFX.SandmanVFX)
+		CardTitle = "STAND  ·  IN A SILENT WAY",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -3909,7 +4208,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -4330,6 +4629,9 @@ function TuskService.fx(name, data)
 end
 
 function TuskService.tell(player, kind, data)
+	if typeof(player) ~= "Instance" then
+		return -- a Stand-user NPC (StandBots): nobody to tell
+	end
 	data = data or {}
 	data.Kind = kind
 	FX:FireClient(player, "TuskState", data)
@@ -4484,6 +4786,21 @@ function TuskService.fireHook(player, state, spec)
 		Radius = spec.Radius,
 		Range = spec.Range,
 		Visual = { Style = spec.Style or "Hook" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Server projectile with a written-sound visual (Sandman: In a Silent Way).
+function TuskService.fireWord(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "SoundWord",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Text = spec.Text or "ZBAAK!", Style = spec.Style or "Slash" },
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd,
 	})
@@ -4785,6 +5102,54 @@ local function onPlayer(player)
 	end
 	if TuskConfig.Progression.AutoEquip then
 		task.defer(TuskService.select, player, TuskConfig.Progression.DefaultAct, true)
+	end
+end
+
+-- Stand-user NPCs (StandBots): a bot is a table that looks enough like a
+-- Player for the move code ({ Name, UserId < 0, Character, Neutral,
+-- GetAttribute, SetAttribute }). It gets a normal state and plays an Act.
+function TuskService.hasAct(act)
+	return actModules[act] ~= nil
+end
+
+function TuskService.actModule(act)
+	return actModules[act]
+end
+
+function TuskService.addBot(bot, act)
+	local state = {
+		Act = nil,
+		Character = bot.Character,
+		Life = 0,
+		Combo = 0,
+		LastM1 = 0,
+		LockUntil = 0,
+		LastSwitch = -math.huge,
+		Charging = nil,
+		Sneaking = false,
+		Burrowed = false,
+		Awakened = false,
+		IsBot = true,
+	}
+	states[bot] = state
+	bot:SetAttribute("TuskUlt", 0)
+	TuskService.select(bot, act, true)
+	local humanoid = bot.Character and bot.Character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.Died:Connect(function()
+			if states[bot] == state then
+				cleanupAct(bot, state)
+			end
+		end)
+	end
+	return state
+end
+
+function TuskService.removeBot(bot)
+	local state = states[bot]
+	if state then
+		cleanupAct(bot, state)
+		states[bot] = nil
 	end
 end
 
@@ -5156,7 +5521,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit" }) do
+for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end
@@ -5169,6 +5534,7 @@ if BUILD_MAP_ON_START and __hasModule("SBRMapBuilder") and not workspace:FindFir
 		warn("[Spin] Map build failed: " .. tostring(err))
 	end
 end
+__require("StandBots").init(TuskService)
 NPCService.init()
 TestDummies.init()
 print("[Spin] Server ready")

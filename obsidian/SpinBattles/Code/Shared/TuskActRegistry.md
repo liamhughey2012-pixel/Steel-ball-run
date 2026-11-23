@@ -140,6 +140,23 @@ TuskActRegistry.Acts = {
 			{ Slot = 2, Attribute = "BaitPanUntil", Text = "BAITED" },
 		},
 	},
+	-- Sandman (Soundman): IN A SILENT WAY (sounds written as solid words that
+	-- cut, burn and explode when touched).
+	[8] = {
+		Name = "IN A SILENT WAY",
+		Character = "Sandman",
+		Tagline = "Sounds made solid",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(245, 185, 80), Secondary = Color3.fromRGB(50, 140, 160) },
+		M1 = "SOUND CUT COMBO",
+		Abilities = { "SOUND SLASH", "SOUND TRAP", "SAND RUN" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "SILENT SYMPHONY",
+		Next = nil,
+		Module = "Sandman", -- server moves
+		ClientModule = "SandmanVFX", -- client visuals (TuskActVFX.SandmanVFX)
+		CardTitle = "STAND  ·  IN A SILENT WAY",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -149,7 +166,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

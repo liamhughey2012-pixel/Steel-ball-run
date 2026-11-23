@@ -31,6 +31,7 @@ __modules["Diego"] = function()
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = __require("Fighters")
 local Debris = game:GetService("Debris")
 
 local Shared = nil -- (bundled: modules are inlined)
@@ -63,7 +64,7 @@ local visionTint
 
 local function candidates()
 	local list = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		if player.Character then
 			table.insert(list, player.Character)
 		end
@@ -233,7 +234,7 @@ end
 local function stepDinos(dt)
 	local now = os.clock()
 	local alive = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -423,7 +424,7 @@ end
 -- Human stance (hunched predator) while playing Diego untransformed
 ---------------------------------------------------------------------------
 local function stepStance()
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		if character then
 			local want = character:GetAttribute("TuskAct") == DIEGO_ACT and not character:GetAttribute("DinoMode")
@@ -742,7 +743,7 @@ groundParams.FilterType = Enum.RaycastFilterType.Exclude
 
 local function groundAt(pos)
 	local ignore = { VFXLib.Folder }
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		if player.Character then
 			table.insert(ignore, player.Character)
 		end

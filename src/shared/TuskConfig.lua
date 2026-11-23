@@ -89,6 +89,28 @@ TuskConfig.Roster = {
 	{ Id = "Gyro", Name = "GYRO ZEPPELI", Stand = "BALL BREAKER", Available = true, Color = Color3.fromRGB(110, 210, 90) },
 	{ Id = "Diego", Name = "DIEGO BRANDO", Stand = "SCARY MONSTERS", Available = true, Color = Color3.fromRGB(80, 210, 220) },
 	{ Id = "PorkPie", Name = "PORK PIE HAT KID", Stand = "WIRED", Available = true, Color = Color3.fromRGB(165, 215, 80) },
+	{ Id = "Sandman", Name = "SANDMAN", Stand = "IN A SILENT WAY", Available = true, Color = Color3.fromRGB(245, 185, 80) },
+}
+
+---------------------------------------------------------------------------
+-- Stand-user NPCs that fight you (StandBots). They wait at a camp away from
+-- the spawn, chase players who come close and use a real character's moves.
+---------------------------------------------------------------------------
+TuskConfig.StandBots = {
+	Enabled = true,
+	Count = 2, -- how many at once
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman" }, -- picked at random (only installed ones)
+	Health = 200,
+	WalkSpeed = 15,
+	Distance = 70, -- studs from the spawn to their camp
+	Spacing = 14, -- studs between them at the camp
+	AggroRange = 60, -- they chase players this close
+	LeashRange = 120, -- and give up past this far from their camp
+	AttackRange = 6, -- M1 range
+	AbilityRange = 35, AbilityEvery = 2.5, -- seconds between abilities (roughly)
+	RespawnTime = 10,
+	StartDelay = 3,
+	ThinkEvery = 0.15,
 }
 
 ---------------------------------------------------------------------------
@@ -370,6 +392,44 @@ TuskConfig.PorkPie = {
 		SnagDamage = 6, SnagStun = 1.0, SnagLift = 55,
 		ReelTime = 1.35, ReelTick = 0.15, TickDamage = 1.5, TickEvery = 0.3,
 		SlamDamage = 14, SlamRadius = 10, SlamKnockback = 60, SlamLaunch = 30, SlamStun = 0.8,
+	},
+}
+
+---------------------------------------------------------------------------
+-- Sandman (Soundman): IN A SILENT WAY
+---------------------------------------------------------------------------
+TuskConfig.Sandman = {
+	M1 = { -- SOUND CUT COMBO: chop, chop, spinning kick, a written sound that bursts
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.8, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 6 },
+			{ Damage = 7, Stun = 0.5, Knockback = 42, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	SoundSlash = { -- a written sound ("ZBAAK!") flies along the ground and cuts
+		Cooldown = 6, Startup = 0.2,
+		Speed = 95, Radius = 1.8, Range = 65,
+		Damage = 9, Stun = 0.55, Knockback = 16,
+	},
+	SoundTrap = { -- plant a written explosion ("DOGOOON") on the ground; stepping on it sets it off
+		Cooldown = 5, Startup = 0.25,
+		Distance = 12, MaxTraps = 3, Lifetime = 15,
+		TriggerRadius = 5, CheckEvery = 0.15,
+		Radius = 8, Damage = 10, Stun = 0.6, Knockback = 30, Launch = 25,
+		ChainBonus = 2, -- traps in the blast go off together: one hit, +2 damage each
+	},
+	SandRun = { -- sprint straight through enemies, leaving sand and sound behind
+		Cooldown = 7, Windup = 0.12,
+		Distance = 38, Width = 6,
+		Damage = 7, Stun = 0.6, Knockback = 12,
+	},
+	Ultimate = { -- SILENT SYMPHONY: gathers sound, then rains written sounds down, last one explodes
+		Windup = 1.0, Distance = 16, Radius = 13,
+		Waves = 4, WaveEvery = 0.3, WaveDamage = 5, WaveStun = 0.6,
+		FinalDamage = 14, FinalKnockback = 55, FinalLaunch = 30, FinalStun = 0.8,
 	},
 }
 

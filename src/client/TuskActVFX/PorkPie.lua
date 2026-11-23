@@ -16,6 +16,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = require(script.Parent.Parent.Fighters)
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
@@ -591,7 +592,7 @@ local function stepPans(dt)
 end
 
 local function stepStance()
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		if character then
 			local want = character:GetAttribute("TuskAct") == ACT

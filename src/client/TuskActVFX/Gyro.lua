@@ -13,6 +13,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = require(script.Parent.Parent.Fighters)
 local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 
@@ -65,7 +66,7 @@ end
 local function updateHeld(dt)
 	local seen = {}
 	local now = os.clock()
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		if character and character:GetAttribute("TuskAct") == GYRO_ACT then
 			local hand, grip = handOf(character)
@@ -111,7 +112,7 @@ end
 local function updateShakes()
 	local seen = {}
 	local candidates = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		if player.Character then
 			table.insert(candidates, player.Character)
 		end

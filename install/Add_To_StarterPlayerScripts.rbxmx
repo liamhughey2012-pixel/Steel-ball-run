@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="LocalScript" referent="RBX29"><Properties><string name="Name">Spin_Client</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="LocalScript" referent="RBX33"><Properties><string name="Name">Spin_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	Spin_Client  (LocalScript)
 	PUT IT IN: StarterPlayer > StarterPlayerScripts
 
@@ -47,6 +47,7 @@ __modules["Act1"] = function()
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = __require("Fighters")
 
 local Shared = nil -- (bundled: modules are inlined)
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
@@ -172,7 +173,7 @@ local charges = {} -- [character] = { Effect, Full, Sound }
 
 local function updateCharges()
 	local seen = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		local start = character and character:GetAttribute("TuskCharge")
 		if start and character:GetAttribute("TuskAct") == 1 and character:GetAttribute("TuskChargeMove") == "SpinningNail" then
@@ -238,7 +239,7 @@ local auras = {}
 
 local function updateAuras()
 	local seen = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		if character and character:GetAttribute("TuskAwakened") and character:GetAttribute("TuskAct") == 1 then
 			seen[character] = true
@@ -716,6 +717,7 @@ __modules["Act4"] = function()
 
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
+local Fighters = __require("Fighters")
 
 local Shared = nil -- (bundled: modules are inlined)
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
@@ -967,7 +969,7 @@ end
 local standRings = {}
 local function updateStandRings()
 	local seen = {}
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Fighters.list()) do
 		local character = player.Character
 		local stand = character and character:GetAttribute("TuskAct") == 4 and TuskStand.get(character)
 		if stand and stand.Visible then
@@ -1825,6 +1827,41 @@ return CharacterCard
 end
 
 -- ======================================================================
+-- MODULE: Fighters
+-- ======================================================================
+__modules["Fighters"] = function()
+--[[
+	Fighters  (StarterPlayerScripts.SpinClient.Fighters)
+
+	Everyone who can use a Stand: the players plus the Stand-user NPCs
+	(StandBots, tagged "SpinFighter" on the server). Returned in the same
+	shape as Players:GetPlayers() ({ Character = model }), so visual code
+	that loops over players draws the NPCs' Stands and effects too.
+]]
+
+local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
+
+local Fighters = {}
+Fighters.Tag = "SpinFighter"
+
+function Fighters.list()
+	local out = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		table.insert(out, player)
+	end
+	for _, model in ipairs(CollectionService:GetTagged(Fighters.Tag)) do
+		if model.Parent then
+			table.insert(out, { Character = model })
+		end
+	end
+	return out
+end
+
+return Fighters
+end
+
+-- ======================================================================
 -- MODULE: HitFX
 -- ======================================================================
 __modules["HitFX"] = function()
@@ -1879,6 +1916,8 @@ local function onHit(data)
 		starColor = Color3.fromRGB(60, 120, 255)
 	elseif source:sub(1, 7) == "PorkPie" then
 		starColor = Color3.fromRGB(165, 215, 80)
+	elseif source:sub(1, 7) == "Sandman" then
+		starColor = Color3.fromRGB(245, 185, 80)
 	end
 	if data.Perfect then
 		starColor = colors.Gold
@@ -2249,6 +2288,7 @@ __modules["TuskActCommon"] = function()
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = __require("Fighters")
 
 local Shared = nil -- (bundled: modules are inlined)
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
@@ -2272,6 +2312,7 @@ Common.Palettes = {
 	[5] = { Main = Color3.fromRGB(120, 225, 95), Second = Color3.fromRGB(40, 120, 50), Light = Color3.fromRGB(225, 255, 205) }, -- Gyro
 	[6] = { Main = Color3.fromRGB(80, 210, 220), Second = Color3.fromRGB(35, 60, 190), Light = Color3.fromRGB(215, 255, 250) }, -- Diego
 	[7] = { Main = Color3.fromRGB(165, 215, 80), Second = Color3.fromRGB(95, 105, 125), Light = Color3.fromRGB(225, 232, 245) }, -- Pork Pie Hat Kid (bamboo green + steel)
+	[8] = { Main = Color3.fromRGB(245, 185, 80), Second = Color3.fromRGB(50, 140, 160), Light = Color3.fromRGB(255, 240, 205) }, -- Sandman (sand + turquoise)
 }
 
 function Common.palette(act)
@@ -2437,7 +2478,7 @@ function Common.chargeDriver(act, move, makeEffect, update, finish)
 	local active = {}
 	return function()
 		local seen = {}
-		for _, player in ipairs(Players:GetPlayers()) do
+		for _, player in ipairs(Fighters.list()) do
 			local character = player.Character
 			local start = character and character:GetAttribute("TuskCharge")
 			if start and character:GetAttribute("TuskAct") == act and character:GetAttribute("TuskChargeMove") == move then
@@ -2589,6 +2630,23 @@ TuskActRegistry.Acts = {
 			{ Slot = 2, Attribute = "BaitPanUntil", Text = "BAITED" },
 		},
 	},
+	-- Sandman (Soundman): IN A SILENT WAY (sounds written as solid words that
+	-- cut, burn and explode when touched).
+	[8] = {
+		Name = "IN A SILENT WAY",
+		Character = "Sandman",
+		Tagline = "Sounds made solid",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(245, 185, 80), Secondary = Color3.fromRGB(50, 140, 160) },
+		M1 = "SOUND CUT COMBO",
+		Abilities = { "SOUND SLASH", "SOUND TRAP", "SAND RUN" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "SILENT SYMPHONY",
+		Next = nil,
+		Module = "Sandman", -- server moves
+		ClientModule = "SandmanVFX", -- client visuals (TuskActVFX.SandmanVFX)
+		CardTitle = "STAND  ·  IN A SILENT WAY",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -2598,7 +2656,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -2760,6 +2818,31 @@ TuskAnimation.Poses = {
 	Slap = { Root = { 0, -26, 0, -0.08, 0.3 }, Waist = { 0, -34, 0 }, RightArm = { 88, -40, -10 }, RightElbow = { 10, 0, 0 }, LeftArm = { 24, 0, -30 }, Neck = { 0, 20, 0 }, LeftHip = { 18, 0, 0 }, LeftKnee = { -18, 0, 0 } },
 	FlyKickWind = { Root = { -6, 0, 0, -0.3 }, RightHip = { 60, 0, 0 }, RightKnee = { -100, 0, 0 }, LeftHip = { 40, 0, 0 }, LeftKnee = { -80, 0, 0 }, Waist = { -10, 0, 0 }, RightArm = { 40, 0, 50 }, LeftArm = { 40, 0, -50 } },
 	FlyKick = { Root = { 24, 0, 0, 0.3, 0.6 }, RightHip = { 96, 0, 0 }, RightKnee = { 0, 0, 0 }, LeftHip = { -10, 0, 0 }, LeftKnee = { -70, 0, 0 }, Waist = { 16, 0, 0 }, Neck = { -10, 0, 0 }, RightArm = { 20, 0, 70 }, LeftArm = { 20, 0, -70 } },
+
+	-- M1 POLISH: a coil before every strike (twist away, weight back), a
+	-- strike that drives the hips through with a forward step, then a
+	-- follow-through. Used by every character's M1 combo.
+	FlickRCoil = { Root = { 0, 24, 0, -0.14 }, Waist = { 4, 28, 0 }, RightArm = { 72, 0, -40 }, RightElbow = { 88, 0, 0 }, LeftArm = { 40, 0, -26 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -18, 0 }, LeftHip = { 18, 0, 0 }, LeftKnee = { -20, 0, 0 }, RightKnee = { -16, 0, 0 } },
+	FlickRStrike = { Root = { -4, -24, 0, -0.1, 0.55 }, RightArm = { 98, -10, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -32 }, LeftElbow = { 62, 0, 0 }, Waist = { -6, -30, 0 }, Neck = { 0, 22, 0 }, RightHip = { 28, 0, 0 }, RightKnee = { -28, 0, 0 }, LeftHip = { -18, 0, 0 }, LeftKnee = { -6, 0, 0 } },
+	SlamLeap = { Root = { 14, 18, 0, 0.25, -0.1 }, RightArm = { 178, 0, 14 }, RightElbow = { 36, 0, 0 }, LeftArm = { 120, 0, -30 }, LeftElbow = { 30, 0, 0 }, Waist = { 18, 20, 0 }, Neck = { 12, -8, 0 }, LeftHip = { 40, 0, 0 }, LeftKnee = { -60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 } },
+	JabCoil = { Root = { 0, 16, 0, -0.12 }, Waist = { 0, 18, 0 }, RightArm = { 34, 0, 22 }, RightElbow = { 95, 0, 0 }, LeftArm = { 52, 0, -26 }, LeftElbow = { 70, 0, 0 }, Neck = { 0, -10, 0 }, RightKnee = { -18, 0, 0 }, LeftKnee = { -12, 0, 0 }, LeftHip = { 10, 0, 0 } },
+	JabStrike = { Root = { -4, -24, 0, -0.08, 0.6 }, RightArm = { 92, 0, 10 }, RightElbow = { 0, 0, 0 }, Waist = { -4, -34, 0 }, Neck = { 0, 24, 0 }, LeftArm = { 30, 0, -22 }, LeftElbow = { 80, 0, 0 }, LeftHip = { 26, 0, 0 }, LeftKnee = { -22, 0, 0 }, RightHip = { -16, 0, 0 }, RightKnee = { -8, 0, 0 } },
+	ClawRStrike = { Root = { -14, -24, 0, -0.2, 0.55 }, Waist = { -20, -28, 0 }, RightArm = { 36, 0, -36 }, RightElbow = { 14, 0, 0 }, LeftArm = { 52, 0, -26 }, LeftElbow = { 48, 0, 0 }, Neck = { 6, 18, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -36, 0, 0 }, LeftHip = { -14, 0, 0 } },
+	SlapCoil = { Root = { 0, 26, 0, -0.18 }, Waist = { 0, 30, 0 }, RightArm = { 110, 0, 100 }, RightElbow = { 40, 0, 0 }, LeftArm = { 20, 0, -34 }, Neck = { 0, -14, 0 }, RightKnee = { -22, 0, 0 }, LeftKnee = { -16, 0, 0 } },
+	SlapStrike = { Root = { 0, -32, 0, -0.12, 0.45 }, Waist = { 0, -40, 0 }, RightArm = { 86, -48, -14 }, RightElbow = { 6, 0, 0 }, LeftArm = { 24, 0, -34 }, Neck = { 0, 24, 0 }, LeftHip = { 22, 0, 0 }, LeftKnee = { -22, 0, 0 }, RightHip = { -10, 0, 0 } },
+	-- SANDMAN: a light-footed runner; knife-hand chops and spinning kicks.
+	SandStance = { Root = { 0, 10, 0, -0.18 }, Waist = { -8, 8, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, 18 }, RightElbow = { 70, 0, 0 }, LeftArm = { 55, 0, -22 }, LeftElbow = { 60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -8, 0, 0 }, LeftKnee = { -14, 0, 0 } },
+	ChopCoil = { Root = { 0, 26, 0, -0.14 }, Waist = { 6, 30, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 60, 0, 0 }, LeftArm = { 60, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -14, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightKnee = { -12, 0, 0 } },
+	ChopStrike = { Root = { -12, -26, 0, -0.16, 0.55 }, Waist = { -16, -30, 0 }, RightArm = { 62, 0, -28 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -40 }, LeftElbow = { 60, 0, 0 }, Neck = { 4, 20, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -34, 0, 0 }, LeftHip = { -16, 0, 0 } },
+	SpinKickWind = { Root = { 0, 60, 0, -0.3 }, Waist = { 0, 40, 0 }, Neck = { 0, -30, 0 }, RightArm = { 50, 0, 60 }, LeftArm = { 50, 0, -60 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -50, 0, 0 }, RightKnee = { -30, 0, 0 } },
+	SpinKick = { Root = { 0, -110, 0, -0.35, 0.3 }, Waist = { 0, -30, 0 }, Neck = { 0, 50, 0 }, RightHip = { 80, 0, 30 }, RightKnee = { -10, 0, 0 }, LeftKnee = { -60, 0, 0 }, LeftHip = { 40, 0, 0 }, RightArm = { 40, 0, 80 }, LeftArm = { 40, 0, -80 } },
+	AxeWind = { Root = { 10, 0, 0, 0.2 }, RightHip = { 130, 0, 0 }, RightKnee = { -10, 0, 0 }, LeftKnee = { -20, 0, 0 }, Waist = { 14, 0, 0 }, Neck = { -6, 0, 0 }, RightArm = { 40, 0, 60 }, LeftArm = { 40, 0, -60 } },
+	AxeKick = { Root = { -16, 0, 0, -0.25, 0.6 }, RightHip = { 20, 0, 0 }, RightKnee = { -10, 0, 0 }, LeftHip = { 40, 0, 0 }, LeftKnee = { -60, 0, 0 }, Waist = { -24, 0, 0 }, Neck = { -10, 0, 0 }, RightArm = { 20, 0, 50 }, LeftArm = { 20, 0, -50 } },
+	SlashThrow = { Root = { -10, -40, 0, -0.35, 0.4 }, Waist = { -20, -40, 0 }, RightArm = { 40, -60, -20 }, RightElbow = { 0, 0, 0 }, LeftArm = { 20, 0, -50 }, Neck = { 0, 30, 0 }, RightHip = { 50, 0, 0 }, RightKnee = { -60, 0, 0 }, LeftHip = { -20, 0, 0 } },
+	TrapPress = { Root = { -20, 0, 0, -1.0, 0.3 }, Waist = { -36, 0, 0 }, Neck = { 20, 0, 0 }, RightArm = { 60, 0, 10 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -40 }, RightHip = { 80, 0, 0 }, RightKnee = { -110, 0, 0 }, LeftHip = { 40, 0, 0 }, LeftKnee = { -100, 0, 0 } },
+	Sprint = { Root = { -26, 0, 0, -0.2, 0.4 }, Waist = { -20, 0, 0 }, Neck = { 22, 0, 0 }, RightArm = { -50, 0, 10 }, RightElbow = { 80, 0, 0 }, LeftArm = { 80, 0, -10 }, LeftElbow = { 80, 0, 0 }, RightHip = { 70, 0, 0 }, RightKnee = { -90, 0, 0 }, LeftHip = { -30, 0, 0 }, LeftKnee = { -40, 0, 0 } },
+	ConductUp = { Root = { 8, 0, 0, 0.1 }, Waist = { 16, 0, 0 }, Neck = { 30, 0, 0 }, RightArm = { 170, 0, 30 }, LeftArm = { 170, 0, -30 }, RightElbow = { 10, 0, 0 }, LeftElbow = { 10, 0, 0 } },
+	ConductDown = { Root = { -16, 0, 0, -0.4, 0.3 }, Waist = { -28, 0, 0 }, Neck = { -10, 0, 0 }, RightArm = { 70, 0, 30 }, LeftArm = { 70, 0, -30 }, RightHip = { 40, 0, 0 }, RightKnee = { -50, 0, 0 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -40, 0, 0 } },
 }
 
 -- Left-handed version of a pose: swap Right/Left joints and flip Y/Z.
@@ -2791,6 +2874,13 @@ do
 	P.ClawL = mirror(P.ClawR)
 	P.SlapWindL = mirror(P.SlapWind)
 	P.SlapL = mirror(P.Slap)
+	P.FlickLCoil = mirror(P.FlickRCoil)
+	P.FlickLStrike = mirror(P.FlickRStrike)
+	P.ClawLStrike = mirror(P.ClawRStrike)
+	P.SlapCoilL = mirror(P.SlapCoil)
+	P.SlapStrikeL = mirror(P.SlapStrike)
+	P.ChopCoilL = mirror(P.ChopCoil)
+	P.ChopStrikeL = mirror(P.ChopStrike)
 end
 
 --[[
@@ -2799,10 +2889,10 @@ end
 ]]
 TuskAnimation.Actions = {
 	-- JOHNNY
-	M1_1 = { { 0, "Rest" }, { 0.05, "FlickRWind", "In" }, { 0.11, "FlickR", "Back", 3 }, { 0.26, "FlickRFollow", "Sine" } },
-	M1_2 = { { 0, "Rest" }, { 0.05, "FlickLWind", "In" }, { 0.11, "FlickL", "Back", 3 }, { 0.26, "FlickLFollow", "Sine" } },
-	M1_3 = { { 0, "Rest" }, { 0.06, "FlickRWind", "In" }, { 0.11, "FingerGun", "Snap" }, { 0.16, "FingerGunRecoil", "Snap", 4 }, { 0.3, "FingerGun", "Sine" } },
-	M1_4 = { { 0, "Rest" }, { 0.14, "SlamWindup", "In" }, { 0.22, "Slam", "Snap", 6 }, { 0.42, "SlamFollow", "Sine" }, { 0.55, "SlamFollow" } },
+	M1_1 = { { 0, "Rest" }, { 0.07, "FlickRCoil", "In" }, { 0.12, "FlickRStrike", "Back", 4 }, { 0.17, "FlickRStrike", "Linear" }, { 0.3, "FlickRFollow", "Sine" } },
+	M1_2 = { { 0, "FlickRFollow" }, { 0.07, "FlickLCoil", "In" }, { 0.12, "FlickLStrike", "Back", 4 }, { 0.17, "FlickLStrike", "Linear" }, { 0.3, "FlickLFollow", "Sine" } },
+	M1_3 = { { 0, "Rest" }, { 0.06, "FlickRCoil", "In" }, { 0.1, "FingerGun", "Snap" }, { 0.14, "FingerGunRecoil", "Snap", 4 }, { 0.2, "FingerGun", "Out" }, { 0.24, "FingerGunRecoil", "Snap", 3 }, { 0.36, "FingerGun", "Sine" } },
+	M1_4 = { { 0, "Rest" }, { 0.08, "SlamWindup", "In" }, { 0.16, "SlamLeap", "Out" }, { 0.24, "Slam", "Snap", 8 }, { 0.3, "Slam", "Linear" }, { 0.48, "SlamFollow", "Sine" }, { 0.6, "SlamFollow" } },
 	NailShot = { { 0, "Rest" }, { 0.12, "FingerGun", "Sine" }, { 0.2, "FingerGunRecoil", "Snap", 5 }, { 0.45, "FingerGun", "Back" } },
 	NailBarrage = {
 		{ 0, "Rest" }, { 0.08, "FlickRWind", "In" }, { 0.12, "FlickR", "Snap", 2 }, { 0.2, "FlickL", "Snap", 2 }, { 0.28, "FlickR", "Snap", 2 },
@@ -2818,10 +2908,10 @@ TuskAnimation.Actions = {
 	GoldenPursuit = { { 0, "Rest" }, { 0.12, "SlamWindup", "In" }, { 0.24, "DashPunch", "Snap", 5 }, { 0.7, "DashPunch", "Sine" } },
 
 	-- GYRO
-	G_M1_1 = { { 0, "Rest" }, { 0.05, "JabWind", "In" }, { 0.1, "Jab", "Back", 3 }, { 0.24, "JabRecover", "Sine" } },
-	G_M1_2 = { { 0, "Rest" }, { 0.06, "GHookWind", "In" }, { 0.12, "GHook", "Snap", 4 }, { 0.28, "GHookFollow", "Sine" } },
-	G_M1_3 = { { 0, "Rest" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 4 }, { 0.24, "KickRechamber", "Sine" }, { 0.34, "Rest", "Sine" } },
-	G_M1_4 = { { 0, "Rest" }, { 0.14, "OverheadWind", "In" }, { 0.23, "OverheadSmash", "Snap", 7 }, { 0.42, "SmashFollow", "Sine" }, { 0.55, "SmashFollow" } },
+	G_M1_1 = { { 0, "Rest" }, { 0.06, "JabCoil", "In" }, { 0.11, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.28, "JabRecover", "Sine" } },
+	G_M1_2 = { { 0, "JabRecover" }, { 0.07, "GHookWind", "In" }, { 0.13, "GHook", "Back", 5 }, { 0.18, "GHook", "Linear" }, { 0.32, "GHookFollow", "Sine" } },
+	G_M1_3 = { { 0, "Rest" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.27, "KickRechamber", "Sine" }, { 0.38, "Rest", "Sine" } },
+	G_M1_4 = { { 0, "Rest" }, { 0.1, "PitchSet", "Sine" }, { 0.17, "OverheadWind", "In" }, { 0.25, "OverheadSmash", "Snap", 8 }, { 0.31, "OverheadSmash", "Linear" }, { 0.48, "SmashFollow", "Sine" }, { 0.6, "SmashFollow" } },
 	GyroThrow = { { 0, "Rest" }, { 0.06, "PitchSet", "Sine" }, { 0.16, "PitchBack", "In" }, { 0.24, "PitchRelease", "Snap", 5 }, { 0.42, "PitchFollow", "Sine" }, { 0.58, "PitchFollow" } },
 	GyroBowl = { { 0, "Rest" }, { 0.14, "BowlWind", "In" }, { 0.27, "BowlRelease", "Snap", 4 }, { 0.45, "BowlFollow", "Sine" }, { 0.6, "BowlFollow" } },
 	GyroPalm = { { 0, "Rest" }, { 0.12, "PalmWind", "In" }, { 0.2, "PalmPress", "Snap", 4 }, { 0.32, "PalmPush", "Linear", 7 }, { 0.6, "PalmPush", "Sine", 3 } },
@@ -2832,10 +2922,10 @@ TuskAnimation.Actions = {
 	SpinningNailRelease = { { 0, "ChargeNail" }, { 0.06, "PointRecoil", "Snap", 6 }, { 0.4, "Point", "Back" } },
 
 	-- DIEGO
-	D_M1_1 = { { 0, "Rest" }, { 0.06, "ClawWindR", "In" }, { 0.12, "ClawR", "Back", 3 }, { 0.26, "ClawR", "Sine" } },
-	D_M1_2 = { { 0, "Rest" }, { 0.06, "ClawWindL", "In" }, { 0.12, "ClawL", "Back", 3 }, { 0.26, "ClawL", "Sine" } },
-	D_M1_3 = { { 0, "Rest" }, { 0.07, "TailWhipWind", "In" }, { 0.16, "TailWhip", "Snap", 4 }, { 0.32, "TailWhip", "Sine" } },
-	D_M1_4 = { { 0, "Rest" }, { 0.12, "BiteWind", "In" }, { 0.2, "Bite", "Snap", 6 }, { 0.45, "Bite", "Sine" } },
+	D_M1_1 = { { 0, "Rest" }, { 0.07, "ClawWindR", "In" }, { 0.12, "ClawRStrike", "Back", 4 }, { 0.17, "ClawRStrike", "Linear" }, { 0.3, "ClawR", "Sine" } },
+	D_M1_2 = { { 0, "ClawR" }, { 0.07, "ClawWindL", "In" }, { 0.12, "ClawLStrike", "Back", 4 }, { 0.17, "ClawLStrike", "Linear" }, { 0.3, "ClawL", "Sine" } },
+	D_M1_3 = { { 0, "Rest" }, { 0.08, "TailWhipWind", "In" }, { 0.17, "TailWhip", "Snap", 5 }, { 0.22, "TailWhip", "Linear" }, { 0.36, "TailWhip", "Sine" } },
+	D_M1_4 = { { 0, "Rest" }, { 0.13, "BiteWind", "In" }, { 0.21, "Bite", "Snap", 7 }, { 0.27, "Bite", "Linear" }, { 0.48, "Bite", "Sine" } },
 	DiegoPounce = { { 0, "Rest" }, { 0.16, "PounceCrouch", "In" }, { 0.24, "PounceLeap", "Snap", 3 }, { 0.5, "PounceLeap", "Sine" } },
 	DiegoLand = { { 0, "PounceLeap" }, { 0.06, "PounceLand", "Snap", 6 }, { 0.35, "PounceLand", "Sine" } },
 	DiegoBite = { { 0, "Rest" }, { 0.14, "BiteWind", "In" }, { 0.22, "Bite", "Snap", 6 }, { 0.5, "Bite", "Sine" } },
@@ -2843,10 +2933,20 @@ TuskAnimation.Actions = {
 	DiegoRoar = { { 0, "Rest" }, { 0.2, "BiteWind", "In" }, { 0.35, "Roar", "Back", 6 }, { 0.9, "Roar", "Linear", 4 }, { 1.2, "Roar", "Sine", 2 } },
 
 	-- PORK PIE HAT KID
-	P_M1_1 = { { 0, "Rest" }, { 0.05, "SlapWind", "In" }, { 0.11, "Slap", "Back", 3 }, { 0.26, "Slap", "Sine" } },
-	P_M1_2 = { { 0, "Rest" }, { 0.05, "SlapWindL", "In" }, { 0.11, "SlapL", "Back", 3 }, { 0.26, "SlapL", "Sine" } },
-	P_M1_3 = { { 0, "Rest" }, { 0.07, "SpitWind", "In" }, { 0.13, "Spit", "Snap", 4 }, { 0.3, "Spit", "Sine" } },
-	P_M1_4 = { { 0, "Rest" }, { 0.12, "FlyKickWind", "In" }, { 0.2, "FlyKick", "Snap", 6 }, { 0.42, "FlyKick", "Sine" }, { 0.55, "FlyKick" } },
+	P_M1_1 = { { 0, "Rest" }, { 0.06, "SlapCoil", "In" }, { 0.11, "SlapStrike", "Back", 4 }, { 0.16, "SlapStrike", "Linear" }, { 0.28, "Slap", "Sine" } },
+	P_M1_2 = { { 0, "Slap" }, { 0.06, "SlapCoilL", "In" }, { 0.11, "SlapStrikeL", "Back", 4 }, { 0.16, "SlapStrikeL", "Linear" }, { 0.28, "SlapL", "Sine" } },
+	P_M1_3 = { { 0, "Rest" }, { 0.08, "SpitWind", "In" }, { 0.14, "Spit", "Snap", 5 }, { 0.19, "Spit", "Linear" }, { 0.32, "Spit", "Sine" } },
+	P_M1_4 = { { 0, "Rest" }, { 0.12, "FlyKickWind", "In" }, { 0.2, "FlyKick", "Snap", 7 }, { 0.26, "FlyKick", "Linear" }, { 0.45, "FlyKick", "Sine" }, { 0.58, "FlyKick" } },
+	-- SANDMAN
+	S_M1_1 = { { 0, "Rest" }, { 0.07, "ChopCoil", "In" }, { 0.12, "ChopStrike", "Back", 4 }, { 0.17, "ChopStrike", "Linear" }, { 0.3, "SandStance", "Sine" } },
+	S_M1_2 = { { 0, "ChopStrike" }, { 0.07, "ChopCoilL", "In" }, { 0.12, "ChopStrikeL", "Back", 4 }, { 0.17, "ChopStrikeL", "Linear" }, { 0.3, "SandStance", "Sine" } },
+	S_M1_3 = { { 0, "Rest" }, { 0.08, "SpinKickWind", "In" }, { 0.16, "SpinKick", "Snap", 5 }, { 0.21, "SpinKick", "Linear" }, { 0.36, "SandStance", "Sine" } },
+	S_M1_4 = { { 0, "Rest" }, { 0.13, "AxeWind", "In" }, { 0.21, "AxeKick", "Snap", 8 }, { 0.27, "AxeKick", "Linear" }, { 0.46, "AxeKick", "Sine" }, { 0.58, "SandStance", "Sine" } },
+	SandSlash = { { 0, "Rest" }, { 0.12, "ChopCoil", "In" }, { 0.2, "SlashThrow", "Snap", 5 }, { 0.42, "SlashThrow", "Sine" } },
+	SandTrap = { { 0, "Rest" }, { 0.14, "TrapPress", "In" }, { 0.25, "TrapPress", "Snap", 5 }, { 0.45, "TrapPress", "Sine" } },
+	SandRun = { { 0, "Rest" }, { 0.1, "Sprint", "Snap", 2 }, { 0.4, "Sprint", "Linear" }, { 0.55, "SandStance", "Sine" } },
+	SandSymphony = { { 0, "Rest" }, { 0.3, "ConductUp", "Back", 3 }, { 0.9, "ConductUp", "Linear", 2 }, { 1.05, "ConductDown", "Snap", 6 }, { 1.6, "ConductUp", "Back", 2 }, { 2.2, "ConductDown", "Snap", 8 }, { 2.5, "ConductDown", "Sine" } },
+
 	PPHookSpit = { { 0, "Rest" }, { 0.18, "SpitWind", "In" }, { 0.26, "Spit", "Snap", 5 }, { 0.42, "Spit", "Sine" } },
 	PPReel = { { 0, "Spit" }, { 0.1, "ReelBack", "Snap", 3 }, { 0.3, "ReelBack", "Linear", 2 }, { 0.55, "ReelBack", "Sine" } },
 	PPBaitToss = { { 0, "Rest" }, { 0.14, "BowlWind", "In" }, { 0.26, "BowlRelease", "Snap", 3 }, { 0.42, "BowlFollow", "Sine" } },
@@ -4032,6 +4132,7 @@ __modules["TuskStand"] = function()
 ]]
 
 local Players = game:GetService("Players")
+local Fighters = __require("Fighters")
 local RunService = game:GetService("RunService")
 
 local Shared = nil -- (bundled: modules are inlined)
@@ -4337,7 +4438,7 @@ function TuskStand.init()
 	RunService.RenderStepped:Connect(function(dt)
 		local now = os.clock()
 		local seen = {}
-		for _, player in ipairs(Players:GetPlayers()) do
+		for _, player in ipairs(Fighters.list()) do
 			local character = player.Character
 			local act = character and character:GetAttribute("TuskAct")
 			local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -5515,7 +5616,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("BAIT") then
+	if has("SOUND TRAP") then
+		return "word"
+	elseif has("SOUND") or has("SILENT") then
+		return "slash"
+	elseif has("SAND RUN") then
+		return "dash"
+	elseif has("BAIT") then
 		return "bait"
 	elseif has("HOOK") or has("WIRED") then
 		return "hook"
@@ -5660,6 +5767,14 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "word" then
+		-- A written sound effect: three bold blocks with a burst behind.
+		for i = 0, 3 do
+			bar(icon, 0.5, 0.5, 0.06, 0.95, i * 45)
+		end
+		for i = -1, 1 do
+			bar(icon, 0.5 + i * 0.24, 0.5 + (i == 0 and -0.04 or 0.04), 0.18, 0.34, i * 8)
+		end
 	elseif kind == "slash" then
 		for i = -1, 1 do
 			bar(icon, 0.5 + i * 0.18, 0.5, 0.08, 0.8 - math.abs(i) * 0.2, 30)

@@ -61,3 +61,6 @@ updated: 2026-11-22
 | 2026-11-23 | Johnny moved back into the core scripts so Spin_Server / Spin_Client work on their own; the other characters and the map stay as optional extra scripts |
 | 2026-11-23 | The SBR map moved back into Spin_Server (it went missing when it was an optional script) |
 | 2026-11-23 | Character menu: Tusk Act rows removed (one row per character); characters whose scripts are not installed show NOT INSTALLED |
+| 2026-11-23 | M1 animations polished for every character: coil before the strike, a stepping strike with overshoot, a short hit-stop hold, then follow-through |
+| 2026-11-23 | Sandman (In a Silent Way) added, built from the description; sounds are blocky 3D written words |
+| 2026-11-23 | Stand-user NPCs (StandBots) fight players with real character movesets |

@@ -1,7 +1,8 @@
 --[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
 	Boots every server system: characters (Johnny/Tusk, Gyro/Ball Breaker,
-	Diego/Scary Monsters),
+	Diego/Scary Monsters, Pork Pie Hat Kid/Wired, Sandman/In a Silent Way),
+	Stand-user NPCs that fight you,
 	custom Stand models, NPCs and Studio test dummies.
 ]]
 
@@ -13,6 +14,8 @@ local StandAssetLoader = require(script.StandAssetLoader)
 local GyroOutfit = require(script.GyroOutfit)
 local DiegoOutfit = require(script.DiegoOutfit)
 local PorkPieOutfit = require(script.PorkPieOutfit)
+local SandmanOutfit = require(script.SandmanOutfit)
+local StandBots = require(script.StandBots)
 
 -- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
@@ -22,5 +25,7 @@ TuskService.init()
 GyroOutfit.init()
 DiegoOutfit.init()
 PorkPieOutfit.init()
+SandmanOutfit.init()
+StandBots.init(TuskService)
 NPCService.init()
 TestDummies.init()
