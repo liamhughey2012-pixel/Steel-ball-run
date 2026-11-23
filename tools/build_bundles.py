@@ -64,7 +64,9 @@ def rewrite(name, code):
     code = re.sub(r'require\(((?:script|Shared|game:GetService\("ReplicatedStorage"\))(?:\.[A-Za-z_][A-Za-z0-9_]*|\.SpinShared)+)\)', sub, code)
     return code
 
-PRELUDE = '''local __modules = {}
+PRELUDE = '''-- Private copies of the built-ins we print with, so nothing loaded later can break them.
+local print, warn = print, warn
+local __modules = {}
 local __loaded = {}
 local function __hasModule(name)
 	return __modules[name] ~= nil
@@ -133,6 +135,12 @@ local function __loadPacks(side)
 	local roots = side == "server"
 		and { game:GetService("ServerScriptService"), game:GetService("ServerStorage"), game:GetService("ReplicatedStorage") }
 		or { game:GetService("ReplicatedStorage"), game:GetService("ReplicatedFirst") }
+	-- Only the real character scripts are loaded (e.g. "Gyro_Server"); other
+	-- scripts in the game that happen to end in _Server / _Client are ignored.
+	local allowed = {}
+	for id in pairs(__require("TuskActRegistry").StartAct) do
+		allowed[string.lower(id) .. suffix] = true
+	end
 	local found = 0
 	for _, root in ipairs(roots) do
 		for _, pack in ipairs(root:GetDescendants()) do
@@ -141,7 +149,7 @@ local function __loadPacks(side)
 			if builtIn and pack:IsA("LuaSourceContainer") and not __packsLoaded[name] then
 				__packsLoaded[name] = true
 				print("[Spin] " .. pack:GetFullName() .. " isn't needed any more (it's built into Spin_" .. (side == "server" and "Server" or "Client") .. "). You can delete it.")
-			elseif string.sub(name, -#suffix) == suffix and name ~= "spin" .. suffix and not __packsLoaded[name] then
+			elseif allowed[name] and not __packsLoaded[name] then
 				if pack:IsA("ModuleScript") then
 					local ok, install = pcall(require, pack)
 					if ok and type(install) == "function" then
@@ -165,7 +173,14 @@ local function __loadPacks(side)
 		-- A _Client script the server can see but players can't.
 		for _, where in ipairs({ game:GetService("ServerScriptService"), game:GetService("ServerStorage") }) do
 			for _, pack in ipairs(where:GetDescendants()) do
-				if string.lower(pack.Name):find("_client") and pack:IsA("LuaSourceContainer") then
+				local lname = string.lower(pack.Name):gsub("%.lua$", ""):gsub("%s", "")
+				local isPack = false
+				for id in pairs(__require("TuskActRegistry").StartAct) do
+					if lname == string.lower(id) .. "_client" then
+						isPack = true
+					end
+				end
+				if isPack and pack:IsA("LuaSourceContainer") then
 					warn("[Spin] " .. pack:GetFullName() .. " is in " .. where.Name .. ", where players can't see it. Move it to ReplicatedStorage > SpinCharacters.")
 				end
 			end
