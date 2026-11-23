@@ -526,6 +526,18 @@ function TuskService.init()
 	end
 	Sneak = require(script.Parent.TuskSneakService)
 	Sneak.init(TuskService)
+	-- Tell every client which characters this server can actually play (each
+	-- non-Johnny character is an optional script), so the menu can say so.
+	local installed, seen = {}, {}
+	for act in pairs(actModules) do
+		local who = Registry.characterOf(act)
+		if not seen[who] then
+			seen[who] = true
+			table.insert(installed, who)
+		end
+	end
+	table.sort(installed)
+	game:GetService("ReplicatedStorage"):SetAttribute("SpinInstalledCharacters", table.concat(installed, ","))
 
 	Request.OnServerEvent:Connect(onRequest)
 	Players.PlayerAdded:Connect(onPlayer)

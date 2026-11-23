@@ -1043,7 +1043,7 @@ end
 local DENY_TEXT = {
 	Cooldown = "ON COOLDOWN",
 	UltNotReady = "ULTIMATE NOT READY",
-	NotAvailable = "THAT ACT IS IN DEVELOPMENT",
+	NotAvailable = "THAT CHARACTER ISN'T INSTALLED",
 	Locked = "ACT LOCKED",
 	SwitchCooldown = "WAIT BEFORE SWITCHING ACTS",
 	SneakCooldown = "SNEAK ON COOLDOWN",

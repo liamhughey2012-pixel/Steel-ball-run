@@ -11,9 +11,9 @@
 	Pops and flashes when Tusk evolves.
 
 	DROPDOWN: tap/click the card to open the character list
-	(TuskConfig.Roster). Johnny Joestar expands into his four Tusk Acts,
-	each with its moves, showing which Act you are on now. Characters that
-	aren't finished are shown as IN DEVELOPMENT (not selectable).
+	(TuskConfig.Roster), one row per character. Characters whose scripts
+	aren't in the game are shown as NOT INSTALLED, and characters that aren't
+	finished as IN DEVELOPMENT (neither is selectable).
 ]]
 
 local Players = game:GetService("Players")
@@ -30,7 +30,7 @@ local DARK = Color3.fromRGB(14, 12, 20)
 local GOLD = Color3.fromRGB(255, 205, 90)
 
 local gui, card, portrait, viewport, nameLabel, standLabel, pips, hpFill, hpText, scale, arrow
-local dropdown, dropdownList, actRows, rosterRows
+local dropdown, dropdownList, rosterRows
 -- Declared up here so init() can call them (they are defined further down).
 local buildDropdown, refreshDropdown
 local shownAct
@@ -324,7 +324,7 @@ function buildDropdown()
 		Text = "CHARACTERS",
 	})
 
-	rosterRows, actRows = {}, {}
+	rosterRows = {}
 	local order = 1
 	for _, entry in ipairs(TuskConfig.Roster or {}) do
 		local row = Instance.new("Frame")
@@ -357,7 +357,9 @@ function buildDropdown()
 			status.Parent = row
 			corner(status, 6)
 			status.Activated:Connect(function()
-				Net.get("TuskRequest"):FireServer("Character", entry.Id)
+				if status.Active then
+					Net.get("TuskRequest"):FireServer("Character", entry.Id)
+				end
 			end)
 		else
 			status = chip(row, "IN DEVELOPMENT", Color3.fromRGB(60, 58, 72), Color3.fromRGB(190, 185, 200))
@@ -366,65 +368,39 @@ function buildDropdown()
 		end
 		rosterRows[entry.Id] = { Row = row, Status = status, Entry = entry }
 
-		-- Johnny expands into the four Tusk Acts.
-		if entry.Id == "Johnny" then
-			for act = 1, 4 do
-				local info = Registry.get(act)
-				local actRow = Instance.new("Frame")
-				actRow.LayoutOrder = order
-				order = order + 1
-				actRow.Size = UDim2.new(1, 0, 0, 52)
-				actRow.BackgroundColor3 = Color3.fromRGB(20, 18, 30)
-				actRow.Parent = dropdownList
-				corner(actRow, 8)
-				local edge = stroke(actRow, info.Theme.Primary, 1.5)
-				label(actRow, { Position = UDim2.fromOffset(12, 3), Size = UDim2.new(1, -120, 0, 20), Font = Enum.Font.Bangers, TextSize = 18, TextColor3 = info.Theme.Primary, Text = info.Name })
-				label(actRow, { Position = UDim2.fromOffset(12, 22), Size = UDim2.new(1, -20, 0, 13), Font = Enum.Font.GothamBold, TextSize = 9, TextColor3 = Color3.fromRGB(200, 205, 220), TextTruncate = Enum.TextTruncate.AtEnd, Text = "1 " .. info.Abilities[1] .. " · 2 " .. info.Abilities[2] .. " · 3 " .. info.Abilities[3] })
-				label(actRow, { Position = UDim2.fromOffset(12, 35), Size = UDim2.new(1, -20, 0, 13), Font = Enum.Font.GothamBold, TextSize = 9, TextColor3 = GOLD, TextTruncate = Enum.TextTruncate.AtEnd, Text = "G " .. info.Ultimate .. (info.Next and (" → ACT " .. info.Next) or "  (FINAL FORM)") })
-				local state = label(actRow, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 5), Size = UDim2.fromOffset(100, 16), Font = Enum.Font.GothamBlack, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Right, Text = "" })
-				actRows[act] = { Row = actRow, Edge = edge, State = state }
-			end
-		end
 	end
+end
+
+-- Which characters the server can play (the others' scripts aren't installed).
+local function installedSet()
+	local text = game:GetService("ReplicatedStorage"):GetAttribute("SpinInstalledCharacters")
+	if type(text) ~= "string" then
+		return nil -- not known yet: treat everyone as installed
+	end
+	local set = {}
+	for id in string.gmatch(text, "[^,]+") do
+		set[id] = true
+	end
+	return set
 end
 
 function refreshDropdown(act)
 	if not dropdown then
 		return
 	end
-	-- Each character row: PLAYING (green) or SELECT (blue).
+	-- Each character row: PLAYING (green), SELECT (blue), or NOT INSTALLED (grey:
+	-- that character's _Server/_Client scripts aren't in the game).
 	local current = act and Registry.characterOf(act)
+	local installed = installedSet()
 	for id, row in pairs(rosterRows) do
 		if row.Entry.Available then
 			local playing = current == id
-			row.Status.Text = playing and "PLAYING" or "SELECT"
-			row.Status.BackgroundColor3 = playing and Color3.fromRGB(40, 120, 70) or Color3.fromRGB(40, 90, 200)
-			row.Status.TextColor3 = Color3.new(1, 1, 1)
-			row.Status.Active = not playing
-		end
-	end
-	if current ~= "Johnny" then
-		act = nil -- Tusk Act rows only light up while playing Johnny
-	end
-	for i, r in pairs(actRows) do
-		if act == i then
-			r.State.Text = "◆ YOU ARE HERE"
-			r.State.TextColor3 = Color3.new(1, 1, 1)
-			r.Row.BackgroundColor3 = Color3.fromRGB(40, 34, 64)
-			r.Edge.Thickness = 2.5
-			r.Edge.Transparency = 0
-		elseif act and i < act then
-			r.State.Text = "AWAKENED ✓"
-			r.State.TextColor3 = Color3.fromRGB(120, 220, 140)
-			r.Row.BackgroundColor3 = Color3.fromRGB(20, 18, 30)
-			r.Edge.Thickness = 1
-			r.Edge.Transparency = 0.4
-		else
-			r.State.Text = i == 1 and "START" or "AWAKEN WITH G"
-			r.State.TextColor3 = Color3.fromRGB(160, 160, 180)
-			r.Row.BackgroundColor3 = Color3.fromRGB(20, 18, 30)
-			r.Edge.Thickness = 1
-			r.Edge.Transparency = 0.6
+			local missing = installed ~= nil and not installed[id]
+			row.Status.Text = playing and "PLAYING" or (missing and "NOT INSTALLED" or "SELECT")
+			row.Status.BackgroundColor3 = playing and Color3.fromRGB(40, 120, 70) or (missing and Color3.fromRGB(60, 58, 72) or Color3.fromRGB(40, 90, 200))
+			row.Status.TextColor3 = missing and Color3.fromRGB(190, 185, 200) or Color3.new(1, 1, 1)
+			row.Status.Active = not playing and not missing
+			row.Status.AutoButtonColor = not playing and not missing
 		end
 	end
 end
