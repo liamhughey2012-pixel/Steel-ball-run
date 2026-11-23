@@ -222,7 +222,7 @@ TuskConfig.Act1 = {
 		HitboxForward = 3.2,
 		MaxTargets = 3,
 		Hits = {
-			{ Name = "Tusk Jab", Damage = 3, Stun = 0.45, Knockback = 3 },
+			{ Name = "Tusk Jab", Damage = 3.5, Stun = 0.45, Knockback = 3 },
 			{ Name = "Nail Strike", Damage = 3.5, Stun = 0.45, Knockback = 4 },
 			{ Name = "Spinning Assist", Damage = 3, Stun = 0.45, Knockback = 5, Projectile = { Speed = 160, Radius = 0.9, Range = 22 } },
 			{ Name = "Shock Finisher", Damage = 6, Stun = 0.5, Knockback = 42, Launch = 10, ShockwaveRadius = 7 },
@@ -399,7 +399,7 @@ TuskConfig.Diego = {
 	},
 	ScaryMonsters = { -- turn into a full raptor
 		Cooldown = 14, -- starts when the transformation ends
-		Duration = 10, Transform = 0.5,
+		Duration = 8, Transform = 0.5,
 		SpeedMultiplier = 1.35, -- walk speed while transformed
 		PounceMultiplier = 1.3, -- Raptor Pounce damage while transformed
 		KineticVision = 90, -- studs: moving enemies glow for Diego while transformed
@@ -430,7 +430,7 @@ TuskConfig.PorkPie = {
 	WiredHook = { -- a hook shoots out of his mouth; a hit snags the enemy and reels them in
 		Cooldown = 7, Startup = 0.25,
 		Speed = 120, Radius = 1.2, Range = 75,
-		Damage = 6, Stun = 1.0,
+		Damage = 7, Stun = 1.0,
 		ReelTime = 0.6, ReelTick = 0.15, ReelStopDistance = 5, -- pulled in until this close
 	},
 	BaitPan = { -- a pan of water with a feather bait; hooks burst out at anyone who comes near
@@ -451,7 +451,7 @@ TuskConfig.PorkPie = {
 		Windup = 1.0, Radius = 24, Puddles = 6, PuddleRadius = 14,
 		SnagDamage = 6, SnagStun = 1.0, SnagLift = 55,
 		ReelTime = 1.35, ReelTick = 0.15, TickDamage = 1.5, TickEvery = 0.3,
-		SlamDamage = 14, SlamRadius = 10, SlamKnockback = 60, SlamLaunch = 30, SlamStun = 0.8,
+		SlamDamage = 16, SlamRadius = 10, SlamKnockback = 60, SlamLaunch = 30, SlamStun = 0.8,
 	},
 }
 
@@ -475,7 +475,7 @@ TuskConfig.Sandman = {
 		Damage = 9, Stun = 0.55, Knockback = 16,
 	},
 	SoundTrap = { -- plant a written explosion ("DOGOOON") on the ground; stepping on it sets it off
-		Cooldown = 5, Startup = 0.25,
+		Cooldown = 7, Startup = 0.25,
 		Distance = 12, MaxTraps = 3, Lifetime = 15,
 		TriggerRadius = 5, CheckEvery = 0.15,
 		Radius = 8, Damage = 10, Stun = 0.6, Knockback = 30, Launch = 25,
@@ -522,7 +522,7 @@ TuskConfig.MountainTim = {
 		Damage = 6, Stun = 0.5, Knockback = 10,
 	},
 	SplitBarrage = { -- his arm splits along the rope and flies out punching; the last punch reels them in
-		Cooldown = 7, Windup = 0.18,
+		Cooldown = 8, Windup = 0.18,
 		Range = 26, Width = 4.5, Hits = 5, HitEvery = 0.1,
 		Damage = 2.5, Stun = 0.5, FinalDamage = 5, ReelTime = 0.45, ReelTick = 0.15,
 	},
@@ -562,7 +562,7 @@ TuskConfig.HotPants = {
 		SealTime = 3, SealTick = 0.5, SealDamage = 2, SealSlow = 0.75,
 	},
 	FleshMend = { -- spray her own wounds shut
-		Cooldown = 14, Duration = 1.2, Ticks = 4, Heal = 22,
+		Cooldown = 16, Duration = 1.2, Ticks = 4, Heal = 18,
 	},
 	Ultimate = { -- FLESH STORM: a flesh cloud hardens into cocoons round everyone caught, crushes them, bursts
 		Windup = 0.7, Distance = 12, Radius = 13,
@@ -599,10 +599,10 @@ TuskConfig.Blackmore = {
 		Cooldown = 11, MissCooldown = 3, Windup = 0.22,
 		Range = 16, Cone = 60,
 		Damage = 5, Stun = 0.6,
-		CageTime = 2.5, Slow = 0.3, Tick = 0.3, MoveDamage = 2.5, MoveThreshold = 0.8,
+		CageTime = 2.5, Slow = 0.45, Tick = 0.3, MoveDamage = 2, MoveThreshold = 0.8,
 	},
 	Ultimate = { -- CATCH THE RAINBOW: a downpour round him; the rain slices everyone, he scatters from the first hit, then every drop fires inward
-		Windup = 0.8, Radius = 22, Duration = 5, Tick = 0.5, TickDamage = 2, TickStun = 0.4,
+		Windup = 0.8, Radius = 18, Duration = 5, Tick = 0.5, TickDamage = 1.5, TickStun = 0.4,
 		ScatterDistance = 8,
 		BurstDamage = 12, BurstKnockback = 45, BurstLaunch = 20, BurstStun = 0.7,
 	},
@@ -620,9 +620,9 @@ TuskConfig.Gyro = {
 		},
 	},
 	SteelBallThrow = {
-		Cooldown = 5, Startup = 0.22, Damage = 10, ReturnDamage = 5, Speed = 140, ReturnSpeed = 120, Radius = 1.1, Range = 120, Stun = 0.4, Knockback = 18,
+		Cooldown = 6, Startup = 0.22, Damage = 10, ReturnDamage = 4, Speed = 140, ReturnSpeed = 120, Radius = 1.1, Range = 120, Stun = 0.4, Knockback = 18,
 		MaxBounces = 3, -- bounces off walls this many times before returning (0 = no bounces)
-		BounceBonusDamage = 2, -- extra damage per bounce (bank shots hit harder)
+		BounceBonusDamage = 1.5, -- extra damage per bounce (bank shots hit harder)
 	},
 	SpinTornado = {
 		Cooldown = 11, Startup = 0.28,
@@ -635,8 +635,8 @@ TuskConfig.Gyro = {
 	SpinVibration = { Cooldown = 8, Windup = 0.2, Damage = 9, Stun = 0.9, Knockback = 10, Launch = 16, HitboxSize = Vector3.new(5, 6, 6), HitboxForward = 3 },
 	Ultimate = { -- BALL BREAKER
 		Windup = 1.8, Speed = 85, Radius = 3, Range = 170, Damage = 14,
-		VortexRadius = 14, VortexTime = 2.4, PullStrength = 22, TickDamage = 2, TickInterval = 0.3,
-		BurstDamage = 14, BurstKnockback = 70, Launch = 30, Stun = 0.7,
+		VortexRadius = 14, VortexTime = 2.4, PullStrength = 22, TickDamage = 1.5, TickInterval = 0.3,
+		BurstDamage = 12, BurstKnockback = 70, Launch = 30, Stun = 0.7,
 	},
 }
 

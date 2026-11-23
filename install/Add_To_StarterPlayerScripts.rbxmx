@@ -1952,10 +1952,12 @@ __modules["CharacterCard"] = function()
 	  * health bar with numbers
 	Pops and flashes when Tusk evolves.
 
-	FIGHTER SELECT: tap/click the card to open "CHOOSE YOUR FIGHTER": a grid
-	of tiles (one per TuskConfig.Roster entry, in its Stand's colours, with
-	an emblem and a PLAYING / NOT INSTALLED badge) and a details panel with
-	the fighter's Stand, tagline, every move with its key, and SELECT.
+	DROPDOWN: tap/click the card to open the character list
+	(TuskConfig.Roster): one row per character with a colour badge, name,
+	Stand and a status chip; rows light up on hover and the whole row is
+	clickable. Your current character is outlined and listed first. Characters whose scripts
+	aren't in the game are shown as NOT INSTALLED, and characters that aren't
+	finished as IN DEVELOPMENT (neither is selectable).
 ]]
 
 local Players = game:GetService("Players")
@@ -2189,6 +2191,17 @@ function CharacterCard.init()
 	hit.ZIndex = 4
 	hit.Parent = card
 	hit.Activated:Connect(CharacterCard.toggle)
+	local cardStroke = card:FindFirstChildOfClass("UIStroke")
+	hit.MouseEnter:Connect(function()
+		if cardStroke then
+			cardStroke.Thickness = 3
+		end
+	end)
+	hit.MouseLeave:Connect(function()
+		if cardStroke then
+			cardStroke.Thickness = 2
+		end
+	end)
 	buildDropdown()
 
 	local function onCharacter(character)
@@ -2203,22 +2216,206 @@ function CharacterCard.init()
 end
 
 ---------------------------------------------------------------------------
--- Fighter select ("CHOOSE YOUR FIGHTER")
+-- Dropdown
 ---------------------------------------------------------------------------
-local TweenService = game:GetService("TweenService")
-local POP = TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-local SOFT = TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local PANEL = Color3.fromRGB(22, 18, 34)
-local INK = Color3.fromRGB(12, 10, 18)
-local panel, panelScale, grid, details, selectedId
+local ROW_W = 290
+local ROW_H = 54
+local dropdownHeight = 0
+local ROW_BG = Color3.fromRGB(26, 23, 38)
+local ROW_HOVER = Color3.fromRGB(40, 35, 58)
+local GREEN = Color3.fromRGB(46, 150, 86)
+local BLUE = Color3.fromRGB(52, 104, 220)
+local GREY = Color3.fromRGB(58, 56, 70)
 
-local function make(class, props, parent)
-	local o = Instance.new(class)
-	for k, v in pairs(props) do
-		o[k] = v
+-- "JOHNNY JOESTAR" -> "JJ", "SANDMAN" -> "S".
+local function initials(name)
+	local out = ""
+	for word in string.gmatch(name, "%S+") do
+		if #out < 2 then
+			out = out .. word:sub(1, 1)
+		end
 	end
-	o.Parent = parent
-	return o
+	return out
+end
+
+local function tween(duration, step)
+	VFXLib.animate(duration, function(a)
+		step(VFXLib.easeOut(a))
+	end)
+end
+
+function buildDropdown()
+	dropdown = Instance.new("Frame")
+	dropdown.Name = "CharacterList"
+	dropdown.Position = UDim2.fromOffset(12, 112)
+	dropdown.Size = UDim2.fromOffset(ROW_W, 0)
+	dropdown.BackgroundColor3 = DARK
+	dropdown.BackgroundTransparency = 0.06
+	dropdown.ClipsDescendants = true
+	dropdown.Visible = false
+	dropdown.Parent = gui
+	corner(dropdown, 12)
+	stroke(dropdown, GOLD, 1.5)
+	local bg = Instance.new("UIGradient")
+	bg.Color = ColorSequence.new(Color3.fromRGB(34, 26, 52), Color3.fromRGB(14, 12, 20))
+	bg.Rotation = 90
+	bg.Parent = dropdown
+
+	-- Header (stays put while the list scrolls).
+	label(dropdown, {
+		Position = UDim2.fromOffset(12, 8),
+		Size = UDim2.new(1, -24, 0, 22),
+		Font = Enum.Font.Bangers,
+		TextSize = 22,
+		TextColor3 = GOLD,
+		Text = "CHARACTERS",
+	})
+	label(dropdown, {
+		Position = UDim2.fromOffset(12, 30),
+		Size = UDim2.new(1, -24, 0, 14),
+		Font = Enum.Font.GothamBold,
+		TextSize = 10,
+		TextColor3 = Color3.fromRGB(165, 158, 190),
+		TextStrokeTransparency = 1,
+		Text = "Everyone can BLOCK (F) and DASH (Q)",
+	})
+	local line = Instance.new("Frame")
+	line.Position = UDim2.fromOffset(12, 49)
+	line.Size = UDim2.new(1, -24, 0, 1)
+	line.BackgroundColor3 = GOLD
+	line.BackgroundTransparency = 0.6
+	line.BorderSizePixel = 0
+	line.Parent = dropdown
+
+	dropdownList = Instance.new("ScrollingFrame")
+	dropdownList.BackgroundTransparency = 1
+	dropdownList.BorderSizePixel = 0
+	dropdownList.Position = UDim2.fromOffset(0, 52)
+	dropdownList.Size = UDim2.new(1, 0, 1, -52)
+	dropdownList.CanvasSize = UDim2.new()
+	dropdownList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	dropdownList.ScrollBarThickness = 3
+	dropdownList.ScrollBarImageColor3 = GOLD
+	dropdownList.Parent = dropdown
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 5)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = dropdownList
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 6)
+	pad.PaddingBottom = UDim.new(0, 8)
+	pad.PaddingLeft = UDim.new(0, 8)
+	pad.PaddingRight = UDim.new(0, 10)
+	pad.Parent = dropdownList
+
+	rosterRows = {}
+	for order, entry in ipairs(TuskConfig.Roster or {}) do
+		-- The whole row is the button.
+		local row = Instance.new("TextButton")
+		row.Name = entry.Id
+		row.LayoutOrder = order
+		row.Text = ""
+		row.AutoButtonColor = false
+		row.Size = UDim2.new(1, 0, 0, ROW_H)
+		row.BackgroundColor3 = ROW_BG
+		row.Parent = dropdownList
+		corner(row, 9)
+		local outline = stroke(row, entry.Color, 1.5)
+		outline.Transparency = 1
+
+		-- Colour badge with initials.
+		local badge = Instance.new("Frame")
+		badge.Position = UDim2.fromOffset(7, 7)
+		badge.Size = UDim2.fromOffset(40, 40)
+		badge.BackgroundColor3 = entry.Color
+		badge.Parent = row
+		corner(badge, 8)
+		local shade = Instance.new("UIGradient")
+		shade.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(150, 150, 150))
+		shade.Rotation = 90
+		shade.Parent = badge
+		label(badge, {
+			Size = UDim2.fromScale(1, 1),
+			Font = Enum.Font.Bangers,
+			TextSize = 22,
+			TextColor3 = Color3.new(1, 1, 1),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextStrokeTransparency = 0.3,
+			Text = initials(entry.Name),
+		})
+
+		local nameText = label(row, {
+			Position = UDim2.fromOffset(55, 6),
+			Size = UDim2.new(1, -165, 0, 24),
+			Font = Enum.Font.Bangers,
+			TextSize = 21,
+			TextScaled = false,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			TextColor3 = entry.Available and Color3.new(1, 1, 1) or Color3.fromRGB(150, 145, 160),
+			Text = entry.Name,
+		})
+		label(row, {
+			Position = UDim2.fromOffset(55, 29),
+			Size = UDim2.new(1, -165, 0, 16),
+			Font = Enum.Font.GothamBold,
+			TextSize = 10,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			TextStrokeTransparency = 1,
+			TextColor3 = entry.Color,
+			Text = "STAND: " .. entry.Stand,
+		})
+
+		local status = label(row, {
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -8, 0.5, 0),
+			Size = UDim2.fromOffset(98, 26),
+			Font = Enum.Font.GothamBlack,
+			TextSize = 11,
+			TextColor3 = Color3.new(1, 1, 1),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextStrokeTransparency = 1,
+			BackgroundTransparency = 0,
+			BackgroundColor3 = GREY,
+			Text = entry.Available and "SELECT" or "IN DEVELOPMENT",
+		})
+		corner(status, 7)
+
+		local info = { Row = row, Order = order, Status = status, Entry = entry, Outline = outline, Name = nameText, Selectable = false, Playing = false }
+		rosterRows[entry.Id] = info
+
+		-- Hover: the row lights up and the outline shows in the character's colour.
+		local function hover(on)
+			local from = row.BackgroundColor3
+			local to = on and ROW_HOVER or ROW_BG
+			local fromT = outline.Transparency
+			local toT = (on or info.Playing) and 0 or 1
+			tween(0.12, function(a)
+				row.BackgroundColor3 = from:Lerp(to, a)
+				outline.Transparency = fromT + (toT - fromT) * a
+			end)
+		end
+		row.MouseEnter:Connect(function()
+			hover(true)
+		end)
+		row.MouseLeave:Connect(function()
+			hover(false)
+		end)
+		row.Activated:Connect(function()
+			if not info.Selectable then
+				return
+			end
+			-- Little press bounce, then ask the server and close.
+			tween(0.15, function(a)
+				status.Size = UDim2.fromOffset(98 - 8 * math.sin(a * math.pi), 26 - 4 * math.sin(a * math.pi))
+			end)
+			Net.get("TuskRequest"):FireServer("Character", entry.Id)
+			task.delay(0.15, function()
+				if open then
+					CharacterCard.toggle()
+				end
+			end)
+		end)
+	end
 end
 
 -- Which characters the server can play (the others' scripts aren't installed).
@@ -2234,228 +2431,27 @@ local function installedSet()
 	return set
 end
 
-local function infoFor(entry)
-	local act = Registry.StartAct[entry.Id]
-	return act and Registry.get(act), act
-end
-
-local function initials(name)
-	local words = {}
-	for w in string.gmatch(name, "%S+") do
-		table.insert(words, w)
-	end
-	if #words >= 2 then
-		return words[1]:sub(1, 1) .. words[2]:sub(1, 1)
-	end
-	return name:sub(1, 2)
-end
-
-local function keyText(slot)
-	local keys = TuskConfig.Keys[slot]
-	local k = keys and keys.Keyboard
-	local names = { One = "1", Two = "2", Three = "3", MouseButton1 = "LMB" }
-	return k and (names[k.Name] or k.Name) or "?"
-end
-
--- Status of a roster entry for this player right now.
-local function statusOf(entry)
-	if not entry.Available then
-		return "DEV"
-	end
-	local installed = installedSet()
-	if installed ~= nil and not installed[entry.Id] then
-		return "MISSING"
-	end
-	local current = shownAct and Registry.characterOf(shownAct)
-	if current == entry.Id then
-		return "PLAYING"
-	end
-	return "READY"
-end
-
-local BADGE = {
-	PLAYING = { "PLAYING", Color3.fromRGB(46, 150, 80) },
-	MISSING = { "NOT INSTALLED", Color3.fromRGB(70, 66, 84) },
-	DEV = { "IN DEVELOPMENT", Color3.fromRGB(70, 66, 84) },
-}
-
-local function showDetails(entry)
-	selectedId = entry.Id
-	local info = infoFor(entry)
-	local theme = info and info.Theme or { Primary = entry.Color, Secondary = PANEL }
-	details.Header.BackgroundColor3 = theme.Primary
-	details.HeaderGradient.Color = ColorSequence.new(theme.Primary, theme.Secondary)
-	details.Emblem.Text = initials(entry.Name)
-	details.Name.Text = entry.Name
-	details.Stand.Text = "STAND: " .. entry.Stand
-	details.Stand.TextColor3 = theme.Primary:Lerp(Color3.new(1, 1, 1), 0.35)
-	details.Tagline.Text = info and info.Tagline and string.upper(info.Tagline) or ""
-	local moves = info and {
-		{ keyText("M1"), info.M1 },
-		{ keyText("Ability1"), info.Abilities[1] },
-		{ keyText("Ability2"), info.Abilities[2] },
-		{ keyText("Ability3"), info.Abilities[3] },
-		{ keyText("Ultimate"), info.Ultimate .. (entry.Id == "Johnny" and "  (AWAKENS TUSK)" or "") },
-	} or {}
-	for i, row in ipairs(details.Moves) do
-		local m = moves[i]
-		row.Frame.Visible = m ~= nil
-		if m then
-			row.Key.Text = m[1]
-			row.Key.BackgroundColor3 = i == 5 and Color3.fromRGB(255, 205, 90) or theme.Primary
-			row.Name.Text = m[2]
-		end
-	end
-	local status = statusOf(entry)
-	local button = details.Select
-	button.Active = status == "READY"
-	button.AutoButtonColor = status == "READY"
-	button.Text = status == "PLAYING" and "PLAYING" or (status == "MISSING" and "NOT INSTALLED" or (status == "DEV" and "IN DEVELOPMENT" or "SELECT"))
-	button.BackgroundColor3 = status == "READY" and Color3.fromRGB(60, 170, 90) or (status == "PLAYING" and Color3.fromRGB(40, 110, 70) or Color3.fromRGB(70, 66, 84))
-	details.Hint.Text = status == "MISSING" and ("Add " .. entry.Id .. "_Server and " .. entry.Id .. "_Client to the game to unlock.") or ""
-	for id, tile in pairs(rosterRows) do
-		local on = id == selectedId
-		TweenService:Create(tile.Stroke, SOFT, { Thickness = on and 4 or 2, Color = on and Color3.new(1, 1, 1) or tile.Theme.Secondary:Lerp(INK, 0.3) }):Play()
-	end
-	-- Little pop when the details change.
-	details.Scale.Scale = 0.96
-	TweenService:Create(details.Scale, POP, { Scale = 1 }):Play()
-end
-
-local function buildTile(entry, order)
-	local info = infoFor(entry)
-	local theme = info and info.Theme or { Primary = entry.Color, Secondary = PANEL }
-	local tile = make("TextButton", { Name = entry.Id, LayoutOrder = order, Text = "", AutoButtonColor = false, BackgroundColor3 = theme.Primary }, grid)
-	corner(tile, 10)
-	make("UIGradient", { Color = ColorSequence.new(theme.Primary, theme.Secondary), Rotation = 60 }, tile)
-	local strokeLine = make("UIStroke", { Thickness = 2, Color = theme.Secondary:Lerp(INK, 0.3), ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, tile)
-	local tileScale = make("UIScale", { Scale = 1 }, tile)
-	-- Diagonal stripes for texture.
-	for i = 0, 3 do
-		make("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.88, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.2 + i * 0.25, 0.4), Size = UDim2.new(0, 10, 1.6, 0), Rotation = 30 }, tile)
-	end
-	label(tile, { Name = "Emblem", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.36), Size = UDim2.fromScale(0.9, 0.48), Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Center, Text = initials(entry.Name) })
-	local band = make("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0.34, 0), BackgroundColor3 = INK, BackgroundTransparency = 0.15 }, tile)
-	corner(band, 10)
-	label(band, { Position = UDim2.fromScale(0.06, 0.06), Size = UDim2.fromScale(0.88, 0.5), Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Center, Text = entry.Name })
-	label(band, { Position = UDim2.fromScale(0.06, 0.56), Size = UDim2.fromScale(0.88, 0.32), Font = Enum.Font.GothamBold, TextScaled = true, TextColor3 = theme.Primary:Lerp(Color3.new(1, 1, 1), 0.45), TextXAlignment = Enum.TextXAlignment.Center, Text = entry.Stand })
-	local badge = label(tile, { Name = "Badge", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), Size = UDim2.fromOffset(84, 18), Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Center, BackgroundTransparency = 0, BackgroundColor3 = PANEL, Text = "", Visible = false, TextStrokeTransparency = 1 })
-	corner(badge, 6)
-	make("UIPadding", { PaddingTop = UDim.new(0, 3), PaddingBottom = UDim.new(0, 3), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4) }, badge)
-	local shade = make("Frame", { Name = "Shade", Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, ZIndex = 3 }, tile)
-	corner(shade, 10)
-	tile.MouseEnter:Connect(function()
-		TweenService:Create(tileScale, POP, { Scale = 1.06 }):Play()
-		showDetails(entry)
-	end)
-	tile.MouseLeave:Connect(function()
-		TweenService:Create(tileScale, SOFT, { Scale = 1 }):Play()
-	end)
-	tile.Activated:Connect(function()
-		tileScale.Scale = 0.95
-		TweenService:Create(tileScale, POP, { Scale = 1.06 }):Play()
-		showDetails(entry)
-	end)
-	rosterRows[entry.Id] = { Tile = tile, Badge = badge, Shade = shade, Stroke = strokeLine, Theme = theme, Entry = entry }
-end
-
-function buildDropdown()
-	-- (named "dropdown" for the rest of the card code; it's the full fighter select)
-	dropdown = make("TextButton", { Name = "FighterSelect", Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 10 }, gui)
-	dropdown.Activated:Connect(function()
-		CharacterCard.toggle()
-	end)
-	panel = make("TextButton", { Text = "", AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), Size = UDim2.fromOffset(780, 480), BackgroundColor3 = PANEL, ZIndex = 10 }, dropdown)
-	corner(panel, 14)
-	stroke(panel, GOLD, 2)
-	make("UIGradient", { Color = ColorSequence.new(Color3.fromRGB(60, 36, 96), Color3.fromRGB(16, 14, 26)), Rotation = 30 }, panel)
-	panelScale = make("UIScale", { Scale = 1 }, panel)
-	label(panel, { Position = UDim2.fromOffset(24, 12), Size = UDim2.fromOffset(500, 40), Font = Enum.Font.Bangers, TextSize = 40, TextColor3 = GOLD, TextStrokeTransparency = 0.4, Text = "CHOOSE YOUR FIGHTER", ZIndex = 10 })
-	label(panel, { Position = UDim2.fromOffset(26, 50), Size = UDim2.fromOffset(500, 16), Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Color3.fromRGB(190, 180, 215), Text = "Pick a fighter to see their moves.  Everyone can BLOCK (" .. keyText("Block") .. ") and DASH (" .. keyText("Dash") .. ").", ZIndex = 10 })
-	local close = make("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 14), Size = UDim2.fromOffset(38, 38), BackgroundColor3 = Color3.fromRGB(200, 50, 50), Text = "X", Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), ZIndex = 11 }, panel)
-	corner(close, 99)
-	close.Activated:Connect(function()
-		CharacterCard.toggle()
-	end)
-
-	grid = make("ScrollingFrame", { Position = UDim2.fromOffset(20, 78), Size = UDim2.fromOffset(456, 384), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 5, ScrollBarImageColor3 = GOLD, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ZIndex = 10 }, panel)
-	make("UIGridLayout", { CellSize = UDim2.fromOffset(140, 150), CellPadding = UDim2.fromOffset(10, 10), SortOrder = Enum.SortOrder.LayoutOrder }, grid)
-	make("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }, grid)
-
-	-- Details on the right.
-	local side = make("Frame", { Position = UDim2.fromOffset(490, 78), Size = UDim2.fromOffset(270, 384), BackgroundColor3 = INK, BackgroundTransparency = 0.25, ZIndex = 10 }, panel)
-	corner(side, 12)
-	details = { Scale = make("UIScale", { Scale = 1 }, side), Moves = {} }
-	local header = make("Frame", { Size = UDim2.new(1, 0, 0, 86), BackgroundColor3 = GOLD, ZIndex = 10 }, side)
-	corner(header, 12)
-	header.Name = "Header"
-	details.Header = header
-	details.HeaderGradient = make("UIGradient", { Rotation = 60 }, header)
-	details.Emblem = label(header, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 10, 0.5, 0), Size = UDim2.fromOffset(70, 66), Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Center, Text = "", ZIndex = 11 })
-	details.Name = label(header, { Position = UDim2.fromOffset(86, 12), Size = UDim2.new(1, -96, 0, 34), Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0.3, Text = "", ZIndex = 11 })
-	details.Tagline = label(header, { Position = UDim2.fromOffset(86, 50), Size = UDim2.new(1, -96, 0, 22), Font = Enum.Font.GothamBold, TextScaled = true, TextColor3 = Color3.fromRGB(255, 245, 225), Text = "", ZIndex = 11 })
-	details.Stand = label(side, { Position = UDim2.fromOffset(14, 94), Size = UDim2.new(1, -28, 0, 20), Font = Enum.Font.GothamBlack, TextSize = 14, Text = "", ZIndex = 10 })
-	for i = 1, 5 do
-		local row = make("Frame", { Position = UDim2.fromOffset(12, 122 + (i - 1) * 40), Size = UDim2.new(1, -24, 0, 34), BackgroundColor3 = PANEL, BackgroundTransparency = 0.1, ZIndex = 10 }, side)
-		corner(row, 8)
-		local key = label(row, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 5, 0.5, 0), Size = UDim2.fromOffset(40, 24), Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = INK, BackgroundTransparency = 0, BackgroundColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Center, TextStrokeTransparency = 1, Text = "", ZIndex = 11 })
-		corner(key, 6)
-		make("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) }, key)
-		local name = label(row, { Position = UDim2.fromOffset(52, 0), Size = UDim2.new(1, -58, 1, 0), Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Color3.new(1, 1, 1), TextTruncate = Enum.TextTruncate.AtEnd, Text = "", ZIndex = 11 })
-		details.Moves[i] = { Frame = row, Key = key, Name = name }
-	end
-	local select = make("TextButton", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -30), Size = UDim2.new(1, -24, 0, 44), BackgroundColor3 = Color3.fromRGB(60, 170, 90), Text = "SELECT", Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), ZIndex = 11 }, side)
-	corner(select, 10)
-	make("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }, select)
-	local selectScale = make("UIScale", { Scale = 1 }, select)
-	select.MouseEnter:Connect(function()
-		if select.Active then
-			TweenService:Create(selectScale, POP, { Scale = 1.05 }):Play()
-		end
-	end)
-	select.MouseLeave:Connect(function()
-		TweenService:Create(selectScale, SOFT, { Scale = 1 }):Play()
-	end)
-	select.Activated:Connect(function()
-		if select.Active and selectedId then
-			Net.get("TuskRequest"):FireServer("Character", selectedId)
-			selectScale.Scale = 0.92
-			TweenService:Create(selectScale, POP, { Scale = 1 }):Play()
-			task.delay(0.25, function()
-				if open then
-					CharacterCard.toggle()
-				end
-			end)
-		end
-	end)
-	details.Select = select
-	details.Hint = label(side, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -6), Size = UDim2.new(1, -20, 0, 20), Font = Enum.Font.Gotham, TextScaled = true, TextColor3 = Color3.fromRGB(190, 180, 215), TextXAlignment = Enum.TextXAlignment.Center, Text = "", ZIndex = 11 })
-
-	rosterRows = {}
-	for i, entry in ipairs(TuskConfig.Roster or {}) do
-		buildTile(entry, i)
-	end
-end
-
-function refreshDropdown()
-	if not dropdown or not rosterRows then
+function refreshDropdown(act)
+	if not dropdown then
 		return
 	end
-	for _, tile in pairs(rosterRows) do
-		local status = statusOf(tile.Entry)
-		local b = BADGE[status]
-		tile.Badge.Visible = b ~= nil
-		if b then
-			tile.Badge.Text = b[1]
-			tile.Badge.BackgroundColor3 = b[2]
+	-- Each character row: PLAYING (green), SELECT (blue), NOT INSTALLED (grey:
+	-- that character's _Server/_Client scripts aren't in the game) or IN DEVELOPMENT.
+	local current = act and Registry.characterOf(act)
+	local installed = installedSet()
+	for id, row in pairs(rosterRows) do
+		local playing = current == id
+		local missing = installed ~= nil and not installed[id]
+		row.Playing = playing
+		if row.Entry.Available then
+			row.Status.Text = playing and "PLAYING" or (missing and "NOT INSTALLED" or "SELECT")
+			row.Status.BackgroundColor3 = playing and GREEN or (missing and GREY or BLUE)
+			row.Status.TextColor3 = missing and Color3.fromRGB(190, 185, 200) or Color3.new(1, 1, 1)
+			row.Selectable = not playing and not missing
 		end
-		tile.Shade.BackgroundTransparency = (status == "MISSING" or status == "DEV") and 0.5 or 1
-	end
-	local current = shownAct and Registry.characterOf(shownAct)
-	for _, entry in ipairs(TuskConfig.Roster or {}) do
-		if entry.Id == (selectedId or current or "Johnny") then
-			showDetails(entry)
-		end
+		row.Outline.Transparency = playing and 0 or 1
+		row.Name.TextColor3 = (row.Entry.Available and not missing) and (playing and GOLD or Color3.new(1, 1, 1)) or Color3.fromRGB(150, 145, 160)
+		row.Row.LayoutOrder = playing and 0 or row.Order
 	end
 end
 
@@ -2464,26 +2460,25 @@ function CharacterCard.toggle()
 		return
 	end
 	open = not open
-	arrow.Text = open and "▲" or "▼"
+	local rows = #(TuskConfig.Roster or {})
+	local full = 52 + 14 + rows * (ROW_H + 5)
+	local target = math.min(full, (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 600) - 140)
+	refreshDropdown(shownAct)
 	if open then
-		selectedId = nil
-		refreshDropdown()
-		local view = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
-		local fit = math.min(1, (view.X - 24) / 780, (view.Y - 40) / 480)
 		dropdown.Visible = true
-		dropdown.BackgroundTransparency = 1
-		panelScale.Scale = fit * 0.8
-		TweenService:Create(dropdown, SOFT, { BackgroundTransparency = 0.45 }):Play()
-		TweenService:Create(panelScale, POP, { Scale = fit }):Play()
-	else
-		TweenService:Create(dropdown, SOFT, { BackgroundTransparency = 1 }):Play()
-		TweenService:Create(panelScale, SOFT, { Scale = panelScale.Scale * 0.85 }):Play()
-		task.delay(0.16, function()
-			if not open then
-				dropdown.Visible = false
-			end
-		end)
+		dropdownList.CanvasPosition = Vector2.new()
 	end
+	arrow.Text = open and "▲" or "▼"
+	local from = dropdownHeight
+	local to = open and target or 0
+	VFXLib.animate(0.22, function(a)
+		dropdownHeight = from + (to - from) * VFXLib.easeOut(a)
+		dropdown.Size = UDim2.fromOffset(ROW_W, dropdownHeight)
+	end, function()
+		if not open then
+			dropdown.Visible = false
+		end
+	end)
 end
 
 function CharacterCard.pop(color)
@@ -2540,9 +2535,7 @@ function CharacterCard.step()
 		if evolved and info then
 			CharacterCard.pop(info.Theme.Primary)
 		end
-		if open then
-			refreshDropdown()
-		end
+		refreshDropdown(act)
 	end
 end
 
@@ -4058,7 +4051,7 @@ TuskActRegistry.Acts = {
 		Ultimate = "SILENT SYMPHONY",
 		Next = nil,
 		Module = "Sandman", -- server moves
-		WalkSpeed = 1.3, -- he's a runner: 30% faster than everyone else
+		WalkSpeed = 1.25, -- he's a runner: 25% faster than everyone else
 		ClientModule = "SandmanVFX", -- client visuals (TuskActVFX.SandmanVFX)
 		CardTitle = "STAND  ·  IN A SILENT WAY",
 	},

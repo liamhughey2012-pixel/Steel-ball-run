@@ -80,3 +80,18 @@ updated: 2026-11-22
 | 2026-11-23 | Mountain Tim bug fixes: split body stays hidden (camera-proof) and restores faces exactly, hats ride the pieces, Split Dodge holds still + safe counter spot, gentler pulls, NPC lasso ropes |
 | 2026-11-23 | Hot Pants always holds Cream Starter in her hand (hip can removed); new animations (can shakes, spray sweeps, lunge seal, body-spray mend) |
 | 2026-11-23 | Character selection redesigned: CHOOSE YOUR FIGHTER screen (themed tiles, status badges, details panel with moves + keys, SELECT) |
+
+## 2026-11-23: Character menu back to the dropdown; balance pass
+- The full-screen CHOOSE YOUR FIGHTER screen was reverted at the user's request. The top-left card + dropdown is back, polished: a colour badge with initials, name, Stand, and a status chip on each row; hover highlight; the whole row is clickable; your character is outlined and listed first; the list closes after picking.
+- Balance target: abilities roughly 1.5 to 2.5 damage per second of cooldown, ultimates 24 to 34 on one target (Tusk Act 4 stays stronger, since it's earned).
+
+| Character | Change | Why |
+|---|---|---|
+| Johnny Act 1 | Tusk Jab 3 → 3.5 | starter combo was below everyone else |
+| Gyro | Steel Ball cd 5 → 6, return 5 → 4, bank bonus 2 → 1.5; Ball Breaker ticks 2 → 1.5, burst 14 → 12 | throw was ~4 dmg/s; ult was ~44 |
+| Diego | Scary Monsters lasts 8 s (was 10) | ~40% uptime on a big buff |
+| Pork Pie | Wired Hook 6 → 7; winch slam 14 → 16 | lowest damage kit |
+| Sandman | Sound Trap cd 5 → 7; walk speed 1.3 → 1.25 | traps came back too fast; still the fastest runner |
+| Mountain Tim | Split Barrage cd 7 → 8 | 15 damage every 7 s |
+| Hot Pants | Flesh Mend heal 22 → 18, cd 14 → 16 | too much sustain |
+| Blackmore | Cage slow 30% → 45%, cuts 2.5 → 2; storm radius 22 → 18, ticks 2 → 1.5 | cage could do 25+; storm was the biggest AoE in the game |

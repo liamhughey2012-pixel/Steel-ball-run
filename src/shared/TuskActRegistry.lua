@@ -128,7 +128,7 @@ TuskActRegistry.Acts = {
 		Ultimate = "SILENT SYMPHONY",
 		Next = nil,
 		Module = "Sandman", -- server moves
-		WalkSpeed = 1.3, -- he's a runner: 30% faster than everyone else
+		WalkSpeed = 1.25, -- he's a runner: 25% faster than everyone else
 		ClientModule = "SandmanVFX", -- client visuals (TuskActVFX.SandmanVFX)
 		CardTitle = "STAND  ·  IN A SILENT WAY",
 	},

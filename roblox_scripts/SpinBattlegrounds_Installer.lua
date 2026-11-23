@@ -1187,7 +1187,7 @@ TuskActRegistry.Acts = {
 		Ultimate = "SILENT SYMPHONY",
 		Next = nil,
 		Module = "Sandman", -- server moves
-		WalkSpeed = 1.3, -- he's a runner: 30% faster than everyone else
+		WalkSpeed = 1.25, -- he's a runner: 25% faster than everyone else
 		ClientModule = "SandmanVFX", -- client visuals (TuskActVFX.SandmanVFX)
 		CardTitle = "STAND  ·  IN A SILENT WAY",
 	},
@@ -1492,7 +1492,7 @@ TuskConfig.Act1 = {
 		HitboxForward = 3.2,
 		MaxTargets = 3,
 		Hits = {
-			{ Name = "Tusk Jab", Damage = 3, Stun = 0.45, Knockback = 3 },
+			{ Name = "Tusk Jab", Damage = 3.5, Stun = 0.45, Knockback = 3 },
 			{ Name = "Nail Strike", Damage = 3.5, Stun = 0.45, Knockback = 4 },
 			{ Name = "Spinning Assist", Damage = 3, Stun = 0.45, Knockback = 5, Projectile = { Speed = 160, Radius = 0.9, Range = 22 } },
 			{ Name = "Shock Finisher", Damage = 6, Stun = 0.5, Knockback = 42, Launch = 10, ShockwaveRadius = 7 },
@@ -1669,7 +1669,7 @@ TuskConfig.Diego = {
 	},
 	ScaryMonsters = { -- turn into a full raptor
 		Cooldown = 14, -- starts when the transformation ends
-		Duration = 10, Transform = 0.5,
+		Duration = 8, Transform = 0.5,
 		SpeedMultiplier = 1.35, -- walk speed while transformed
 		PounceMultiplier = 1.3, -- Raptor Pounce damage while transformed
 		KineticVision = 90, -- studs: moving enemies glow for Diego while transformed
@@ -1700,7 +1700,7 @@ TuskConfig.PorkPie = {
 	WiredHook = { -- a hook shoots out of his mouth; a hit snags the enemy and reels them in
 		Cooldown = 7, Startup = 0.25,
 		Speed = 120, Radius = 1.2, Range = 75,
-		Damage = 6, Stun = 1.0,
+		Damage = 7, Stun = 1.0,
 		ReelTime = 0.6, ReelTick = 0.15, ReelStopDistance = 5, -- pulled in until this close
 	},
 	BaitPan = { -- a pan of water with a feather bait; hooks burst out at anyone who comes near
@@ -1721,7 +1721,7 @@ TuskConfig.PorkPie = {
 		Windup = 1.0, Radius = 24, Puddles = 6, PuddleRadius = 14,
 		SnagDamage = 6, SnagStun = 1.0, SnagLift = 55,
 		ReelTime = 1.35, ReelTick = 0.15, TickDamage = 1.5, TickEvery = 0.3,
-		SlamDamage = 14, SlamRadius = 10, SlamKnockback = 60, SlamLaunch = 30, SlamStun = 0.8,
+		SlamDamage = 16, SlamRadius = 10, SlamKnockback = 60, SlamLaunch = 30, SlamStun = 0.8,
 	},
 }
 
@@ -1745,7 +1745,7 @@ TuskConfig.Sandman = {
 		Damage = 9, Stun = 0.55, Knockback = 16,
 	},
 	SoundTrap = { -- plant a written explosion ("DOGOOON") on the ground; stepping on it sets it off
-		Cooldown = 5, Startup = 0.25,
+		Cooldown = 7, Startup = 0.25,
 		Distance = 12, MaxTraps = 3, Lifetime = 15,
 		TriggerRadius = 5, CheckEvery = 0.15,
 		Radius = 8, Damage = 10, Stun = 0.6, Knockback = 30, Launch = 25,
@@ -1792,7 +1792,7 @@ TuskConfig.MountainTim = {
 		Damage = 6, Stun = 0.5, Knockback = 10,
 	},
 	SplitBarrage = { -- his arm splits along the rope and flies out punching; the last punch reels them in
-		Cooldown = 7, Windup = 0.18,
+		Cooldown = 8, Windup = 0.18,
 		Range = 26, Width = 4.5, Hits = 5, HitEvery = 0.1,
 		Damage = 2.5, Stun = 0.5, FinalDamage = 5, ReelTime = 0.45, ReelTick = 0.15,
 	},
@@ -1832,7 +1832,7 @@ TuskConfig.HotPants = {
 		SealTime = 3, SealTick = 0.5, SealDamage = 2, SealSlow = 0.75,
 	},
 	FleshMend = { -- spray her own wounds shut
-		Cooldown = 14, Duration = 1.2, Ticks = 4, Heal = 22,
+		Cooldown = 16, Duration = 1.2, Ticks = 4, Heal = 18,
 	},
 	Ultimate = { -- FLESH STORM: a flesh cloud hardens into cocoons round everyone caught, crushes them, bursts
 		Windup = 0.7, Distance = 12, Radius = 13,
@@ -1869,10 +1869,10 @@ TuskConfig.Blackmore = {
 		Cooldown = 11, MissCooldown = 3, Windup = 0.22,
 		Range = 16, Cone = 60,
 		Damage = 5, Stun = 0.6,
-		CageTime = 2.5, Slow = 0.3, Tick = 0.3, MoveDamage = 2.5, MoveThreshold = 0.8,
+		CageTime = 2.5, Slow = 0.45, Tick = 0.3, MoveDamage = 2, MoveThreshold = 0.8,
 	},
 	Ultimate = { -- CATCH THE RAINBOW: a downpour round him; the rain slices everyone, he scatters from the first hit, then every drop fires inward
-		Windup = 0.8, Radius = 22, Duration = 5, Tick = 0.5, TickDamage = 2, TickStun = 0.4,
+		Windup = 0.8, Radius = 18, Duration = 5, Tick = 0.5, TickDamage = 1.5, TickStun = 0.4,
 		ScatterDistance = 8,
 		BurstDamage = 12, BurstKnockback = 45, BurstLaunch = 20, BurstStun = 0.7,
 	},
@@ -1890,9 +1890,9 @@ TuskConfig.Gyro = {
 		},
 	},
 	SteelBallThrow = {
-		Cooldown = 5, Startup = 0.22, Damage = 10, ReturnDamage = 5, Speed = 140, ReturnSpeed = 120, Radius = 1.1, Range = 120, Stun = 0.4, Knockback = 18,
+		Cooldown = 6, Startup = 0.22, Damage = 10, ReturnDamage = 4, Speed = 140, ReturnSpeed = 120, Radius = 1.1, Range = 120, Stun = 0.4, Knockback = 18,
 		MaxBounces = 3, -- bounces off walls this many times before returning (0 = no bounces)
-		BounceBonusDamage = 2, -- extra damage per bounce (bank shots hit harder)
+		BounceBonusDamage = 1.5, -- extra damage per bounce (bank shots hit harder)
 	},
 	SpinTornado = {
 		Cooldown = 11, Startup = 0.28,
@@ -1905,8 +1905,8 @@ TuskConfig.Gyro = {
 	SpinVibration = { Cooldown = 8, Windup = 0.2, Damage = 9, Stun = 0.9, Knockback = 10, Launch = 16, HitboxSize = Vector3.new(5, 6, 6), HitboxForward = 3 },
 	Ultimate = { -- BALL BREAKER
 		Windup = 1.8, Speed = 85, Radius = 3, Range = 170, Damage = 14,
-		VortexRadius = 14, VortexTime = 2.4, PullStrength = 22, TickDamage = 2, TickInterval = 0.3,
-		BurstDamage = 14, BurstKnockback = 70, Launch = 30, Stun = 0.7,
+		VortexRadius = 14, VortexTime = 2.4, PullStrength = 22, TickDamage = 1.5, TickInterval = 0.3,
+		BurstDamage = 12, BurstKnockback = 70, Launch = 30, Stun = 0.7,
 	},
 }
 
@@ -5019,10 +5019,18 @@ return GyroOutfit
 	HotPantsOutfit  (ServerScriptService.SpinServer.HotPantsOutfit)
 
 	Gives a character Hot Pants' look while they play her (TuskAct 10),
-	built from blocky parts (no catalog asset ids):
-	  * a low pink cap with a short visor, short hair at the sides
-	  * a fitted purple top with a gold cross pendant
-	  * her namesake short shorts with a belt, knee-high boots
+	built from blocky parts (no catalog asset ids), matched to her art:
+	  * a pink-purple bob with bangs
+	  * a black cap with a gold front plate, gold visor, rivets and a gold
+	    spike on top
+	  * a thick cream scarf wrapped round her neck
+	  * a pink tunic dress with a shoulder capelet, gold four-petal flower
+	    clasps, gold leaf studs, a darker pink round panel on the front and a
+	    black fur hem
+	  * a gold chain belt with square links, a round "HP" buckle and a
+	    holster on her hip
+	  * cream ribbed sleeves and leggings
+	  * tall pink flared boots with pointed cream toes
 	  * (CREAM STARTER, her Stand, is drawn in her hand by the client)
 	The player's own hats/hair are hidden while they play her and come back
 	when she switches. Built on the server so every player sees it.
@@ -5034,18 +5042,22 @@ local HotPantsOutfit = {}
 HotPantsOutfit.Act = 10
 
 local C = {
-	Cap = Color3.fromRGB(232, 120, 160),
-	CapDark = Color3.fromRGB(180, 80, 120),
-	Hair = Color3.fromRGB(70, 48, 40),
-	Top = Color3.fromRGB(96, 60, 120),
-	TopTrim = Color3.fromRGB(70, 40, 92),
-	Cross = Color3.fromRGB(236, 196, 80),
-	Shorts = Color3.fromRGB(236, 120, 70),
-	Belt = Color3.fromRGB(60, 40, 30),
-	Boot = Color3.fromRGB(60, 44, 52),
-	Can = Color3.fromRGB(242, 140, 172),
-	CanCap = Color3.fromRGB(245, 245, 245),
-	Label = Color3.fromRGB(255, 225, 120),
+	Hair = Color3.fromRGB(206, 112, 188),
+	HairDark = Color3.fromRGB(160, 80, 150),
+	Cap = Color3.fromRGB(28, 26, 30),
+	Gold = Color3.fromRGB(226, 182, 64),
+	GoldDark = Color3.fromRGB(170, 128, 40),
+	Scarf = Color3.fromRGB(236, 228, 208),
+	ScarfLine = Color3.fromRGB(196, 186, 164),
+	Dress = Color3.fromRGB(226, 96, 150),
+	DressDark = Color3.fromRGB(184, 64, 120),
+	Fur = Color3.fromRGB(26, 24, 28),
+	Rib = Color3.fromRGB(232, 224, 202),
+	RibLine = Color3.fromRGB(196, 188, 166),
+	Boot = Color3.fromRGB(232, 108, 160),
+	BootDark = Color3.fromRGB(190, 78, 128),
+	Toe = Color3.fromRGB(238, 232, 214),
+	Holster = Color3.fromRGB(120, 82, 46),
 }
 
 local saved = setmetatable({}, { __mode = "k" })
@@ -5073,18 +5085,47 @@ local function piece(parent, outfit, name, size, color, offset)
 	return p
 end
 
+-- A four-petal gold flower clasp facing forward (-Z of `cf`).
+local function flower(parent, outfit, cf, size)
+	for _, a in ipairs({ math.pi / 4, -math.pi / 4 }) do
+		piece(parent, outfit, "Flower", Vector3.new(size, size * 0.38, 0.06), C.Gold, cf * CFrame.Angles(0, 0, a))
+	end
+	piece(parent, outfit, "Flower", Vector3.new(size * 0.3, size * 0.3, 0.08), C.GoldDark, cf * CFrame.new(0, 0, -0.02))
+end
+
+-- A cream ribbed tube over a limb from `top` down to `bottom` (local Y).
+local function ribbed(part, outfit, top, bottom, grow)
+	local h = top - bottom
+	local sz = part.Size
+	piece(part, outfit, "Rib", Vector3.new(sz.X + grow, h, sz.Z + grow), C.Rib, CFrame.new(0, (top + bottom) / 2, 0))
+	local y = top - 0.18
+	while y > bottom + 0.08 do
+		piece(part, outfit, "RibLine", Vector3.new(sz.X + grow + 0.03, 0.05, sz.Z + grow + 0.03), C.RibLine, CFrame.new(0, y, 0))
+		y = y - 0.24
+	end
+end
+
 local function headPieces(head, outfit)
 	local s = head.Size.Y / 1.2
-	local h, d = head.Size.Y / 2, head.Size.Z / 2
-	-- Low cap pulled over the brow, with a short visor.
-	piece(head, outfit, "Cap", Vector3.new(head.Size.X + 0.14 * s, 0.55 * s, head.Size.Z + 0.14 * s), C.Cap, CFrame.new(0, h - 0.15 * s, 0.02 * s))
-	piece(head, outfit, "CapTop", Vector3.new(head.Size.X * 0.8, 0.14 * s, head.Size.Z * 0.8), C.CapDark, CFrame.new(0, h + 0.18 * s, 0.02 * s))
-	piece(head, outfit, "Visor", Vector3.new(head.Size.X * 0.9, 0.1 * s, 0.5 * s), C.CapDark, CFrame.new(0, h - 0.32 * s, -d - 0.2 * s) * CFrame.Angles(-0.12, 0, 0))
-	-- Short hair at the sides and back.
+	local w, h, d = head.Size.X / 2, head.Size.Y / 2, head.Size.Z / 2
+	-- Pink-purple bob: sides down to the jaw, the back, and bangs under the cap.
 	for _, side in ipairs({ -1, 1 }) do
-		piece(head, outfit, "Hair", Vector3.new(0.16 * s, 0.6 * s, head.Size.Z * 0.75), C.Hair, CFrame.new(side * (head.Size.X / 2 + 0.06 * s), -0.05 * s, 0.05 * s))
+		piece(head, outfit, "Hair", Vector3.new(0.2 * s, 0.95 * s, head.Size.Z + 0.1 * s), C.Hair, CFrame.new(side * (w + 0.08 * s), -0.05 * s, 0.04 * s))
+		piece(head, outfit, "Hair", Vector3.new(0.22 * s, 0.14 * s, head.Size.Z * 0.6), C.HairDark, CFrame.new(side * (w + 0.1 * s), -0.48 * s, 0.1 * s))
 	end
-	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.1 * s, 0.55 * s, 0.16 * s), C.Hair, CFrame.new(0, -0.05 * s, d + 0.06 * s))
+	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.36 * s, 1.0 * s, 0.2 * s), C.Hair, CFrame.new(0, -0.02 * s, d + 0.08 * s))
+	piece(head, outfit, "Bangs", Vector3.new(head.Size.X * 0.9, 0.14 * s, 0.12 * s), C.Hair, CFrame.new(-0.08 * s, h - 0.3 * s, -d - 0.04 * s) * CFrame.Angles(0, 0, 0.12))
+	-- Black cap...
+	piece(head, outfit, "Cap", Vector3.new(head.Size.X + 0.24 * s, 0.42 * s, head.Size.Z + 0.24 * s), C.Cap, CFrame.new(0, h - 0.06 * s, 0.02 * s))
+	piece(head, outfit, "CapTop", Vector3.new(head.Size.X * 0.82, 0.18 * s, head.Size.Z * 0.82), C.Cap, CFrame.new(0, h + 0.22 * s, 0.04 * s))
+	-- ...with a gold front plate, rivets, visor and a spike on top.
+	piece(head, outfit, "Plate", Vector3.new(head.Size.X * 0.7, 0.3 * s, 0.1 * s), C.Gold, CFrame.new(0, h + 0.04 * s, -d - 0.13 * s) * CFrame.Angles(0.12, 0, 0))
+	for i = -1, 1 do
+		piece(head, outfit, "Rivet", Vector3.new(0.08 * s, 0.08 * s, 0.06 * s), C.GoldDark, CFrame.new(i * 0.3 * s, h + 0.08 * s, -d - 0.2 * s))
+	end
+	piece(head, outfit, "Visor", Vector3.new(head.Size.X * 0.95, 0.08 * s, 0.5 * s), C.Gold, CFrame.new(0, h - 0.24 * s, -d - 0.36 * s) * CFrame.Angles(-0.2, 0, 0))
+	piece(head, outfit, "Spike", Vector3.new(0.14 * s, 0.3 * s, 0.14 * s), C.Gold, CFrame.new(0, h + 0.44 * s, 0.04 * s))
+	piece(head, outfit, "Spike", Vector3.new(0.1 * s, 0.1 * s, 0.22 * s), C.Gold, CFrame.new(0, h + 0.6 * s, 0.1 * s))
 end
 
 local function body(character, outfit)
@@ -5092,61 +5133,92 @@ local function body(character, outfit)
 	local lower = character:FindFirstChild("LowerTorso")
 	if upper then
 		local s = upper.Size
-		piece(upper, outfit, "Top", s + Vector3.new(0.08, 0.02, 0.08), C.Top, CFrame.new())
-		piece(upper, outfit, "Collar", Vector3.new(s.X * 0.6, 0.22, s.Z + 0.14), C.TopTrim, CFrame.new(0, s.Y / 2 + 0.02, 0))
-		-- Gold cross pendant.
-		piece(upper, outfit, "Cross", Vector3.new(0.12, 0.5, 0.06), C.Cross, CFrame.new(0, s.Y * 0.1, -s.Z / 2 - 0.08))
-		piece(upper, outfit, "Cross", Vector3.new(0.34, 0.12, 0.06), C.Cross, CFrame.new(0, s.Y * 0.18, -s.Z / 2 - 0.08))
+		local top, front = s.Y / 2, -s.Z / 2
+		-- Tunic.
+		piece(upper, outfit, "Dress", s + Vector3.new(0.1, 0.02, 0.1), C.Dress, CFrame.new())
+		-- Capelet over the shoulders (drapes a little lower at the front).
+		piece(upper, outfit, "Capelet", Vector3.new(s.X + 0.5, 0.42, s.Z + 0.4), C.Dress, CFrame.new(0, top - 0.18, 0))
+		piece(upper, outfit, "Capelet", Vector3.new(s.X + 0.36, 0.3, 0.12), C.DressDark, CFrame.new(0, top - 0.48, front - 0.16))
+		-- Thick cream scarf wrapped round the neck.
+		piece(upper, outfit, "Scarf", Vector3.new(s.X * 0.62, 0.24, s.Z + 0.24), C.Scarf, CFrame.new(0, top + 0.06, 0))
+		piece(upper, outfit, "Scarf", Vector3.new(s.X * 0.52, 0.14, s.Z + 0.14), C.Scarf, CFrame.new(0, top + 0.22, 0))
+		piece(upper, outfit, "ScarfLine", Vector3.new(s.X * 0.61, 0.04, s.Z + 0.23), C.ScarfLine, CFrame.new(0, top + 0.1, 0))
+		piece(upper, outfit, "ScarfLine", Vector3.new(s.X * 0.51, 0.04, s.Z + 0.13), C.ScarfLine, CFrame.new(0, top + 0.24, 0))
+		-- Gold four-petal flowers on each shoulder.
 		for _, side in ipairs({ -1, 1 }) do
-			piece(upper, outfit, "Chain", Vector3.new(0.05, s.Y * 0.4, 0.05), C.Cross, CFrame.new(side * 0.22, s.Y * 0.3, -s.Z / 2 - 0.06) * CFrame.Angles(0, 0, side * 0.5))
+			flower(upper, outfit, CFrame.new(side * s.X * 0.33, top - 0.22, front - 0.3), 0.42)
+		end
+		-- Darker pink round panel on the front (blocky octagon).
+		piece(upper, outfit, "Panel", Vector3.new(0.8, 0.55, 0.06), C.DressDark, CFrame.new(0, -s.Y * 0.18, front - 0.07))
+		piece(upper, outfit, "Panel", Vector3.new(0.55, 0.8, 0.06), C.DressDark, CFrame.new(0, -s.Y * 0.18, front - 0.07))
+		-- Gold leaf studs scattered on the dress.
+		for _, spot in ipairs({ { -0.68, -0.05, 0.5 }, { 0.68, -0.05, -0.5 }, { -0.62, -0.5, -0.4 }, { 0.62, -0.5, 0.4 } }) do
+			piece(upper, outfit, "Leaf", Vector3.new(0.2, 0.13, 0.06), C.Gold, CFrame.new(spot[1], spot[2] * s.Y / 1.6, front - 0.07) * CFrame.Angles(0, 0, spot[3]))
 		end
 	end
+	-- Skirt with a black fur hem, gold chain belt, round HP buckle, holster.
 	local waist = lower or upper
 	if waist then
-		local y = lower and 0 or -upper.Size.Y / 2 + 0.15
-		piece(waist, outfit, "Shorts", Vector3.new(waist.Size.X + 0.1, lower and waist.Size.Y + 0.04 or 0.5, waist.Size.Z + 0.1), C.Shorts, CFrame.new(0, lower and 0 or y - 0.1, 0))
-		piece(waist, outfit, "Belt", Vector3.new(waist.Size.X + 0.14, 0.18, waist.Size.Z + 0.14), C.Belt, CFrame.new(0, lower and waist.Size.Y / 2 - 0.05 or y + 0.12, 0))
-		-- (Cream Starter is always in her right hand: drawn by the client.)
-	end
-	-- Bare legs under the shorts and boots, long purple sleeves.
-	local headPart = character:FindFirstChild("Head")
-	local skin = headPart and headPart.Color or Color3.fromRGB(238, 196, 164)
-	for _, name in ipairs({ "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
-		local leg = character:FindFirstChild(name)
-		if leg then
-			piece(leg, outfit, "Skin", leg.Size + Vector3.new(0.04, 0.02, 0.04), skin, CFrame.new())
+		local ws = waist.Size
+		local waistTop = lower and ws.Y / 2 or -upper.Size.Y / 2 + 0.3
+		local skirtH = lower and 0.75 or 0.6
+		local skirtY = waistTop - skirtH / 2
+		piece(waist, outfit, "Skirt", Vector3.new(ws.X + 0.22, skirtH, ws.Z + 0.22), C.Dress, CFrame.new(0, skirtY, 0))
+		piece(waist, outfit, "Fur", Vector3.new(ws.X + 0.4, 0.26, ws.Z + 0.4), C.Fur, CFrame.new(0, waistTop - skirtH - 0.04, 0)).Material = Enum.Material.Fabric
+		local beltY = waistTop - 0.12
+		piece(waist, outfit, "Belt", Vector3.new(ws.X + 0.28, 0.14, ws.Z + 0.28), C.GoldDark, CFrame.new(0, beltY, 0))
+		for i = -2, 2 do
+			if i ~= 0 then
+				piece(waist, outfit, "Link", Vector3.new(0.26, 0.2, 0.05), C.Gold, CFrame.new(i * 0.4, beltY, -ws.Z / 2 - 0.16))
+				piece(waist, outfit, "Link", Vector3.new(0.14, 0.09, 0.06), C.Dress, CFrame.new(i * 0.4, beltY, -ws.Z / 2 - 0.17))
+			end
 		end
+		piece(waist, outfit, "Buckle", Vector3.new(0.4, 0.34, 0.06), C.Gold, CFrame.new(0, beltY, -ws.Z / 2 - 0.17))
+		piece(waist, outfit, "Buckle", Vector3.new(0.3, 0.42, 0.06), C.Gold, CFrame.new(0, beltY, -ws.Z / 2 - 0.17))
+		piece(waist, outfit, "BuckleHP", Vector3.new(0.18, 0.18, 0.07), C.GoldDark, CFrame.new(0, beltY, -ws.Z / 2 - 0.18))
+		-- Holster hanging off her right hip.
+		piece(waist, outfit, "Holster", Vector3.new(0.22, 0.7, 0.36), C.Holster, CFrame.new(ws.X / 2 + 0.2, beltY - 0.4, -0.1) * CFrame.Angles(0, 0, 0.1))
 	end
+	-- Cream ribbed sleeves.
 	for _, name in ipairs({ "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm", "Left Arm", "Right Arm" }) do
 		local arm = character:FindFirstChild(name)
 		if arm then
 			local tall = arm.Size.Y > 1.8
-			local h = tall and arm.Size.Y - 0.35 or arm.Size.Y
-			piece(arm, outfit, "Sleeve", Vector3.new(arm.Size.X + 0.06, h + 0.02, arm.Size.Z + 0.06), C.Top, CFrame.new(0, arm.Size.Y / 2 - h / 2, 0))
+			local bottom = tall and -arm.Size.Y / 2 + 0.35 or -arm.Size.Y / 2
+			ribbed(arm, outfit, arm.Size.Y / 2, bottom, 0.06)
+			if name:find("Upper") or tall then
+				-- The capelet covers the top of the shoulder.
+				piece(arm, outfit, "Shoulder", Vector3.new(arm.Size.X + 0.16, 0.36, arm.Size.Z + 0.16), C.Dress, CFrame.new(0, arm.Size.Y / 2 - 0.12, 0))
+			end
 		end
 	end
-	-- Short shorts: only the very top of the legs is covered.
+	-- Cream ribbed leggings, then tall pink boots that flare at the top.
 	for _, name in ipairs({ "LeftUpperLeg", "RightUpperLeg", "Left Leg", "Right Leg" }) do
 		local leg = character:FindFirstChild(name)
 		if leg then
-			local tall = leg.Size.Y > 1.8
-			local h = tall and 0.5 or leg.Size.Y * 0.45
-			piece(leg, outfit, "ShortsLeg", Vector3.new(leg.Size.X + 0.14, h, leg.Size.Z + 0.14), C.Shorts, CFrame.new(0, leg.Size.Y / 2 - h / 2, 0))
+			ribbed(leg, outfit, leg.Size.Y / 2, -leg.Size.Y / 2, 0.04)
 		end
 	end
-	-- Knee-high boots.
 	for _, name in ipairs({ "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
 		local leg = character:FindFirstChild(name)
 		if leg then
 			local tall = leg.Size.Y > 1.8
-			local h = tall and 1.0 or leg.Size.Y * 0.85
-			piece(leg, outfit, "Boot", Vector3.new(leg.Size.X + 0.16, h, leg.Size.Z + 0.18), C.Boot, CFrame.new(0, -leg.Size.Y / 2 + h / 2, 0))
+			if not tall then
+				ribbed(leg, outfit, leg.Size.Y / 2, -leg.Size.Y / 2, 0.04)
+			end
+			local h = tall and 1.1 or leg.Size.Y + 0.1
+			local bootTop = -leg.Size.Y / 2 + h
+			piece(leg, outfit, "Boot", Vector3.new(leg.Size.X + 0.14, h, leg.Size.Z + 0.16), C.Boot, CFrame.new(0, bootTop - h / 2, 0))
+			-- Flared cuff with a darker fold.
+			piece(leg, outfit, "BootCuff", Vector3.new(leg.Size.X + 0.42, 0.34, leg.Size.Z + 0.42), C.Boot, CFrame.new(0, bootTop - 0.05, 0))
+			piece(leg, outfit, "BootFold", Vector3.new(0.08, h * 0.6, 0.06), C.BootDark, CFrame.new(leg.Size.X * 0.25, bootTop - h * 0.4, -leg.Size.Z / 2 - 0.1))
 		end
 	end
 	for _, name in ipairs({ "LeftFoot", "RightFoot" }) do
 		local foot = character:FindFirstChild(name)
 		if foot then
-			piece(foot, outfit, "Boot", foot.Size + Vector3.new(0.1, 0.06, 0.12), C.Boot, CFrame.new())
+			piece(foot, outfit, "Boot", foot.Size + Vector3.new(0.12, 0.06, 0.1), C.Boot, CFrame.new())
+			piece(foot, outfit, "Toe", Vector3.new(foot.Size.X * 0.7, foot.Size.Y * 0.8, 0.4), C.Toe, CFrame.new(0, -foot.Size.Y * 0.1, -foot.Size.Z / 2 - 0.15))
 		end
 	end
 end
@@ -22518,10 +22590,12 @@ return BountyUI
 	  * health bar with numbers
 	Pops and flashes when Tusk evolves.
 
-	FIGHTER SELECT: tap/click the card to open "CHOOSE YOUR FIGHTER": a grid
-	of tiles (one per TuskConfig.Roster entry, in its Stand's colours, with
-	an emblem and a PLAYING / NOT INSTALLED badge) and a details panel with
-	the fighter's Stand, tagline, every move with its key, and SELECT.
+	DROPDOWN: tap/click the card to open the character list
+	(TuskConfig.Roster): one row per character with a colour badge, name,
+	Stand and a status chip; rows light up on hover and the whole row is
+	clickable. Your current character is outlined and listed first. Characters whose scripts
+	aren't in the game are shown as NOT INSTALLED, and characters that aren't
+	finished as IN DEVELOPMENT (neither is selectable).
 ]]
 
 local Players = game:GetService("Players")
@@ -22755,6 +22829,17 @@ function CharacterCard.init()
 	hit.ZIndex = 4
 	hit.Parent = card
 	hit.Activated:Connect(CharacterCard.toggle)
+	local cardStroke = card:FindFirstChildOfClass("UIStroke")
+	hit.MouseEnter:Connect(function()
+		if cardStroke then
+			cardStroke.Thickness = 3
+		end
+	end)
+	hit.MouseLeave:Connect(function()
+		if cardStroke then
+			cardStroke.Thickness = 2
+		end
+	end)
 	buildDropdown()
 
 	local function onCharacter(character)
@@ -22769,22 +22854,206 @@ function CharacterCard.init()
 end
 
 ---------------------------------------------------------------------------
--- Fighter select ("CHOOSE YOUR FIGHTER")
+-- Dropdown
 ---------------------------------------------------------------------------
-local TweenService = game:GetService("TweenService")
-local POP = TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-local SOFT = TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local PANEL = Color3.fromRGB(22, 18, 34)
-local INK = Color3.fromRGB(12, 10, 18)
-local panel, panelScale, grid, details, selectedId
+local ROW_W = 290
+local ROW_H = 54
+local dropdownHeight = 0
+local ROW_BG = Color3.fromRGB(26, 23, 38)
+local ROW_HOVER = Color3.fromRGB(40, 35, 58)
+local GREEN = Color3.fromRGB(46, 150, 86)
+local BLUE = Color3.fromRGB(52, 104, 220)
+local GREY = Color3.fromRGB(58, 56, 70)
 
-local function make(class, props, parent)
-	local o = Instance.new(class)
-	for k, v in pairs(props) do
-		o[k] = v
+-- "JOHNNY JOESTAR" -> "JJ", "SANDMAN" -> "S".
+local function initials(name)
+	local out = ""
+	for word in string.gmatch(name, "%S+") do
+		if #out < 2 then
+			out = out .. word:sub(1, 1)
+		end
 	end
-	o.Parent = parent
-	return o
+	return out
+end
+
+local function tween(duration, step)
+	VFXLib.animate(duration, function(a)
+		step(VFXLib.easeOut(a))
+	end)
+end
+
+function buildDropdown()
+	dropdown = Instance.new("Frame")
+	dropdown.Name = "CharacterList"
+	dropdown.Position = UDim2.fromOffset(12, 112)
+	dropdown.Size = UDim2.fromOffset(ROW_W, 0)
+	dropdown.BackgroundColor3 = DARK
+	dropdown.BackgroundTransparency = 0.06
+	dropdown.ClipsDescendants = true
+	dropdown.Visible = false
+	dropdown.Parent = gui
+	corner(dropdown, 12)
+	stroke(dropdown, GOLD, 1.5)
+	local bg = Instance.new("UIGradient")
+	bg.Color = ColorSequence.new(Color3.fromRGB(34, 26, 52), Color3.fromRGB(14, 12, 20))
+	bg.Rotation = 90
+	bg.Parent = dropdown
+
+	-- Header (stays put while the list scrolls).
+	label(dropdown, {
+		Position = UDim2.fromOffset(12, 8),
+		Size = UDim2.new(1, -24, 0, 22),
+		Font = Enum.Font.Bangers,
+		TextSize = 22,
+		TextColor3 = GOLD,
+		Text = "CHARACTERS",
+	})
+	label(dropdown, {
+		Position = UDim2.fromOffset(12, 30),
+		Size = UDim2.new(1, -24, 0, 14),
+		Font = Enum.Font.GothamBold,
+		TextSize = 10,
+		TextColor3 = Color3.fromRGB(165, 158, 190),
+		TextStrokeTransparency = 1,
+		Text = "Everyone can BLOCK (F) and DASH (Q)",
+	})
+	local line = Instance.new("Frame")
+	line.Position = UDim2.fromOffset(12, 49)
+	line.Size = UDim2.new(1, -24, 0, 1)
+	line.BackgroundColor3 = GOLD
+	line.BackgroundTransparency = 0.6
+	line.BorderSizePixel = 0
+	line.Parent = dropdown
+
+	dropdownList = Instance.new("ScrollingFrame")
+	dropdownList.BackgroundTransparency = 1
+	dropdownList.BorderSizePixel = 0
+	dropdownList.Position = UDim2.fromOffset(0, 52)
+	dropdownList.Size = UDim2.new(1, 0, 1, -52)
+	dropdownList.CanvasSize = UDim2.new()
+	dropdownList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	dropdownList.ScrollBarThickness = 3
+	dropdownList.ScrollBarImageColor3 = GOLD
+	dropdownList.Parent = dropdown
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 5)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = dropdownList
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 6)
+	pad.PaddingBottom = UDim.new(0, 8)
+	pad.PaddingLeft = UDim.new(0, 8)
+	pad.PaddingRight = UDim.new(0, 10)
+	pad.Parent = dropdownList
+
+	rosterRows = {}
+	for order, entry in ipairs(TuskConfig.Roster or {}) do
+		-- The whole row is the button.
+		local row = Instance.new("TextButton")
+		row.Name = entry.Id
+		row.LayoutOrder = order
+		row.Text = ""
+		row.AutoButtonColor = false
+		row.Size = UDim2.new(1, 0, 0, ROW_H)
+		row.BackgroundColor3 = ROW_BG
+		row.Parent = dropdownList
+		corner(row, 9)
+		local outline = stroke(row, entry.Color, 1.5)
+		outline.Transparency = 1
+
+		-- Colour badge with initials.
+		local badge = Instance.new("Frame")
+		badge.Position = UDim2.fromOffset(7, 7)
+		badge.Size = UDim2.fromOffset(40, 40)
+		badge.BackgroundColor3 = entry.Color
+		badge.Parent = row
+		corner(badge, 8)
+		local shade = Instance.new("UIGradient")
+		shade.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(150, 150, 150))
+		shade.Rotation = 90
+		shade.Parent = badge
+		label(badge, {
+			Size = UDim2.fromScale(1, 1),
+			Font = Enum.Font.Bangers,
+			TextSize = 22,
+			TextColor3 = Color3.new(1, 1, 1),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextStrokeTransparency = 0.3,
+			Text = initials(entry.Name),
+		})
+
+		local nameText = label(row, {
+			Position = UDim2.fromOffset(55, 6),
+			Size = UDim2.new(1, -165, 0, 24),
+			Font = Enum.Font.Bangers,
+			TextSize = 21,
+			TextScaled = false,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			TextColor3 = entry.Available and Color3.new(1, 1, 1) or Color3.fromRGB(150, 145, 160),
+			Text = entry.Name,
+		})
+		label(row, {
+			Position = UDim2.fromOffset(55, 29),
+			Size = UDim2.new(1, -165, 0, 16),
+			Font = Enum.Font.GothamBold,
+			TextSize = 10,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			TextStrokeTransparency = 1,
+			TextColor3 = entry.Color,
+			Text = "STAND: " .. entry.Stand,
+		})
+
+		local status = label(row, {
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -8, 0.5, 0),
+			Size = UDim2.fromOffset(98, 26),
+			Font = Enum.Font.GothamBlack,
+			TextSize = 11,
+			TextColor3 = Color3.new(1, 1, 1),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextStrokeTransparency = 1,
+			BackgroundTransparency = 0,
+			BackgroundColor3 = GREY,
+			Text = entry.Available and "SELECT" or "IN DEVELOPMENT",
+		})
+		corner(status, 7)
+
+		local info = { Row = row, Order = order, Status = status, Entry = entry, Outline = outline, Name = nameText, Selectable = false, Playing = false }
+		rosterRows[entry.Id] = info
+
+		-- Hover: the row lights up and the outline shows in the character's colour.
+		local function hover(on)
+			local from = row.BackgroundColor3
+			local to = on and ROW_HOVER or ROW_BG
+			local fromT = outline.Transparency
+			local toT = (on or info.Playing) and 0 or 1
+			tween(0.12, function(a)
+				row.BackgroundColor3 = from:Lerp(to, a)
+				outline.Transparency = fromT + (toT - fromT) * a
+			end)
+		end
+		row.MouseEnter:Connect(function()
+			hover(true)
+		end)
+		row.MouseLeave:Connect(function()
+			hover(false)
+		end)
+		row.Activated:Connect(function()
+			if not info.Selectable then
+				return
+			end
+			-- Little press bounce, then ask the server and close.
+			tween(0.15, function(a)
+				status.Size = UDim2.fromOffset(98 - 8 * math.sin(a * math.pi), 26 - 4 * math.sin(a * math.pi))
+			end)
+			Net.get("TuskRequest"):FireServer("Character", entry.Id)
+			task.delay(0.15, function()
+				if open then
+					CharacterCard.toggle()
+				end
+			end)
+		end)
+	end
 end
 
 -- Which characters the server can play (the others' scripts aren't installed).
@@ -22800,228 +23069,27 @@ local function installedSet()
 	return set
 end
 
-local function infoFor(entry)
-	local act = Registry.StartAct[entry.Id]
-	return act and Registry.get(act), act
-end
-
-local function initials(name)
-	local words = {}
-	for w in string.gmatch(name, "%S+") do
-		table.insert(words, w)
-	end
-	if #words >= 2 then
-		return words[1]:sub(1, 1) .. words[2]:sub(1, 1)
-	end
-	return name:sub(1, 2)
-end
-
-local function keyText(slot)
-	local keys = TuskConfig.Keys[slot]
-	local k = keys and keys.Keyboard
-	local names = { One = "1", Two = "2", Three = "3", MouseButton1 = "LMB" }
-	return k and (names[k.Name] or k.Name) or "?"
-end
-
--- Status of a roster entry for this player right now.
-local function statusOf(entry)
-	if not entry.Available then
-		return "DEV"
-	end
-	local installed = installedSet()
-	if installed ~= nil and not installed[entry.Id] then
-		return "MISSING"
-	end
-	local current = shownAct and Registry.characterOf(shownAct)
-	if current == entry.Id then
-		return "PLAYING"
-	end
-	return "READY"
-end
-
-local BADGE = {
-	PLAYING = { "PLAYING", Color3.fromRGB(46, 150, 80) },
-	MISSING = { "NOT INSTALLED", Color3.fromRGB(70, 66, 84) },
-	DEV = { "IN DEVELOPMENT", Color3.fromRGB(70, 66, 84) },
-}
-
-local function showDetails(entry)
-	selectedId = entry.Id
-	local info = infoFor(entry)
-	local theme = info and info.Theme or { Primary = entry.Color, Secondary = PANEL }
-	details.Header.BackgroundColor3 = theme.Primary
-	details.HeaderGradient.Color = ColorSequence.new(theme.Primary, theme.Secondary)
-	details.Emblem.Text = initials(entry.Name)
-	details.Name.Text = entry.Name
-	details.Stand.Text = "STAND: " .. entry.Stand
-	details.Stand.TextColor3 = theme.Primary:Lerp(Color3.new(1, 1, 1), 0.35)
-	details.Tagline.Text = info and info.Tagline and string.upper(info.Tagline) or ""
-	local moves = info and {
-		{ keyText("M1"), info.M1 },
-		{ keyText("Ability1"), info.Abilities[1] },
-		{ keyText("Ability2"), info.Abilities[2] },
-		{ keyText("Ability3"), info.Abilities[3] },
-		{ keyText("Ultimate"), info.Ultimate .. (entry.Id == "Johnny" and "  (AWAKENS TUSK)" or "") },
-	} or {}
-	for i, row in ipairs(details.Moves) do
-		local m = moves[i]
-		row.Frame.Visible = m ~= nil
-		if m then
-			row.Key.Text = m[1]
-			row.Key.BackgroundColor3 = i == 5 and Color3.fromRGB(255, 205, 90) or theme.Primary
-			row.Name.Text = m[2]
-		end
-	end
-	local status = statusOf(entry)
-	local button = details.Select
-	button.Active = status == "READY"
-	button.AutoButtonColor = status == "READY"
-	button.Text = status == "PLAYING" and "PLAYING" or (status == "MISSING" and "NOT INSTALLED" or (status == "DEV" and "IN DEVELOPMENT" or "SELECT"))
-	button.BackgroundColor3 = status == "READY" and Color3.fromRGB(60, 170, 90) or (status == "PLAYING" and Color3.fromRGB(40, 110, 70) or Color3.fromRGB(70, 66, 84))
-	details.Hint.Text = status == "MISSING" and ("Add " .. entry.Id .. "_Server and " .. entry.Id .. "_Client to the game to unlock.") or ""
-	for id, tile in pairs(rosterRows) do
-		local on = id == selectedId
-		TweenService:Create(tile.Stroke, SOFT, { Thickness = on and 4 or 2, Color = on and Color3.new(1, 1, 1) or tile.Theme.Secondary:Lerp(INK, 0.3) }):Play()
-	end
-	-- Little pop when the details change.
-	details.Scale.Scale = 0.96
-	TweenService:Create(details.Scale, POP, { Scale = 1 }):Play()
-end
-
-local function buildTile(entry, order)
-	local info = infoFor(entry)
-	local theme = info and info.Theme or { Primary = entry.Color, Secondary = PANEL }
-	local tile = make("TextButton", { Name = entry.Id, LayoutOrder = order, Text = "", AutoButtonColor = false, BackgroundColor3 = theme.Primary }, grid)
-	corner(tile, 10)
-	make("UIGradient", { Color = ColorSequence.new(theme.Primary, theme.Secondary), Rotation = 60 }, tile)
-	local strokeLine = make("UIStroke", { Thickness = 2, Color = theme.Secondary:Lerp(INK, 0.3), ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, tile)
-	local tileScale = make("UIScale", { Scale = 1 }, tile)
-	-- Diagonal stripes for texture.
-	for i = 0, 3 do
-		make("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.88, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.2 + i * 0.25, 0.4), Size = UDim2.new(0, 10, 1.6, 0), Rotation = 30 }, tile)
-	end
-	label(tile, { Name = "Emblem", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.36), Size = UDim2.fromScale(0.9, 0.48), Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Center, Text = initials(entry.Name) })
-	local band = make("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0.34, 0), BackgroundColor3 = INK, BackgroundTransparency = 0.15 }, tile)
-	corner(band, 10)
-	label(band, { Position = UDim2.fromScale(0.06, 0.06), Size = UDim2.fromScale(0.88, 0.5), Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Center, Text = entry.Name })
-	label(band, { Position = UDim2.fromScale(0.06, 0.56), Size = UDim2.fromScale(0.88, 0.32), Font = Enum.Font.GothamBold, TextScaled = true, TextColor3 = theme.Primary:Lerp(Color3.new(1, 1, 1), 0.45), TextXAlignment = Enum.TextXAlignment.Center, Text = entry.Stand })
-	local badge = label(tile, { Name = "Badge", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), Size = UDim2.fromOffset(84, 18), Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Center, BackgroundTransparency = 0, BackgroundColor3 = PANEL, Text = "", Visible = false, TextStrokeTransparency = 1 })
-	corner(badge, 6)
-	make("UIPadding", { PaddingTop = UDim.new(0, 3), PaddingBottom = UDim.new(0, 3), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4) }, badge)
-	local shade = make("Frame", { Name = "Shade", Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, ZIndex = 3 }, tile)
-	corner(shade, 10)
-	tile.MouseEnter:Connect(function()
-		TweenService:Create(tileScale, POP, { Scale = 1.06 }):Play()
-		showDetails(entry)
-	end)
-	tile.MouseLeave:Connect(function()
-		TweenService:Create(tileScale, SOFT, { Scale = 1 }):Play()
-	end)
-	tile.Activated:Connect(function()
-		tileScale.Scale = 0.95
-		TweenService:Create(tileScale, POP, { Scale = 1.06 }):Play()
-		showDetails(entry)
-	end)
-	rosterRows[entry.Id] = { Tile = tile, Badge = badge, Shade = shade, Stroke = strokeLine, Theme = theme, Entry = entry }
-end
-
-function buildDropdown()
-	-- (named "dropdown" for the rest of the card code; it's the full fighter select)
-	dropdown = make("TextButton", { Name = "FighterSelect", Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 10 }, gui)
-	dropdown.Activated:Connect(function()
-		CharacterCard.toggle()
-	end)
-	panel = make("TextButton", { Text = "", AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), Size = UDim2.fromOffset(780, 480), BackgroundColor3 = PANEL, ZIndex = 10 }, dropdown)
-	corner(panel, 14)
-	stroke(panel, GOLD, 2)
-	make("UIGradient", { Color = ColorSequence.new(Color3.fromRGB(60, 36, 96), Color3.fromRGB(16, 14, 26)), Rotation = 30 }, panel)
-	panelScale = make("UIScale", { Scale = 1 }, panel)
-	label(panel, { Position = UDim2.fromOffset(24, 12), Size = UDim2.fromOffset(500, 40), Font = Enum.Font.Bangers, TextSize = 40, TextColor3 = GOLD, TextStrokeTransparency = 0.4, Text = "CHOOSE YOUR FIGHTER", ZIndex = 10 })
-	label(panel, { Position = UDim2.fromOffset(26, 50), Size = UDim2.fromOffset(500, 16), Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Color3.fromRGB(190, 180, 215), Text = "Pick a fighter to see their moves.  Everyone can BLOCK (" .. keyText("Block") .. ") and DASH (" .. keyText("Dash") .. ").", ZIndex = 10 })
-	local close = make("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 14), Size = UDim2.fromOffset(38, 38), BackgroundColor3 = Color3.fromRGB(200, 50, 50), Text = "X", Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), ZIndex = 11 }, panel)
-	corner(close, 99)
-	close.Activated:Connect(function()
-		CharacterCard.toggle()
-	end)
-
-	grid = make("ScrollingFrame", { Position = UDim2.fromOffset(20, 78), Size = UDim2.fromOffset(456, 384), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 5, ScrollBarImageColor3 = GOLD, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ZIndex = 10 }, panel)
-	make("UIGridLayout", { CellSize = UDim2.fromOffset(140, 150), CellPadding = UDim2.fromOffset(10, 10), SortOrder = Enum.SortOrder.LayoutOrder }, grid)
-	make("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }, grid)
-
-	-- Details on the right.
-	local side = make("Frame", { Position = UDim2.fromOffset(490, 78), Size = UDim2.fromOffset(270, 384), BackgroundColor3 = INK, BackgroundTransparency = 0.25, ZIndex = 10 }, panel)
-	corner(side, 12)
-	details = { Scale = make("UIScale", { Scale = 1 }, side), Moves = {} }
-	local header = make("Frame", { Size = UDim2.new(1, 0, 0, 86), BackgroundColor3 = GOLD, ZIndex = 10 }, side)
-	corner(header, 12)
-	header.Name = "Header"
-	details.Header = header
-	details.HeaderGradient = make("UIGradient", { Rotation = 60 }, header)
-	details.Emblem = label(header, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 10, 0.5, 0), Size = UDim2.fromOffset(70, 66), Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Center, Text = "", ZIndex = 11 })
-	details.Name = label(header, { Position = UDim2.fromOffset(86, 12), Size = UDim2.new(1, -96, 0, 34), Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0.3, Text = "", ZIndex = 11 })
-	details.Tagline = label(header, { Position = UDim2.fromOffset(86, 50), Size = UDim2.new(1, -96, 0, 22), Font = Enum.Font.GothamBold, TextScaled = true, TextColor3 = Color3.fromRGB(255, 245, 225), Text = "", ZIndex = 11 })
-	details.Stand = label(side, { Position = UDim2.fromOffset(14, 94), Size = UDim2.new(1, -28, 0, 20), Font = Enum.Font.GothamBlack, TextSize = 14, Text = "", ZIndex = 10 })
-	for i = 1, 5 do
-		local row = make("Frame", { Position = UDim2.fromOffset(12, 122 + (i - 1) * 40), Size = UDim2.new(1, -24, 0, 34), BackgroundColor3 = PANEL, BackgroundTransparency = 0.1, ZIndex = 10 }, side)
-		corner(row, 8)
-		local key = label(row, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 5, 0.5, 0), Size = UDim2.fromOffset(40, 24), Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = INK, BackgroundTransparency = 0, BackgroundColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Center, TextStrokeTransparency = 1, Text = "", ZIndex = 11 })
-		corner(key, 6)
-		make("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) }, key)
-		local name = label(row, { Position = UDim2.fromOffset(52, 0), Size = UDim2.new(1, -58, 1, 0), Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Color3.new(1, 1, 1), TextTruncate = Enum.TextTruncate.AtEnd, Text = "", ZIndex = 11 })
-		details.Moves[i] = { Frame = row, Key = key, Name = name }
-	end
-	local select = make("TextButton", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -30), Size = UDim2.new(1, -24, 0, 44), BackgroundColor3 = Color3.fromRGB(60, 170, 90), Text = "SELECT", Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), ZIndex = 11 }, side)
-	corner(select, 10)
-	make("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }, select)
-	local selectScale = make("UIScale", { Scale = 1 }, select)
-	select.MouseEnter:Connect(function()
-		if select.Active then
-			TweenService:Create(selectScale, POP, { Scale = 1.05 }):Play()
-		end
-	end)
-	select.MouseLeave:Connect(function()
-		TweenService:Create(selectScale, SOFT, { Scale = 1 }):Play()
-	end)
-	select.Activated:Connect(function()
-		if select.Active and selectedId then
-			Net.get("TuskRequest"):FireServer("Character", selectedId)
-			selectScale.Scale = 0.92
-			TweenService:Create(selectScale, POP, { Scale = 1 }):Play()
-			task.delay(0.25, function()
-				if open then
-					CharacterCard.toggle()
-				end
-			end)
-		end
-	end)
-	details.Select = select
-	details.Hint = label(side, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -6), Size = UDim2.new(1, -20, 0, 20), Font = Enum.Font.Gotham, TextScaled = true, TextColor3 = Color3.fromRGB(190, 180, 215), TextXAlignment = Enum.TextXAlignment.Center, Text = "", ZIndex = 11 })
-
-	rosterRows = {}
-	for i, entry in ipairs(TuskConfig.Roster or {}) do
-		buildTile(entry, i)
-	end
-end
-
-function refreshDropdown()
-	if not dropdown or not rosterRows then
+function refreshDropdown(act)
+	if not dropdown then
 		return
 	end
-	for _, tile in pairs(rosterRows) do
-		local status = statusOf(tile.Entry)
-		local b = BADGE[status]
-		tile.Badge.Visible = b ~= nil
-		if b then
-			tile.Badge.Text = b[1]
-			tile.Badge.BackgroundColor3 = b[2]
+	-- Each character row: PLAYING (green), SELECT (blue), NOT INSTALLED (grey:
+	-- that character's _Server/_Client scripts aren't in the game) or IN DEVELOPMENT.
+	local current = act and Registry.characterOf(act)
+	local installed = installedSet()
+	for id, row in pairs(rosterRows) do
+		local playing = current == id
+		local missing = installed ~= nil and not installed[id]
+		row.Playing = playing
+		if row.Entry.Available then
+			row.Status.Text = playing and "PLAYING" or (missing and "NOT INSTALLED" or "SELECT")
+			row.Status.BackgroundColor3 = playing and GREEN or (missing and GREY or BLUE)
+			row.Status.TextColor3 = missing and Color3.fromRGB(190, 185, 200) or Color3.new(1, 1, 1)
+			row.Selectable = not playing and not missing
 		end
-		tile.Shade.BackgroundTransparency = (status == "MISSING" or status == "DEV") and 0.5 or 1
-	end
-	local current = shownAct and Registry.characterOf(shownAct)
-	for _, entry in ipairs(TuskConfig.Roster or {}) do
-		if entry.Id == (selectedId or current or "Johnny") then
-			showDetails(entry)
-		end
+		row.Outline.Transparency = playing and 0 or 1
+		row.Name.TextColor3 = (row.Entry.Available and not missing) and (playing and GOLD or Color3.new(1, 1, 1)) or Color3.fromRGB(150, 145, 160)
+		row.Row.LayoutOrder = playing and 0 or row.Order
 	end
 end
 
@@ -23030,26 +23098,25 @@ function CharacterCard.toggle()
 		return
 	end
 	open = not open
-	arrow.Text = open and "▲" or "▼"
+	local rows = #(TuskConfig.Roster or {})
+	local full = 52 + 14 + rows * (ROW_H + 5)
+	local target = math.min(full, (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 600) - 140)
+	refreshDropdown(shownAct)
 	if open then
-		selectedId = nil
-		refreshDropdown()
-		local view = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
-		local fit = math.min(1, (view.X - 24) / 780, (view.Y - 40) / 480)
 		dropdown.Visible = true
-		dropdown.BackgroundTransparency = 1
-		panelScale.Scale = fit * 0.8
-		TweenService:Create(dropdown, SOFT, { BackgroundTransparency = 0.45 }):Play()
-		TweenService:Create(panelScale, POP, { Scale = fit }):Play()
-	else
-		TweenService:Create(dropdown, SOFT, { BackgroundTransparency = 1 }):Play()
-		TweenService:Create(panelScale, SOFT, { Scale = panelScale.Scale * 0.85 }):Play()
-		task.delay(0.16, function()
-			if not open then
-				dropdown.Visible = false
-			end
-		end)
+		dropdownList.CanvasPosition = Vector2.new()
 	end
+	arrow.Text = open and "▲" or "▼"
+	local from = dropdownHeight
+	local to = open and target or 0
+	VFXLib.animate(0.22, function(a)
+		dropdownHeight = from + (to - from) * VFXLib.easeOut(a)
+		dropdown.Size = UDim2.fromOffset(ROW_W, dropdownHeight)
+	end, function()
+		if not open then
+			dropdown.Visible = false
+		end
+	end)
 end
 
 function CharacterCard.pop(color)
@@ -23106,9 +23173,7 @@ function CharacterCard.step()
 		if evolved and info then
 			CharacterCard.pop(info.Theme.Primary)
 		end
-		if open then
-			refreshDropdown()
-		end
+		refreshDropdown(act)
 	end
 end
 
