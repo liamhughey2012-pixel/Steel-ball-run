@@ -31,8 +31,8 @@ local sounds = TuskConfig.Sounds
 
 local DROP = Color3.fromRGB(150, 205, 255)
 local DROP_LIGHT = Color3.fromRGB(225, 245, 255)
-local CANOPY = Color3.fromRGB(40, 60, 120)
-local CANOPY_TRIM = Color3.fromRGB(110, 170, 240)
+local CANOPY = Color3.fromRGB(52, 50, 100)
+local CANOPY_TRIM = Color3.fromRGB(84, 80, 140)
 local SHAFT = Color3.fromRGB(30, 30, 36)
 local RAINBOW = {
 	Color3.fromRGB(255, 70, 70), Color3.fromRGB(255, 150, 60), Color3.fromRGB(255, 230, 80), Color3.fromRGB(90, 220, 110),

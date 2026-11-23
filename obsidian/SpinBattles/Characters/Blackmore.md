@@ -6,14 +6,14 @@ updated: 2026-11-23
 # Blackmore: Catch the Rainbow
 Pick him from the character dropdown (BLACKMORE). Numbers: `TuskConfig.Blackmore`.
 Server moves: `TuskActs/Blackmore`. Visuals: `TuskActVFX/BlackmoreVFX`. Look: `BlackmoreOutfit`. Scripts: `Blackmore_Server` + `Blackmore_Client`.
-Built from the character's description (no reference images yet). Send pictures to refine him and his umbrella.
+Outfit matched to the reference art the user sent (2026-11-23).
 
 ![[blackmore_preview.png]]
 *(stand-in render on a test avatar)*
 
-**Look** (blocky): a wide-brim dark hat with a blue band, a blue mask over the lower face, a long navy coat (collar, buttons, tails), gloves and boots.
+**Look** (blocky, from the reference art): a dark navy hood round the head and neck with a gold ring on top and a long blond ponytail sweeping up and back; his white mask with the diagonal rainbow stripe (red, yellow, blue), eye slits and three black slits; a navy capelet over the shoulders and down to the elbows, covered in gold grommets (two rows down the front); a long navy coat split at the front; pale grey-blue sleeves and leggings with dark raindrop marks; grey studded boots.
 
-**Umbrella:** always in his left hand, closed like a cane. During CATCH THE RAINBOW it opens above his head.
+**Umbrella** (dark navy-purple): always in his left hand, closed like a cane. During CATCH THE RAINBOW it opens above his head.
 
 **Catch the Rainbow:** freezes raindrops in mid-air, then cuts with them, walks on them, and scatters into them.
 
