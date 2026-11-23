@@ -69,3 +69,4 @@ updated: 2026-11-22
 | 2026-11-23 | Combat UI: enemy health bar on hit, red damage edges; hit sparks, shock rings, camera kick, bigger damage numbers; layered M1 swipes |
 | 2026-11-23 | Stand-user NPCs scattered round the map (6, at landmark spots checked clear of buildings) |
 | 2026-11-23 | Block (F) and Dash (Q) for every character: guard bar, guard break, perfect block, dash i-frames; NPCs use them too |
+| 2026-11-23 | Bounty board by the spawn (owner's design): wanted-poster UI, accept/decline, tracker + target marker, Cash and kill streaks in leaderstats |

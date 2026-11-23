@@ -42,6 +42,7 @@ local DiegoOutfit = require(script.DiegoOutfit)
 local PorkPieOutfit = require(script.PorkPieOutfit)
 local SandmanOutfit = require(script.SandmanOutfit)
 local StandBots = require(script.StandBots)
+local BountyService = require(script.BountyService)
 
 -- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
@@ -53,6 +54,7 @@ DiegoOutfit.init()
 PorkPieOutfit.init()
 SandmanOutfit.init()
 StandBots.init(TuskService)
+BountyService.init()
 NPCService.init()
 TestDummies.init()
 ```

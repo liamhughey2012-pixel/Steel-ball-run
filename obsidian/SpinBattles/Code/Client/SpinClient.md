@@ -40,6 +40,7 @@ local WorldClient = require(script.WorldClient)
 local CharacterCard = require(script.UI.CharacterCard)
 local CombatUI = require(script.UI.CombatUI)
 local DefenseClient = require(script.DefenseClient)
+local BountyUI = require(script.UI.BountyUI)
 
 SettingsUI.init()
 HitFX.init()
@@ -51,4 +52,5 @@ WorldClient.init()
 CharacterCard.init()
 CombatUI.init()
 DefenseClient.init()
+BountyUI.init()
 ```

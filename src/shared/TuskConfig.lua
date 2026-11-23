@@ -116,6 +116,23 @@ TuskConfig.Roster = {
 }
 
 ---------------------------------------------------------------------------
+-- Bounty board (by the spawn): pick a wanted poster, hunt that player or
+-- Stand-user NPC down, get paid in Cash.
+---------------------------------------------------------------------------
+TuskConfig.Bounty = {
+	Enabled = true,
+	BoardOffset = Vector3.new(-20, 0, 140), -- from the map origin (the spawn is at 0, 0, 150)
+	BoardFacing = Vector3.new(1, 0, 0.5), -- which way the posters face (towards the spawn)
+	BaseReward = 100, -- Cash for a player
+	StreakReward = 50, -- + this per kill on their current streak
+	NPCReward = 75, -- Cash for a Stand-user NPC
+	KillCreditTime = 6, -- seconds: your hit must be this recent for the kill to count
+	Duration = 300, -- seconds before an accepted bounty runs out
+	MaxPosters = 12,
+	StartingCash = 0,
+}
+
+---------------------------------------------------------------------------
 -- Stand-user NPCs that fight you (StandBots). They wait at a camp away from
 -- the spawn, chase players who come close and use a real character's moves.
 ---------------------------------------------------------------------------

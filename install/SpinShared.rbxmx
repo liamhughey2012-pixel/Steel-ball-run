@@ -283,12 +283,13 @@ return NailModel
 	TuskRequest : client -> server  (action, ...)  see TuskService
 	TuskFX      : server -> client  (eventName, payloadTable)
 	WorldFX     : server -> client  map / NPC events (NPCSay)
+	Bounty      : both ways         bounty board (open / accept / tracker)
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local REMOTES = { "SpinRequest", "SpinFX", "TuskRequest", "TuskFX", "WorldFX" }
+local REMOTES = { "SpinRequest", "SpinFX", "TuskRequest", "TuskFX", "WorldFX", "Bounty" }
 
 local Net = {}
 local folder
@@ -1287,6 +1288,23 @@ TuskConfig.Roster = {
 	{ Id = "Diego", Name = "DIEGO BRANDO", Stand = "SCARY MONSTERS", Available = true, Color = Color3.fromRGB(80, 210, 220) },
 	{ Id = "PorkPie", Name = "PORK PIE HAT KID", Stand = "WIRED", Available = true, Color = Color3.fromRGB(165, 215, 80) },
 	{ Id = "Sandman", Name = "SANDMAN", Stand = "IN A SILENT WAY", Available = true, Color = Color3.fromRGB(245, 185, 80) },
+}
+
+---------------------------------------------------------------------------
+-- Bounty board (by the spawn): pick a wanted poster, hunt that player or
+-- Stand-user NPC down, get paid in Cash.
+---------------------------------------------------------------------------
+TuskConfig.Bounty = {
+	Enabled = true,
+	BoardOffset = Vector3.new(-20, 0, 140), -- from the map origin (the spawn is at 0, 0, 150)
+	BoardFacing = Vector3.new(1, 0, 0.5), -- which way the posters face (towards the spawn)
+	BaseReward = 100, -- Cash for a player
+	StreakReward = 50, -- + this per kill on their current streak
+	NPCReward = 75, -- Cash for a Stand-user NPC
+	KillCreditTime = 6, -- seconds: your hit must be this recent for the kill to count
+	Duration = 300, -- seconds before an accepted bounty runs out
+	MaxPosters = 12,
+	StartingCash = 0,
 }
 
 ---------------------------------------------------------------------------

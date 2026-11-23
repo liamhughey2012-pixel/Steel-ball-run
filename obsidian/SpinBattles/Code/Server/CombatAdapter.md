@@ -295,6 +295,11 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	local damage = info.Damage * (blocked and s.BlockDamageMultiplier or 1)
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
 
+	-- Who hit them last (kill credit for bounties and kill streaks).
+	if attackerPlayer then
+		targetCharacter:SetAttribute("LastAttackerId", attackerPlayer.UserId)
+		targetCharacter:SetAttribute("LastAttackTime", workspace:GetServerTimeNow())
+	end
 	if Adapter.Hooks.ApplyDamage then
 		Adapter.Hooks.ApplyDamage(attackerPlayer, humanoid, damage, info)
 	else

@@ -241,6 +241,7 @@ if BUILD_MAP_ON_START and __hasModule("SBRMapBuilder") and not workspace:FindFir
 	end
 end
 __require("StandBots").init(TuskService)
+__require("BountyService").init()
 NPCService.init()
 TestDummies.init()
 print("[Spin] Server ready")
@@ -280,6 +281,7 @@ __require("WorldClient").init()
 __require("CharacterCard").init()
 __require("CombatUI").init()
 __require("DefenseClient").init()
+__require("BountyUI").init()
 '''
 
 shared = {k: v for k, v in modules_in("src/shared").items() if k not in EXTERNAL}

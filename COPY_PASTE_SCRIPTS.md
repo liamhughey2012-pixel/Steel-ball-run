@@ -316,12 +316,13 @@ return NailModel
 	TuskRequest : client -> server  (action, ...)  see TuskService
 	TuskFX      : server -> client  (eventName, payloadTable)
 	WorldFX     : server -> client  map / NPC events (NPCSay)
+	Bounty      : both ways         bounty board (open / accept / tracker)
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local REMOTES = { "SpinRequest", "SpinFX", "TuskRequest", "TuskFX", "WorldFX" }
+local REMOTES = { "SpinRequest", "SpinFX", "TuskRequest", "TuskFX", "WorldFX", "Bounty" }
 
 local Net = {}
 local folder
@@ -1350,6 +1351,23 @@ TuskConfig.Roster = {
 	{ Id = "Diego", Name = "DIEGO BRANDO", Stand = "SCARY MONSTERS", Available = true, Color = Color3.fromRGB(80, 210, 220) },
 	{ Id = "PorkPie", Name = "PORK PIE HAT KID", Stand = "WIRED", Available = true, Color = Color3.fromRGB(165, 215, 80) },
 	{ Id = "Sandman", Name = "SANDMAN", Stand = "IN A SILENT WAY", Available = true, Color = Color3.fromRGB(245, 185, 80) },
+}
+
+---------------------------------------------------------------------------
+-- Bounty board (by the spawn): pick a wanted poster, hunt that player or
+-- Stand-user NPC down, get paid in Cash.
+---------------------------------------------------------------------------
+TuskConfig.Bounty = {
+	Enabled = true,
+	BoardOffset = Vector3.new(-20, 0, 140), -- from the map origin (the spawn is at 0, 0, 150)
+	BoardFacing = Vector3.new(1, 0, 0.5), -- which way the posters face (towards the spawn)
+	BaseReward = 100, -- Cash for a player
+	StreakReward = 50, -- + this per kill on their current streak
+	NPCReward = 75, -- Cash for a Stand-user NPC
+	KillCreditTime = 6, -- seconds: your hit must be this recent for the kill to count
+	Duration = 300, -- seconds before an accepted bounty runs out
+	MaxPosters = 12,
+	StartingCash = 0,
 }
 
 ---------------------------------------------------------------------------
@@ -3104,6 +3122,7 @@ local DiegoOutfit = require(script.DiegoOutfit)
 local PorkPieOutfit = require(script.PorkPieOutfit)
 local SandmanOutfit = require(script.SandmanOutfit)
 local StandBots = require(script.StandBots)
+local BountyService = require(script.BountyService)
 
 -- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
@@ -3115,11 +3134,415 @@ DiegoOutfit.init()
 PorkPieOutfit.init()
 SandmanOutfit.init()
 StandBots.init(TuskService)
+BountyService.init()
 NPCService.init()
 TestDummies.init()
 ```
 
-## 15. CombatAdapter  (ModuleScript)
+## 15. BountyService  (ModuleScript)
+**Put it in:** `ServerScriptService › SpinServer`
+
+```lua
+--[[
+	BountyService  (ServerScriptService.SpinServer.BountyService)
+
+	The BOUNTY BOARD by the spawn (owner's design):
+	  * a blocky board: two brown posts with grass at their feet, a brown
+	    plank back, and parchment wanted posters pinned on it. The posters on
+	    the board show the faces of the current top bounties.
+	  * walk up and press E ("View Bounties"): the client opens the board UI
+	    with a wanted poster for every other player and every Stand-user NPC
+	  * accept one: you get a bounty tracker and a TARGET marker on them.
+	    Land the killing blow (your hit within KillCreditTime) and you're paid
+	    in Cash (leaderstats). Players are worth more the longer their kill
+	    streak. Bounties run out after Duration seconds.
+	Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
+]]
+
+local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
+local RunService = game:GetService("RunService")
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+local Net = require(Shared.Net)
+
+local BountyService = {}
+local cfg = TuskConfig.Bounty or {}
+local Remote
+local active = {} -- [hunter Player] = bounty
+local npcIds = setmetatable({}, { __mode = "k" }) -- [model] = id
+local npcById = {} -- [id] = model
+local nextNpcId = 0
+local posterGuis = {} -- the posters on the physical board
+
+local WOOD = Color3.fromRGB(112, 74, 44)
+local WOOD_DARK = Color3.fromRGB(88, 57, 34)
+local WOOD_LIGHT = Color3.fromRGB(130, 88, 54)
+local GRASS = Color3.fromRGB(88, 125, 52)
+local PAPER = Color3.fromRGB(234, 205, 160) -- "skin colour" parchment
+local INK = Color3.fromRGB(60, 36, 20)
+local NAIL = Color3.fromRGB(60, 58, 62)
+
+---------------------------------------------------------------------------
+-- The board model
+---------------------------------------------------------------------------
+local function block(parent, name, size, cf, color, material)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = true
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = material or Enum.Material.Wood
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = parent
+	return p
+end
+
+local function posterGui(poster)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 60
+	gui.LightInfluence = 0.6
+	gui.Parent = poster
+	local function text(name, y, h, size, font, value)
+		local l = Instance.new("TextLabel")
+		l.Name = name
+		l.BackgroundTransparency = 1
+		l.Position = UDim2.fromScale(0.05, y)
+		l.Size = UDim2.fromScale(0.9, h)
+		l.Font = font
+		l.TextScaled = true
+		l.TextColor3 = INK
+		l.Text = value
+		l.Parent = gui
+		return l
+	end
+	text("Title", 0.03, 0.14, 1, Enum.Font.Bangers, "WANTED")
+	local photo = Instance.new("ImageLabel")
+	photo.Name = "Photo"
+	photo.BackgroundColor3 = Color3.fromRGB(205, 175, 130)
+	photo.BorderSizePixel = 0
+	photo.Position = UDim2.fromScale(0.15, 0.19)
+	photo.Size = UDim2.fromScale(0.7, 0.45)
+	photo.ImageColor3 = Color3.fromRGB(235, 215, 185) -- old-photo tint
+	photo.Parent = gui
+	text("PosterName", 0.66, 0.12, 1, Enum.Font.GothamBlack, "")
+	text("Reward", 0.8, 0.14, 1, Enum.Font.Bangers, "")
+	return gui
+end
+
+local function buildBoard(cf)
+	local model = Instance.new("Model")
+	model.Name = "BountyBoard"
+	-- Two posts on grassy mounds.
+	for _, x in ipairs({ -4.2, 4.2 }) do
+		block(model, "Post", Vector3.new(0.9, 8.6, 0.9), cf * CFrame.new(x, 4.3, 0.6), WOOD_DARK)
+		block(model, "Grass", Vector3.new(2.2, 0.5, 2.2), cf * CFrame.new(x, 0.25, 0.6), GRASS, Enum.Material.Grass)
+		block(model, "Grass", Vector3.new(1.4, 0.8, 1.2), cf * CFrame.new(x + 0.3, 0.4, 0.9), GRASS, Enum.Material.Grass)
+	end
+	-- Plank back: uneven planks, ends sticking out like the picture.
+	local planks = {
+		{ 7.9, 11.2, 0.4, 0.03 }, { 6.8, 10.4, -0.3, -0.02 }, { 5.7, 10.9, 0.2, 0.015 }, { 4.6, 10.2, -0.1, -0.03 },
+	}
+	for i, pl in ipairs(planks) do
+		block(model, "Plank", Vector3.new(pl[2], 1.08, 0.35), cf * CFrame.new(pl[3], pl[1], 0) * CFrame.Angles(0, 0, pl[4]), i % 2 == 0 and WOOD or WOOD_LIGHT, Enum.Material.WoodPlanks)
+	end
+	-- Title board on top.
+	local title = block(model, "Title", Vector3.new(6, 1.2, 0.3), cf * CFrame.new(0, 9.2, -0.05), WOOD_DARK, Enum.Material.WoodPlanks)
+	local tg = Instance.new("SurfaceGui")
+	tg.Face = Enum.NormalId.Front
+	tg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	tg.PixelsPerStud = 50
+	tg.Parent = title
+	local tl = Instance.new("TextLabel")
+	tl.BackgroundTransparency = 1
+	tl.Size = UDim2.fromScale(1, 1)
+	tl.Font = Enum.Font.Bangers
+	tl.TextScaled = true
+	tl.TextColor3 = PAPER
+	tl.TextStrokeTransparency = 0.4
+	tl.Text = "BOUNTIES"
+	tl.Parent = tg
+	-- Parchment posters pinned on the front.
+	local spots = { { -3.3, 6.5, 0.06 }, { -1.1, 6.9, -0.04 }, { 1.2, 6.4, 0.05 }, { 3.4, 6.8, -0.06 }, { 0, 4.7, 0.02 } }
+	for i, sp in ipairs(spots) do
+		local poster = block(model, "Poster", Vector3.new(1.8, 2.3, 0.05), cf * CFrame.new(sp[1], sp[2], -0.22) * CFrame.Angles(0, 0, sp[3]), PAPER, Enum.Material.SmoothPlastic)
+		block(model, "Nail", Vector3.new(0.14, 0.14, 0.1), poster.CFrame * CFrame.new(0, 1.0, -0.05), NAIL, Enum.Material.Metal)
+		posterGuis[i] = posterGui(poster)
+	end
+	-- The prompt.
+	local hit = block(model, "PromptPart", Vector3.new(8, 5, 1), cf * CFrame.new(0, 5.5, -0.6), WOOD)
+	hit.Transparency = 1
+	hit.CanCollide = false
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "View Bounties"
+	prompt.ObjectText = "Bounty Board"
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = hit
+	model.PrimaryPart = hit
+	return model, prompt
+end
+
+---------------------------------------------------------------------------
+-- Bounties
+---------------------------------------------------------------------------
+local function leaderstats(player)
+	local ls = player:FindFirstChild("leaderstats")
+	if not ls then
+		ls = Instance.new("Folder")
+		ls.Name = "leaderstats"
+		ls.Parent = player
+		local cash = Instance.new("IntValue")
+		cash.Name = "Cash"
+		cash.Value = cfg.StartingCash or 0
+		cash.Parent = ls
+		local claimed = Instance.new("IntValue")
+		claimed.Name = "Bounties"
+		claimed.Value = 0
+		claimed.Parent = ls
+	end
+	return ls
+end
+
+local function aliveModel(model)
+	local h = model and model.Parent and model:FindFirstChildOfClass("Humanoid")
+	return h and h.Health > 0
+end
+
+local function npcId(model)
+	local id = npcIds[model]
+	if not id then
+		nextNpcId = nextNpcId + 1
+		id = "N" .. nextNpcId
+		npcIds[model] = id
+		npcById[id] = model
+	end
+	return id
+end
+
+-- Every bounty on offer (optionally hiding the viewer).
+local function listBounties(viewer)
+	local list = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= viewer and aliveModel(p.Character) then
+			local streak = p:GetAttribute("KillStreak") or 0
+			table.insert(list, {
+				Key = "P" .. p.UserId,
+				Kind = "Player",
+				UserId = p.UserId,
+				Name = p.DisplayName,
+				Reward = (cfg.BaseReward or 100) + streak * (cfg.StreakReward or 50),
+				Streak = streak,
+			})
+		end
+	end
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		if aliveModel(model) then
+			local h = model:FindFirstChildOfClass("Humanoid")
+			table.insert(list, {
+				Key = npcId(model),
+				Kind = "NPC",
+				Model = model,
+				Name = h.DisplayName ~= "" and h.DisplayName or model.Name,
+				Reward = cfg.NPCReward or 75,
+				Act = model:GetAttribute("TuskAct"),
+			})
+		end
+	end
+	table.sort(list, function(a, b)
+		return a.Reward > b.Reward
+	end)
+	while #list > (cfg.MaxPosters or 12) do
+		table.remove(list)
+	end
+	return list
+end
+
+local function send(player, kind, data)
+	Remote:FireClient(player, kind, data)
+end
+
+local function publicBounty(b)
+	return { Key = b.Key, Kind = b.Kind, UserId = b.UserId, Model = b.Model, Name = b.Name, Reward = b.Reward, Expires = b.Expires }
+end
+
+local function accept(player, key)
+	if typeof(key) ~= "string" then
+		return
+	end
+	for _, entry in ipairs(listBounties(player)) do
+		if entry.Key == key then
+			local b = entry
+			b.Expires = workspace:GetServerTimeNow() + (cfg.Duration or 300)
+			active[player] = b
+			send(player, "Active", publicBounty(b))
+			return
+		end
+	end
+	send(player, "Lost", { Reason = "That bounty isn't on the board any more." })
+end
+
+local function targetsThis(b, victimPlayer, model)
+	if b.Kind == "Player" then
+		return victimPlayer ~= nil and victimPlayer.UserId == b.UserId
+	end
+	return b.Model == model
+end
+
+local function onDeath(model)
+	local victimPlayer = Players:GetPlayerFromCharacter(model)
+	local killerId = model:GetAttribute("LastAttackerId")
+	local when = model:GetAttribute("LastAttackTime") or -math.huge
+	if workspace:GetServerTimeNow() - when > (cfg.KillCreditTime or 6) then
+		killerId = nil
+	end
+	local killer = killerId and Players:GetPlayerByUserId(killerId)
+	-- Kill streaks (they make players worth more on the board).
+	if victimPlayer then
+		victimPlayer:SetAttribute("KillStreak", 0)
+	end
+	if killer and killer ~= victimPlayer then
+		killer:SetAttribute("KillStreak", (killer:GetAttribute("KillStreak") or 0) + 1)
+	end
+	for hunter, b in pairs(active) do
+		if targetsThis(b, victimPlayer, model) then
+			if killer == hunter then
+				local ls = leaderstats(hunter)
+				local cash, claimed = ls:FindFirstChild("Cash"), ls:FindFirstChild("Bounties")
+				if cash then
+					cash.Value = cash.Value + b.Reward
+				end
+				if claimed then
+					claimed.Value = claimed.Value + 1
+				end
+				active[hunter] = nil
+				send(hunter, "Complete", { Name = b.Name, Reward = b.Reward })
+			elseif b.Kind == "NPC" then
+				active[hunter] = nil
+				send(hunter, "Lost", { Reason = "Someone else took down " .. b.Name .. "." })
+			end
+		end
+	end
+end
+
+local function watchCharacter(model)
+	local humanoid = model:FindFirstChildOfClass("Humanoid") or model:WaitForChild("Humanoid", 10)
+	if humanoid then
+		humanoid.Died:Connect(function()
+			onDeath(model)
+		end)
+	end
+end
+
+local function refreshPosters()
+	local list = listBounties(nil)
+	for i, gui in ipairs(posterGuis) do
+		local e = list[i]
+		gui.PosterName.Text = e and string.upper(e.Name) or ""
+		gui.Reward.Text = e and ("$" .. e.Reward) or "NO BOUNTY"
+		gui.Photo.Image = (e and e.Kind == "Player") and ("rbxthumb://type=AvatarHeadShot&id=" .. e.UserId .. "&w=150&h=150") or ""
+		gui.Photo.BackgroundTransparency = e and 0 or 0.6
+	end
+end
+
+function BountyService.init()
+	if cfg.Enabled == false then
+		return
+	end
+	Remote = Net.get("Bounty")
+	-- Board by the spawn (or by any SpawnLocation without the map).
+	local map = workspace:FindFirstChild("SBRMap")
+	local base
+	if map then
+		base = (map:GetAttribute("Origin") or Vector3.new()) + (cfg.BoardOffset or Vector3.new(-20, 0, 140))
+	else
+		local spawn = workspace:FindFirstChildWhichIsA("SpawnLocation", true)
+		base = spawn and (spawn.Position + Vector3.new(-14, -0.5, -8)) or Vector3.new(-20, 0, 0)
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ground = workspace:Raycast(base + Vector3.new(0, 40, 0), Vector3.new(0, -120, 0), params)
+	if ground then
+		base = ground.Position
+	end
+	local facing = cfg.BoardFacing or Vector3.new(1, 0, 0.5)
+	local model, prompt = buildBoard(CFrame.lookAt(base, base + Vector3.new(facing.X, 0, facing.Z)))
+	model.Parent = map or workspace
+
+	prompt.Triggered:Connect(function(player)
+		send(player, "Open", { Bounties = listBounties(player), Active = active[player] and publicBounty(active[player]) or nil })
+	end)
+	Remote.OnServerEvent:Connect(function(player, action, key)
+		if action == "Accept" then
+			accept(player, key)
+		elseif action == "Abandon" then
+			active[player] = nil
+			send(player, "Cleared", {})
+		end
+	end)
+
+	local function onPlayer(player)
+		leaderstats(player)
+		player.CharacterAdded:Connect(watchCharacter)
+		if player.Character then
+			task.spawn(watchCharacter, player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	for _, p in ipairs(Players:GetPlayers()) do
+		onPlayer(p)
+	end
+	Players.PlayerRemoving:Connect(function(player)
+		active[player] = nil
+		for hunter, b in pairs(active) do
+			if b.Kind == "Player" and b.UserId == player.UserId then
+				active[hunter] = nil
+				send(hunter, "Lost", { Reason = b.Name .. " left the game." })
+			end
+		end
+	end)
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		task.spawn(watchCharacter, model)
+	end
+	CollectionService:GetInstanceAddedSignal("SpinFighter"):Connect(function(model)
+		task.spawn(watchCharacter, model)
+	end)
+
+	-- Expiry, vanished NPC targets, and the posters on the board.
+	local acc, posterAcc = 0, 5
+	RunService.Heartbeat:Connect(function(dt)
+		acc = acc + dt
+		posterAcc = posterAcc + dt
+		if acc >= 1 then
+			acc = 0
+			local now = workspace:GetServerTimeNow()
+			for hunter, b in pairs(active) do
+				if now > b.Expires then
+					active[hunter] = nil
+					send(hunter, "Lost", { Reason = "Your bounty on " .. b.Name .. " ran out." })
+				elseif b.Kind == "NPC" and not (b.Model and b.Model.Parent) then
+					active[hunter] = nil
+					send(hunter, "Lost", { Reason = b.Name .. " is gone." })
+				end
+			end
+		end
+		if posterAcc >= 5 then
+			posterAcc = 0
+			refreshPosters()
+		end
+	end)
+end
+
+return BountyService
+```
+
+## 16. CombatAdapter  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -3394,6 +3817,11 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	local damage = info.Damage * (blocked and s.BlockDamageMultiplier or 1)
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
 
+	-- Who hit them last (kill credit for bounties and kill streaks).
+	if attackerPlayer then
+		targetCharacter:SetAttribute("LastAttackerId", attackerPlayer.UserId)
+		targetCharacter:SetAttribute("LastAttackTime", workspace:GetServerTimeNow())
+	end
 	if Adapter.Hooks.ApplyDamage then
 		Adapter.Hooks.ApplyDamage(attackerPlayer, humanoid, damage, info)
 	else
@@ -3431,7 +3859,7 @@ end
 return Adapter
 ```
 
-## 16. CooldownService  (ModuleScript)
+## 17. CooldownService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -3481,7 +3909,7 @@ end)
 return CooldownService
 ```
 
-## 17. DefenseService  (ModuleScript)
+## 18. DefenseService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -3644,7 +4072,7 @@ end
 return DefenseService
 ```
 
-## 18. DiegoOutfit  (ModuleScript)
+## 19. DiegoOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -3875,7 +4303,7 @@ end
 return DiegoOutfit
 ```
 
-## 19. GyroOutfit  (ModuleScript)
+## 20. GyroOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -4077,7 +4505,7 @@ end
 return GyroOutfit
 ```
 
-## 20. NPCService  (ModuleScript)
+## 21. NPCService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -4297,7 +4725,7 @@ end
 return NPCService
 ```
 
-## 21. PorkPieOutfit  (ModuleScript)
+## 22. PorkPieOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -4573,7 +5001,7 @@ end
 return PorkPieOutfit
 ```
 
-## 22. ProjectileService  (ModuleScript)
+## 23. ProjectileService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -4774,7 +5202,7 @@ end)
 return ProjectileService
 ```
 
-## 23. SandmanOutfit  (ModuleScript)
+## 24. SandmanOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -4989,7 +5417,7 @@ end
 return SandmanOutfit
 ```
 
-## 24. StandAssetLoader  (ModuleScript)
+## 25. StandAssetLoader  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5079,7 +5507,7 @@ end
 return StandAssetLoader
 ```
 
-## 25. StandBots  (ModuleScript)
+## 26. StandBots  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5414,7 +5842,7 @@ end
 return StandBots
 ```
 
-## 26. TestDummies  (ModuleScript)
+## 27. TestDummies  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5584,12 +6012,12 @@ end
 return TestDummies
 ```
 
-## 27. TuskActs  (Folder)
+## 28. TuskActs  (Folder)
 **Put it in:** `ServerScriptService › SpinServer`
 
 _Empty folder: nothing to paste._
 
-## 28. DiegoBrando  (ModuleScript)
+## 29. DiegoBrando  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -6047,7 +6475,7 @@ end
 return Diego
 ```
 
-## 29. GyroZeppeli  (ModuleScript)
+## 30. GyroZeppeli  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -6371,7 +6799,7 @@ end
 return Gyro
 ```
 
-## 30. PorkPieHatKid  (ModuleScript)
+## 31. PorkPieHatKid  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -6761,7 +7189,7 @@ end
 return PorkPie
 ```
 
-## 31. Sandman  (ModuleScript)
+## 32. Sandman  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -7034,7 +7462,7 @@ end
 return Sandman
 ```
 
-## 32. TuskAct1  (ModuleScript)
+## 33. TuskAct1  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -7394,7 +7822,7 @@ end
 return Act1
 ```
 
-## 33. TuskAct2  (ModuleScript)
+## 34. TuskAct2  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -7667,7 +8095,7 @@ end
 return Act2
 ```
 
-## 34. TuskAct3  (ModuleScript)
+## 35. TuskAct3  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -7858,7 +8286,7 @@ end
 return Act3
 ```
 
-## 35. TuskAct4  (ModuleScript)
+## 36. TuskAct4  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -8131,7 +8559,7 @@ end
 return Act4
 ```
 
-## 36. TuskHitbox  (ModuleScript)
+## 37. TuskHitbox  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -8212,7 +8640,7 @@ end
 return TuskHitbox
 ```
 
-## 37. TuskMoves  (ModuleScript)
+## 38. TuskMoves  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -8474,7 +8902,7 @@ TuskMoves.Config = TuskConfig
 return TuskMoves
 ```
 
-## 38. TuskService  (ModuleScript)
+## 39. TuskService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -9126,7 +9554,7 @@ end
 return TuskService
 ```
 
-## 39. TuskSneakService  (ModuleScript)
+## 40. TuskSneakService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -9389,7 +9817,7 @@ end
 return TuskSneakService
 ```
 
-## 40. SpinClient  (LocalScript)
+## 41. SpinClient  (LocalScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts`
 
 ```lua
@@ -9409,6 +9837,7 @@ local WorldClient = require(script.WorldClient)
 local CharacterCard = require(script.UI.CharacterCard)
 local CombatUI = require(script.UI.CombatUI)
 local DefenseClient = require(script.DefenseClient)
+local BountyUI = require(script.UI.BountyUI)
 
 SettingsUI.init()
 HitFX.init()
@@ -9420,9 +9849,10 @@ WorldClient.init()
 CharacterCard.init()
 CombatUI.init()
 DefenseClient.init()
+BountyUI.init()
 ```
 
-## 41. CameraFX  (ModuleScript)
+## 42. CameraFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -9601,7 +10031,7 @@ end
 return CameraFX
 ```
 
-## 42. DefenseClient  (ModuleScript)
+## 43. DefenseClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -9902,7 +10332,7 @@ end
 return DefenseClient
 ```
 
-## 43. Fighters  (ModuleScript)
+## 44. Fighters  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -9937,7 +10367,7 @@ end
 return Fighters
 ```
 
-## 44. HitFX  (ModuleScript)
+## 45. HitFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -10078,7 +10508,7 @@ end
 return HitFX
 ```
 
-## 45. JointCache  (ModuleScript)
+## 46. JointCache  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -10133,7 +10563,7 @@ end
 return JointCache
 ```
 
-## 46. TuskActCommon  (ModuleScript)
+## 47. TuskActCommon  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -10383,12 +10813,12 @@ end
 return Common
 ```
 
-## 47. TuskActVFX  (Folder)
+## 48. TuskActVFX  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 48. Act1  (ModuleScript)
+## 49. Act1  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -10770,7 +11200,7 @@ end
 return Act1
 ```
 
-## 49. Act2  (ModuleScript)
+## 50. Act2  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -10882,7 +11312,7 @@ end
 return Act2
 ```
 
-## 50. Act3  (ModuleScript)
+## 51. Act3  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -11060,7 +11490,7 @@ end
 return Act3
 ```
 
-## 51. Act4  (ModuleScript)
+## 52. Act4  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -11370,7 +11800,7 @@ end
 return Act4
 ```
 
-## 52. Diego  (ModuleScript)
+## 53. Diego  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -12262,7 +12692,7 @@ end
 return Diego
 ```
 
-## 53. Gyro  (ModuleScript)
+## 54. Gyro  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -13397,7 +13827,7 @@ end)
 return Gyro
 ```
 
-## 54. PorkPie  (ModuleScript)
+## 55. PorkPie  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -14056,7 +14486,7 @@ end)
 return PorkPie
 ```
 
-## 55. SandmanVFX  (ModuleScript)
+## 56. SandmanVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -14458,7 +14888,7 @@ end)
 return SandmanVFX
 ```
 
-## 56. TuskAnimation  (ModuleScript)
+## 57. TuskAnimation  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -15112,7 +15542,7 @@ end)
 return TuskAnimation
 ```
 
-## 57. TuskController  (ModuleScript)
+## 58. TuskController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -15360,7 +15790,7 @@ end
 return TuskController
 ```
 
-## 58. TuskProjectiles  (ModuleScript)
+## 59. TuskProjectiles  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -15636,7 +16066,7 @@ end
 return TuskProjectiles
 ```
 
-## 59. TuskSneakController  (ModuleScript)
+## 60. TuskSneakController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -15921,7 +16351,7 @@ end
 return TuskSneakController
 ```
 
-## 60. TuskStand  (ModuleScript)
+## 61. TuskStand  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -16286,7 +16716,7 @@ end
 return TuskStand
 ```
 
-## 61. TuskVFX  (ModuleScript)
+## 62. TuskVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -17530,12 +17960,380 @@ end
 return TuskVFX
 ```
 
-## 62. UI  (Folder)
+## 63. UI  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 63. CharacterCard  (ModuleScript)
+## 64. BountyUI  (ModuleScript)
+**Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
+
+```lua
+--[[
+	BountyUI  (StarterPlayerScripts.SpinClient.UI.BountyUI)
+
+	The bounty board screen (owner's design):
+	  * a wooden board full of parchment WANTED posters, one per player (their
+	    avatar headshot) or Stand-user NPC, each with its reward
+	  * HOVER a poster: it straightens, lifts, grows and gets a shadow
+	  * CLICK it: "ACCEPT BOUNTY?" with ACCEPT / DECLINE
+	  * ACCEPT: the board closes and a bounty tracker appears on the left
+	    (target, reward, distance, time left, abandon button), plus a red
+	    TARGET marker over their head that only you can see
+	  * claiming it: a big "BOUNTY CLAIMED! +$350" banner
+	Remote: Net "Bounty" (server: BountyService).
+]]
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local Net = require(Shared.Net)
+local Registry = require(Shared.TuskActRegistry)
+
+local BountyUI = {}
+local player = Players.LocalPlayer
+local Remote
+
+local WOOD = Color3.fromRGB(112, 74, 44)
+local WOOD_DARK = Color3.fromRGB(78, 50, 30)
+local WOOD_LIGHT = Color3.fromRGB(134, 90, 56)
+local PAPER = Color3.fromRGB(234, 205, 160)
+local PAPER_DARK = Color3.fromRGB(205, 172, 125)
+local INK = Color3.fromRGB(60, 36, 20)
+local RED = Color3.fromRGB(190, 40, 35)
+local GREEN = Color3.fromRGB(60, 150, 70)
+local GOLD = Color3.fromRGB(255, 205, 90)
+
+local gui, dim, board, grid, confirm, tracker, banner, marker
+local current -- the active bounty
+local FAST = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local SOFT = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+local function new(class, props, parent)
+	local o = Instance.new(class)
+	for k, v in pairs(props) do
+		o[k] = v
+	end
+	o.Parent = parent
+	return o
+end
+
+local function corner(p, r)
+	new("UICorner", { CornerRadius = UDim.new(0, r) }, p)
+end
+
+local function label(parent, props)
+	local l = new("TextLabel", { BackgroundTransparency = 1, TextColor3 = INK, Font = Enum.Font.GothamBlack, TextScaled = true }, parent)
+	for k, v in pairs(props) do
+		l[k] = v
+	end
+	return l
+end
+
+local function photoFor(entry, parent)
+	local photo = new("ImageLabel", { Name = "Photo", BackgroundColor3 = PAPER_DARK, BorderSizePixel = 0, ImageColor3 = Color3.fromRGB(240, 220, 190) }, parent)
+	if entry.Kind == "Player" and entry.UserId then
+		photo.Image = "rbxthumb://type=AvatarHeadShot&id=" .. entry.UserId .. "&w=150&h=150"
+	else
+		-- NPC: a silhouette in their Stand's colour with a question mark.
+		local info = entry.Act and Registry.get(entry.Act)
+		photo.BackgroundColor3 = info and info.Theme.Primary:Lerp(PAPER_DARK, 0.45) or PAPER_DARK
+		label(photo, { Size = UDim2.fromScale(1, 1), Text = "?", Font = Enum.Font.Bangers, TextColor3 = INK, TextTransparency = 0.25 })
+	end
+	return photo
+end
+
+---------------------------------------------------------------------------
+-- Board
+---------------------------------------------------------------------------
+local function closeBoard()
+	if dim then
+		dim.Visible = false
+	end
+	if confirm then
+		confirm.Visible = false
+	end
+end
+
+local function showConfirm(entry)
+	confirm.Visible = true
+	local body = confirm:FindFirstChild("Body")
+	for _, c in ipairs(body:GetChildren()) do
+		if c.Name == "Photo" then
+			c:Destroy()
+		end
+	end
+	local photo = photoFor(entry, body)
+	photo.Position = UDim2.fromScale(0.36, 0.2)
+	photo.Size = UDim2.fromScale(0.28, 0.36)
+	body:FindFirstChild("Who").Text = string.upper(entry.Name)
+	body:FindFirstChild("Pay").Text = "REWARD  $" .. entry.Reward
+	body:FindFirstChild("Note").Text = (current and current.Key ~= entry.Key) and ("This replaces your bounty on " .. current.Name .. ".") or "Land the final hit to claim it."
+	confirm.Entry = entry
+	local scale = confirm:FindFirstChildOfClass("UIScale")
+	scale.Scale = 0.6
+	TweenService:Create(scale, FAST, { Scale = 1 }):Play()
+end
+
+local function makePoster(entry, index)
+	local col = (index - 1) % 4
+	local row = math.floor((index - 1) / 4)
+	local tilt = ((index * 37) % 11 - 5) * 1.2
+	local holder = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(126, 166), Position = UDim2.fromOffset(16 + col * 140, 12 + row * 178) }, grid)
+	local shadow = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Position = UDim2.fromOffset(6, 8), Rotation = tilt }, holder)
+	corner(shadow, 4)
+	local paper = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = PAPER, Size = UDim2.fromScale(1, 1), Rotation = tilt }, holder)
+	corner(paper, 3)
+	local scale = new("UIScale", { Scale = 1 }, paper)
+	new("UIGradient", { Color = ColorSequence.new(PAPER, PAPER_DARK), Rotation = 90 }, paper)
+	new("UIStroke", { Color = PAPER_DARK:Lerp(INK, 0.3), Thickness = 1.5 }, paper)
+	new("Frame", { BackgroundColor3 = Color3.fromRGB(70, 70, 76), Size = UDim2.fromOffset(9, 9), Position = UDim2.new(0.5, -4, 0, 4) }, paper) -- nail
+	label(paper, { Position = UDim2.fromScale(0.05, 0.07), Size = UDim2.fromScale(0.9, 0.14), Text = "WANTED", Font = Enum.Font.Bangers })
+	local photo = photoFor(entry, paper)
+	photo.Position = UDim2.fromScale(0.14, 0.23)
+	photo.Size = UDim2.fromScale(0.72, 0.42)
+	label(paper, { Position = UDim2.fromScale(0.05, 0.67), Size = UDim2.fromScale(0.9, 0.1), Text = string.upper(entry.Name), TextTruncate = Enum.TextTruncate.AtEnd })
+	label(paper, { Position = UDim2.fromScale(0.05, 0.79), Size = UDim2.fromScale(0.9, 0.13), Text = "$" .. entry.Reward, Font = Enum.Font.Bangers, TextColor3 = RED })
+	if (entry.Streak or 0) > 0 then
+		label(paper, { Position = UDim2.fromScale(0.05, 0.92), Size = UDim2.fromScale(0.9, 0.06), Text = entry.Streak .. " KILL STREAK", TextColor3 = INK:Lerp(PAPER, 0.3) })
+	end
+	if current and current.Key == entry.Key then
+		local stamp = label(paper, { Position = UDim2.fromScale(0.05, 0.36), Size = UDim2.fromScale(0.9, 0.2), Rotation = -18, Text = "HUNTING", Font = Enum.Font.Bangers, TextColor3 = RED, TextTransparency = 0.15, ZIndex = 3 })
+		new("UIStroke", { Color = RED, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Transparency = 0.3 }, stamp)
+	end
+	-- Hover: straighten, lift, grow, cast a shadow. Leave: settle back.
+	paper.MouseEnter:Connect(function()
+		holder.ZIndex = 5
+		TweenService:Create(paper, FAST, { Rotation = 0, Position = UDim2.fromOffset(0, -8) }):Play()
+		TweenService:Create(scale, FAST, { Scale = 1.12 }):Play()
+		TweenService:Create(shadow, SOFT, { BackgroundTransparency = 0.6, Rotation = 0, Position = UDim2.fromOffset(8, 6) }):Play()
+	end)
+	paper.MouseLeave:Connect(function()
+		holder.ZIndex = 1
+		TweenService:Create(paper, SOFT, { Rotation = tilt, Position = UDim2.fromOffset(0, 0) }):Play()
+		TweenService:Create(scale, SOFT, { Scale = 1 }):Play()
+		TweenService:Create(shadow, SOFT, { BackgroundTransparency = 1, Rotation = tilt, Position = UDim2.fromOffset(6, 8) }):Play()
+	end)
+	paper.Activated:Connect(function()
+		-- A little "tug" when picked.
+		scale.Scale = 1.2
+		TweenService:Create(scale, FAST, { Scale = 1.12 }):Play()
+		showConfirm(entry)
+	end)
+	-- Posters drop onto the board one after another.
+	paper.Position = UDim2.fromOffset(0, -30)
+	paper.BackgroundTransparency = 1
+	task.delay(index * 0.04, function()
+		TweenService:Create(paper, FAST, { Position = UDim2.fromOffset(0, 0), BackgroundTransparency = 0 }):Play()
+	end)
+end
+
+local function openBoard(data)
+	dim.Visible = true
+	confirm.Visible = false
+	for _, c in ipairs(grid:GetChildren()) do
+		if c:IsA("Frame") then
+			c:Destroy()
+		end
+	end
+	current = data.Active or current
+	local list = data.Bounties or {}
+	grid:FindFirstChild("Empty").Visible = #list == 0
+	for i, entry in ipairs(list) do
+		makePoster(entry, i)
+	end
+	grid.CanvasSize = UDim2.fromOffset(0, 24 + math.ceil(#list / 4) * 178)
+	local scale = board:FindFirstChildOfClass("UIScale")
+	local view = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
+	local fit = math.min(1, view.X / 640, view.Y / 520)
+	scale.Scale = fit * 0.85
+	TweenService:Create(scale, FAST, { Scale = fit }):Play()
+end
+
+local function buildBoard()
+	dim = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Size = UDim2.fromScale(1, 1), Visible = false }, gui)
+	dim.Activated:Connect(closeBoard)
+	board = new("TextButton", { Text = "", AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(600, 470), BackgroundColor3 = WOOD }, dim)
+	corner(board, 6)
+	new("UIScale", { Scale = 1 }, board)
+	new("UIStroke", { Color = WOOD_DARK, Thickness = 4 }, board)
+	-- Planks.
+	for i = 0, 5 do
+		new("Frame", { BackgroundColor3 = i % 2 == 0 and WOOD_LIGHT or WOOD, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 60 + i * 68), Size = UDim2.new(1, 0, 0, 66), BackgroundTransparency = 0.2 }, board)
+	end
+	local title = new("Frame", { BackgroundColor3 = WOOD_DARK, Position = UDim2.fromOffset(-10, -16), Size = UDim2.new(1, 20, 0, 64) }, board)
+	corner(title, 6)
+	label(title, { Size = UDim2.fromScale(1, 1), Text = "BOUNTY BOARD", Font = Enum.Font.Bangers, TextColor3 = PAPER, TextStrokeTransparency = 0.5 })
+	local close = new("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 4, 0, 4), Size = UDim2.fromOffset(40, 40), BackgroundColor3 = RED, Text = "X", Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, title)
+	corner(close, 8)
+	close.Activated:Connect(closeBoard)
+	grid = new("ScrollingFrame", { Name = "Grid", BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(8, 56), Size = UDim2.new(1, -16, 1, -64), ScrollBarThickness = 6, CanvasSize = UDim2.new() }, board)
+	label(grid, { Name = "Empty", Position = UDim2.fromScale(0.1, 0.35), Size = UDim2.fromScale(0.8, 0.12), Text = "No bounties right now. Check back later!", TextColor3 = PAPER, Visible = false })
+
+	-- Accept / decline.
+	confirm = new("TextButton", { Text = "", AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(330, 300), BackgroundColor3 = PAPER, Visible = false, ZIndex = 10 }, dim)
+	corner(confirm, 6)
+	new("UIScale", { Scale = 1 }, confirm)
+	new("UIStroke", { Color = INK, Thickness = 3 }, confirm)
+	local body = new("Frame", { Name = "Body", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, confirm)
+	label(body, { Position = UDim2.fromScale(0.05, 0.03), Size = UDim2.fromScale(0.9, 0.13), Text = "ACCEPT BOUNTY?", Font = Enum.Font.Bangers })
+	label(body, { Name = "Who", Position = UDim2.fromScale(0.05, 0.58), Size = UDim2.fromScale(0.9, 0.09), Text = "" })
+	label(body, { Name = "Pay", Position = UDim2.fromScale(0.05, 0.67), Size = UDim2.fromScale(0.9, 0.09), Text = "", Font = Enum.Font.Bangers, TextColor3 = RED })
+	label(body, { Name = "Note", Position = UDim2.fromScale(0.05, 0.76), Size = UDim2.fromScale(0.9, 0.06), Text = "", Font = Enum.Font.Gotham })
+	local function button(text, color, x)
+		local b = new("TextButton", { Position = UDim2.fromScale(x, 0.85), Size = UDim2.fromScale(0.4, 0.11), BackgroundColor3 = color, Text = text, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, body)
+		corner(b, 8)
+		local s = new("UIScale", { Scale = 1 }, b)
+		b.MouseEnter:Connect(function()
+			TweenService:Create(s, FAST, { Scale = 1.08 }):Play()
+		end)
+		b.MouseLeave:Connect(function()
+			TweenService:Create(s, SOFT, { Scale = 1 }):Play()
+		end)
+		return b
+	end
+	button("ACCEPT", GREEN, 0.07).Activated:Connect(function()
+		if confirm.Entry then
+			Remote:FireServer("Accept", confirm.Entry.Key)
+		end
+		closeBoard()
+	end)
+	button("DECLINE", RED, 0.53).Activated:Connect(function()
+		confirm.Visible = false
+	end)
+end
+
+---------------------------------------------------------------------------
+-- Tracker, target marker, banner
+---------------------------------------------------------------------------
+local function targetModel()
+	if not current then
+		return nil
+	end
+	if current.Kind == "Player" then
+		local p = Players:GetPlayerByUserId(current.UserId)
+		return p and p.Character
+	end
+	return current.Model
+end
+
+local function setMarker(model)
+	local head = model and (model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart"))
+	if not head then
+		marker.Enabled = false
+		return
+	end
+	marker.Adornee = head
+	marker.Enabled = true
+end
+
+local function buildTracker()
+	tracker = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.42, 0), Size = UDim2.fromOffset(250, 84), BackgroundColor3 = PAPER, Visible = false }, gui)
+	corner(tracker, 6)
+	new("UIStroke", { Color = INK, Thickness = 2 }, tracker)
+	label(tracker, { Position = UDim2.fromOffset(82, 4), Size = UDim2.fromOffset(120, 18), Text = "BOUNTY", Font = Enum.Font.Bangers, TextColor3 = RED, TextXAlignment = Enum.TextXAlignment.Left })
+	label(tracker, { Name = "Who", Position = UDim2.fromOffset(82, 22), Size = UDim2.fromOffset(160, 18), Text = "", TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd })
+	label(tracker, { Name = "Pay", Position = UDim2.fromOffset(82, 40), Size = UDim2.fromOffset(160, 18), Text = "", Font = Enum.Font.Bangers, TextColor3 = GREEN, TextXAlignment = Enum.TextXAlignment.Left })
+	label(tracker, { Name = "Info", Position = UDim2.fromOffset(82, 60), Size = UDim2.fromOffset(160, 14), Text = "", Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left })
+	local quit = new("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -4, 0, 4), Size = UDim2.fromOffset(22, 22), BackgroundColor3 = RED, Text = "X", Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, tracker)
+	corner(quit, 6)
+	quit.Activated:Connect(function()
+		Remote:FireServer("Abandon")
+	end)
+
+	marker = new("BillboardGui", { Size = UDim2.fromOffset(90, 70), StudsOffset = Vector3.new(0, 3.2, 0), AlwaysOnTop = true, LightInfluence = 0, Enabled = false }, gui)
+	label(marker, { Size = UDim2.new(1, 0, 0, 22), Text = "TARGET", Font = Enum.Font.Bangers, TextColor3 = RED, TextStrokeTransparency = 0, TextStrokeColor3 = Color3.new(1, 1, 1) })
+	local arrow = new("Frame", { Name = "Arrow", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 26), Size = UDim2.fromOffset(22, 22), Rotation = 45, BackgroundColor3 = RED }, marker)
+	new("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 2 }, arrow)
+
+	banner = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.3), Size = UDim2.fromOffset(560, 80), Text = "", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0, Visible = false })
+	new("UIScale", { Scale = 1 }, banner)
+end
+
+local function showActive(b)
+	current = b
+	tracker.Visible = true
+	for _, c in ipairs(tracker:GetChildren()) do
+		if c.Name == "Photo" then
+			c:Destroy()
+		end
+	end
+	local photo = photoFor(b, tracker)
+	photo.Position = UDim2.fromOffset(8, 8)
+	photo.Size = UDim2.fromOffset(66, 66)
+	tracker:FindFirstChild("Who").Text = string.upper(b.Name)
+	tracker:FindFirstChild("Pay").Text = "$" .. b.Reward
+	tracker.Position = UDim2.new(0, -260, 0.42, 0)
+	TweenService:Create(tracker, FAST, { Position = UDim2.new(0, 12, 0.42, 0) }):Play()
+end
+
+local function clearActive()
+	current = nil
+	tracker.Visible = false
+	marker.Enabled = false
+end
+
+local function showBanner(text, color)
+	banner.Text = text
+	banner.TextColor3 = color
+	banner.Visible = true
+	local scale = banner:FindFirstChildOfClass("UIScale")
+	scale.Scale = 0.4
+	TweenService:Create(scale, FAST, { Scale = 1 }):Play()
+	task.delay(2.6, function()
+		if banner.Text == text then
+			banner.Visible = false
+		end
+	end)
+end
+
+function BountyUI.step()
+	if not current or not tracker then
+		return
+	end
+	local model = targetModel()
+	setMarker(model)
+	local mine = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	local theirs = model and model:FindFirstChild("HumanoidRootPart")
+	local left = math.max(0, (current.Expires or 0) - workspace:GetServerTimeNow())
+	local where = (mine and theirs) and (math.floor((theirs.Position - mine.Position).Magnitude) .. " studs") or "respawning..."
+	tracker:FindFirstChild("Info").Text = string.format("%s  ·  %d:%02d", where, math.floor(left / 60), math.floor(left % 60))
+	if marker.Enabled then
+		marker:FindFirstChild("Arrow").Position = UDim2.new(0.5, 0, 0, 26 + math.sin(os.clock() * 5) * 4)
+	end
+end
+
+function BountyUI.init()
+	Remote = Net.get("Bounty")
+	gui = new("ScreenGui", { Name = "BountyBoard", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 8 }, player:WaitForChild("PlayerGui"))
+	buildBoard()
+	buildTracker()
+	Remote.OnClientEvent:Connect(function(kind, data)
+		data = typeof(data) == "table" and data or {}
+		if kind == "Open" then
+			openBoard(data)
+		elseif kind == "Active" then
+			showActive(data)
+			showBanner("BOUNTY ACCEPTED: " .. string.upper(data.Name or ""), PAPER)
+		elseif kind == "Complete" then
+			clearActive()
+			showBanner("BOUNTY CLAIMED!  +$" .. tostring(data.Reward), GOLD)
+		elseif kind == "Lost" then
+			clearActive()
+			showBanner(data.Reason or "BOUNTY LOST", Color3.fromRGB(255, 140, 120))
+		elseif kind == "Cleared" then
+			clearActive()
+		end
+	end)
+	RunService.RenderStepped:Connect(BountyUI.step)
+end
+
+return BountyUI
+```
+
+## 65. CharacterCard  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -18029,7 +18827,7 @@ end
 return CharacterCard
 ```
 
-## 64. CombatUI  (ModuleScript)
+## 66. CombatUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -18375,7 +19173,7 @@ end
 return CombatUI
 ```
 
-## 65. SettingsUI  (ModuleScript)
+## 67. SettingsUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -18450,7 +19248,7 @@ end
 return SettingsUI
 ```
 
-## 66. TuskUI  (ModuleScript)
+## 68. TuskUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -19553,7 +20351,7 @@ end
 return TuskUI
 ```
 
-## 67. VFXLib  (ModuleScript)
+## 69. VFXLib  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -19919,7 +20717,7 @@ end
 return VFXLib
 ```
 
-## 68. WorldClient  (ModuleScript)
+## 70. WorldClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -20156,12 +20954,12 @@ end
 return WorldClient
 ```
 
-## 69. SpinTools  (Folder)
+## 71. SpinTools  (Folder)
 **Put it in:** `ServerStorage`
 
 _Empty folder: nothing to paste._
 
-## 70. SBRMapBuilder  (ModuleScript)
+## 72. SBRMapBuilder  (ModuleScript)
 **Put it in:** `ServerStorage › SpinTools`
 
 ```lua
