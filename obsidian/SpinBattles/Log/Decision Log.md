@@ -95,3 +95,16 @@ updated: 2026-11-22
 | Mountain Tim | Split Barrage cd 7 → 8 | 15 damage every 7 s |
 | Hot Pants | Flesh Mend heal 22 → 18, cd 14 → 16 | too much sustain |
 | Blackmore | Cage slow 30% → 45%, cuts 2.5 → 2; storm radius 22 → 18, ticks 2 → 1.5 | cage could do 25+; storm was the biggest AoE in the game |
+
+## 2026-11-23: UI and bounty board broken in the pasted game (fixed)
+- **Cause:** the In a Silent Way update made `SandmanVFX` require `TuskStandModels` through `ReplicatedStorage:WaitForChild("SpinShared")`.
+  - The bundler only rewrote `Shared.X` / `script.X` requires, so that line shipped as-is.
+  - In the pasted install there is no SpinShared folder, so it waited forever.
+  - That froze `TuskController.init`, and everything after it never started: the character card, combat UI, defense UI and the bounty UI.
+- **Fixes:**
+  - SandmanVFX uses `Shared.TuskStandModels`.
+  - The bundler rewrites `WaitForChild("SpinShared").X` requires too, and **refuses to build** if any runtime code still mentions SpinShared.
+  - Character (act) modules load in `pcall`, so one broken character can't take the game down.
+  - Every core system starts in its own `pcall` (`__start`).
+- **Also found:** the bundle start-up (hand-written in build_bundles.py) never started `WeatherService` / `WeatherClient`, so it never rained in the pasted game. Both are added now, and the bundler **fails the build** if the source `init.server.lua` / `init.client.lua` starts a system the bundle doesn't.
+- **Lesson:** smoke tests ran the source modules, not the built bundles. The new build-time guards cover the two ways the bundles drifted from the source.

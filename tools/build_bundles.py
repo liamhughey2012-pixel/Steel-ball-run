@@ -37,7 +37,13 @@ def rewrite(name, code):
         code = code.replace(old, '''	for act, info in pairs(Registry.Acts) do
 		local name = info.Module or ("TuskAct" .. act)
 		if Registry.isImplemented(act) and __hasModule(name) then
-			actModules[act] = __require(name)
+			-- One broken character script must not take the whole game down.
+			local ok, result = pcall(__require, name)
+			if ok then
+				actModules[act] = result
+			else
+				warn("[Spin] Couldn't load " .. name .. " (character " .. tostring(info.Character) .. "): " .. tostring(result))
+			end
 		end
 	end''')
     if name == "TuskController":
@@ -52,7 +58,13 @@ def rewrite(name, code):
         code = code.replace(old, '''	for act, info in pairs(Registry.Acts) do
 		local name = info.ClientModule or ("Act" .. act)
 		if __hasModule(name) then
-			actVFX[act] = __require(name)
+			-- One broken character script must not take the whole UI down.
+			local ok, result = pcall(__require, name)
+			if ok then
+				actVFX[act] = result
+			else
+				warn("[Spin] Couldn't load " .. name .. " (character " .. tostring(info.Character) .. "): " .. tostring(result))
+			end
 		end
 	end''')
     # Static requires: require(<path ending in .Name>) -> __require("Name")
@@ -61,7 +73,16 @@ def rewrite(name, code):
         if target in EXTERNAL:
             return f'require(game:GetService("ReplicatedStorage"):WaitForChild("{target}"))'
         return f'__require("{target}")'
+    code = re.sub(r'require\(game:GetService\("ReplicatedStorage"\):WaitForChild\("SpinShared"\)\.([A-Za-z_][A-Za-z0-9_]*)\)',
+                  lambda m: sub(type("M", (), {"group": lambda self, i: "Shared." + m.group(1)})()), code)
     code = re.sub(r'require\(((?:script|Shared|game:GetService\("ReplicatedStorage"\))(?:\.[A-Za-z_][A-Za-z0-9_]*|\.SpinShared)+)\)', sub, code)
+    # Safety net: nothing in a bundle may still look for the SpinShared folder
+    # (it doesn't exist in this install; a WaitForChild on it hangs forever).
+    stripped = re.sub(r'--\[(=*)\[.*?\]\1\]', '', code, flags=re.S)
+    for line in stripped.splitlines():
+        bare = line.split("--")[0]
+        if "SpinShared" in bare:
+            raise SystemExit(f"[build_bundles] {name} still references SpinShared at runtime: {line.strip()}")
     return code
 
 PRELUDE = '''-- Private copies of the built-ins we print with, so nothing loaded later can break them.
@@ -263,10 +284,20 @@ if BUILD_MAP_ON_START and __hasModule("SBRMapBuilder") and not workspace:FindFir
 		warn("[Spin] Map build failed: " .. tostring(err))
 	end
 end
-__require("StandBots").init(TuskService)
-__require("BountyService").init()
-NPCService.init()
-TestDummies.init()
+local function __start(name, ...)
+	local args = table.pack(...)
+	local ok, err = pcall(function()
+		__require(name).init(table.unpack(args, 1, args.n))
+	end)
+	if not ok then
+		warn("[Spin] " .. name .. " failed to start: " .. tostring(err))
+	end
+end
+__start("StandBots", TuskService)
+__start("BountyService")
+__start("WeatherService")
+__start("NPCService")
+__start("TestDummies")
 print("[Spin] Server ready")
 '''
 CLIENT_HEADER = '''--[[
@@ -294,18 +325,28 @@ if not game:IsLoaded() then
 	game.Loaded:Wait()
 end
 __loadPacks("client")
-__require("SettingsUI").init()
-__require("HitFX").init()
-__require("TuskStand").init()
-__require("TuskProjectiles").init()
-__require("TuskSneakController").init()
-__require("TuskController").init()
-__require("WorldClient").init()
-__require("CharacterCard").init()
-__require("CombatUI").init()
-__require("DefenseClient").init()
-__require("BountyUI").init()
+-- Each system starts on its own: if one fails, the rest (HUD, menus, bounty
+-- board) still work, and the Output window says what went wrong.
+local function __start(name)
+	local ok, err = pcall(function()
+		__require(name).init()
+	end)
+	if not ok then
+		warn("[Spin] " .. name .. " failed to start: " .. tostring(err))
+	end
+end
+for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient" }) do
+	__start(name)
+end
+print("[Spin] Client ready")
 '''
+
+# Guard: every system the source start-up scripts init() must also be started
+# by the bundles (otherwise a feature silently never runs in the pasted game).
+for src_main, bundle_main in (("src/client/init.client.lua", CLIENT_MAIN), ("src/server/init.server.lua", SERVER_MAIN)):
+    for sys_name in re.findall(r'^(\w+)\.init\(', open(src_main).read(), flags=re.M):
+        if f'"{sys_name}"' not in bundle_main:
+            raise SystemExit(f"[build_bundles] {src_main} starts {sys_name}, but the bundle never does. Add it to the bundle start-up.")
 
 shared = {k: v for k, v in modules_in("src/shared").items() if k not in EXTERNAL}
 server = {**shared, **modules_in("src/server", "src/tools")}

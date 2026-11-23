@@ -6366,7 +6366,13 @@ function TuskService.init()
 	for act, info in pairs(Registry.Acts) do
 		local name = info.Module or ("TuskAct" .. act)
 		if Registry.isImplemented(act) and __hasModule(name) then
-			actModules[act] = __require(name)
+			-- One broken character script must not take the whole game down.
+			local ok, result = pcall(__require, name)
+			if ok then
+				actModules[act] = result
+			else
+				warn("[Spin] Couldn't load " .. name .. " (character " .. tostring(info.Character) .. "): " .. tostring(result))
+			end
 		end
 	end
 	Sneak = __require("TuskSneakService")
@@ -6821,8 +6827,18 @@ if BUILD_MAP_ON_START and __hasModule("SBRMapBuilder") and not workspace:FindFir
 		warn("[Spin] Map build failed: " .. tostring(err))
 	end
 end
-__require("StandBots").init(TuskService)
-__require("BountyService").init()
-NPCService.init()
-TestDummies.init()
+local function __start(name, ...)
+	local args = table.pack(...)
+	local ok, err = pcall(function()
+		__require(name).init(table.unpack(args, 1, args.n))
+	end)
+	if not ok then
+		warn("[Spin] " .. name .. " failed to start: " .. tostring(err))
+	end
+end
+__start("StandBots", TuskService)
+__start("BountyService")
+__start("WeatherService")
+__start("NPCService")
+__start("TestDummies")
 print("[Spin] Server ready")

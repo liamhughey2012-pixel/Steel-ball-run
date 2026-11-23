@@ -39,7 +39,7 @@ local TuskAnimation = __require("TuskAnimation")
 local Common = __require("TuskActCommon")
 local TuskStand = __require("TuskStand")
 local SilentWayStand = __require("SilentWayStand")
-local TuskStandModels = require(game:GetService("ReplicatedStorage"):WaitForChild("SpinShared").TuskStandModels)
+local TuskStandModels = __require("TuskStandModels")
 
 -- IN A SILENT WAY floats behind him (players and NPCs), like Tusk does.
 TuskStandModels.register(8, SilentWayStand.build, { Aura = SilentWayStand.Aura, AuraLight = SilentWayStand.AuraLight, Offset = SilentWayStand.Offset })

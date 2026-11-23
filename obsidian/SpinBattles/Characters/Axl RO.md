@@ -17,9 +17,14 @@ Server moves: `TuskActs/Axl`. Visuals: `TuskActVFX/AxlVFX`. Stand model: `TuskAc
 - **Legs:** red, fraying bell-bottom lower legs like roots, and pointed red feet.
 - It floats behind him with a **crimson aura** (players and NPCs) and strikes with his moves.
 
-## Axl RO (stand-in look)
+## Axl RO (matched to the user's reference art, 2026-11-23)
 ![[axl_ro_preview.png]]
-No reference art yet. The stand-in: long dark hair tied back, a dark headband, a grey Civil War-style long coat (two rows of brass buttons, shoulder boards, coat tails), a red sash, dark trousers and tall boots. Send pictures to match him.
+- **Head:** an olive military helmet covered in a dark net, with chin straps hanging; a cream hood lining framing his face, and short brown hair at the back.
+- **Face:** the dotted band across his eyes.
+- **Body:** a khaki hooded parka, with the hood bunched round his neck and shoulders.
+- **Chest:** a yellow chest plate with gold buttons along its edges, and a V of gold scales hanging down the front.
+- **Arms:** black clips down the outside of both sleeves.
+- **Legs:** khaki trousers and dark boots.
 
 | Input | Move | What it does |
 |---|---|---|

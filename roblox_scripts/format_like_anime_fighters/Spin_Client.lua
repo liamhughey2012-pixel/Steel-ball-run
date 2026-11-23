@@ -5078,7 +5078,13 @@ function TuskController.init()
 	for act, info in pairs(Registry.Acts) do
 		local name = info.ClientModule or ("Act" .. act)
 		if __hasModule(name) then
-			actVFX[act] = __require(name)
+			-- One broken character script must not take the whole UI down.
+			local ok, result = pcall(__require, name)
+			if ok then
+				actVFX[act] = result
+			else
+				warn("[Spin] Couldn't load " .. name .. " (character " .. tostring(info.Character) .. "): " .. tostring(result))
+			end
 		end
 	end
 
@@ -10678,14 +10684,17 @@ if not game:IsLoaded() then
 	game.Loaded:Wait()
 end
 __loadPacks("client")
-__require("SettingsUI").init()
-__require("HitFX").init()
-__require("TuskStand").init()
-__require("TuskProjectiles").init()
-__require("TuskSneakController").init()
-__require("TuskController").init()
-__require("WorldClient").init()
-__require("CharacterCard").init()
-__require("CombatUI").init()
-__require("DefenseClient").init()
-__require("BountyUI").init()
+-- Each system starts on its own: if one fails, the rest (HUD, menus, bounty
+-- board) still work, and the Output window says what went wrong.
+local function __start(name)
+	local ok, err = pcall(function()
+		__require(name).init()
+	end)
+	if not ok then
+		warn("[Spin] " .. name .. " failed to start: " .. tostring(err))
+	end
+end
+for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient" }) do
+	__start(name)
+end
+print("[Spin] Client ready")

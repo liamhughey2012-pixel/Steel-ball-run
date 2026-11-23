@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `AxlOutfit` (capitals matter) |
 
-**What it does:** Gives a character Axl RO's look while they play him (TuskAct 12), built from blocky parts (no catalog asset ids). A stand-in look until there's reference art: long dark hair tied back, a dark headband a grey Civil War-style long coat with a high collar, two rows of brass buttons, shoulder boards and coat tails, a red sash dark trousers and tall black boots The player's own hats/hair are hidden while they play him and come back when they switch. Built on the server so every player sees it.
+**What it does:** Gives a character Axl RO's look while they play him (TuskAct 12), built from blocky parts (no catalog asset ids), matched to his art: an olive military helmet covered in a dark net, chin straps hanging a cream hood lining framing his face, short brown hair at the back the dotted band across his eyes a khaki hooded parka: the hood bunched round his neck and shoulders a yellow chest plate with gold buttons along its edges and a V of gold scales hanging down the front black clips down the outside of both sleeves khaki trousers and dark boots The player's own hats/hair are hidden while they play him and come back when they switch. Built on the server so every player sees it.
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -28,12 +28,15 @@ Back to [[Where To Put Code]]
 	AxlOutfit  (ServerScriptService.SpinServer.AxlOutfit)
 
 	Gives a character Axl RO's look while they play him (TuskAct 12), built
-	from blocky parts (no catalog asset ids). A stand-in look until there's
-	reference art:
-	  * long dark hair tied back, a dark headband
-	  * a grey Civil War-style long coat with a high collar, two rows of
-	    brass buttons, shoulder boards and coat tails, a red sash
-	  * dark trousers and tall black boots
+	from blocky parts (no catalog asset ids), matched to his art:
+	  * an olive military helmet covered in a dark net, chin straps hanging
+	  * a cream hood lining framing his face, short brown hair at the back
+	  * the dotted band across his eyes
+	  * a khaki hooded parka: the hood bunched round his neck and shoulders
+	  * a yellow chest plate with gold buttons along its edges and a V of
+	    gold scales hanging down the front
+	  * black clips down the outside of both sleeves
+	  * khaki trousers and dark boots
 	The player's own hats/hair are hidden while they play him and come back
 	when they switch. Built on the server so every player sees it.
 ]]
@@ -44,14 +47,22 @@ local AxlOutfit = {}
 AxlOutfit.Act = 12
 
 local C = {
-	Hair = Color3.fromRGB(46, 34, 28),
-	Band = Color3.fromRGB(60, 22, 26),
-	Coat = Color3.fromRGB(116, 120, 130),
-	CoatDark = Color3.fromRGB(84, 88, 98),
-	Brass = Color3.fromRGB(214, 176, 80),
-	Sash = Color3.fromRGB(170, 40, 46),
-	Pants = Color3.fromRGB(46, 42, 50),
-	Boot = Color3.fromRGB(26, 24, 26),
+	Helmet = Color3.fromRGB(120, 132, 108),
+	Net = Color3.fromRGB(96, 52, 40),
+	Strap = Color3.fromRGB(110, 70, 44),
+	Lining = Color3.fromRGB(236, 228, 204),
+	Hair = Color3.fromRGB(90, 62, 44),
+	Band = Color3.fromRGB(98, 84, 110),
+	Dot = Color3.fromRGB(240, 236, 228),
+	Parka = Color3.fromRGB(176, 160, 112),
+	ParkaDark = Color3.fromRGB(140, 126, 86),
+	Plate = Color3.fromRGB(226, 210, 112),
+	Gold = Color3.fromRGB(214, 170, 60),
+	GoldDark = Color3.fromRGB(170, 128, 40),
+	Clip = Color3.fromRGB(30, 30, 34),
+	ClipShine = Color3.fromRGB(120, 124, 132),
+	Pants = Color3.fromRGB(150, 136, 96),
+	Boot = Color3.fromRGB(50, 40, 32),
 }
 
 local saved = setmetatable({}, { __mode = "k" })
@@ -82,17 +93,46 @@ end
 local function headPieces(head, outfit)
 	local s = head.Size.Y / 1.2
 	local w, h, d = head.Size.X / 2, head.Size.Y / 2, head.Size.Z / 2
-	-- Long dark hair over the top and sides, tied back in a tail.
-	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.14 * s, 0.3 * s, head.Size.Z + 0.14 * s), C.Hair, CFrame.new(0, h - 0.06 * s, 0.02 * s))
+	local fz = -d - 0.03 * s
+	-- Short brown hair at the back under the helmet.
+	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.08 * s, 0.6 * s, 0.12 * s), C.Hair, CFrame.new(0, 0.05 * s, d + 0.04 * s))
+	-- Cream hood lining framing the face (sides, back and under the chin).
 	for _, side in ipairs({ -1, 1 }) do
-		piece(head, outfit, "Hair", Vector3.new(0.12 * s, 0.9 * s, head.Size.Z * 0.7), C.Hair, CFrame.new(side * (w + 0.05 * s), -0.02 * s, 0.14 * s))
+		piece(head, outfit, "Lining", Vector3.new(0.16 * s, head.Size.Y * 0.95, head.Size.Z + 0.12 * s), C.Lining, CFrame.new(side * (w + 0.08 * s), -0.08 * s, 0.04 * s))
 	end
-	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.14 * s, 1.0 * s, 0.14 * s), C.Hair, CFrame.new(0, -0.05 * s, d + 0.06 * s))
-	piece(head, outfit, "Bangs", Vector3.new(head.Size.X * 0.8, 0.16 * s, 0.1 * s), C.Hair, CFrame.new(0.1 * s, h - 0.24 * s, -d - 0.03 * s) * CFrame.Angles(0, 0, -0.15))
-	for i = 0, 3 do
-		piece(head, outfit, "Tail", Vector3.new((0.32 - i * 0.04) * s, 0.4 * s, 0.24 * s), C.Hair, CFrame.new(0, -0.4 * s - i * 0.36 * s, d + 0.16 * s))
+	piece(head, outfit, "Lining", Vector3.new(head.Size.X + 0.3 * s, head.Size.Y * 0.8, 0.14 * s), C.Lining, CFrame.new(0, -0.12 * s, d + 0.14 * s))
+	-- Olive helmet with a dark net over it.
+	local helmY = h + 0.06 * s
+	piece(head, outfit, "Helmet", Vector3.new(head.Size.X + 0.42 * s, 0.5 * s, head.Size.Z + 0.42 * s), C.Helmet, CFrame.new(0, helmY, 0.02 * s))
+	piece(head, outfit, "Helmet", Vector3.new(head.Size.X * 0.86, 0.22 * s, head.Size.Z * 0.86), C.Helmet, CFrame.new(0, helmY + 0.34 * s, 0.02 * s))
+	piece(head, outfit, "Rim", Vector3.new(head.Size.X + 0.5 * s, 0.08 * s, head.Size.Z + 0.5 * s), C.Helmet, CFrame.new(0, helmY - 0.24 * s, 0.02 * s))
+	local span = head.Size.X + 0.44 * s
+	for i = -3, 3 do
+		-- Net strands both ways over the top and down the sides.
+		piece(head, outfit, "Net", Vector3.new(0.04 * s, 0.04 * s, span), C.Net, CFrame.new(i * span / 7, helmY + 0.26 * s, 0.02 * s))
+		piece(head, outfit, "Net", Vector3.new(span, 0.04 * s, 0.04 * s), C.Net, CFrame.new(0, helmY + 0.26 * s, i * span / 7 + 0.02 * s))
+		piece(head, outfit, "Net", Vector3.new(0.04 * s, 0.5 * s, 0.03 * s), C.Net, CFrame.new(i * span / 7, helmY, -span / 2 + 0.01 * s))
+		piece(head, outfit, "Net", Vector3.new(0.04 * s, 0.5 * s, 0.03 * s), C.Net, CFrame.new(i * span / 7, helmY, span / 2 + 0.03 * s))
+		piece(head, outfit, "Net", Vector3.new(0.03 * s, 0.5 * s, 0.04 * s), C.Net, CFrame.new(-span / 2 - 0.01 * s, helmY, i * span / 7))
+		piece(head, outfit, "Net", Vector3.new(0.03 * s, 0.5 * s, 0.04 * s), C.Net, CFrame.new(span / 2 + 0.01 * s, helmY, i * span / 7))
 	end
-	piece(head, outfit, "Headband", Vector3.new(head.Size.X + 0.18 * s, 0.12 * s, head.Size.Z + 0.18 * s), C.Band, CFrame.new(0, h - 0.26 * s, 0.02 * s))
+	for _, y in ipairs({ -0.1, 0.1 }) do
+		piece(head, outfit, "Net", Vector3.new(span + 0.02 * s, 0.04 * s, span + 0.02 * s), C.Net, CFrame.new(0, helmY + y * s, 0.02 * s))
+	end
+	-- Chin straps hanging loose.
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, "ChinStrap", Vector3.new(0.05 * s, 1.1 * s, 0.05 * s), C.Strap, CFrame.new(side * (w + 0.1 * s), -0.45 * s, -0.25 * s) * CFrame.Angles(0.15, 0, side * -0.05))
+	end
+	-- The dotted band across his eyes (gaps left for the eyes).
+	piece(head, outfit, "EyeBand", Vector3.new(head.Size.X * 0.96, 0.12 * s, 0.05 * s), C.Band, CFrame.new(0, 0.26 * s, fz))
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, "EyeBand", Vector3.new(0.18 * s, 0.34 * s, 0.05 * s), C.Band, CFrame.new(side * 0.44 * s, 0.1 * s, fz))
+		piece(head, outfit, "EyeBand", Vector3.new(0.3 * s, 0.1 * s, 0.05 * s), C.Band, CFrame.new(side * 0.2 * s, -0.04 * s, fz))
+	end
+	piece(head, outfit, "EyeBand", Vector3.new(0.12 * s, 0.22 * s, 0.05 * s), C.Band, CFrame.new(0, 0.1 * s, fz))
+	for _, spot in ipairs({ { -0.36, 0.26 }, { -0.12, 0.26 }, { 0.12, 0.26 }, { 0.36, 0.26 }, { -0.44, 0.08 }, { 0.44, 0.08 }, { -0.22, -0.04 }, { 0.22, -0.04 } }) do
+		piece(head, outfit, "Dot", Vector3.new(0.05 * s, 0.05 * s, 0.03 * s), C.Dot, CFrame.new(spot[1] * s, spot[2] * s, fz - 0.03 * s))
+	end
 end
 
 local function body(character, outfit)
@@ -101,56 +141,67 @@ local function body(character, outfit)
 	if upper then
 		local s = upper.Size
 		local top, front = s.Y / 2, -s.Z / 2
-		piece(upper, outfit, "Coat", s + Vector3.new(0.1, 0.02, 0.1), C.Coat, CFrame.new())
-		piece(upper, outfit, "Collar", Vector3.new(s.X * 0.62, 0.36, s.Z + 0.24), C.CoatDark, CFrame.new(0, top + 0.12, 0))
-		-- Two rows of brass buttons.
-		for row = 0, 4 do
-			for _, side in ipairs({ -1, 1 }) do
-				piece(upper, outfit, "Button", Vector3.new(0.12, 0.12, 0.05), C.Brass, CFrame.new(side * 0.28, top - 0.25 - row * 0.28, front - 0.07))
+		piece(upper, outfit, "Parka", s + Vector3.new(0.12, 0.02, 0.12), C.Parka, CFrame.new())
+		-- The hood bunched round his neck and shoulders.
+		piece(upper, outfit, "Hood", Vector3.new(s.X + 0.3, 0.42, s.Z + 0.4), C.Parka, CFrame.new(0, top - 0.05, 0.04))
+		piece(upper, outfit, "Hood", Vector3.new(s.X * 0.75, 0.5, s.Z + 0.3), C.ParkaDark, CFrame.new(0, top + 0.2, 0.12))
+		piece(upper, outfit, "HoodBack", Vector3.new(s.X * 0.7, 0.7, 0.3), C.Parka, CFrame.new(0, top - 0.2, -front + 0.2))
+		-- Yellow chest plate (a V shield) with gold buttons along its edges.
+		piece(upper, outfit, "Plate", Vector3.new(s.X * 0.8, s.Y * 0.38, 0.06), C.Plate, CFrame.new(0, top - s.Y * 0.28, front - 0.08))
+		piece(upper, outfit, "Plate", Vector3.new(s.X * 0.48, s.Y * 0.2, 0.06), C.Plate, CFrame.new(0, top - s.Y * 0.55, front - 0.08))
+		piece(upper, outfit, "Plate", Vector3.new(s.X * 0.2, s.Y * 0.12, 0.06), C.Plate, CFrame.new(0, top - s.Y * 0.7, front - 0.08))
+		for _, side in ipairs({ -1, 1 }) do
+			for k = 0, 3 do
+				piece(upper, outfit, "Button", Vector3.new(0.16, 0.16, 0.06), C.Gold, CFrame.new(side * (s.X * 0.42 - k * 0.16), top - 0.12 - k * 0.24, front - 0.12))
+			end
+			-- A V of gold scales hanging below the plate.
+			for k = 0, 4 do
+				local x = side * (s.X * 0.46 - k * 0.2)
+				local y = top - s.Y * 0.5 - k * 0.14
+				piece(upper, outfit, "Scale", Vector3.new(0.18, 0.18, 0.05), k % 2 == 0 and C.Gold or C.GoldDark, CFrame.new(x, y, front - 0.11))
+				piece(upper, outfit, "Scale", Vector3.new(0.18, 0.18, 0.05), k % 2 == 0 and C.GoldDark or C.Gold, CFrame.new(x, y - 0.2, front - 0.1))
 			end
 		end
-		-- Shoulder boards and a red sash across the chest.
-		for _, side in ipairs({ -1, 1 }) do
-			piece(upper, outfit, "Board", Vector3.new(0.6, 0.1, s.Z + 0.16), C.CoatDark, CFrame.new(side * (s.X / 2 - 0.3), top + 0.03, 0))
-			piece(upper, outfit, "Board", Vector3.new(0.5, 0.06, 0.06), C.Brass, CFrame.new(side * (s.X / 2 - 0.3), top + 0.09, front - 0.04))
-		end
-		piece(upper, outfit, "Sash", Vector3.new(0.3, s.Y * 1.15, 0.05), C.Sash, CFrame.new(0, 0, front - 0.06) * CFrame.Angles(0, 0, 0.6))
 	end
-	-- Coat skirt and tails, red waist sash.
 	local waist = lower or upper
 	if waist then
 		local ws = waist.Size
 		local waistTop = lower and ws.Y / 2 or -upper.Size.Y / 2 + 0.3
-		piece(waist, outfit, "SashBelt", Vector3.new(ws.X + 0.16, 0.26, ws.Z + 0.16), C.Sash, CFrame.new(0, waistTop - 0.14, 0))
-		local skirtH = lower and 1.6 or 1.3
-		for _, side in ipairs({ -1, 1 }) do
-			piece(waist, outfit, "Skirt", Vector3.new(ws.X / 2 + 0.06, skirtH, 0.12), C.Coat, CFrame.new(side * (ws.X / 4 + 0.08), waistTop - skirtH / 2, -ws.Z / 2 - 0.08) * CFrame.Angles(0, side * 0.1, 0))
-			piece(waist, outfit, "Skirt", Vector3.new(0.12, skirtH, ws.Z + 0.16), C.CoatDark, CFrame.new(side * (ws.X / 2 + 0.1), waistTop - skirtH / 2, 0.02))
+		if lower then
+			piece(lower, outfit, "Parka", ws + Vector3.new(0.12, 0.02, 0.12), C.Parka, CFrame.new())
 		end
-		piece(waist, outfit, "Skirt", Vector3.new(ws.X + 0.3, skirtH + 0.2, 0.12), C.Coat, CFrame.new(0, waistTop - skirtH / 2 - 0.1, ws.Z / 2 + 0.08))
+		-- Parka hem down over the hips.
+		piece(waist, outfit, "Hem", Vector3.new(ws.X + 0.2, 0.7, ws.Z + 0.2), C.Parka, CFrame.new(0, waistTop - 0.45, 0))
+		piece(waist, outfit, "HemEdge", Vector3.new(ws.X + 0.24, 0.1, ws.Z + 0.24), C.ParkaDark, CFrame.new(0, waistTop - 0.8, 0))
 	end
-	-- Sleeves with brass cuffs.
+	-- Khaki sleeves with black clips down the outside.
 	for _, name in ipairs({ "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm", "Left Arm", "Right Arm" }) do
 		local arm = character:FindFirstChild(name)
 		if arm then
 			local as = arm.Size
+			local out = name:find("Left") and -1 or 1
 			local tall = as.Y > 1.8
 			local h = tall and as.Y - 0.3 or as.Y
-			piece(arm, outfit, "Sleeve", Vector3.new(as.X + 0.08, h + 0.02, as.Z + 0.08), C.Coat, CFrame.new(0, as.Y / 2 - h / 2, 0))
+			piece(arm, outfit, "Sleeve", Vector3.new(as.X + 0.12, h + 0.02, as.Z + 0.12), C.Parka, CFrame.new(0, as.Y / 2 - h / 2, 0))
+			local count = tall and 3 or 2
+			for k = 1, count do
+				local y = as.Y / 2 - k * h / (count + 1)
+				piece(arm, outfit, "Clip", Vector3.new(0.1, 0.26, 0.4), C.Clip, CFrame.new(out * (as.X / 2 + 0.1), y, 0))
+				piece(arm, outfit, "Clip", Vector3.new(0.06, 0.08, 0.42), C.ClipShine, CFrame.new(out * (as.X / 2 + 0.14), y + 0.06, 0))
+			end
 			if name:find("Lower") or tall then
-				piece(arm, outfit, "Cuff", Vector3.new(as.X + 0.14, 0.24, as.Z + 0.14), C.CoatDark, CFrame.new(0, as.Y / 2 - h + 0.12, 0))
-				piece(arm, outfit, "CuffButton", Vector3.new(0.1, 0.1, 0.05), C.Brass, CFrame.new(0, as.Y / 2 - h + 0.12, -as.Z / 2 - 0.09))
+				piece(arm, outfit, "Cuff", Vector3.new(as.X + 0.18, 0.2, as.Z + 0.18), C.ParkaDark, CFrame.new(0, as.Y / 2 - h + 0.1, 0))
 			end
 		end
 	end
-	-- Dark trousers and tall boots.
+	-- Khaki trousers and dark boots.
 	for _, name in ipairs({ "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
 		local leg = character:FindFirstChild(name)
 		if leg then
 			local ls = leg.Size
 			piece(leg, outfit, "Pants", ls + Vector3.new(0.05, 0.02, 0.05), C.Pants, CFrame.new())
 			if name:find("Lower") or ls.Y > 1.8 then
-				local bh = ls.Y > 1.8 and 1.0 or ls.Y + 0.05
+				local bh = ls.Y > 1.8 and 0.8 or ls.Y * 0.7
 				piece(leg, outfit, "Boot", Vector3.new(ls.X + 0.14, bh, ls.Z + 0.14), C.Boot, CFrame.new(0, -ls.Y / 2 + bh / 2, 0))
 			end
 		end
