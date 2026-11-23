@@ -232,7 +232,11 @@ end
 
 '''
 CLIENT_MAIN = LOAD_PACKS + '''
-__loadPacks(game:GetService("ReplicatedStorage"):WaitForChild("SpinCharacters", 10), "client")
+-- No waiting on the folder (it's optional): just make sure the game has loaded.
+if not game:IsLoaded() then
+	game.Loaded:Wait()
+end
+__loadPacks(game:GetService("ReplicatedStorage"):FindFirstChild("SpinCharacters"), "client")
 __require("SettingsUI").init()
 __require("HitFX").init()
 __require("TuskStand").init()
