@@ -7715,7 +7715,7 @@ end
 return HotPants
 </pre></details></section><section class="card" id="s34">
 <div class="head"><span class="num">34</span><div><h2>MountainTim <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="34">Copy code</button><details><summary>Show code (376 lines)</summary><pre id="c34">--[[
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="34">Copy code</button><details><summary>Show code (400 lines)</summary><pre id="c34">--[[
 	MountainTim  (ServerScriptService.SpinServer.TuskActs.MountainTim)
 
 	Mountain Tim: OH! LONESOME ME. The cowboy&#x27;s Stand splits his body into
@@ -7769,7 +7769,8 @@ local function pull(S, target, point, stopDistance)
 	if distance &lt;= (stopDistance or 4) then
 		return true
 	end
-	S.Adapter.applyKnockback(target, offset, math.min(distance / 0.18 * 0.6, 90), math.clamp(offset.Y * 3, 4, 30))
+	-- Mostly sideways; only lift when they&#x27;re below the rope end (no bouncing).
+	S.Adapter.applyKnockback(target, offset, math.min(distance / 0.18 * 0.6, 90), math.clamp(offset.Y * 3, 1, 20))
 	return false
 end
 
@@ -7812,6 +7813,7 @@ local function lassoSnare(S, player, state, aim)
 		local char, _, r = alive(S, player)
 		local caught = false
 		S.fireLasso(player, state, {
+			Character = char,
 			Origin = S.origin(char, r, HAND),
 			Direction = direction,
 			Speed = c.Speed,
@@ -7897,6 +7899,16 @@ local function splitDodge(S, player, state, aim)
 	local direction = Moves.flat(S.aim(aim, root))
 	local life = state.Life
 	local used = false
+	-- He&#x27;s in pieces: no walking off during the window.
+	local humanoid = character:FindFirstChildOfClass(&quot;Humanoid&quot;)
+	if humanoid then
+		S.Adapter.setMoveModifier(humanoid, &quot;SplitDodge&quot;, 0.01) -- (never exactly 0: the multipliers divide back out)
+		task.delay(c.Window + 0.05, function()
+			if humanoid.Parent then
+				S.Adapter.setMoveModifier(humanoid, &quot;SplitDodge&quot;, nil)
+			end
+		end)
+	end
 	character:SetAttribute(&quot;SplitCounter&quot;, true)
 	S.fx(&quot;Ability&quot;, { Character = character, Act = ACT, Move = &quot;SplitDodge&quot;, Phase = &quot;Scatter&quot;, Window = c.Window, Position = root.Position })
 	counters[character] = function(attackerPlayer)
@@ -7915,7 +7927,19 @@ local function splitDodge(S, player, state, aim)
 		end
 		-- Reform right behind whoever swung at him.
 		local from = r.Position
-		local behind = (ar.CFrame * CFrame.new(0, 0, 3.5)).Position
+		-- Behind them if there&#x27;s room, otherwise beside them; never inside a wall.
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = { character, attacker }
+		local behind
+		for _, offset in ipairs({ CFrame.new(0, 0, 3.5), CFrame.new(3, 0, 1), CFrame.new(-3, 0, 1), CFrame.new(0, 0, -3) }) do
+			local spot = (ar.CFrame * offset).Position
+			if not workspace:Raycast(ar.Position, spot - ar.Position, params) then
+				behind = spot
+				break
+			end
+		end
+		behind = behind or from
 		local iframes = S.Adapter.Settings.IFrameAttribute
 		character:SetAttribute(iframes, true)
 		character:PivotTo(CFrame.lookAt(behind, Vector3.new(ar.Position.X, behind.Y, ar.Position.Z)))
@@ -10410,7 +10434,7 @@ function TuskService.fireLasso(player, state, spec)
 		Speed = spec.Speed,
 		Radius = spec.Radius,
 		Range = spec.Range,
-		Visual = { Style = spec.Style or &quot;Lasso&quot; },
+		Visual = { Style = spec.Style or &quot;Lasso&quot;, Character = spec.Character },
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd,
 	})
@@ -15577,7 +15601,7 @@ end
 return HotPantsVFX
 </pre></details></section><section class="card" id="s60">
 <div class="head"><span class="num">60</span><div><h2>MountainTimVFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="60">Copy code</button><details><summary>Show code (829 lines)</summary><pre id="c60">--[[
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="60">Copy code</button><details><summary>Show code (905 lines)</summary><pre id="c60">--[[
 	TuskActVFX.MountainTimVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.MountainTimVFX)
 
 	Client visuals for Mountain Tim / OH! LONESOME ME: bodies come apart into
@@ -15730,8 +15754,14 @@ end
 local function weldedTo(character, src)
 	local list = {}
 	for _, d in ipairs(character:GetDescendants()) do
-		if d:IsA(&quot;WeldConstraint&quot;) and d.Part0 == src and d.Part1 and d.Part1.Parent and d.Part1.Parent:IsA(&quot;Model&quot;) and d.Part1.Parent ~= character then
+		-- Outfit bits (WeldConstraint from the part) and accessories (hats,
+		-- hair: a weld between the accessory&#x27;s Handle and the part).
+		if d:IsA(&quot;WeldConstraint&quot;) and d.Part0 == src and d.Part1 and d.Part1.Parent and d.Part1.Parent ~= character then
 			table.insert(list, d.Part1)
+		elseif d:IsA(&quot;JointInstance&quot;) and d.Parent and d.Parent.Name == &quot;Handle&quot; and d.Parent.Parent and d.Parent.Parent:IsA(&quot;Accessory&quot;) then
+			if d.Part1 == src or d.Part0 == src then
+				table.insert(list, d.Parent)
+			end
 		end
 	end
 	return list
@@ -15778,10 +15808,13 @@ local function dropPieces(pieces)
 	end
 end
 
-local function hideBody(character, hidden, seconds, onlyNames)
-	if not onlyNames then
-		hiddenUntil[character] = hidden and (os.clock() + (seconds or 0.5) + 0.8) or nil
-	end
+-- Hide a character (or just some of its parts) on this client. Remembers
+-- what it hid and puts exactly that back (faces an outfit hid stay hidden),
+-- and keeps it hidden every frame so the camera can&#x27;t un-hide it.
+local hidden = {} -- [character] = { Parts = { [part] = true }, Decals = { [decal] = original } }
+
+local function partSet(character, onlyNames)
+	local list = {}
 	local set
 	if onlyNames then
 		set = {}
@@ -15790,21 +15823,83 @@ local function hideBody(character, hidden, seconds, onlyNames)
 		end
 	end
 	for _, d in ipairs(character:GetDescendants()) do
-		if d:IsA(&quot;BasePart&quot;) then
+		if d:IsA(&quot;BasePart&quot;) and d.Name ~= &quot;HumanoidRootPart&quot; then
 			local own = set == nil or set[d.Name]
-			if not own and set then
-				-- outfit bits welded to a hidden part hide with it
+			if not own then
+				-- outfit bits and accessories attached to a hidden part hide with it
 				for _, w in ipairs(d:GetChildren()) do
-					if w:IsA(&quot;WeldConstraint&quot;) and w.Part0 and set[w.Part0.Name] then
+					if (w:IsA(&quot;WeldConstraint&quot;) or w:IsA(&quot;JointInstance&quot;)) and ((w.Part0 and set[w.Part0.Name]) or (w.Part1 and set[w.Part1.Name])) then
 						own = true
 					end
 				end
 			end
 			if own then
-				d.LocalTransparencyModifier = hidden and 1 or 0
+				table.insert(list, d)
 			end
-		elseif d:IsA(&quot;Decal&quot;) and not set then
-			d.Transparency = hidden and 1 or 0
+		end
+	end
+	return list
+end
+
+local function hideBody(character, hide, seconds, onlyNames)
+	if not onlyNames then
+		hiddenUntil[character] = hide and (os.clock() + (seconds or 0.5) + 0.8) or nil
+	end
+	local entry = hidden[character]
+	if hide then
+		entry = entry or { Parts = {}, Decals = {} }
+		hidden[character] = entry
+		for _, part in ipairs(partSet(character, onlyNames)) do
+			entry.Parts[part] = true
+			part.LocalTransparencyModifier = 1
+		end
+		if not onlyNames then
+			for _, d in ipairs(character:GetDescendants()) do
+				if d:IsA(&quot;Decal&quot;) and entry.Decals[d] == nil then
+					entry.Decals[d] = d.Transparency
+					d.Transparency = 1
+				end
+			end
+		end
+		return
+	end
+	if not entry then
+		return
+	end
+	if onlyNames then
+		for _, part in ipairs(partSet(character, onlyNames)) do
+			entry.Parts[part] = nil
+			part.LocalTransparencyModifier = 0
+		end
+		if next(entry.Parts) == nil and next(entry.Decals) == nil then
+			hidden[character] = nil
+		end
+		return
+	end
+	hidden[character] = nil
+	for part in pairs(entry.Parts) do
+		if part.Parent then
+			part.LocalTransparencyModifier = 0
+		end
+	end
+	for decal, original in pairs(entry.Decals) do
+		if decal.Parent then
+			decal.Transparency = original
+		end
+	end
+end
+
+-- Runs after the camera each frame: keeps hidden parts hidden.
+local function enforceHidden()
+	for character, entry in pairs(hidden) do
+		if not character.Parent then
+			hidden[character] = nil
+		else
+			for part in pairs(entry.Parts) do
+				if part.Parent and part.LocalTransparencyModifier ~= 1 then
+					part.LocalTransparencyModifier = 1
+				end
+			end
 		end
 	end
 end
@@ -15904,7 +15999,7 @@ local function spawnLasso(data)
 	lassos[data.Id] = {
 		Loop = newLoop(1.3),
 		Rope = newRope(0.16),
-		Owner = p and p.Character,
+		Owner = (data.Visual and data.Visual.Character) or (p and p.Character),
 		Origin = data.Origin,
 		Direction = data.Direction,
 		Speed = data.Speed,
@@ -16392,6 +16487,11 @@ function TimVFX.step(dt)
 		stepStance()
 	end
 end
+
+-- Keep split bodies hidden after the camera&#x27;s own transparency update.
+pcall(function()
+	game:GetService(&quot;RunService&quot;):BindToRenderStep(&quot;TimKeepHidden&quot;, Enum.RenderPriority.Camera.Value + 2, enforceHidden)
+end)
 
 Net.get(&quot;SpinFX&quot;).OnClientEvent:Connect(function(name, data)
 	if typeof(data) ~= &quot;table&quot; or data.Kind ~= &quot;TimLasso&quot; then

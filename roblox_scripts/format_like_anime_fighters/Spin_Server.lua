@@ -5705,7 +5705,7 @@ function TuskService.fireLasso(player, state, spec)
 		Speed = spec.Speed,
 		Radius = spec.Radius,
 		Range = spec.Range,
-		Visual = { Style = spec.Style or "Lasso" },
+		Visual = { Style = spec.Style or "Lasso", Character = spec.Character },
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd,
 	})

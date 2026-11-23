@@ -78,7 +78,8 @@ local function pull(S, target, point, stopDistance)
 	if distance <= (stopDistance or 4) then
 		return true
 	end
-	S.Adapter.applyKnockback(target, offset, math.min(distance / 0.18 * 0.6, 90), math.clamp(offset.Y * 3, 4, 30))
+	-- Mostly sideways; only lift when they're below the rope end (no bouncing).
+	S.Adapter.applyKnockback(target, offset, math.min(distance / 0.18 * 0.6, 90), math.clamp(offset.Y * 3, 1, 20))
 	return false
 end
 
@@ -121,6 +122,7 @@ local function lassoSnare(S, player, state, aim)
 		local char, _, r = alive(S, player)
 		local caught = false
 		S.fireLasso(player, state, {
+			Character = char,
 			Origin = S.origin(char, r, HAND),
 			Direction = direction,
 			Speed = c.Speed,
@@ -206,6 +208,16 @@ local function splitDodge(S, player, state, aim)
 	local direction = Moves.flat(S.aim(aim, root))
 	local life = state.Life
 	local used = false
+	-- He's in pieces: no walking off during the window.
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		S.Adapter.setMoveModifier(humanoid, "SplitDodge", 0.01) -- (never exactly 0: the multipliers divide back out)
+		task.delay(c.Window + 0.05, function()
+			if humanoid.Parent then
+				S.Adapter.setMoveModifier(humanoid, "SplitDodge", nil)
+			end
+		end)
+	end
 	character:SetAttribute("SplitCounter", true)
 	S.fx("Ability", { Character = character, Act = ACT, Move = "SplitDodge", Phase = "Scatter", Window = c.Window, Position = root.Position })
 	counters[character] = function(attackerPlayer)
@@ -224,7 +236,19 @@ local function splitDodge(S, player, state, aim)
 		end
 		-- Reform right behind whoever swung at him.
 		local from = r.Position
-		local behind = (ar.CFrame * CFrame.new(0, 0, 3.5)).Position
+		-- Behind them if there's room, otherwise beside them; never inside a wall.
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = { character, attacker }
+		local behind
+		for _, offset in ipairs({ CFrame.new(0, 0, 3.5), CFrame.new(3, 0, 1), CFrame.new(-3, 0, 1), CFrame.new(0, 0, -3) }) do
+			local spot = (ar.CFrame * offset).Position
+			if not workspace:Raycast(ar.Position, spot - ar.Position, params) then
+				behind = spot
+				break
+			end
+		end
+		behind = behind or from
 		local iframes = S.Adapter.Settings.IFrameAttribute
 		character:SetAttribute(iframes, true)
 		character:PivotTo(CFrame.lookAt(behind, Vector3.new(ar.Position.X, behind.Y, ar.Position.Z)))

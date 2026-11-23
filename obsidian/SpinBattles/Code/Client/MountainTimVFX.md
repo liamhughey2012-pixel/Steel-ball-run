@@ -177,8 +177,14 @@ end
 local function weldedTo(character, src)
 	local list = {}
 	for _, d in ipairs(character:GetDescendants()) do
-		if d:IsA("WeldConstraint") and d.Part0 == src and d.Part1 and d.Part1.Parent and d.Part1.Parent:IsA("Model") and d.Part1.Parent ~= character then
+		-- Outfit bits (WeldConstraint from the part) and accessories (hats,
+		-- hair: a weld between the accessory's Handle and the part).
+		if d:IsA("WeldConstraint") and d.Part0 == src and d.Part1 and d.Part1.Parent and d.Part1.Parent ~= character then
 			table.insert(list, d.Part1)
+		elseif d:IsA("JointInstance") and d.Parent and d.Parent.Name == "Handle" and d.Parent.Parent and d.Parent.Parent:IsA("Accessory") then
+			if d.Part1 == src or d.Part0 == src then
+				table.insert(list, d.Parent)
+			end
 		end
 	end
 	return list
@@ -225,10 +231,13 @@ local function dropPieces(pieces)
 	end
 end
 
-local function hideBody(character, hidden, seconds, onlyNames)
-	if not onlyNames then
-		hiddenUntil[character] = hidden and (os.clock() + (seconds or 0.5) + 0.8) or nil
-	end
+-- Hide a character (or just some of its parts) on this client. Remembers
+-- what it hid and puts exactly that back (faces an outfit hid stay hidden),
+-- and keeps it hidden every frame so the camera can't un-hide it.
+local hidden = {} -- [character] = { Parts = { [part] = true }, Decals = { [decal] = original } }
+
+local function partSet(character, onlyNames)
+	local list = {}
 	local set
 	if onlyNames then
 		set = {}
@@ -237,21 +246,83 @@ local function hideBody(character, hidden, seconds, onlyNames)
 		end
 	end
 	for _, d in ipairs(character:GetDescendants()) do
-		if d:IsA("BasePart") then
+		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" then
 			local own = set == nil or set[d.Name]
-			if not own and set then
-				-- outfit bits welded to a hidden part hide with it
+			if not own then
+				-- outfit bits and accessories attached to a hidden part hide with it
 				for _, w in ipairs(d:GetChildren()) do
-					if w:IsA("WeldConstraint") and w.Part0 and set[w.Part0.Name] then
+					if (w:IsA("WeldConstraint") or w:IsA("JointInstance")) and ((w.Part0 and set[w.Part0.Name]) or (w.Part1 and set[w.Part1.Name])) then
 						own = true
 					end
 				end
 			end
 			if own then
-				d.LocalTransparencyModifier = hidden and 1 or 0
+				table.insert(list, d)
 			end
-		elseif d:IsA("Decal") and not set then
-			d.Transparency = hidden and 1 or 0
+		end
+	end
+	return list
+end
+
+local function hideBody(character, hide, seconds, onlyNames)
+	if not onlyNames then
+		hiddenUntil[character] = hide and (os.clock() + (seconds or 0.5) + 0.8) or nil
+	end
+	local entry = hidden[character]
+	if hide then
+		entry = entry or { Parts = {}, Decals = {} }
+		hidden[character] = entry
+		for _, part in ipairs(partSet(character, onlyNames)) do
+			entry.Parts[part] = true
+			part.LocalTransparencyModifier = 1
+		end
+		if not onlyNames then
+			for _, d in ipairs(character:GetDescendants()) do
+				if d:IsA("Decal") and entry.Decals[d] == nil then
+					entry.Decals[d] = d.Transparency
+					d.Transparency = 1
+				end
+			end
+		end
+		return
+	end
+	if not entry then
+		return
+	end
+	if onlyNames then
+		for _, part in ipairs(partSet(character, onlyNames)) do
+			entry.Parts[part] = nil
+			part.LocalTransparencyModifier = 0
+		end
+		if next(entry.Parts) == nil and next(entry.Decals) == nil then
+			hidden[character] = nil
+		end
+		return
+	end
+	hidden[character] = nil
+	for part in pairs(entry.Parts) do
+		if part.Parent then
+			part.LocalTransparencyModifier = 0
+		end
+	end
+	for decal, original in pairs(entry.Decals) do
+		if decal.Parent then
+			decal.Transparency = original
+		end
+	end
+end
+
+-- Runs after the camera each frame: keeps hidden parts hidden.
+local function enforceHidden()
+	for character, entry in pairs(hidden) do
+		if not character.Parent then
+			hidden[character] = nil
+		else
+			for part in pairs(entry.Parts) do
+				if part.Parent and part.LocalTransparencyModifier ~= 1 then
+					part.LocalTransparencyModifier = 1
+				end
+			end
 		end
 	end
 end
@@ -351,7 +422,7 @@ local function spawnLasso(data)
 	lassos[data.Id] = {
 		Loop = newLoop(1.3),
 		Rope = newRope(0.16),
-		Owner = p and p.Character,
+		Owner = (data.Visual and data.Visual.Character) or (p and p.Character),
 		Origin = data.Origin,
 		Direction = data.Direction,
 		Speed = data.Speed,
@@ -839,6 +910,11 @@ function TimVFX.step(dt)
 		stepStance()
 	end
 end
+
+-- Keep split bodies hidden after the camera's own transparency update.
+pcall(function()
+	game:GetService("RunService"):BindToRenderStep("TimKeepHidden", Enum.RenderPriority.Camera.Value + 2, enforceHidden)
+end)
 
 Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
 	if typeof(data) ~= "table" or data.Kind ~= "TimLasso" then
