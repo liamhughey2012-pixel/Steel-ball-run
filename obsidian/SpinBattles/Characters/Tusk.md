@@ -33,5 +33,9 @@ M1: right flick → left flick → finger-gun shot → overhead slam. Nail Shot:
 Real uploaded animations can replace any of these in `TuskConfig.AnimationIds`.
 
 ## Blocky look
-All four Stands use a blocky (classic Roblox) look: every rounded piece is a box or square rod (`SpinShared.Blockify`). Turn it off with `TuskConfig.BlockyModels = false`. Custom Stand models from SpinAssets are never changed.
+The Stands are blocky but keep the round shapes that make them Tusk (`SpinShared.Blockify`):
+- signature round pieces stay smooth: Act 1's pink egg body and face (eyes, lids, beak pin, hearts), Act 2's ball body, head and ear discs, Act 3's dome body, shoulder balls and belly lens, Act 4's helmet
+- other big round pieces become stepped "voxel-round" shapes (a core box + crossing boxes)
+- small pieces become single boxes, rods become square rods
+Turn blocky off with `TuskConfig.BlockyModels = false`. Custom Stand models from SpinAssets are never changed.
 ![[blocky_models_preview.png]]

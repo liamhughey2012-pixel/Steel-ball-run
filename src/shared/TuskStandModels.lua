@@ -956,6 +956,14 @@ local builders = {
 	[4] = buildAct4,
 }
 
+-- Round pieces that make each Act recognisable as Tusk (kept smooth when blocky).
+local SIGNATURE_ROUND = {
+	[1] = { Body = true, Belly = true, Chin = true, Eye = true, Lid = true, Pupil = true, Highlight = true, Shine = true, HeartLobe = true, PinHead = true, Mouth = true, Head = true, Chest = true },
+	[2] = { Body = true, Head = true, Cheek = true, EarDisc = true, Drum = true, DrumRim = true, DrumHole = true, Pod = true, PodHole = true, Visor = true },
+	[3] = { Body = true, BackShade = true, ShoulderBall = true, BellyLens = true, LensRim = true, Mask = true },
+	[4] = { Head = true, Visor = true, HelmetRidge = true, Emblem = true },
+}
+
 function TuskStandModels.build(act, scale)
 	scale = scale or 1
 	local model, rig = override(act, scale)
@@ -967,9 +975,11 @@ function TuskStandModels.build(act, scale)
 		return nil
 	end
 	local built, rig = builder(scale)
-	-- Blocky (classic Roblox) look for the procedural Stands; custom models are left as they are.
+	-- Blocky (classic Roblox) look for the procedural Stands; custom models are
+	-- left as they are. Each Act keeps its signature round shapes smooth so it
+	-- still reads as Tusk (egg body and face, ear discs, ball body, dome head...).
 	if built and Blockify.enabled(TuskConfig) then
-		Blockify.apply(built)
+		Blockify.apply(built, { KeepRound = SIGNATURE_ROUND[act] })
 	end
 	return built, rig
 end

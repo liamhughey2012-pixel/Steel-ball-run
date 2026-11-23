@@ -50,3 +50,5 @@ updated: 2026-11-22
 | 2026-11-22 | Tusk Act 2 uses golden-ratio visuals (Golden Rectangle + spiral) instead of portals; moves renamed; golden spiral construction fixed (also improves Gyro's Ball Breaker) |
 | 2026-11-22 | Scary Monsters slashes are blue |
 | 2026-11-22 | Dino Infection turns the victim into a dinosaur in their avatar's colours that Diego commands for 10 s (25 s cooldown on hit) |
+| 2026-11-23 | Raptor Pounce fixed: the leap is flown by the owning client (smooth arc), the server decides the landing spot and damage |
+| 2026-11-23 | Tusk Stands look like Tusk again: signature round shapes kept smooth, other big round pieces become stepped voxel-round shapes |

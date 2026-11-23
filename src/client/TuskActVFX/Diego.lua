@@ -571,6 +571,43 @@ local function onM1(data)
 	end
 end
 
+-- RAPTOR POUNCE: Diego's own client flies the leap (it owns his physics, so
+-- the arc is smooth and every other player sees it replicate). The server
+-- picked the landing spot and deals the damage there.
+local function flyLeap(character, root, data)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local from = root.Position -- start from where we really are right now
+	local to = data.To or from
+	local height = data.Height or 7
+	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
+	local dir = flat.Magnitude > 0.1 and flat.Unit or Vector3.new(data.Direction.X, 0, data.Direction.Z).Unit
+	local stopped = false
+	if humanoid then
+		humanoid.AutoRotate = false
+	end
+	VFXLib.animate(data.Time or 0.36, function(a)
+		if stopped then
+			return
+		end
+		-- Hit out of the air (stunned) or died: let physics take over.
+		if not root.Parent or character:GetAttribute("Stunned") or (humanoid and humanoid.Health <= 0) then
+			stopped = true
+			return
+		end
+		local e = a < 1 and (0.5 - 0.5 * math.cos(a * math.pi)) or 1 -- ease in/out along the ground
+		local p = from:Lerp(to, e) + Vector3.new(0, 4 * height * a * (1 - a), 0)
+		root.CFrame = CFrame.lookAt(p, p + dir)
+		root.AssemblyLinearVelocity = Vector3.new()
+	end, function()
+		if humanoid and humanoid.Parent then
+			humanoid.AutoRotate = true
+		end
+		if root.Parent and not stopped then
+			root.AssemblyLinearVelocity = dir * 6 -- small carry on landing, no slide
+		end
+	end)
+end
+
 local function onAbility(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
@@ -583,6 +620,9 @@ local function onAbility(data)
 			-- Eyes flash before the leap.
 			VFXLib.flash(root.Position + Vector3.new(0, 1.5, 0), pal.Main, 3, 10, 0.2)
 		elseif data.Phase == "Leap" and root then
+			if Common.isLocal(character) then
+				flyLeap(character, root, data)
+			end
 			dinoAction(character, "Bite")
 			VFXLib.sound(sounds.Swing, root, 0.7, 0.7)
 			TuskVFX.CreateRotationalShockwave(CFrame.new(data.From - Vector3.new(0, 2.8, 0)), { Radius = 6, Layers = 2, Color = pal.Light, Color2 = pal.Main, Ground = true, Particles = 0.5, Width = 0.3 })

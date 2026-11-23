@@ -157,40 +157,27 @@ local function raptorPounce(S, player, state, aim)
 		end
 		local destination = Moves.safeStep(char, r, direction, distance)
 		local from = r.Position
-		local travel = destination and Vector3.new(destination.X - from.X, 0, destination.Z - from.Z) or Vector3.new()
-		-- Arc: rise for the first half, fall for the second (LinearVelocity, like knockback).
-		local attachment = Instance.new("Attachment")
-		attachment.Name = "DiegoPounce"
-		attachment.Parent = r
-		local velocity = Instance.new("LinearVelocity")
-		velocity.Attachment0 = attachment
-		velocity.RelativeTo = Enum.ActuatorRelativeTo.World
-		velocity.MaxForce = math.huge
-		local horizontal = travel / c.LeapTime
-		local up = c.LeapHeight / (c.LeapTime / 2)
-		velocity.VectorVelocity = horizontal + Vector3.new(0, up, 0)
-		velocity.Parent = attachment
-		r.CFrame = CFrame.lookAt(r.Position, r.Position + direction)
-		S.fx("Ability", { Character = char, Act = ACT, Move = "RaptorPounce", Phase = "Leap", From = from, To = destination or from, Time = c.LeapTime, Direction = direction })
-		task.delay(c.LeapTime / 2, function()
-			if velocity.Parent then
-				velocity.VectorVelocity = horizontal + Vector3.new(0, -up, 0)
-			end
-		end)
-		task.delay(c.LeapTime, function()
-			attachment:Destroy()
-			if state.Life ~= life then
-				return
+		local to = destination or from -- blocked: a short hop in place
+		-- The leap itself is flown by Diego's own client (it owns his physics, so the
+		-- arc is smooth for everyone). The server decides where it lands and hits there.
+		S.fx("Ability", { Character = char, Act = ACT, Move = "RaptorPounce", Phase = "Leap", From = from, To = to, Time = c.LeapTime, Height = c.LeapHeight, Direction = direction })
+		-- (a little extra time so a client that started the leap late isn't corrected mid-air)
+		task.delay(c.LeapTime + (c.LandGrace or 0.12), function()
+			if not S.stillValid(player, state, life) then
+				return -- stunned or died mid-leap: no landing hit
 			end
 			local _, _, rr = alive(S, player)
 			if not rr then
 				return
 			end
-			rr.AssemblyLinearVelocity = Vector3.new(0, rr.AssemblyLinearVelocity.Y, 0)
+			-- If the client didn't arrive (lag, blocked), put Diego where the leap ends.
+			if (rr.Position - to).Magnitude > 10 then
+				char:PivotTo(CFrame.lookAt(to, to + direction))
+			end
 			local damage = c.Damage * (state.DinoMode and cfg.ScaryMonsters.PounceMultiplier or 1)
-			local landAt = rr.Position + direction * 1.5
+			local landAt = to + direction * 1.5
 			local count = Moves.aoe(S, player, landAt, c.HitRadius, { Damage = damage, Stun = c.Stun, Knockback = c.Knockback, Direction = direction, Source = "DiegoPounce" }, 4)
-			S.fx("Ability", { Character = char, Act = ACT, Move = "RaptorPounce", Phase = "Land", Position = rr.Position, Direction = direction, Radius = c.HitRadius, Hit = count > 0 })
+			S.fx("Ability", { Character = char, Act = ACT, Move = "RaptorPounce", Phase = "Land", Position = to, Direction = direction, Radius = c.HitRadius, Hit = count > 0 })
 		end)
 	end)
 end

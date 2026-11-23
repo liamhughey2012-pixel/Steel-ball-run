@@ -1017,12 +1017,17 @@ __modules["Blockify"] = function()
 --[[
 	Blockify  (ReplicatedStorage.SpinShared.Blockify)
 
-	Turns a part-built model into a blocky (classic Roblox) look:
-	  * egg/sphere shapes (SpecialMesh Sphere, Ball parts) become boxes
-	  * cylinders become square rods
-	Sizes are trimmed so the boxes keep roughly the same silhouette as the
-	round shapes they replace. Part centres don't move, so welds, rigs and
-	animations keep working.
+	Turns a part-built model into a blocky (classic Roblox) look while
+	keeping each model recognisable:
+	  * small round pieces (eyes, studs, tips) become single boxes
+	  * BIG round pieces (Tusk's egg body, heads, shoulder balls) become a
+	    "voxel-round" shape: a core box plus three crossing boxes, so the
+	    outline is a stepped, pixel-art circle instead of a plain cube
+	  * flat discs (Act 2's rings) stay circular the same stepped way
+	  * long cylinders become square rods
+	Part centres don't move. The extra boxes are welded to the original part,
+	so welds, rigs, fades and animations keep working. Models whose parts are
+	moved one by one (the raptor) pass { Voxel = false } for single boxes.
 	Used by the Tusk Stands and the Scary Monsters raptor when
 	TuskConfig.BlockyModels is true. A part with the attribute KeepRound
 	is left alone.
@@ -1030,39 +1035,108 @@ __modules["Blockify"] = function()
 
 local Blockify = {}
 
-local ROUND = 0.82 -- box edge vs. sphere diameter (similar volume / silhouette)
+local ROUND = 0.82 -- single box vs. sphere diameter (similar silhouette)
 local ROD = 0.88 -- square rod vs. cylinder diameter
+local BIG = 0.7 -- studs: round pieces at least this big get the voxel-round shape
+local CORE, ARM = 0.86, 0.62 -- voxel-round: core box and the thin side of the crossing boxes
 
-local function convert(part)
-	if part:GetAttribute("KeepRound") then
+-- A box welded on top of `part`, copying its look.
+local function extraBox(part, size)
+	local p = Instance.new("Part")
+	p.Name = part.Name .. "Block"
+	p.Size = size
+	p.Color = part.Color
+	p.Material = part.Material
+	p.Reflectance = part.Reflectance
+	p.Transparency = part.Transparency
+	p.CastShadow = part.CastShadow
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.CFrame = part.CFrame
+	local weld = Instance.new("Weld")
+	weld.Part0 = part
+	weld.Part1 = p
+	weld.C0 = CFrame.new()
+	weld.Parent = p
+	p.Parent = part.Parent
+	return p
+end
+
+-- Stepped round shape for a piece of size s (core + crossing boxes on the axes in `axes`).
+local function voxelRound(part, s, axes)
+	part.Size = s * CORE
+	for _, axis in ipairs(axes) do
+		local x = axis == "X" and s.X or s.X * ARM
+		local y = axis == "Y" and s.Y or s.Y * ARM
+		local z = axis == "Z" and s.Z or s.Z * ARM
+		extraBox(part, Vector3.new(x, y, z))
+	end
+end
+
+local function convert(part, opts)
+	if part:GetAttribute("KeepRound") or (opts.KeepRound and opts.KeepRound[part.Name]) then
 		return
 	end
+	local canAdd = opts.Voxel ~= false and part.Parent ~= nil
 	local mesh = part:FindFirstChildOfClass("SpecialMesh")
 	if mesh and mesh.MeshType == Enum.MeshType.Sphere then
 		mesh:Destroy()
-		part.Size = part.Size * ROUND
+		local s = part.Size
+		if canAdd and math.max(s.X, s.Y, s.Z) >= BIG then
+			voxelRound(part, s, { "X", "Y", "Z" })
+		else
+			part.Size = s * ROUND
+		end
 		return
 	end
 	if part:IsA("Part") then
 		if part.Shape == Enum.PartType.Ball then
 			part.Shape = Enum.PartType.Block
-			part.Size = part.Size * ROUND
+			local s = part.Size
+			if canAdd and s.X >= BIG then
+				voxelRound(part, s, { "X", "Y", "Z" })
+			else
+				part.Size = s * ROUND
+			end
 		elseif part.Shape == Enum.PartType.Cylinder then
-			-- Cylinder length runs along X; the round sides become square.
+			-- Cylinder length runs along X; its round face is in Y/Z.
 			part.Shape = Enum.PartType.Block
-			part.Size = Vector3.new(part.Size.X, part.Size.Y * ROD, part.Size.Z * ROD)
+			local s = part.Size
+			local diameter = math.min(s.Y, s.Z)
+			if canAdd and diameter >= BIG and s.X < diameter * 0.6 then
+				-- A disc / wheel / ring: keep it round (stepped) in its face.
+				part.Size = Vector3.new(s.X, s.Y * CORE, s.Z * CORE)
+				extraBox(part, Vector3.new(s.X, s.Y, s.Z * ARM))
+				extraBox(part, Vector3.new(s.X, s.Y * ARM, s.Z))
+			else
+				part.Size = Vector3.new(s.X, s.Y * ROD, s.Z * ROD)
+			end
 		end
 	end
 end
 
-function Blockify.apply(model)
+-- opts.Voxel = false: single boxes only (for models whose parts are moved one
+-- by one, like the raptor rig).
+-- opts.KeepRound = { [partName] = true }: signature round pieces left smooth.
+function Blockify.apply(model, opts)
+	opts = opts or {}
+	local parts = {}
 	if model:IsA("BasePart") then
-		convert(model)
+		table.insert(parts, model)
 	end
 	for _, d in ipairs(model:GetDescendants()) do
 		if d:IsA("BasePart") then
-			convert(d)
+			table.insert(parts, d)
 		end
+	end
+	-- (collected first so the boxes added along the way aren't converted again)
+	for _, p in ipairs(parts) do
+		convert(p, opts)
 	end
 	return model
 end
@@ -2349,6 +2423,43 @@ local function onM1(data)
 	end
 end
 
+-- RAPTOR POUNCE: Diego's own client flies the leap (it owns his physics, so
+-- the arc is smooth and every other player sees it replicate). The server
+-- picked the landing spot and deals the damage there.
+local function flyLeap(character, root, data)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local from = root.Position -- start from where we really are right now
+	local to = data.To or from
+	local height = data.Height or 7
+	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
+	local dir = flat.Magnitude > 0.1 and flat.Unit or Vector3.new(data.Direction.X, 0, data.Direction.Z).Unit
+	local stopped = false
+	if humanoid then
+		humanoid.AutoRotate = false
+	end
+	VFXLib.animate(data.Time or 0.36, function(a)
+		if stopped then
+			return
+		end
+		-- Hit out of the air (stunned) or died: let physics take over.
+		if not root.Parent or character:GetAttribute("Stunned") or (humanoid and humanoid.Health <= 0) then
+			stopped = true
+			return
+		end
+		local e = a < 1 and (0.5 - 0.5 * math.cos(a * math.pi)) or 1 -- ease in/out along the ground
+		local p = from:Lerp(to, e) + Vector3.new(0, 4 * height * a * (1 - a), 0)
+		root.CFrame = CFrame.lookAt(p, p + dir)
+		root.AssemblyLinearVelocity = Vector3.new()
+	end, function()
+		if humanoid and humanoid.Parent then
+			humanoid.AutoRotate = true
+		end
+		if root.Parent and not stopped then
+			root.AssemblyLinearVelocity = dir * 6 -- small carry on landing, no slide
+		end
+	end)
+end
+
 local function onAbility(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
@@ -2361,6 +2472,9 @@ local function onAbility(data)
 			-- Eyes flash before the leap.
 			VFXLib.flash(root.Position + Vector3.new(0, 1.5, 0), pal.Main, 3, 10, 0.2)
 		elseif data.Phase == "Leap" and root then
+			if Common.isLocal(character) then
+				flyLeap(character, root, data)
+			end
 			dinoAction(character, "Bite")
 			VFXLib.sound(sounds.Swing, root, 0.7, 0.7)
 			TuskVFX.CreateRotationalShockwave(CFrame.new(data.From - Vector3.new(0, 2.8, 0)), { Radius = 6, Layers = 2, Color = pal.Light, Color2 = pal.Main, Ground = true, Particles = 0.5, Width = 0.3 })
@@ -4294,7 +4408,7 @@ function RaptorModel.build(scale, opts)
 
 	-- Blocky (classic Roblox) look: boxes instead of rounded shapes.
 	if opts.Blocky ~= false and Blockify.enabled(TuskConfig) then
-		Blockify.apply(model)
+		Blockify.apply(model, { Voxel = false }) -- parts are posed one by one
 	end
 
 	local rig = { Model = model, Scale = scale, Entries = entries }
@@ -7649,6 +7763,14 @@ local builders = {
 	[4] = buildAct4,
 }
 
+-- Round pieces that make each Act recognisable as Tusk (kept smooth when blocky).
+local SIGNATURE_ROUND = {
+	[1] = { Body = true, Belly = true, Chin = true, Eye = true, Lid = true, Pupil = true, Highlight = true, Shine = true, HeartLobe = true, PinHead = true, Mouth = true, Head = true, Chest = true },
+	[2] = { Body = true, Head = true, Cheek = true, EarDisc = true, Drum = true, DrumRim = true, DrumHole = true, Pod = true, PodHole = true, Visor = true },
+	[3] = { Body = true, BackShade = true, ShoulderBall = true, BellyLens = true, LensRim = true, Mask = true },
+	[4] = { Head = true, Visor = true, HelmetRidge = true, Emblem = true },
+}
+
 function TuskStandModels.build(act, scale)
 	scale = scale or 1
 	local model, rig = override(act, scale)
@@ -7660,9 +7782,11 @@ function TuskStandModels.build(act, scale)
 		return nil
 	end
 	local built, rig = builder(scale)
-	-- Blocky (classic Roblox) look for the procedural Stands; custom models are left as they are.
+	-- Blocky (classic Roblox) look for the procedural Stands; custom models are
+	-- left as they are. Each Act keeps its signature round shapes smooth so it
+	-- still reads as Tusk (egg body and face, ear discs, ball body, dome head...).
 	if built and Blockify.enabled(TuskConfig) then
-		Blockify.apply(built)
+		Blockify.apply(built, { KeepRound = SIGNATURE_ROUND[act] })
 	end
 	return built, rig
 end

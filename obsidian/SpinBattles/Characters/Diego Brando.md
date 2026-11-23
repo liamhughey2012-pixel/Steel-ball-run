@@ -41,3 +41,6 @@ The raptor (and Diego's dino tail) are blocky like the Tusk Stands: boxes instea
 
 ## Blue slashes
 Claw marks and the tail sweep are blue.
+
+## Raptor Pounce (fixed)
+The leap is flown by Diego's own client (it owns his character's physics), so the arc is smooth for everyone: it rises about 7 studs and lands exactly where the server chose. The server deals the landing damage there, and only puts Diego in place itself if he didn't arrive (lag). Getting hit mid-air cancels the landing hit.

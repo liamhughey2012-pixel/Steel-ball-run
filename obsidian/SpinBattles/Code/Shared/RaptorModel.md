@@ -268,7 +268,7 @@ function RaptorModel.build(scale, opts)
 
 	-- Blocky (classic Roblox) look: boxes instead of rounded shapes.
 	if opts.Blocky ~= false and Blockify.enabled(TuskConfig) then
-		Blockify.apply(model)
+		Blockify.apply(model, { Voxel = false }) -- parts are posed one by one
 	end
 
 	local rig = { Model = model, Scale = scale, Entries = entries }
