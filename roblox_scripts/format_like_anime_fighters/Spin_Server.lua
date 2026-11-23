@@ -859,7 +859,20 @@ end
 	info = { Damage, Stun, Knockback, Launch?, Direction, Position, Level, Perfect, Source }
 	Returns: hit:boolean, damageDealt:number
 ]]
+-- Counter-dodges (e.g. Mountain Tim's Split Dodge): while the target has
+-- the attribute, an incoming hit is cancelled and the handler runs instead.
+-- Adapter.DodgeHandlers[attributeName] = function(attackerPlayer, target, info)
+Adapter.DodgeHandlers = {}
+
 function Adapter.dealHit(attackerPlayer, targetCharacter, info)
+	if targetCharacter and attackerPlayer and targetCharacter ~= attackerPlayer.Character then
+		for attribute, handler in pairs(Adapter.DodgeHandlers) do
+			if targetCharacter:GetAttribute(attribute) then
+				pcall(handler, attackerPlayer, targetCharacter, info)
+				return false
+			end
+		end
+	end
 	if not Adapter.canBeHit(attackerPlayer, targetCharacter) then
 		return false
 	end
@@ -5046,7 +5059,7 @@ TuskActRegistry.Acts = {
 		Implemented = true,
 		Theme = { Primary = Color3.fromRGB(214, 156, 84), Secondary = Color3.fromRGB(96, 62, 38) },
 		M1 = "LASSO COMBO",
-		Abilities = { "LASSO SNARE", "ROPE SPLIT", "SPLIT PUNCH" },
+		Abilities = { "LASSO SNARE", "SPLIT DODGE", "SPLIT BARRAGE" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Ultimate = "LONESOME ROUNDUP",
 		Next = nil,

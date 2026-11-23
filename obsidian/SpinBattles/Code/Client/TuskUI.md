@@ -163,9 +163,9 @@ local function iconKind(name)
 	end
 	if has("LASSO") or has("ROUNDUP") then
 		return "lasso"
-	elseif has("ROPE SPLIT") then
+	elseif has("SPLIT DODGE") then
 		return "dash"
-	elseif has("SPLIT PUNCH") then
+	elseif has("SPLIT BARRAGE") then
 		return "barrage"
 	elseif has("SOUND TRAP") then
 		return "word"

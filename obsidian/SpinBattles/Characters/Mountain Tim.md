@@ -17,10 +17,13 @@ Built from the character's description (no reference images yet). Send pictures 
 
 | Input | Move | What it does |
 |---|---|---|
-| M1 | LASSO COMBO | jab, jab, rope whip, overhead rope slam |
-| 1 | LASSO SNARE | the lasso whirls overhead and flies out (60 studs); a catch wraps the loop round them (6) and drags them in. 7 s |
-| 2 | ROPE SPLIT | he comes apart: his body vanishes and blocky pieces in his colours slide along a rope 34 studs ahead, slicing through enemies (7); can't be hit on the way. 8 s |
-| 3 | SPLIT PUNCH | his fist flies off along the rope, punching everyone in a 26-stud line 3 times (3.5 each, the last knocks back). 6 s |
-| G | LONESOME ROUNDUP | a huge lasso spins overhead, ropes shoot to everyone within 24 studs, his pieces ride the ropes in (4 hits of 3), then the rope drags them together and slams down (12, launches) |
+| M1 | LASSO COMBO | jab, jab, a curving rope whip that cracks, then a lasso that drops and snaps shut (slam finisher) |
+| 1 | LASSO SNARE | the loop whirls overhead and flies (60 studs). A catch cinches the loop round them and **splits their body apart along the rope** (0.9 s, half speed for 1.6 s) while it drags them in (6). 7 s |
+| 2 | SPLIT DODGE | he bursts into pieces on a ring of rope for 0.6 s. **Attacked in that window: the hit is cancelled, his pieces zip along a rope to behind the attacker and he reforms with a rope slam (9, stun, knock-up).** Not attacked: the pieces slide 30 studs forward along the rope, slicing through enemies (6). 8 s |
+| 3 | SPLIT BARRAGE | his arm comes apart along the rope (shoulder, forearm, fist) and jabs down a 26-stud line 5 times; the last punch (5) hooks them and **reels them back** to him. 7 s |
+| G | LONESOME ROUNDUP | a giant lasso spins overhead while a rope ring tightens on the ground; ropes shoot to everyone within 24 studs and **split them apart**, his pieces ride the ropes in (4 hits of 3), then the rope drags them together and slams (12, launches) |
+
+**Models:** a braided rope (twisted two-tone segments) that sags under its weight, a thick lasso loop with a honda knot and a tail, and body pieces that are real copies of the character's own parts (his hat rides on his head piece).
+![[mountain_tim_rope_preview.png]]
 
 - Also a Stand-user NPC and a bounty-board target ("STAND: OH! LONESOME ME").

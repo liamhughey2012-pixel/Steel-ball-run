@@ -505,26 +505,30 @@ TuskConfig.MountainTim = {
 			{ Damage = 7, Stun = 0.5, Knockback = 40, Launch = 14, ShockwaveRadius = 7, AoeRadius = 6.5 },
 		},
 	},
-	LassoSnare = { -- throw the lasso: a hit ropes the enemy and drags them in
+	LassoSnare = { -- throw the lasso: a catch splits their body apart along the rope and drags them in
 		Cooldown = 7, Startup = 0.28,
 		Speed = 105, Radius = 1.6, Range = 60,
 		Damage = 6, Stun = 1.0,
 		ReelTime = 0.6, ReelTick = 0.15, ReelStopDistance = 5,
+		SplitTime = 0.9, -- their body is split apart along the rope this long
+		SplitSlow = 0.5, SlowTime = 1.6, -- and they move at half speed for a bit
 	},
-	RopeSplit = { -- split into pieces that slide along the rope to a new spot, slicing through enemies
-		Cooldown = 8, Windup = 0.15,
-		Distance = 34, Travel = 0.35, Width = 5,
-		Damage = 7, Stun = 0.6, Knockback = 10,
+	SplitDodge = { -- burst into pieces on the rope: get attacked and you reform behind them with a counter, otherwise slide forward
+		Cooldown = 8, Window = 0.6,
+		CounterDamage = 9, CounterStun = 0.9, CounterKnockback = 24, CounterLaunch = 10,
+		Distance = 30, Travel = 0.3, Width = 5, -- the slide if nobody attacks
+		Damage = 6, Stun = 0.5, Knockback = 10,
 	},
-	SplitPunch = { -- his fist flies off along the rope and punches down a line, then returns
-		Cooldown = 6, Windup = 0.18,
-		Range = 26, Width = 4, Hits = 3, HitEvery = 0.12,
-		Damage = 3.5, Stun = 0.5, FinalKnockback = 26,
+	SplitBarrage = { -- his arm splits along the rope and flies out punching; the last punch reels them in
+		Cooldown = 7, Windup = 0.18,
+		Range = 26, Width = 4.5, Hits = 5, HitEvery = 0.1,
+		Damage = 2.5, Stun = 0.5, FinalDamage = 5, ReelTime = 0.45, ReelTick = 0.15,
 	},
 	Ultimate = { -- LONESOME ROUNDUP: ropes to everyone nearby, his pieces ride them in, then he yanks everyone together
 		Windup = 0.9, Radius = 24, MaxTargets = 6,
 		RideHits = 4, RideEvery = 0.18, RideDamage = 3, RideStun = 0.6,
 		ReelTime = 0.8, ReelTick = 0.15,
+		SplitTime = 1.4, -- everyone roped is split apart along their rope while his pieces ride in
 		SlamDamage = 12, SlamRadius = 9, SlamKnockback = 55, SlamLaunch = 28, SlamStun = 0.8,
 	},
 }

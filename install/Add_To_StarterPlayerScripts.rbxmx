@@ -3946,7 +3946,7 @@ TuskActRegistry.Acts = {
 		Implemented = true,
 		Theme = { Primary = Color3.fromRGB(214, 156, 84), Secondary = Color3.fromRGB(96, 62, 38) },
 		M1 = "LASSO COMBO",
-		Abilities = { "LASSO SNARE", "ROPE SPLIT", "SPLIT PUNCH" },
+		Abilities = { "LASSO SNARE", "SPLIT DODGE", "SPLIT BARRAGE" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Ultimate = "LONESOME ROUNDUP",
 		Next = nil,
@@ -7119,9 +7119,9 @@ local function iconKind(name)
 	end
 	if has("LASSO") or has("ROUNDUP") then
 		return "lasso"
-	elseif has("ROPE SPLIT") then
+	elseif has("SPLIT DODGE") then
 		return "dash"
-	elseif has("SPLIT PUNCH") then
+	elseif has("SPLIT BARRAGE") then
 		return "barrage"
 	elseif has("SOUND TRAP") then
 		return "word"

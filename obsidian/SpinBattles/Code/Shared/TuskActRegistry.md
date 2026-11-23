@@ -167,7 +167,7 @@ TuskActRegistry.Acts = {
 		Implemented = true,
 		Theme = { Primary = Color3.fromRGB(214, 156, 84), Secondary = Color3.fromRGB(96, 62, 38) },
 		M1 = "LASSO COMBO",
-		Abilities = { "LASSO SNARE", "ROPE SPLIT", "SPLIT PUNCH" },
+		Abilities = { "LASSO SNARE", "SPLIT DODGE", "SPLIT BARRAGE" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Ultimate = "LONESOME ROUNDUP",
 		Next = nil,

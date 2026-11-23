@@ -20,14 +20,18 @@ __modules["MountainTim"] = function()
 	pieces that slide along his lasso rope. Registered as "Act" 9 so it
 	reuses the Tusk ability system.
 	  M1        LASSO COMBO: jab, jab, rope whip, overhead rope slam
-	  Ability 1 LASSO SNARE: throw the lasso; a hit ropes the enemy and drags them in
-	  Ability 2 ROPE SPLIT: he splits into pieces that slide along a rope to a
-	            spot ahead (can't be hit on the way), slicing through enemies
-	  Ability 3 SPLIT PUNCH: his fist comes off and flies along the rope,
-	            punching everyone in a line, then flies back
-	  Ultimate  LONESOME ROUNDUP: ropes shoot to everyone nearby, his pieces
-	            ride them in hitting over and over, then he yanks everyone
-	            together and slams the rope down
+	  Ability 1 LASSO SNARE: throw the lasso; a catch SPLITS THEIR BODY apart
+	            along the rope for a moment (slowed) and drags them in
+	  Ability 2 SPLIT DODGE: he bursts into pieces hanging on rope loops. If
+	            anyone attacks him in that moment, the pieces zip along a rope
+	            to behind the attacker and he reforms with a rope-slam counter.
+	            If nobody does, he slides forward along the rope instead.
+	  Ability 3 SPLIT BARRAGE: his arm splits along the rope (shoulder,
+	            forearm, fist) and flies out punching down a line; the last
+	            punch hooks them and reels them back to him
+	  Ultimate  LONESOME ROUNDUP: ropes shoot to everyone nearby and split
+	            them apart, his pieces ride the ropes in hitting over and over,
+	            then he yanks everyone together and slams the rope down
 	Numbers: TuskConfig.MountainTim. All damage goes through S.hit (CombatAdapter).
 ]]
 
@@ -67,6 +71,24 @@ local function pull(S, target, point, stopDistance)
 	return false
 end
 
+-- Oh! Lonesome Me on someone else: their body comes apart along the rope
+-- for a moment (clients draw it) and they're slowed.
+local function splitVictim(S, target, seconds, slow, slowTime)
+	target:SetAttribute("TimSplitUntil", workspace:GetServerTimeNow() + seconds)
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if humanoid and slow then
+		S.Adapter.setMoveModifier(humanoid, "TimSplit", slow)
+		local token = {}
+		target:SetAttribute("TimSlowToken", tostring(token))
+		task.delay(slowTime or seconds, function()
+			if humanoid.Parent and target:GetAttribute("TimSlowToken") == tostring(token) then
+				S.Adapter.setMoveModifier(humanoid, "TimSplit", nil)
+				target:SetAttribute("TimSlowToken", nil)
+			end
+		end)
+	end
+end
+
 ---------------------------------------------------------------------------
 -- LASSO SNARE
 ---------------------------------------------------------------------------
@@ -101,7 +123,8 @@ local function lassoSnare(S, player, state, aim)
 				if not S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Direction = direction, Position = position, Source = "MountainTimLasso" }) then
 					return
 				end
-				S.fx("Ability", { Character = char, Act = ACT, Move = "LassoSnare", Phase = "Snag", Target = target, Duration = c.ReelTime })
+				splitVictim(S, target, c.SplitTime, c.SplitSlow, c.SlowTime)
+				S.fx("Ability", { Character = char, Act = ACT, Move = "LassoSnare", Phase = "Snag", Target = target, Duration = c.ReelTime, SplitTime = c.SplitTime })
 				local done = false
 				for i = 0, math.max(1, math.floor(c.ReelTime / c.ReelTick)) - 1 do
 					task.delay(i * c.ReelTick, function()
@@ -118,71 +141,123 @@ local function lassoSnare(S, player, state, aim)
 end
 
 ---------------------------------------------------------------------------
--- ROPE SPLIT
+-- SPLIT DODGE
 ---------------------------------------------------------------------------
-local function ropeSplit(S, player, state, aim)
-	local c = cfg.RopeSplit
-	if not ready(S, player, state, "RopeSplit", 2) then
+local counters = setmetatable({}, { __mode = "k" }) -- [character] = counter function while the dodge is up
+
+local function registerCounter(S)
+	if S.Adapter.DodgeHandlers and not S.Adapter.DodgeHandlers.SplitCounter then
+		S.Adapter.DodgeHandlers.SplitCounter = function(attackerPlayer, target, info)
+			local counter = counters[target]
+			if counter then
+				counter(attackerPlayer, info)
+			end
+		end
+	end
+end
+
+local function slide(S, player, state, life, direction)
+	local c = cfg.SplitDodge
+	local char, _, r = alive(S, player)
+	if not char or state.Life ~= life then
 		return
 	end
+	local from = r.Position
+	local to = Moves.safeStep(char, r, direction, c.Distance)
+	if not to then
+		S.fx("Ability", { Character = char, Act = ACT, Move = "SplitDodge", Phase = "Rejoin", Position = from })
+		return
+	end
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	char:SetAttribute(iframes, true)
+	S.fx("Ability", { Character = char, Act = ACT, Move = "SplitDodge", Phase = "Slide", From = from, To = to, Direction = direction, Travel = c.Travel })
+	local length = (to - from).Magnitude
+	local mid = (from + to) / 2
+	Moves.boxHit(S, player, CFrame.lookAt(mid, mid + direction), Vector3.new(c.Width, 6, length + 2), { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = direction, Source = "MountainTimSplit" }, 5)
+	task.delay(c.Travel, function()
+		char:SetAttribute(iframes, nil)
+		if char.Parent and state.Life == life then
+			char:PivotTo(CFrame.lookAt(to, to + direction))
+			S.fx("Ability", { Character = char, Act = ACT, Move = "SplitDodge", Phase = "Rejoin", Position = to })
+		end
+	end)
+end
+
+local function splitDodge(S, player, state, aim)
+	local c = cfg.SplitDodge
+	if not ready(S, player, state, "SplitDodge", 2) then
+		return
+	end
+	registerCounter(S)
+	S.startCooldown(player, state, "SplitDodge", c.Cooldown, 2)
+	S.lock(state, c.Window + c.Travel + 0.25)
 	local character, _, root = alive(S, player)
 	local direction = Moves.flat(S.aim(aim, root))
-	if not Moves.safeStep(character, root, direction, c.Distance) then
-		S.tell(player, "Denied", { Reason = "Blocked" })
-		return
-	end
-	S.startCooldown(player, state, "RopeSplit", c.Cooldown, 2)
-	S.lock(state, c.Windup + c.Travel + 0.2)
 	local life = state.Life
-	S.fx("Ability", { Character = character, Act = ACT, Move = "RopeSplit", Phase = "Startup", Windup = c.Windup })
-	task.delay(c.Windup, function()
-		if not S.stillValid(player, state, life) then
+	local used = false
+	character:SetAttribute("SplitCounter", true)
+	S.fx("Ability", { Character = character, Act = ACT, Move = "SplitDodge", Phase = "Scatter", Window = c.Window, Position = root.Position })
+	counters[character] = function(attackerPlayer)
+		if used or state.Life ~= life then
 			return
 		end
-		local char, _, r = alive(S, player)
+		used = true
+		counters[character] = nil
+		character:SetAttribute("SplitCounter", nil)
+		local attacker = attackerPlayer and attackerPlayer.Character
+		local ar = attacker and attacker:FindFirstChild("HumanoidRootPart")
+		local _, _, r = alive(S, player)
+		if not ar or not r then
+			S.fx("Ability", { Character = character, Act = ACT, Move = "SplitDodge", Phase = "Rejoin", Position = r and r.Position or ar.Position })
+			return
+		end
+		-- Reform right behind whoever swung at him.
 		local from = r.Position
-		local to = Moves.safeStep(char, r, direction, c.Distance)
-		if not to then
-			return
-		end
+		local behind = (ar.CFrame * CFrame.new(0, 0, 3.5)).Position
 		local iframes = S.Adapter.Settings.IFrameAttribute
-		char:SetAttribute(iframes, true)
-		char:SetAttribute("RopeSplit", true)
-		S.fx("Ability", { Character = char, Act = ACT, Move = "RopeSplit", Phase = "Split", From = from, To = to, Direction = direction, Travel = c.Travel })
-		-- Everyone along the rope gets sliced by the passing pieces.
-		local length = (to - from).Magnitude
-		local mid = (from + to) / 2
-		Moves.boxHit(S, player, CFrame.lookAt(mid, mid + direction), Vector3.new(c.Width, 6, length + 2), { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = direction, Source = "MountainTimSplit" }, 5)
-		task.delay(c.Travel, function()
-			char:SetAttribute("RopeSplit", nil)
-			char:SetAttribute(iframes, nil)
-			if char.Parent and state.Life == life then
-				char:PivotTo(CFrame.lookAt(to, to + direction))
-				S.fx("Ability", { Character = char, Act = ACT, Move = "RopeSplit", Phase = "Rejoin", Position = to })
+		character:SetAttribute(iframes, true)
+		character:PivotTo(CFrame.lookAt(behind, Vector3.new(ar.Position.X, behind.Y, ar.Position.Z)))
+		S.fx("Ability", { Character = character, Act = ACT, Move = "SplitDodge", Phase = "Counter", From = from, To = behind, Attacker = attacker })
+		task.delay(0.14, function()
+			if attacker.Parent and ar.Parent then
+				S.hit(player, attacker, { Damage = c.CounterDamage, Stun = c.CounterStun, Knockback = c.CounterKnockback, Launch = c.CounterLaunch, Direction = ar.Position - behind, Position = ar.Position, Source = "MountainTimCounter" })
 			end
 		end)
+		task.delay(0.4, function()
+			character:SetAttribute(iframes, nil)
+		end)
+	end
+	task.delay(c.Window, function()
+		if used then
+			return
+		end
+		counters[character] = nil
+		character:SetAttribute("SplitCounter", nil)
+		if state.Life == life then
+			slide(S, player, state, life, direction) -- nobody bit: slide forward along the rope
+		end
 	end)
 end
 
 ---------------------------------------------------------------------------
--- SPLIT PUNCH
+-- SPLIT BARRAGE
 ---------------------------------------------------------------------------
-local function splitPunch(S, player, state, aim)
-	local c = cfg.SplitPunch
-	if not ready(S, player, state, "SplitPunch", 3) then
+local function splitBarrage(S, player, state, aim)
+	local c = cfg.SplitBarrage
+	if not ready(S, player, state, "SplitBarrage", 3) then
 		return
 	end
-	S.startCooldown(player, state, "SplitPunch", c.Cooldown, 3)
-	S.lock(state, c.Windup + c.Hits * c.HitEvery + 0.3)
+	S.startCooldown(player, state, "SplitBarrage", c.Cooldown, 3)
+	S.lock(state, c.Windup + c.Hits * c.HitEvery + c.ReelTime + 0.2)
 	local character, _, root = alive(S, player)
 	local direction = Moves.flat(S.aim(aim, root))
 	local life = state.Life
-	S.fx("Ability", { Character = character, Act = ACT, Move = "SplitPunch", Phase = "Startup", Windup = c.Windup })
+	S.fx("Ability", { Character = character, Act = ACT, Move = "SplitBarrage", Phase = "Startup", Windup = c.Windup })
 	task.delay(c.Windup, function()
 		if not S.stillValid(player, state, life) then
 			return
 		end
-		S.fx("Ability", { Character = character, Act = ACT, Move = "SplitPunch", Phase = "Fly", Direction = direction, Range = c.Range, Hits = c.Hits, HitEvery = c.HitEvery })
+		S.fx("Ability", { Character = character, Act = ACT, Move = "SplitBarrage", Phase = "Fly", Direction = direction, Range = c.Range, Hits = c.Hits, HitEvery = c.HitEvery, ReelTime = c.ReelTime })
 		for i = 1, c.Hits do
 			task.delay((i - 1) * c.HitEvery, function()
 				local char, _, r = alive(S, player)
@@ -191,7 +266,20 @@ local function splitPunch(S, player, state, aim)
 				end
 				local mid = r.Position + direction * (c.Range / 2)
 				local last = i == c.Hits
-				Moves.boxHit(S, player, CFrame.lookAt(mid, mid + direction), Vector3.new(c.Width, 5, c.Range), { Damage = c.Damage, Stun = c.Stun, Knockback = last and c.FinalKnockback or 2, Launch = last and 10 or nil, Direction = direction, Source = "MountainTimPunch" }, 4)
+				local _, hitSet = Moves.boxHit(S, player, CFrame.lookAt(mid, mid + direction), Vector3.new(c.Width, 5, c.Range), { Damage = last and c.FinalDamage or c.Damage, Stun = c.Stun, Knockback = last and 0 or 2, Direction = direction, Source = "MountainTimBarrage" }, 4)
+				if last then
+					-- The last punch hooks them: the rope reels them back to him.
+					for target in pairs(hitSet) do
+						for k = 0, math.floor(c.ReelTime / c.ReelTick) - 1 do
+							task.delay(k * c.ReelTick, function()
+								local _, _, rr = alive(S, player)
+								if rr and state.Life == life and target.Parent then
+									pull(S, target, rr.Position + rr.CFrame.LookVector * 3, 4)
+								end
+							end)
+						end
+					end
+				end
 			end)
 		end
 	end)
@@ -204,9 +292,9 @@ function Tim.Ability(S, player, state, slot, phase, aim)
 	if slot == 1 then
 		lassoSnare(S, player, state, aim)
 	elseif slot == 2 then
-		ropeSplit(S, player, state, aim)
+		splitDodge(S, player, state, aim)
 	elseif slot == 3 then
-		splitPunch(S, player, state, aim)
+		splitBarrage(S, player, state, aim)
 	end
 end
 
@@ -242,7 +330,10 @@ function Tim.Ultimate(S, player, state, aim)
 			end
 		end
 		S.finishUltimate(player, state)
-		S.fx("Ultimate", { Character = char, Act = ACT, Phase = "Rope", Targets = roped, RideHits = u.RideHits, RideEvery = u.RideEvery, ReelTime = u.ReelTime })
+		for _, target in ipairs(roped) do
+			splitVictim(S, target, u.SplitTime, 0.5, u.SplitTime)
+		end
+		S.fx("Ultimate", { Character = char, Act = ACT, Phase = "Rope", Targets = roped, SplitTime = u.SplitTime, RideHits = u.RideHits, RideEvery = u.RideEvery, ReelTime = u.ReelTime })
 		-- His pieces ride the ropes and hit, again and again.
 		for i = 1, u.RideHits do
 			task.delay((i - 1) * u.RideEvery, function()
@@ -290,6 +381,8 @@ function Tim.Cleanup(S, player, state)
 	if state.Character then
 		state.Character:SetAttribute("Armored", nil)
 		state.Character:SetAttribute("RopeSplit", nil)
+		state.Character:SetAttribute("SplitCounter", nil)
+		counters[state.Character] = nil
 		state.Character:SetAttribute(S.Adapter.Settings.IFrameAttribute, nil)
 	end
 end
