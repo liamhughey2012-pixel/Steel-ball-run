@@ -20,6 +20,7 @@ local HotPantsOutfit = require(script.HotPantsOutfit)
 local BlackmoreOutfit = require(script.BlackmoreOutfit)
 local StandBots = require(script.StandBots)
 local BountyService = require(script.BountyService)
+local WeatherService = require(script.WeatherService)
 
 -- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
@@ -35,5 +36,6 @@ HotPantsOutfit.init()
 BlackmoreOutfit.init()
 StandBots.init(TuskService)
 BountyService.init()
+WeatherService.init()
 NPCService.init()
 TestDummies.init()

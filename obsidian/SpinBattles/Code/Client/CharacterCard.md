@@ -361,7 +361,7 @@ function buildDropdown()
 		TextSize = 10,
 		TextColor3 = Color3.fromRGB(165, 158, 190),
 		TextStrokeTransparency = 1,
-		Text = "Everyone can BLOCK (F) and DASH (Q)",
+		Text = "Scroll for more  ·  BLOCK (F)  ·  DASH (Q)",
 	})
 	local line = Instance.new("Frame")
 	line.Position = UDim2.fromOffset(12, 49)
@@ -378,7 +378,9 @@ function buildDropdown()
 	dropdownList.Size = UDim2.new(1, 0, 1, -52)
 	dropdownList.CanvasSize = UDim2.new()
 	dropdownList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	dropdownList.ScrollBarThickness = 3
+	dropdownList.ScrollBarThickness = 6
+	dropdownList.ScrollingDirection = Enum.ScrollingDirection.Y
+	dropdownList.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 	dropdownList.ScrollBarImageColor3 = GOLD
 	dropdownList.Parent = dropdown
 	local layout = Instance.new("UIListLayout")
@@ -546,7 +548,9 @@ function CharacterCard.toggle()
 	open = not open
 	local rows = #(TuskConfig.Roster or {})
 	local full = 52 + 14 + rows * (ROW_H + 5)
-	local target = math.min(full, (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 600) - 140)
+	-- Short list (about 4 rows, never more than 45% of the screen); the rest scrolls.
+	local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 600
+	local target = math.min(full, 52 + 14 + 4.4 * (ROW_H + 5), math.max(180, screenH * 0.45))
 	refreshDropdown(shownAct)
 	if open then
 		dropdown.Visible = true

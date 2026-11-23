@@ -5935,6 +5935,30 @@ local function onRequest(player, action, a, b, c)
 		TuskService.select(player, start, true)
 		return
 	end
+	if action == "RainFloat" then
+		-- Blackmore standing on frozen raindrops in mid-air (the movement is the
+		-- client's; this only shows the drops to everyone).
+		local st = states[player]
+		local character = player.Character
+		if not st or not character or st.Act ~= 11 then
+			return
+		end
+		local raining = game:GetService("ReplicatedStorage"):GetAttribute("SpinRaining") == true
+			or (character:GetAttribute("RainStormUntil") or 0) > workspace:GetServerTimeNow()
+		if a == true and raining then
+			local cfg = TuskConfig.Blackmore and TuskConfig.Blackmore.RainWalk
+			local token = tostring({})
+			character:SetAttribute("RainFloating", token)
+			task.delay((cfg and cfg.FloatTime or 6) + 0.5, function()
+				if character:GetAttribute("RainFloating") == token then
+					character:SetAttribute("RainFloating", nil)
+				end
+			end)
+		else
+			character:SetAttribute("RainFloating", nil)
+		end
+		return
+	end
 	local state = states[player]
 	if not state or not state.Act or not state.Character then
 		return
@@ -6429,6 +6453,68 @@ function TuskSneakService.burrowStrike(player, state, target, a, source)
 end
 
 return TuskSneakService
+end
+
+-- ======================================================================
+-- MODULE: WeatherService
+-- ======================================================================
+__modules["WeatherService"] = function()
+--[[
+	WeatherService  (ServerScriptService.SpinServer.WeatherService)
+
+	Rain for the whole server: every TuskConfig.Weather.RainEvery seconds it
+	rains for RainDuration seconds. Sets these ReplicatedStorage attributes:
+	  SpinRaining   true while it rains
+	  SpinRainEnds  server time the rain stops
+	  SpinNextRain  server time the next rain starts
+	Clients draw the rain (WeatherClient). Blackmore can walk on raindrops
+	while it rains (TuskActs/Blackmore + BlackmoreVFX).
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Shared = nil -- (bundled: modules are inlined)
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+
+local WeatherService = {}
+
+local function now()
+	return workspace:GetServerTimeNow()
+end
+
+function WeatherService.isRaining()
+	return ReplicatedStorage:GetAttribute("SpinRaining") == true
+end
+
+function WeatherService.setRain(on, seconds)
+	ReplicatedStorage:SetAttribute("SpinRaining", on and true or nil)
+	ReplicatedStorage:SetAttribute("SpinRainEnds", on and (now() + (seconds or 60)) or nil)
+end
+
+function WeatherService.init()
+	local cfg = TuskConfig.Weather
+	if not cfg or cfg.Enabled == false then
+		return
+	end
+	local first = RunService:IsStudio() and (cfg.StudioFirstRainAfter or cfg.FirstRainAfter) or cfg.FirstRainAfter
+	task.spawn(function()
+		local nextRain = now() + (first or cfg.RainEvery)
+		while true do
+			ReplicatedStorage:SetAttribute("SpinNextRain", nextRain)
+			task.wait(math.max(nextRain - now(), 0.1))
+			WeatherService.setRain(true, cfg.RainDuration)
+			task.wait(cfg.RainDuration)
+			WeatherService.setRain(false)
+			nextRain = nextRain + math.max(cfg.RainEvery, cfg.RainDuration + 1)
+			if nextRain < now() then
+				nextRain = now() + cfg.RainEvery
+			end
+		end
+	end)
+end
+
+return WeatherService
 end
 
 -- ======================================================================

@@ -627,6 +627,11 @@ TuskConfig.Blackmore = {
 		Damage = 5, Stun = 0.6,
 		CageTime = 2.5, Slow = 0.45, Tick = 0.3, MoveDamage = 2, MoveThreshold = 0.8,
 	},
+	RainWalk = { -- while it rains (or in his own storm): double-jump to step on frozen raindrops in mid-air
+		FloatTime = 6, -- seconds he can stay up per float
+		MaxSteps = 8, -- jump again in the air to step higher, this many times
+		Cooldown = 3, -- after the float ends
+	},
 	Ultimate = { -- CATCH THE RAINBOW: a downpour round him; the rain slices everyone, he scatters from the first hit, then every drop fires inward
 		Windup = 0.8, Radius = 18, Duration = 5, Tick = 0.5, TickDamage = 1.5, TickStun = 0.4,
 		ScatterDistance = 8,
@@ -670,7 +675,19 @@ TuskConfig.Gyro = {
 -- Sound ids. Upload assets/audio/tusk_*.ogg (Creator Hub > Asset Manager)
 -- and paste "rbxassetid://..." here. Empty string = silent.
 ---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+-- Weather: it rains for a while every few minutes (the whole server).
+---------------------------------------------------------------------------
+TuskConfig.Weather = {
+	Enabled = true,
+	RainEvery = 300, -- seconds between the start of one rain and the next (5 minutes)
+	RainDuration = 60, -- how long each rain lasts
+	FirstRainAfter = 300, -- seconds after the server starts (set lower to test)
+	StudioFirstRainAfter = 15, -- in Studio the first rain comes quickly so you can test it
+}
+
 TuskConfig.Sounds = {
+	Rain = "", -- a looping rain sound id (optional)
 	Swing = "", -- tusk_swing.ogg
 	Hit = "", -- tusk_hit.ogg
 	Finisher = "", -- tusk_finisher.ogg

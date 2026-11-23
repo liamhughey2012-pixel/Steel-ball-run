@@ -457,6 +457,30 @@ local function onRequest(player, action, a, b, c)
 		TuskService.select(player, start, true)
 		return
 	end
+	if action == "RainFloat" then
+		-- Blackmore standing on frozen raindrops in mid-air (the movement is the
+		-- client's; this only shows the drops to everyone).
+		local st = states[player]
+		local character = player.Character
+		if not st or not character or st.Act ~= 11 then
+			return
+		end
+		local raining = game:GetService("ReplicatedStorage"):GetAttribute("SpinRaining") == true
+			or (character:GetAttribute("RainStormUntil") or 0) > workspace:GetServerTimeNow()
+		if a == true and raining then
+			local cfg = TuskConfig.Blackmore and TuskConfig.Blackmore.RainWalk
+			local token = tostring({})
+			character:SetAttribute("RainFloating", token)
+			task.delay((cfg and cfg.FloatTime or 6) + 0.5, function()
+				if character:GetAttribute("RainFloating") == token then
+					character:SetAttribute("RainFloating", nil)
+				end
+			end)
+		else
+			character:SetAttribute("RainFloating", nil)
+		end
+		return
+	end
 	local state = states[player]
 	if not state or not state.Act or not state.Character then
 		return

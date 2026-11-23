@@ -9,6 +9,10 @@
 	  * RAINDROP STEP: a stair of frozen drops hangs in the air along his dash
 	    for a few seconds, then falls and splashes
 	  * RAINDROP CAGE: a dome of frozen drops follows the target; each cut flashes
+	  * RAIN WALK: while it rains (or in his storm) a jump in mid-air plants a
+	    frozen raindrop under his feet: he can walk on the air and jump again
+	    to step higher (an invisible local step follows him; everyone sees
+	    the drops under his feet and his umbrella open)
 	  * CATCH THE RAINBOW: a dark cloud, a downpour, a rainbow arc overhead,
 	    frozen drops hanging everywhere; he scatters into raindrops when hit;
 	    the end: every drop fires inward
@@ -147,7 +151,7 @@ local function stepUmbrellas()
 					u = { Closed = buildClosedUmbrella(), Open = buildOpenUmbrella() }
 					umbrellas[character] = u
 				end
-				local storm = stormOver(character)
+				local storm = stormOver(character) or character:GetAttribute("RainFloating") ~= nil
 				local down = hand.Name == "Left Arm" and -hand.Size.Y / 2 + 0.2 or -0.15
 				if storm then
 					-- Open, held above his head.
@@ -542,6 +546,181 @@ local function stepStance()
 	end
 end
 
+---------------------------------------------------------------------------
+-- RAIN WALK (local player's movement + everyone's drops under the feet)
+---------------------------------------------------------------------------
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local walkCfg = (TuskConfig.Blackmore and TuskConfig.Blackmore.RainWalk) or { FloatTime = 6, MaxSteps = 8, Cooldown = 3 }
+local localPlayer = Players.LocalPlayer
+local walk = { Floating = false, Steps = 0, CooldownUntil = 0, LastPlant = 0 }
+local footDrops = {} -- [character] = { Parts }
+
+local function rainingFor(character)
+	if ReplicatedStorage:GetAttribute("SpinRaining") == true then
+		return true
+	end
+	return (character:GetAttribute("RainStormUntil") or 0) > workspace:GetServerTimeNow()
+end
+
+local function feetOffset(humanoid, root)
+	if humanoid.RigType == Enum.HumanoidRigType.R15 then
+		return humanoid.HipHeight + root.Size.Y / 2
+	end
+	return 3
+end
+
+local function endWalk(cooldown)
+	if walk.Platform then
+		walk.Platform:Destroy()
+		walk.Platform = nil
+	end
+	if walk.Floating then
+		walk.Floating = false
+		Net.get("TuskRequest"):FireServer("RainFloat", false)
+		if cooldown then
+			walk.CooldownUntil = os.clock() + walkCfg.Cooldown
+		end
+	end
+	walk.Steps = 0
+end
+
+local function plant()
+	local character = localPlayer.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not humanoid or not root or humanoid.Health <= 0 then
+		return
+	end
+	local feetY = root.Position.Y - feetOffset(humanoid, root)
+	if not walk.Platform then
+		local p = Instance.new("Part")
+		p.Name = "RainStep"
+		p.Anchored = true
+		p.CanCollide = true
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Transparency = 1
+		p.Size = Vector3.new(5, 0.4, 5)
+		p.Parent = workspace
+		walk.Platform = p
+	end
+	walk.FloatY = feetY
+	walk.Platform.CFrame = CFrame.new(root.Position.X, feetY - 0.2, root.Position.Z)
+	local v = root.AssemblyLinearVelocity
+	root.AssemblyLinearVelocity = Vector3.new(v.X, math.max(v.Y, 0), v.Z)
+	walk.Steps = walk.Steps + 1
+	walk.LastPlant = os.clock()
+	walk.AirSince = nil
+	if not walk.Floating then
+		walk.Floating = true
+		walk.Start = os.clock()
+		Net.get("TuskRequest"):FireServer("RainFloat", true)
+	end
+	-- A frozen drop catches his foot.
+	local at = Vector3.new(root.Position.X, feetY, root.Position.Z)
+	TuskVFX.CreateImpactStar(at, { Size = 3, Rays = 6, Color = DROP, Color2 = Color3.new(1, 1, 1), Duration = 0.15 })
+	splash(at, 0.6)
+end
+
+local function onJumpRequest()
+	local character = localPlayer.Character
+	if not character or character:GetAttribute("TuskAct") ~= ACT or not rainingFor(character) then
+		return
+	end
+	if character:GetAttribute("Stunned") then
+		return
+	end
+	local now = os.clock()
+	-- Only in mid-air (a jump from the ground or from a drop is a normal jump).
+	if not walk.AirSince or now - walk.AirSince < 0.15 or now - walk.LastPlant < 0.25 then
+		return
+	end
+	if not walk.Floating and now < walk.CooldownUntil then
+		return
+	end
+	if walk.Steps >= walkCfg.MaxSteps then
+		return
+	end
+	plant()
+end
+
+local function stepWalk()
+	local character = localPlayer.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not humanoid or not root or character:GetAttribute("TuskAct") ~= ACT then
+		walk.AirSince = nil
+		endWalk(false)
+		return
+	end
+	local now = os.clock()
+	local inAir = humanoid.FloorMaterial == Enum.Material.Air
+	if inAir then
+		walk.AirSince = walk.AirSince or now
+	else
+		walk.AirSince = nil
+	end
+	if not walk.Floating then
+		if not inAir then
+			walk.Steps = 0
+		end
+		return
+	end
+	-- Ends: time's up, the rain stops, stunned, dead, or back on real ground.
+	if now - walk.Start > walkCfg.FloatTime or not rainingFor(character) or character:GetAttribute("Stunned") or humanoid.Health <= 0 then
+		endWalk(true)
+		return
+	end
+	local feet = root.Position.Y - feetOffset(humanoid, root)
+	if not inAir and feet < walk.FloatY - 1 then
+		endWalk(true) -- landed on something real below the step
+		return
+	end
+	-- The step follows him so he can walk on the air.
+	if walk.Platform then
+		walk.Platform.CFrame = CFrame.new(root.Position.X, walk.FloatY - 0.2, root.Position.Z)
+	end
+end
+
+-- Everyone floating on drops gets a cluster of frozen drops under the feet.
+local function stepFootDrops()
+	local now = os.clock()
+	local seen = {}
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		local root = character and Common.rootOf(character)
+		if root and character:GetAttribute("RainFloating") then
+			seen[character] = true
+			local fd = footDrops[character]
+			if not fd then
+				fd = { Parts = {} }
+				for i = 1, 6 do
+					fd.Parts[i] = newDrop(1.3)
+				end
+				footDrops[character] = fd
+				splash(root.Position - Vector3.new(0, 3, 0), 0.8)
+			end
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			local feet = root.Position.Y - (humanoid and feetOffset(humanoid, root) or 3)
+			for i, d in ipairs(fd.Parts) do
+				local a = i / #fd.Parts * math.pi * 2 + now * 1.5
+				local r = i == 1 and 0 or 0.9
+				d.CFrame = CFrame.new(root.Position.X + math.cos(a) * r, feet - 0.25 + math.sin(now * 6 + i) * 0.05, root.Position.Z + math.sin(a) * r)
+			end
+		end
+	end
+	for character, fd in pairs(footDrops) do
+		if not seen[character] then
+			footDrops[character] = nil
+			release(fd.Parts)
+		end
+	end
+end
+
+UserInputService.JumpRequest:Connect(onJumpRequest)
+
 function BlackmoreVFX.handle(name, data)
 	if name == "M1" then
 		onM1(data)
@@ -561,6 +740,8 @@ function BlackmoreVFX.step(dt)
 	stepDrops()
 	stepCages()
 	stepStorms(dt)
+	stepWalk()
+	stepFootDrops()
 	slowTimer = slowTimer + dt
 	if slowTimer > 0.2 then
 		slowTimer = 0

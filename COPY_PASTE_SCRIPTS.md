@@ -1894,6 +1894,11 @@ TuskConfig.Blackmore = {
 		Damage = 5, Stun = 0.6,
 		CageTime = 2.5, Slow = 0.45, Tick = 0.3, MoveDamage = 2, MoveThreshold = 0.8,
 	},
+	RainWalk = { -- while it rains (or in his own storm): double-jump to step on frozen raindrops in mid-air
+		FloatTime = 6, -- seconds he can stay up per float
+		MaxSteps = 8, -- jump again in the air to step higher, this many times
+		Cooldown = 3, -- after the float ends
+	},
 	Ultimate = { -- CATCH THE RAINBOW: a downpour round him; the rain slices everyone, he scatters from the first hit, then every drop fires inward
 		Windup = 0.8, Radius = 18, Duration = 5, Tick = 0.5, TickDamage = 1.5, TickStun = 0.4,
 		ScatterDistance = 8,
@@ -1937,7 +1942,19 @@ TuskConfig.Gyro = {
 -- Sound ids. Upload assets/audio/tusk_*.ogg (Creator Hub > Asset Manager)
 -- and paste "rbxassetid://..." here. Empty string = silent.
 ---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+-- Weather: it rains for a while every few minutes (the whole server).
+---------------------------------------------------------------------------
+TuskConfig.Weather = {
+	Enabled = true,
+	RainEvery = 300, -- seconds between the start of one rain and the next (5 minutes)
+	RainDuration = 60, -- how long each rain lasts
+	FirstRainAfter = 300, -- seconds after the server starts (set lower to test)
+	StudioFirstRainAfter = 15, -- in Studio the first rain comes quickly so you can test it
+}
+
 TuskConfig.Sounds = {
+	Rain = "", -- a looping rain sound id (optional)
 	Swing = "", -- tusk_swing.ogg
 	Hit = "", -- tusk_hit.ogg
 	Finisher = "", -- tusk_finisher.ogg
@@ -3435,6 +3452,7 @@ local HotPantsOutfit = require(script.HotPantsOutfit)
 local BlackmoreOutfit = require(script.BlackmoreOutfit)
 local StandBots = require(script.StandBots)
 local BountyService = require(script.BountyService)
+local WeatherService = require(script.WeatherService)
 
 -- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
@@ -3450,6 +3468,7 @@ HotPantsOutfit.init()
 BlackmoreOutfit.init()
 StandBots.init(TuskService)
 BountyService.init()
+WeatherService.init()
 NPCService.init()
 TestDummies.init()
 ```
@@ -11737,6 +11756,30 @@ local function onRequest(player, action, a, b, c)
 		TuskService.select(player, start, true)
 		return
 	end
+	if action == "RainFloat" then
+		-- Blackmore standing on frozen raindrops in mid-air (the movement is the
+		-- client's; this only shows the drops to everyone).
+		local st = states[player]
+		local character = player.Character
+		if not st or not character or st.Act ~= 11 then
+			return
+		end
+		local raining = game:GetService("ReplicatedStorage"):GetAttribute("SpinRaining") == true
+			or (character:GetAttribute("RainStormUntil") or 0) > workspace:GetServerTimeNow()
+		if a == true and raining then
+			local cfg = TuskConfig.Blackmore and TuskConfig.Blackmore.RainWalk
+			local token = tostring({})
+			character:SetAttribute("RainFloating", token)
+			task.delay((cfg and cfg.FloatTime or 6) + 0.5, function()
+				if character:GetAttribute("RainFloating") == token then
+					character:SetAttribute("RainFloating", nil)
+				end
+			end)
+		else
+			character:SetAttribute("RainFloating", nil)
+		end
+		return
+	end
 	local state = states[player]
 	if not state or not state.Act or not state.Character then
 		return
@@ -12234,7 +12277,69 @@ end
 return TuskSneakService
 ```
 
-## 47. SpinClient  (LocalScript)
+## 47. WeatherService  (ModuleScript)
+**Put it in:** `ServerScriptService › SpinServer`
+
+```lua
+--[[
+	WeatherService  (ServerScriptService.SpinServer.WeatherService)
+
+	Rain for the whole server: every TuskConfig.Weather.RainEvery seconds it
+	rains for RainDuration seconds. Sets these ReplicatedStorage attributes:
+	  SpinRaining   true while it rains
+	  SpinRainEnds  server time the rain stops
+	  SpinNextRain  server time the next rain starts
+	Clients draw the rain (WeatherClient). Blackmore can walk on raindrops
+	while it rains (TuskActs/Blackmore + BlackmoreVFX).
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Shared = ReplicatedStorage:WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+
+local WeatherService = {}
+
+local function now()
+	return workspace:GetServerTimeNow()
+end
+
+function WeatherService.isRaining()
+	return ReplicatedStorage:GetAttribute("SpinRaining") == true
+end
+
+function WeatherService.setRain(on, seconds)
+	ReplicatedStorage:SetAttribute("SpinRaining", on and true or nil)
+	ReplicatedStorage:SetAttribute("SpinRainEnds", on and (now() + (seconds or 60)) or nil)
+end
+
+function WeatherService.init()
+	local cfg = TuskConfig.Weather
+	if not cfg or cfg.Enabled == false then
+		return
+	end
+	local first = RunService:IsStudio() and (cfg.StudioFirstRainAfter or cfg.FirstRainAfter) or cfg.FirstRainAfter
+	task.spawn(function()
+		local nextRain = now() + (first or cfg.RainEvery)
+		while true do
+			ReplicatedStorage:SetAttribute("SpinNextRain", nextRain)
+			task.wait(math.max(nextRain - now(), 0.1))
+			WeatherService.setRain(true, cfg.RainDuration)
+			task.wait(cfg.RainDuration)
+			WeatherService.setRain(false)
+			nextRain = nextRain + math.max(cfg.RainEvery, cfg.RainDuration + 1)
+			if nextRain < now() then
+				nextRain = now() + cfg.RainEvery
+			end
+		end
+	end)
+end
+
+return WeatherService
+```
+
+## 48. SpinClient  (LocalScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts`
 
 ```lua
@@ -12255,6 +12360,7 @@ local CharacterCard = require(script.UI.CharacterCard)
 local CombatUI = require(script.UI.CombatUI)
 local DefenseClient = require(script.DefenseClient)
 local BountyUI = require(script.UI.BountyUI)
+local WeatherClient = require(script.WeatherClient)
 
 SettingsUI.init()
 HitFX.init()
@@ -12267,9 +12373,10 @@ CharacterCard.init()
 CombatUI.init()
 DefenseClient.init()
 BountyUI.init()
+WeatherClient.init()
 ```
 
-## 48. CameraFX  (ModuleScript)
+## 49. CameraFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -12448,7 +12555,7 @@ end
 return CameraFX
 ```
 
-## 49. DefenseClient  (ModuleScript)
+## 50. DefenseClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -12749,7 +12856,7 @@ end
 return DefenseClient
 ```
 
-## 50. Fighters  (ModuleScript)
+## 51. Fighters  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -12784,7 +12891,7 @@ end
 return Fighters
 ```
 
-## 51. HitFX  (ModuleScript)
+## 52. HitFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -12931,7 +13038,7 @@ end
 return HitFX
 ```
 
-## 52. JointCache  (ModuleScript)
+## 53. JointCache  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -12986,7 +13093,7 @@ end
 return JointCache
 ```
 
-## 53. TuskActCommon  (ModuleScript)
+## 54. TuskActCommon  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -13239,12 +13346,12 @@ end
 return Common
 ```
 
-## 54. TuskActVFX  (Folder)
+## 55. TuskActVFX  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 55. Act1  (ModuleScript)
+## 56. Act1  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -13626,7 +13733,7 @@ end
 return Act1
 ```
 
-## 56. Act2  (ModuleScript)
+## 57. Act2  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -13738,7 +13845,7 @@ end
 return Act2
 ```
 
-## 57. Act3  (ModuleScript)
+## 58. Act3  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -13916,7 +14023,7 @@ end
 return Act3
 ```
 
-## 58. Act4  (ModuleScript)
+## 59. Act4  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -14226,7 +14333,7 @@ end
 return Act4
 ```
 
-## 59. BlackmoreVFX  (ModuleScript)
+## 60. BlackmoreVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -14241,6 +14348,10 @@ return Act4
 	  * RAINDROP STEP: a stair of frozen drops hangs in the air along his dash
 	    for a few seconds, then falls and splashes
 	  * RAINDROP CAGE: a dome of frozen drops follows the target; each cut flashes
+	  * RAIN WALK: while it rains (or in his storm) a jump in mid-air plants a
+	    frozen raindrop under his feet: he can walk on the air and jump again
+	    to step higher (an invisible local step follows him; everyone sees
+	    the drops under his feet and his umbrella open)
 	  * CATCH THE RAINBOW: a dark cloud, a downpour, a rainbow arc overhead,
 	    frozen drops hanging everywhere; he scatters into raindrops when hit;
 	    the end: every drop fires inward
@@ -14379,7 +14490,7 @@ local function stepUmbrellas()
 					u = { Closed = buildClosedUmbrella(), Open = buildOpenUmbrella() }
 					umbrellas[character] = u
 				end
-				local storm = stormOver(character)
+				local storm = stormOver(character) or character:GetAttribute("RainFloating") ~= nil
 				local down = hand.Name == "Left Arm" and -hand.Size.Y / 2 + 0.2 or -0.15
 				if storm then
 					-- Open, held above his head.
@@ -14774,6 +14885,181 @@ local function stepStance()
 	end
 end
 
+---------------------------------------------------------------------------
+-- RAIN WALK (local player's movement + everyone's drops under the feet)
+---------------------------------------------------------------------------
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local walkCfg = (TuskConfig.Blackmore and TuskConfig.Blackmore.RainWalk) or { FloatTime = 6, MaxSteps = 8, Cooldown = 3 }
+local localPlayer = Players.LocalPlayer
+local walk = { Floating = false, Steps = 0, CooldownUntil = 0, LastPlant = 0 }
+local footDrops = {} -- [character] = { Parts }
+
+local function rainingFor(character)
+	if ReplicatedStorage:GetAttribute("SpinRaining") == true then
+		return true
+	end
+	return (character:GetAttribute("RainStormUntil") or 0) > workspace:GetServerTimeNow()
+end
+
+local function feetOffset(humanoid, root)
+	if humanoid.RigType == Enum.HumanoidRigType.R15 then
+		return humanoid.HipHeight + root.Size.Y / 2
+	end
+	return 3
+end
+
+local function endWalk(cooldown)
+	if walk.Platform then
+		walk.Platform:Destroy()
+		walk.Platform = nil
+	end
+	if walk.Floating then
+		walk.Floating = false
+		Net.get("TuskRequest"):FireServer("RainFloat", false)
+		if cooldown then
+			walk.CooldownUntil = os.clock() + walkCfg.Cooldown
+		end
+	end
+	walk.Steps = 0
+end
+
+local function plant()
+	local character = localPlayer.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not humanoid or not root or humanoid.Health <= 0 then
+		return
+	end
+	local feetY = root.Position.Y - feetOffset(humanoid, root)
+	if not walk.Platform then
+		local p = Instance.new("Part")
+		p.Name = "RainStep"
+		p.Anchored = true
+		p.CanCollide = true
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Transparency = 1
+		p.Size = Vector3.new(5, 0.4, 5)
+		p.Parent = workspace
+		walk.Platform = p
+	end
+	walk.FloatY = feetY
+	walk.Platform.CFrame = CFrame.new(root.Position.X, feetY - 0.2, root.Position.Z)
+	local v = root.AssemblyLinearVelocity
+	root.AssemblyLinearVelocity = Vector3.new(v.X, math.max(v.Y, 0), v.Z)
+	walk.Steps = walk.Steps + 1
+	walk.LastPlant = os.clock()
+	walk.AirSince = nil
+	if not walk.Floating then
+		walk.Floating = true
+		walk.Start = os.clock()
+		Net.get("TuskRequest"):FireServer("RainFloat", true)
+	end
+	-- A frozen drop catches his foot.
+	local at = Vector3.new(root.Position.X, feetY, root.Position.Z)
+	TuskVFX.CreateImpactStar(at, { Size = 3, Rays = 6, Color = DROP, Color2 = Color3.new(1, 1, 1), Duration = 0.15 })
+	splash(at, 0.6)
+end
+
+local function onJumpRequest()
+	local character = localPlayer.Character
+	if not character or character:GetAttribute("TuskAct") ~= ACT or not rainingFor(character) then
+		return
+	end
+	if character:GetAttribute("Stunned") then
+		return
+	end
+	local now = os.clock()
+	-- Only in mid-air (a jump from the ground or from a drop is a normal jump).
+	if not walk.AirSince or now - walk.AirSince < 0.15 or now - walk.LastPlant < 0.25 then
+		return
+	end
+	if not walk.Floating and now < walk.CooldownUntil then
+		return
+	end
+	if walk.Steps >= walkCfg.MaxSteps then
+		return
+	end
+	plant()
+end
+
+local function stepWalk()
+	local character = localPlayer.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not humanoid or not root or character:GetAttribute("TuskAct") ~= ACT then
+		walk.AirSince = nil
+		endWalk(false)
+		return
+	end
+	local now = os.clock()
+	local inAir = humanoid.FloorMaterial == Enum.Material.Air
+	if inAir then
+		walk.AirSince = walk.AirSince or now
+	else
+		walk.AirSince = nil
+	end
+	if not walk.Floating then
+		if not inAir then
+			walk.Steps = 0
+		end
+		return
+	end
+	-- Ends: time's up, the rain stops, stunned, dead, or back on real ground.
+	if now - walk.Start > walkCfg.FloatTime or not rainingFor(character) or character:GetAttribute("Stunned") or humanoid.Health <= 0 then
+		endWalk(true)
+		return
+	end
+	local feet = root.Position.Y - feetOffset(humanoid, root)
+	if not inAir and feet < walk.FloatY - 1 then
+		endWalk(true) -- landed on something real below the step
+		return
+	end
+	-- The step follows him so he can walk on the air.
+	if walk.Platform then
+		walk.Platform.CFrame = CFrame.new(root.Position.X, walk.FloatY - 0.2, root.Position.Z)
+	end
+end
+
+-- Everyone floating on drops gets a cluster of frozen drops under the feet.
+local function stepFootDrops()
+	local now = os.clock()
+	local seen = {}
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		local root = character and Common.rootOf(character)
+		if root and character:GetAttribute("RainFloating") then
+			seen[character] = true
+			local fd = footDrops[character]
+			if not fd then
+				fd = { Parts = {} }
+				for i = 1, 6 do
+					fd.Parts[i] = newDrop(1.3)
+				end
+				footDrops[character] = fd
+				splash(root.Position - Vector3.new(0, 3, 0), 0.8)
+			end
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			local feet = root.Position.Y - (humanoid and feetOffset(humanoid, root) or 3)
+			for i, d in ipairs(fd.Parts) do
+				local a = i / #fd.Parts * math.pi * 2 + now * 1.5
+				local r = i == 1 and 0 or 0.9
+				d.CFrame = CFrame.new(root.Position.X + math.cos(a) * r, feet - 0.25 + math.sin(now * 6 + i) * 0.05, root.Position.Z + math.sin(a) * r)
+			end
+		end
+	end
+	for character, fd in pairs(footDrops) do
+		if not seen[character] then
+			footDrops[character] = nil
+			release(fd.Parts)
+		end
+	end
+end
+
+UserInputService.JumpRequest:Connect(onJumpRequest)
+
 function BlackmoreVFX.handle(name, data)
 	if name == "M1" then
 		onM1(data)
@@ -14793,6 +15079,8 @@ function BlackmoreVFX.step(dt)
 	stepDrops()
 	stepCages()
 	stepStorms(dt)
+	stepWalk()
+	stepFootDrops()
 	slowTimer = slowTimer + dt
 	if slowTimer > 0.2 then
 		slowTimer = 0
@@ -14814,7 +15102,7 @@ end)
 return BlackmoreVFX
 ```
 
-## 60. Diego  (ModuleScript)
+## 61. Diego  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -15706,7 +15994,7 @@ end
 return Diego
 ```
 
-## 61. Gyro  (ModuleScript)
+## 62. Gyro  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -16841,7 +17129,7 @@ end)
 return Gyro
 ```
 
-## 62. HotPantsVFX  (ModuleScript)
+## 63. HotPantsVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -17401,7 +17689,7 @@ end
 return HotPantsVFX
 ```
 
-## 63. MountainTimVFX  (ModuleScript)
+## 64. MountainTimVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -18311,7 +18599,7 @@ end)
 return TimVFX
 ```
 
-## 64. PorkPie  (ModuleScript)
+## 65. PorkPie  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -18970,7 +19258,7 @@ end)
 return PorkPie
 ```
 
-## 65. SandmanVFX  (ModuleScript)
+## 66. SandmanVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -19372,7 +19660,7 @@ end)
 return SandmanVFX
 ```
 
-## 66. TuskAnimation  (ModuleScript)
+## 67. TuskAnimation  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -20096,7 +20384,7 @@ end)
 return TuskAnimation
 ```
 
-## 67. TuskController  (ModuleScript)
+## 68. TuskController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -20344,7 +20632,7 @@ end
 return TuskController
 ```
 
-## 68. TuskProjectiles  (ModuleScript)
+## 69. TuskProjectiles  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -20620,7 +20908,7 @@ end
 return TuskProjectiles
 ```
 
-## 69. TuskSneakController  (ModuleScript)
+## 70. TuskSneakController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -20905,7 +21193,7 @@ end
 return TuskSneakController
 ```
 
-## 70. TuskStand  (ModuleScript)
+## 71. TuskStand  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -21270,7 +21558,7 @@ end
 return TuskStand
 ```
 
-## 71. TuskVFX  (ModuleScript)
+## 72. TuskVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -22514,12 +22802,12 @@ end
 return TuskVFX
 ```
 
-## 72. UI  (Folder)
+## 73. UI  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 73. BountyUI  (ModuleScript)
+## 74. BountyUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -23121,7 +23409,7 @@ end
 return BountyUI
 ```
 
-## 74. CharacterCard  (ModuleScript)
+## 75. CharacterCard  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -23462,7 +23750,7 @@ function buildDropdown()
 		TextSize = 10,
 		TextColor3 = Color3.fromRGB(165, 158, 190),
 		TextStrokeTransparency = 1,
-		Text = "Everyone can BLOCK (F) and DASH (Q)",
+		Text = "Scroll for more  ·  BLOCK (F)  ·  DASH (Q)",
 	})
 	local line = Instance.new("Frame")
 	line.Position = UDim2.fromOffset(12, 49)
@@ -23479,7 +23767,9 @@ function buildDropdown()
 	dropdownList.Size = UDim2.new(1, 0, 1, -52)
 	dropdownList.CanvasSize = UDim2.new()
 	dropdownList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	dropdownList.ScrollBarThickness = 3
+	dropdownList.ScrollBarThickness = 6
+	dropdownList.ScrollingDirection = Enum.ScrollingDirection.Y
+	dropdownList.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 	dropdownList.ScrollBarImageColor3 = GOLD
 	dropdownList.Parent = dropdown
 	local layout = Instance.new("UIListLayout")
@@ -23647,7 +23937,9 @@ function CharacterCard.toggle()
 	open = not open
 	local rows = #(TuskConfig.Roster or {})
 	local full = 52 + 14 + rows * (ROW_H + 5)
-	local target = math.min(full, (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 600) - 140)
+	-- Short list (about 4 rows, never more than 45% of the screen); the rest scrolls.
+	local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 600
+	local target = math.min(full, 52 + 14 + 4.4 * (ROW_H + 5), math.max(180, screenH * 0.45))
 	refreshDropdown(shownAct)
 	if open then
 		dropdown.Visible = true
@@ -23727,7 +24019,7 @@ end
 return CharacterCard
 ```
 
-## 75. CombatUI  (ModuleScript)
+## 76. CombatUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -24073,7 +24365,7 @@ end
 return CombatUI
 ```
 
-## 76. SettingsUI  (ModuleScript)
+## 77. SettingsUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -24148,7 +24440,7 @@ end
 return SettingsUI
 ```
 
-## 77. TuskUI  (ModuleScript)
+## 78. TuskUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -25298,7 +25590,7 @@ end
 return TuskUI
 ```
 
-## 78. VFXLib  (ModuleScript)
+## 79. VFXLib  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -25664,7 +25956,275 @@ end
 return VFXLib
 ```
 
-## 79. WorldClient  (ModuleScript)
+## 80. WeatherClient  (ModuleScript)
+**Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
+
+```lua
+--[[
+	WeatherClient  (StarterPlayerScripts.SpinClient.WeatherClient)
+
+	Draws the server's rain (WeatherService sets ReplicatedStorage
+	SpinRaining): falling streaks around your camera, a grey-blue tint and
+	fog, an optional looping rain sound (TuskConfig.Sounds.Rain), and a
+	banner when it starts and stops. Everything fades in and out.
+	Blackmore players get a hint: double-jump to walk on the raindrops.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+
+local Shared = ReplicatedStorage:WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+
+local WeatherClient = {}
+
+local player = Players.LocalPlayer
+local STREAKS = 160
+local AREA = 70 -- streaks fall within this many studs of the camera
+local FALL = 95 -- studs per second
+local RAIN_COLOR = Color3.fromRGB(200, 215, 235)
+
+local folder
+local pool = {}
+local intensity = 0 -- 0 = clear, 1 = full rain
+local tint, sound
+local clear -- the lighting before the rain (restored after)
+local banner, bannerTitle, bannerSub
+local bannerToken
+
+function WeatherClient.isRaining()
+	return ReplicatedStorage:GetAttribute("SpinRaining") == true
+end
+
+local function newStreak()
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Material = Enum.Material.Glass
+	p.Color = RAIN_COLOR
+	p.Transparency = 1
+	p.Size = Vector3.new(0.07, 2.2, 0.07)
+	p.Parent = folder
+	return p
+end
+
+local function reset(s, center, fresh)
+	local a = math.random() * math.pi * 2
+	local r = math.sqrt(math.random()) * AREA
+	s.Offset = Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
+	s.Y = center.Y + (fresh and (math.random() * 70 - 25) or (30 + math.random() * 15))
+end
+
+local function showBanner(title, sub)
+	if not banner then
+		return
+	end
+	local token = {}
+	bannerToken = token
+	bannerTitle.Text = title
+	bannerSub.Text = sub or ""
+	banner.Visible = true
+	local start = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		if bannerToken ~= token then
+			conn:Disconnect()
+			return
+		end
+		local t = os.clock() - start
+		local alpha
+		if t < 0.4 then
+			alpha = t / 0.4
+		elseif t < 3.6 then
+			alpha = 1
+		else
+			alpha = math.max(0, 1 - (t - 3.6) / 0.6)
+		end
+		bannerTitle.TextTransparency = 1 - alpha
+		bannerTitle.TextStrokeTransparency = 1 - alpha * 0.6
+		bannerSub.TextTransparency = 1 - alpha
+		banner.Position = UDim2.new(0.5, 0, 0, 70 - 12 * (1 - math.min(t / 0.4, 1)))
+		if t > 4.2 then
+			banner.Visible = false
+			conn:Disconnect()
+		end
+	end)
+end
+
+local function isBlackmore()
+	local c = player.Character
+	return c and c:GetAttribute("TuskAct") == 11
+end
+
+local function onRainChanged()
+	if WeatherClient.isRaining() then
+		showBanner("IT'S RAINING", isBlackmore() and "BLACKMORE: double-jump to walk on the raindrops" or "")
+	else
+		showBanner("THE RAIN STOPS", "")
+	end
+end
+
+local function lerp(a, b, t)
+	return a + (b - a) * t
+end
+
+function WeatherClient.step(dt)
+	local target = WeatherClient.isRaining() and 1 or 0
+	-- Fade over about 3 seconds.
+	if intensity ~= target then
+		if intensity == 0 then
+			clear = { FogEnd = Lighting.FogEnd, FogStart = Lighting.FogStart, FogColor = Lighting.FogColor }
+		end
+		intensity = math.clamp(intensity + (target > intensity and dt or -dt) / 3, 0, 1)
+	end
+	if intensity <= 0 then
+		if clear then
+			Lighting.FogEnd, Lighting.FogStart, Lighting.FogColor = clear.FogEnd, clear.FogStart, clear.FogColor
+			clear = nil
+		end
+		tint.Enabled = false
+		if sound then
+			sound.Volume = 0
+			if sound.Playing then
+				sound:Stop()
+			end
+		end
+		for _, s in ipairs(pool) do
+			if s.Part.Transparency ~= 1 then
+				s.Part.Transparency = 1
+			end
+		end
+		return
+	end
+	-- Grey-blue sky and fog.
+	tint.Enabled = true
+	tint.Saturation = -0.3 * intensity
+	tint.Brightness = -0.07 * intensity
+	tint.TintColor = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(205, 215, 235), intensity)
+	if clear then
+		Lighting.FogColor = clear.FogColor:Lerp(Color3.fromRGB(150, 160, 175), intensity)
+		Lighting.FogEnd = lerp(clear.FogEnd, math.min(clear.FogEnd, 420), intensity)
+		Lighting.FogStart = lerp(clear.FogStart, math.min(clear.FogStart, 40), intensity)
+	end
+	if sound then
+		if not sound.Playing then
+			sound:Play()
+		end
+		sound.Volume = 0.5 * intensity
+	end
+	-- The streaks follow the camera; how many show depends on the intensity.
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return
+	end
+	local center = camera.CFrame.Position
+	local active = math.floor(STREAKS * intensity)
+	local parts, cframes = {}, {}
+	for i, s in ipairs(pool) do
+		if i <= active then
+			s.Y = s.Y - FALL * dt
+			if s.Y < center.Y - 30 then
+				reset(s, center, false)
+			end
+			local pos = Vector3.new(center.X + s.Offset.X, s.Y, center.Z + s.Offset.Z)
+			-- Keep them around the camera as it moves.
+			if (Vector3.new(pos.X - center.X, 0, pos.Z - center.Z)).Magnitude > AREA then
+				reset(s, center, true)
+			end
+			if s.Part.Transparency ~= 0.45 then
+				s.Part.Transparency = 0.45
+			end
+			table.insert(parts, s.Part)
+			table.insert(cframes, CFrame.new(pos) * CFrame.Angles(0, 0, 0.06))
+		elseif s.Part.Transparency ~= 1 then
+			s.Part.Transparency = 1
+		end
+	end
+	if workspace.BulkMoveTo then
+		workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
+	else
+		for i, p in ipairs(parts) do
+			p.CFrame = cframes[i]
+		end
+	end
+end
+
+function WeatherClient.init()
+	local cfg = TuskConfig.Weather
+	if cfg and cfg.Enabled == false then
+		return
+	end
+	folder = Instance.new("Folder")
+	folder.Name = "SpinRain"
+	folder.Parent = workspace
+	local center = workspace.CurrentCamera and workspace.CurrentCamera.CFrame.Position or Vector3.new()
+	for i = 1, STREAKS do
+		local s = { Part = newStreak() }
+		reset(s, center, true)
+		pool[i] = s
+	end
+	tint = Instance.new("ColorCorrectionEffect")
+	tint.Name = "SpinRainTint"
+	tint.Enabled = false
+	tint.Parent = Lighting
+	local id = TuskConfig.Sounds and TuskConfig.Sounds.Rain
+	if id and id ~= "" then
+		sound = Instance.new("Sound")
+		sound.Name = "SpinRain"
+		sound.SoundId = id
+		sound.Looped = true
+		sound.Volume = 0
+		sound.Parent = game:GetService("SoundService")
+	end
+
+	-- Banner at the top of the screen.
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "WeatherBanner"
+	gui.ResetOnSpawn = false
+	gui.DisplayOrder = 4
+	gui.IgnoreGuiInset = false
+	gui.Parent = player:WaitForChild("PlayerGui")
+	banner = Instance.new("Frame")
+	banner.AnchorPoint = Vector2.new(0.5, 0)
+	banner.Position = UDim2.new(0.5, 0, 0, 70)
+	banner.Size = UDim2.fromOffset(460, 60)
+	banner.BackgroundTransparency = 1
+	banner.Visible = false
+	banner.Parent = gui
+	bannerTitle = Instance.new("TextLabel")
+	bannerTitle.BackgroundTransparency = 1
+	bannerTitle.Size = UDim2.new(1, 0, 0, 36)
+	bannerTitle.Font = Enum.Font.Bangers
+	bannerTitle.TextSize = 36
+	bannerTitle.TextColor3 = Color3.fromRGB(190, 220, 255)
+	bannerTitle.TextStrokeColor3 = Color3.fromRGB(20, 30, 50)
+	bannerTitle.Parent = banner
+	bannerSub = Instance.new("TextLabel")
+	bannerSub.BackgroundTransparency = 1
+	bannerSub.Position = UDim2.fromOffset(0, 36)
+	bannerSub.Size = UDim2.new(1, 0, 0, 18)
+	bannerSub.Font = Enum.Font.GothamBold
+	bannerSub.TextSize = 13
+	bannerSub.TextColor3 = Color3.fromRGB(225, 235, 255)
+	bannerSub.TextStrokeTransparency = 0.5
+	bannerSub.Parent = banner
+
+	ReplicatedStorage:GetAttributeChangedSignal("SpinRaining"):Connect(onRainChanged)
+	if WeatherClient.isRaining() then
+		onRainChanged()
+	end
+	RunService.RenderStepped:Connect(WeatherClient.step)
+end
+
+return WeatherClient
+```
+
+## 81. WorldClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -25901,12 +26461,12 @@ end
 return WorldClient
 ```
 
-## 80. SpinTools  (Folder)
+## 82. SpinTools  (Folder)
 **Put it in:** `ServerStorage`
 
 _Empty folder: nothing to paste._
 
-## 81. SBRMapBuilder  (ModuleScript)
+## 83. SBRMapBuilder  (ModuleScript)
 **Put it in:** `ServerStorage › SpinTools`
 
 ```lua

@@ -23,6 +23,7 @@ Outfit matched to the reference art the user sent (2026-11-23).
 | 1 | RAINDROP BLADES | 7 drops freeze in a fan in front of him, shiver, and fire as a volley (3 each, max 3 per enemy). 6 s |
 | 2 | RAINDROP STEP | dashes 28 studs along a stair of frozen drops, with i-frames. The drops hang there for 3 s, and anyone walking through the line is cut (2). 7 s |
 | 3 | RAINDROP CAGE | a dome of frozen drops round the nearest enemy (16 studs): 5, slowed to 45% for 2.5 s, and every time they move the drops cut them (2). 11 s (3 s on a miss) |
+| Jump in mid-air (while raining) | RAIN WALK | he steps on frozen raindrops and walks on the air; jump again to step higher (6 s, 8 steps, 3 s cooldown). See [[Weather]] |
 | G | CATCH THE RAINBOW | a dark cloud, a downpour and a rainbow (18-stud radius, 5 s). The rain slices every enemy inside (1.5 every 0.5 s). The **first hit on him** makes him burst into raindrops and reform out of reach. At the end, every frozen drop fires inward (12, launches) |
 
 - He's also a Stand-user NPC and a bounty-board target ("STAND: CATCH THE RAINBOW").
