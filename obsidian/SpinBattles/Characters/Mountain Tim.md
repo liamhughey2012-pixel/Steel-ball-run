@@ -11,7 +11,7 @@ Built from the character's description (no reference images yet). Send pictures 
 ![[mountain_tim_outfit_preview.png]]
 *(stand-in render on a test avatar)*
 
-**Look** (blocky): tall brown cowboy hat with a wide brim and a dark band, red bandana, open leather vest, belt with a gold buckle, a coiled lasso at his right hip, leather chaps, dark boots with silver spurs.
+**Look** (blocky, matched to the reference art the user sent 2026-11-23): a zebra-striped cowboy hat with a band of gold conchos, a cow skull on the front and hat cords to the chest; shoulder-length blond hair, sideburns and a chin beard; a leopard-print jacket (fur collar and sleeves) over a pale grey shirt with big lapels, an open neck and fringed pockets; a brown belt with bullet loops, a round gold MT buckle and a holstered revolver on his right hip; dark studded gloves, grey trousers, dark boots.
 
 **Oh! Lonesome Me:** his body splits into pieces that slide along his lasso rope.
 
