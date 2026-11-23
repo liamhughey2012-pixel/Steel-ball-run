@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="LocalScript" referent="RBX45"><Properties><string name="Name">Spin_Client</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="LocalScript" referent="RBX49"><Properties><string name="Name">Spin_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	Spin_Client  (LocalScript)
 	PUT IT IN: StarterPlayer > StarterPlayerScripts
 
@@ -3291,6 +3291,8 @@ local function onHit(data)
 		starColor = Color3.fromRGB(242, 140, 172)
 	elseif source:sub(1, 9) == "Blackmore" then
 		starColor = Color3.fromRGB(110, 180, 255)
+	elseif source:sub(1, 3) == "Axl" then
+		starColor = Color3.fromRGB(214, 60, 70)
 	end
 	if data.Perfect then
 		starColor = colors.Gold
@@ -3715,6 +3717,7 @@ Common.Palettes = {
 	[9] = { Main = Color3.fromRGB(214, 156, 84), Second = Color3.fromRGB(96, 62, 38), Light = Color3.fromRGB(255, 232, 196) }, -- Mountain Tim (leather + rope)
 	[10] = { Main = Color3.fromRGB(242, 140, 172), Second = Color3.fromRGB(120, 60, 92), Light = Color3.fromRGB(255, 220, 230) }, -- Hot Pants (Cream Starter pink)
 	[11] = { Main = Color3.fromRGB(110, 180, 255), Second = Color3.fromRGB(40, 50, 90), Light = Color3.fromRGB(225, 245, 255) }, -- Blackmore (rain blue)
+	[12] = { Main = Color3.fromRGB(214, 60, 70), Second = Color3.fromRGB(226, 196, 110), Light = Color3.fromRGB(255, 200, 200) }, -- Axl RO (Civil War red)
 }
 
 function Common.palette(act)
@@ -4113,6 +4116,24 @@ TuskActRegistry.Acts = {
 		ClientModule = "BlackmoreVFX", -- client visuals (TuskActVFX.BlackmoreVFX)
 		CardTitle = "STAND  ·  CATCH THE RAINBOW",
 	},
+	-- Axl RO: CIVIL WAR (makes a target's guilt real: specters and the things
+	-- they abandoned rise up and engulf them in a crushing membrane; water,
+	-- like the rain, washes it away).
+	[12] = {
+		Name = "CIVIL WAR",
+		Character = "Axl",
+		Tagline = "Guilt made real",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 60, 70), Secondary = Color3.fromRGB(226, 196, 110) },
+		M1 = "GUILT COMBO",
+		Abilities = { "GUILT SPECTER", "ABANDONED JUNK", "GUILT MEMBRANE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "CIVIL WAR",
+		Next = nil,
+		Module = "Axl", -- server moves
+		ClientModule = "AxlVFX", -- client visuals (TuskActVFX.AxlVFX)
+		CardTitle = "STAND  ·  CIVIL WAR",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -4122,7 +4143,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -4329,6 +4350,11 @@ TuskAnimation.Poses = {
 	StormRaise = { Root = { 8, 0, 0, 0.25 }, Waist = { 16, 0, 0 }, Neck = { 30, 0, 0 }, RightArm = { 175, 0, 15 }, RightElbow = { 10, 0, 0 }, LeftArm = { 60, 0, -60 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -50, 0, 0 } },
 	StormSweepL = { Root = { 0, 30, 0, -0.1, 0.2 }, Waist = { -6, 30, 0 }, Neck = { 0, -20, 0 }, RightArm = { 110, -30, 10 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
 	StormSweepR = { Root = { 0, -30, 0, -0.1, 0.2 }, Waist = { -6, -30, 0 }, Neck = { 0, 24, 0 }, RightArm = { 110, 30, 0 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
+	-- AXL RO: slouched and mocking; Civil War does the fighting.
+	AxlStance = { Root = { -4, -8, 0, -0.04 }, Waist = { -6, -6, 4 }, Neck = { -10, 12, 8 }, RightArm = { -6, 0, 8 }, RightElbow = { 10, 0, 0 }, LeftArm = { -4, 0, -8 }, LeftElbow = { 14, 0, 0 }, RightHip = { 4, 0, 0 } },
+	AxlPoint = { Root = { 0, -14, 0, -0.04 }, Waist = { 0, -14, 0 }, Neck = { 6, 14, 0 }, RightArm = { 88, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 0, 0, -10 }, LeftElbow = { 20, 0, 0 } },
+	AxlPress = { Root = { 10, -10, 0, -0.2 }, Waist = { 16, -10, 0 }, Neck = { 20, 10, 0 }, RightArm = { 60, 0, 10 }, RightElbow = { 0, 0, 0 }, LeftArm = { 10, 0, -10 }, LeftElbow = { 20, 0, 0 }, RightKnee = { -24, 0, 0 }, LeftKnee = { -24, 0, 0 }, RightHip = { 20, 0, 0 }, LeftHip = { 20, 0, 0 } },
+	AxlSummon = { Root = { -6, 0, 0, 0.05 }, Waist = { -8, 0, 0 }, Neck = { -18, 0, 0 }, RightArm = { 120, 0, 50 }, RightElbow = { 10, 0, 0 }, LeftArm = { 120, 0, -50 }, LeftElbow = { 10, 0, 0 } },
 	-- BLACKMORE: calm and precise; umbrella in his left hand like a cane.
 	BMStance = { Root = { 0, 6, 0, -0.03 }, Waist = { -2, 6, 0 }, Neck = { 2, -4, 0 }, RightArm = { 20, 0, 12 }, RightElbow = { 40, 0, 0 }, LeftArm = { 18, 0, -8 }, LeftElbow = { 20, 0, 0 }, LeftHip = { 4, 0, 0 } },
 	BladesWind = { Root = { 0, 22, 0, -0.08 }, Waist = { 0, 24, 0 }, Neck = { 0, -14, 0 }, RightArm = { 70, 0, 80 }, RightElbow = { 30, 0, 0 }, LeftArm = { 30, 0, -20 }, RightKnee = { -14, 0, 0 } },
@@ -4393,6 +4419,7 @@ do
 	P.JabCoilL = mirror(P.JabCoil)
 	P.JabStrikeL = mirror(P.JabStrike)
 	P.BladesSweepL = mirror(P.BladesSweep)
+	P.AxlPointL = mirror(P.AxlPoint)
 	P.BladesWindL = mirror(P.BladesWind)
 end
 
@@ -4478,6 +4505,16 @@ TuskAnimation.Actions = {
 	HPSeal = { { 0, "HPStance" }, { 0.1, "CanShakeB", "In" }, { 0.18, "SealDash", "Snap", 4 }, { 0.28, "SealPress", "Snap", 5 }, { 0.5, "SealPress", "Linear", 2 }, { 0.66, "HPStance", "Sine" } },
 	HPMend = { { 0, "HPStance" }, { 0.12, "SelfSprayHigh", "Out" }, { 0.55, "SelfSprayLow", "Sine", 1 }, { 0.92, "SelfSprayHigh", "Sine", 1 }, { 1.12, "MendRelief", "Back" }, { 1.35, "HPStance", "Sine" } },
 	HPStorm = { { 0, "HPStance" }, { 0.05, "CanShakeA", "Snap" }, { 0.1, "CanShakeB", "Snap", 1 }, { 0.15, "CanShakeA", "Snap", 1 }, { 0.2, "CanShakeB", "Snap", 2 }, { 0.38, "StormRaise", "Back", 4 }, { 0.6, "StormSweepL", "Snap", 3 }, { 0.9, "StormSweepR", "Sine", 2 }, { 1.1, "SprayThrust", "Snap", 5 }, { 1.4, "SprayThrust", "Linear", 2 }, { 1.6, "HPStance", "Sine" } },
+
+	-- AXL RO
+	A_M1_1 = { { 0, "AxlStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.3, "AxlStance", "Sine" } },
+	A_M1_2 = { { 0, "AxlStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.16, "JabStrikeL", "Linear" }, { 0.3, "AxlStance", "Sine" } },
+	A_M1_3 = { { 0, "AxlStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "AxlStance", "Sine" } },
+	A_M1_4 = { { 0, "AxlStance" }, { 0.12, "AxlSummon", "In" }, { 0.2, "AxlPoint", "Snap", 7 }, { 0.3, "AxlPoint", "Linear" }, { 0.46, "AxlStance", "Sine" } },
+	AxlSpecter = { { 0, "AxlStance" }, { 0.12, "AxlPoint", "Out" }, { 0.35, "AxlPoint", "Linear" }, { 0.55, "AxlStance", "Sine" } },
+	AxlJunk = { { 0, "AxlStance" }, { 0.15, "AxlSummon", "Out" }, { 0.3, "AxlSummon", "Linear" }, { 0.36, "AxlPointL", "Snap", 5 }, { 0.6, "AxlStance", "Sine" } },
+	AxlMembrane = { { 0, "AxlStance" }, { 0.14, "AxlPoint", "Out" }, { 0.3, "AxlPress", "Snap", 5 }, { 0.5, "AxlPress", "Sine" }, { 0.7, "AxlStance", "Sine" } },
+	AxlCivilWar = { { 0, "AxlStance" }, { 0.4, "AxlSummon", "Back", 3 }, { 1.0, "AxlSummon", "Linear", 3 }, { 1.3, "AxlStance", "Sine" } },
 
 	-- BLACKMORE
 	B_M1_1 = { { 0, "Rest" }, { 0.07, "BladesWind", "In" }, { 0.12, "BladesSweep", "Back", 4 }, { 0.17, "BladesSweep", "Linear" }, { 0.3, "BMStance", "Sine" } },
@@ -7347,7 +7384,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("RAINDROP BLADES") or has("RAINBOW") then
+	if has("GUILT SPECTER") then
+		return "ghost"
+	elseif has("ABANDONED JUNK") then
+		return "junk"
+	elseif has("GUILT MEMBRANE") or has("CIVIL WAR") then
+		return "seal"
+	elseif has("RAINDROP BLADES") or has("RAINBOW") then
 		return "rain"
 	elseif has("RAINDROP STEP") then
 		return "dash"
@@ -7516,6 +7559,18 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "ghost" then
+		-- A ghost: round head, a body that trails off.
+		local head = bar(icon, 0.5, 0.36, 0.34, 0.3, 0)
+		corner(head, 999)
+		bar(icon, 0.5, 0.58, 0.34, 0.24, 0)
+		bar(icon, 0.42, 0.74, 0.1, 0.1, 0)
+		bar(icon, 0.58, 0.74, 0.1, 0.1, 0)
+	elseif kind == "junk" then
+		-- A tumbling crate and a wheel.
+		bar(icon, 0.38, 0.6, 0.3, 0.3, 20)
+		local wheel = bar(icon, 0.64, 0.4, 0.26, 0.26, 0)
+		corner(wheel, 999)
 	elseif kind == "rain" then
 		-- Three falling drops.
 		for i = -1, 1 do

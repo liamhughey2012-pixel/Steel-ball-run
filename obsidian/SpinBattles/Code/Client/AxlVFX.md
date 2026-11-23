@@ -1,0 +1,520 @@
+---
+tags: [code, client]
+type: ModuleScript
+location: "StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX"
+updated: 2026-11-22
+---
+# AxlVFX
+
+| | |
+|---|---|
+| **Type** | ModuleScript |
+| **Put it in** | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| **Exact name** | `AxlVFX` (capitals matter) |
+
+**What it does:** Client visuals for Axl RO / CIVIL WAR: guilt made real. Blocky. the CIVIL WAR Stand (CivilWarStand) floats behind him with a crimson aura and strikes with his moves GUILT SPECTER: a dark shadow pools under the target, then a pale ghost rises out of it reaching up ABANDONED JUNK: junk (crates, wheels, chairs, bottles, boots, lamps) materialises round him, shakes, then flies, tumbling GUILT MEMBRANE: a grey-violet film wraps the target with junk stuck to it and slowly shrinks; in the rain it drips and dissolves faster CIVIL WAR: junk piles and specters rise in a ring round him; everyone caught is wrapped; when he's hit he breaks apart into red, yellow and silver pieces and reforms; then every membrane crushes shut
+
+## How to add it
+1. In Studio's Explorer, find **TuskActVFX** (StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX).
+2. Right-click it › **Insert Object** › **ModuleScript**.
+3. Rename it to **AxlVFX**.
+4. Open it, select all (Ctrl+A), and paste the code below over it.
+
+Back to [[Where To Put Code]]
+
+## Code
+```lua
+--[[
+	TuskActVFX.AxlVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.AxlVFX)
+
+	Client visuals for Axl RO / CIVIL WAR: guilt made real. Blocky.
+	  * the CIVIL WAR Stand (CivilWarStand) floats behind him with a crimson
+	    aura and strikes with his moves
+	  * GUILT SPECTER: a dark shadow pools under the target, then a pale ghost
+	    rises out of it reaching up
+	  * ABANDONED JUNK: junk (crates, wheels, chairs, bottles, boots, lamps)
+	    materialises round him, shakes, then flies, tumbling
+	  * GUILT MEMBRANE: a grey-violet film wraps the target with junk stuck to
+	    it and slowly shrinks; in the rain it drips and dissolves faster
+	  * CIVIL WAR: junk piles and specters rise in a ring round him; everyone
+	    caught is wrapped; when he's hit he breaks apart into red, yellow and
+	    silver pieces and reforms; then every membrane crushes shut
+]]
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local Net = require(Shared.Net)
+local TuskStandModels = require(Shared.TuskStandModels)
+local VFXLib = require(script.Parent.Parent.VFXLib)
+local CameraFX = require(script.Parent.Parent.CameraFX)
+local TuskVFX = require(script.Parent.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
+local Common = require(script.Parent.Parent.TuskActCommon)
+local Fighters = require(script.Parent.Parent.Fighters)
+local TuskStand = require(script.Parent.Parent.TuskStand)
+local CivilWarStand = require(script.Parent.CivilWarStand)
+
+local AxlVFX = {}
+local ACT = 12
+local pal = Common.palette(ACT)
+local sounds = TuskConfig.Sounds
+
+-- CIVIL WAR floats behind him (players and NPCs), like Tusk does.
+TuskStandModels.register(ACT, CivilWarStand.build, { Aura = CivilWarStand.Aura, AuraLight = CivilWarStand.AuraLight, Offset = CivilWarStand.Offset })
+
+local GHOST = Color3.fromRGB(210, 222, 255)
+local SHADOW = Color3.fromRGB(30, 18, 36)
+local FILM = Color3.fromRGB(150, 130, 170)
+local WATER = Color3.fromRGB(150, 205, 255)
+local WOOD = Color3.fromRGB(130, 92, 56)
+local WOOD_DARK = Color3.fromRGB(90, 62, 38)
+local METAL = Color3.fromRGB(140, 144, 152)
+local GLASS = Color3.fromRGB(110, 160, 110)
+local LEATHER = Color3.fromRGB(70, 46, 32)
+local PIECES = { Color3.fromRGB(196, 46, 40), Color3.fromRGB(234, 208, 128), Color3.fromRGB(190, 196, 206), Color3.fromRGB(90, 52, 110) }
+
+local projectiles = {} -- [id] = flying junk
+local membranes = {} -- [character] = film
+local stanced = {}
+
+---------------------------------------------------------------------------
+-- Pieces
+---------------------------------------------------------------------------
+local function box(model, size, cf, color, material, transparency)
+	local p = VFXLib.part({ Size = size, CFrame = cf, Color = color, Material = material or Enum.Material.SmoothPlastic, Transparency = transparency or 0 })
+	p.Parent = model
+	return p
+end
+
+local function newModel(name)
+	local m = Instance.new("Model")
+	m.Name = name
+	m.Parent = VFXLib.Folder
+	return m
+end
+
+-- Move every part of a model built round the origin to `cf` (keeps offsets).
+local function place(item, cf)
+	for _, p in ipairs(item.Parts) do
+		p.CFrame = cf * item.Offsets[p]
+	end
+end
+
+local function finish(m)
+	local item = { Model = m, Parts = {}, Offsets = {} }
+	for _, p in ipairs(m:GetChildren()) do
+		if p:IsA("BasePart") then
+			table.insert(item.Parts, p)
+			item.Offsets[p] = p.CFrame
+		end
+	end
+	return item
+end
+
+-- A piece of abandoned junk, built round the origin.
+local function buildJunk(style, scale)
+	local s = scale or 1
+	local m = newModel("Junk")
+	if style == "Wheel" then
+		for i = 0, 7 do
+			local a = i / 8 * math.pi * 2
+			box(m, Vector3.new(0.2, 0.62, 0.2) * s, CFrame.new(math.cos(a) * 0.75 * s, math.sin(a) * 0.75 * s, 0) * CFrame.Angles(0, 0, a), WOOD)
+		end
+		box(m, Vector3.new(1.4, 0.1, 0.1) * s, CFrame.new(), WOOD_DARK)
+		box(m, Vector3.new(0.1, 1.4, 0.1) * s, CFrame.new(), WOOD_DARK)
+		box(m, Vector3.new(0.3, 0.3, 0.3) * s, CFrame.new(), METAL)
+	elseif style == "Chair" then
+		box(m, Vector3.new(1, 0.15, 1) * s, CFrame.new(), WOOD)
+		box(m, Vector3.new(1, 1, 0.14) * s, CFrame.new(0, 0.55 * s, 0.45 * s), WOOD)
+		for _, x in ipairs({ -0.4, 0.4 }) do
+			for _, z in ipairs({ -0.4, 0.4 }) do
+				box(m, Vector3.new(0.12, 0.8, 0.12) * s, CFrame.new(x * s, -0.45 * s, z * s), WOOD_DARK)
+			end
+		end
+	elseif style == "Bottle" then
+		box(m, Vector3.new(0.45, 0.8, 0.45) * s, CFrame.new(), GLASS, Enum.Material.Glass, 0.2)
+		box(m, Vector3.new(0.2, 0.4, 0.2) * s, CFrame.new(0, 0.6 * s, 0), GLASS, Enum.Material.Glass, 0.2)
+		box(m, Vector3.new(0.22, 0.1, 0.22) * s, CFrame.new(0, 0.82 * s, 0), WOOD_DARK)
+	elseif style == "Boot" then
+		box(m, Vector3.new(0.5, 0.9, 0.5) * s, CFrame.new(0, 0.2 * s, 0.15 * s), LEATHER)
+		box(m, Vector3.new(0.5, 0.35, 0.9) * s, CFrame.new(0, -0.3 * s, -0.1 * s), LEATHER)
+	elseif style == "Lamp" then
+		box(m, Vector3.new(0.6, 0.12, 0.6) * s, CFrame.new(0, -0.5 * s, 0), METAL)
+		box(m, Vector3.new(0.12, 0.8, 0.12) * s, CFrame.new(0, -0.05 * s, 0), METAL)
+		box(m, Vector3.new(0.7, 0.45, 0.7) * s, CFrame.new(0, 0.5 * s, 0), Color3.fromRGB(230, 200, 120), Enum.Material.Neon, 0.3)
+	else -- Crate
+		box(m, Vector3.new(1, 1, 1) * s, CFrame.new(), WOOD)
+		for _, y in ipairs({ -0.3, 0.3 }) do
+			box(m, Vector3.new(1.04, 0.12, 1.04) * s, CFrame.new(0, y * s, 0), WOOD_DARK)
+		end
+		box(m, Vector3.new(1.04, 0.12, 1.04) * s, CFrame.new() * CFrame.Angles(0, 0, math.pi / 4), WOOD_DARK)
+	end
+	return finish(m)
+end
+
+-- A pale ghost (a specter of someone they left behind), arms reaching up.
+local function buildGhost(scale)
+	local s = scale or 1
+	local m = newModel("Specter")
+	box(m, Vector3.new(1.4, 1.6, 0.8) * s, CFrame.new(0, 0, 0), GHOST, Enum.Material.Neon, 0.45)
+	box(m, Vector3.new(1, 1, 1) * s, CFrame.new(0, 1.35 * s, 0), GHOST, Enum.Material.Neon, 0.4)
+	box(m, Vector3.new(0.2, 0.25, 0.05) * s, CFrame.new(-0.22 * s, 1.4 * s, -0.5 * s), SHADOW)
+	box(m, Vector3.new(0.2, 0.25, 0.05) * s, CFrame.new(0.22 * s, 1.4 * s, -0.5 * s), SHADOW)
+	box(m, Vector3.new(0.3, 0.35, 0.05) * s, CFrame.new(0, 1.05 * s, -0.5 * s), SHADOW)
+	for _, side in ipairs({ -1, 1 }) do
+		box(m, Vector3.new(0.4, 1.7, 0.4) * s, CFrame.new(side * 0.85 * s, 1.1 * s, -0.2 * s) * CFrame.Angles(-0.4, 0, side * -0.35), GHOST, Enum.Material.Neon, 0.45)
+	end
+	-- Tail of mist fading into the ground.
+	for i = 1, 3 do
+		box(m, Vector3.new(1.2 - i * 0.25, 0.6, 0.7 - i * 0.12) * s, CFrame.new(0, -0.6 * s - i * 0.5 * s, 0), GHOST, Enum.Material.Neon, 0.45 + i * 0.15)
+	end
+	return finish(m)
+end
+
+local function puff(position, color, count)
+	VFXLib.burst(position, { Count = count or 10, Color = color or GHOST, Speed = 10, Lifetime = 0.4, Spread = 180 })
+end
+
+-- A ghost rises out of the ground at `spot`, holds, and fades.
+local function riseGhost(spot, scale, facing)
+	local g = buildGhost(scale)
+	local look = facing or Vector3.new(0, 0, -1)
+	local base = CFrame.lookAt(spot, spot + Vector3.new(look.X, 0, look.Z))
+	VFXLib.animate(0.9, function(a)
+		local up = VFXLib.easeOut(math.min(a / 0.35, 1))
+		place(g, base * CFrame.new(0, -3 + up * 5, 0) * CFrame.Angles(0, math.sin(a * 9) * 0.1, 0))
+		for _, p in ipairs(g.Parts) do
+			if a > 0.6 then
+				p.Transparency = math.min(1, p.Transparency + 0.06)
+			end
+		end
+	end, function()
+		g.Model:Destroy()
+	end)
+	puff(spot + Vector3.new(0, 1, 0), GHOST, 12)
+end
+
+---------------------------------------------------------------------------
+-- Membrane on a target: film + stuck junk, shrinks; drips in the rain
+---------------------------------------------------------------------------
+local function wrap(target, duration, rain)
+	local tr = Common.rootOf(target)
+	if not tr then
+		return
+	end
+	local old = membranes[target]
+	if old then
+		old.Model:Destroy()
+	end
+	local m = newModel("GuiltMembrane")
+	local film = box(m, Vector3.new(3.4, 5.6, 2.4), tr.CFrame, FILM, Enum.Material.Glass, 0.55)
+	local stuck = {}
+	for i = 1, 5 do
+		local styles = { "Crate", "Wheel", "Bottle", "Boot", "Chair" }
+		local j = buildJunk(styles[i], 0.55)
+		j.Model.Parent = m
+		local a = i / 5 * math.pi * 2
+		table.insert(stuck, { Item = j, Offset = CFrame.new(math.cos(a) * 1.5, (i % 3 - 1) * 1.4, math.sin(a) * 1.1) * CFrame.Angles(a, a * 2, 0) })
+	end
+	membranes[target] = { Model = m, Film = film, Stuck = stuck, Target = target, Born = os.clock(), Duration = duration or 3, Rain = rain }
+	puff(tr.Position, FILM, 14)
+end
+
+local function stepMembranes()
+	local now = os.clock()
+	for target, mb in pairs(membranes) do
+		local tr = Common.rootOf(target)
+		local a = (now - mb.Born) / mb.Duration
+		if not tr or a >= 1 or not target.Parent then
+			membranes[target] = nil
+			mb.Model:Destroy()
+			if tr then
+				-- Squeezed shut: a crunch and a puff.
+				VFXLib.burst(tr.Position, { Count = 14, Color = FILM, Speed = 16, Lifetime = 0.35 })
+				TuskVFX.CreateImpactStar(tr.Position, { Size = 3, Rays = 6, Color = pal.Main, Color2 = Color3.new(1, 1, 1), Duration = 0.12 })
+			end
+		else
+			-- Shrinks tighter and tighter (with a heartbeat squeeze each half second).
+			local squeeze = 1.25 - 0.4 * a - 0.05 * math.abs(math.sin((now - mb.Born) * math.pi * 2))
+			mb.Film.Size = Vector3.new(2.7, 5.2, 1.9) * squeeze
+			mb.Film.CFrame = tr.CFrame
+			mb.Film.Transparency = mb.Rain and (0.55 + 0.35 * a) or 0.55
+			for _, st in ipairs(mb.Stuck) do
+				local off = st.Offset
+				place(st.Item, tr.CFrame * CFrame.new(off.Position * squeeze) * (off - off.Position))
+			end
+			if mb.Rain and math.random() < 0.3 then
+				-- Water washes it away: it drips.
+				VFXLib.burst(tr.Position + Vector3.new((math.random() - 0.5) * 2, -1, (math.random() - 0.5) * 2), { Count = 2, Color = WATER, Speed = 4, Lifetime = 0.4, Direction = Vector3.new(0, -1, 0), Spread = 20 })
+			end
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Junk projectiles (server Kind "GuiltJunk")
+---------------------------------------------------------------------------
+local function spawnJunk(data)
+	local style = data.Visual and data.Visual.Style or "Crate"
+	local item = buildJunk(style, 1)
+	projectiles[data.Id] = { Item = item, Origin = data.Origin, Direction = data.Direction, Speed = data.Speed, Range = data.Range, ServerTime = data.ServerTime, Expire = os.clock() + data.Range / math.max(data.Speed, 1) + 0.5, Spin = math.random() * 10 }
+end
+
+local function endJunk(data)
+	local v = projectiles[data.Id]
+	if v then
+		projectiles[data.Id] = nil
+		v.Item.Model:Destroy()
+	end
+	VFXLib.burst(data.Position, { Count = data.HitCharacter and 12 or 6, Color = WOOD, Speed = 14, Lifetime = 0.35 })
+	if data.HitCharacter then
+		TuskVFX.CreateImpactStar(data.Position, { Size = 2.6, Rays = 5, Color = pal.Main, Color2 = Color3.new(1, 1, 1), Duration = 0.12 })
+	end
+end
+
+local function stepJunk()
+	local now = os.clock()
+	local serverNow = workspace:GetServerTimeNow()
+	for id, v in pairs(projectiles) do
+		local t = serverNow - v.ServerTime
+		local distance = math.min(v.Speed * t, v.Range)
+		local pos = v.Origin + v.Direction * math.max(distance, 0)
+		place(v.Item, CFrame.new(pos) * CFrame.Angles(t * 9 + v.Spin, t * 6, t * 4))
+		if now > v.Expire then
+			projectiles[id] = nil
+			v.Item.Model:Destroy()
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Moves
+---------------------------------------------------------------------------
+local function onM1(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if not root then
+		return
+	end
+	local index = data.Index
+	TuskAnimation.play(character, "A_M1_" .. index)
+	TuskStand.action(character, "Lunge", { Target = CFrame.new(index % 2 == 0 and -0.8 or 0.8, 1, -3.2), Duration = 0.3 })
+	VFXLib.sound(sounds.Swing, root, 0.5, 0.95 + index * 0.05)
+	Common.swipe(root, index % 2 == 1 and 1 or -1, index % 2 == 1 and pal.Main or pal.Second)
+end
+
+local function onFinisher(data)
+	Common.finisher(data, pal)
+	if data.Position then
+		puff(data.Position, FILM, 14)
+	end
+end
+
+local function onAbility(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	local move, phase = data.Move, data.Phase
+	if move == "GuiltSpecter" then
+		if phase == "Cast" and character then
+			TuskAnimation.play(character, "AxlSpecter")
+			TuskStand.action(character, "Lunge", { Duration = 0.4 })
+		elseif phase == "Warn" and data.Position then
+			-- A dark pool spreads under them: something is coming up.
+			local pool = VFXLib.part({ Size = Vector3.new(0.2, 1, 1), Color = SHADOW, Material = Enum.Material.SmoothPlastic, Transparency = 0.2 })
+			local r = data.Radius or 5
+			local at = data.Position
+			VFXLib.animate(data.Rise or 0.55, function(a)
+				pool.Size = Vector3.new(0.2, r * 2 * a, r * 2 * a)
+				pool.CFrame = CFrame.new(at + Vector3.new(0, 0.12, 0)) * CFrame.Angles(0, a * 2, math.pi / 2)
+				if math.random() < 0.4 then
+					puff(at + Vector3.new((math.random() - 0.5) * r, 0.5, (math.random() - 0.5) * r), FILM, 2)
+				end
+			end, function()
+				pool:Destroy()
+			end)
+		elseif phase == "Rise" and data.Position then
+			local facing = root and (root.Position - data.Position) or nil
+			riseGhost(data.Position, 1.2, facing)
+			if data.Hit then
+				CameraFX.shake(0.4, 0.2)
+			end
+		elseif phase == "Miss" and root then
+			puff((root.CFrame * CFrame.new(0, 0, -5)).Position, GHOST, 8)
+		end
+	elseif move == "AbandonedJunk" and phase == "Gather" and root then
+		TuskAnimation.play(character, "AxlJunk")
+		TuskStand.action(character, "Lunge", { Duration = (data.Startup or 0.3) + 0.2 })
+		-- Junk rises out of his shadow and shakes before it flies.
+		local styles = { "Crate", "Wheel", "Chair", "Bottle", "Boot", "Lamp" }
+		local items = {}
+		for i = 1, data.Count or 6 do
+			local t = (i - 1) / math.max((data.Count or 6) - 1, 1) - 0.5
+			local item = buildJunk(styles[(i - 1) % #styles + 1], 1)
+			local home = root.CFrame * CFrame.new(t * 5, 1.5 + (i % 3) * 0.6, -2)
+			table.insert(items, { Item = item, Home = home })
+		end
+		VFXLib.animate(data.Startup or 0.3, function(a)
+			for i, it in ipairs(items) do
+				local shake = CFrame.new((math.random() - 0.5) * 0.12, (math.random() - 0.5) * 0.12, 0)
+				place(it.Item, it.Home * CFrame.new(0, -2 * (1 - a), 0) * shake * CFrame.Angles(0, i + a * 2, 0))
+			end
+		end, function()
+			for _, it in ipairs(items) do
+				it.Item.Model:Destroy()
+			end
+		end)
+	elseif move == "GuiltMembrane" then
+		if phase == "Cast" and character then
+			TuskAnimation.play(character, "AxlMembrane")
+			TuskStand.action(character, "Lunge", { Duration = 0.5 })
+		elseif phase == "Engulf" then
+			for _, target in ipairs(data.Targets or {}) do
+				wrap(target, data.Duration, data.Rain)
+			end
+		elseif phase == "Miss" and root then
+			puff((root.CFrame * CFrame.new(0, 0, -6)).Position, FILM, 8)
+		end
+	end
+end
+
+local rises = {} -- piles and specters standing round an ultimate
+
+local function onUltimate(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Phase == "Rise" then
+		TuskAnimation.play(character, "AxlCivilWar")
+		TuskStand.action(character, "Manifest", { Duration = 1 })
+		local center = data.Position
+		local radius = data.Radius or 20
+		-- Junk piles rise in a ring, specters among them reaching inward.
+		local styles = { "Crate", "Wheel", "Chair", "Bottle", "Boot", "Lamp" }
+		local list = {}
+		for i = 1, 12 do
+			local a = i / 12 * math.pi * 2
+			local spot = center + Vector3.new(math.cos(a) * radius * 0.85, 0, math.sin(a) * radius * 0.85)
+			local pile = buildJunk(styles[(i - 1) % #styles + 1], 1.6)
+			table.insert(list, { Item = pile, Spot = spot, Angle = a })
+		end
+		VFXLib.animate(data.Windup or 1, function(a)
+			for _, it in ipairs(list) do
+				place(it.Item, CFrame.new(it.Spot + Vector3.new(0, -2 + VFXLib.easeOut(a) * 2.8, 0)) * CFrame.Angles(it.Angle, it.Angle * 2, 0))
+			end
+		end)
+		rises[character] = list
+		for i = 1, data.Specters or 7 do
+			local a = (i + 0.5) / (data.Specters or 7) * math.pi * 2
+			local spot = center + Vector3.new(math.cos(a) * radius * 0.7, 0, math.sin(a) * radius * 0.7)
+			task.delay((data.Windup or 1) * 0.5 + i * 0.05, function()
+				riseGhost(spot, 1.4, center - spot)
+			end)
+		end
+		if Common.isLocal(character) then
+			TuskVFX.ScreenTint((data.Windup or 1) + 3, { Tint = Color3.fromRGB(230, 200, 210), Saturation = -0.4, Brightness = -0.08 })
+		end
+		VFXLib.sound(sounds.AwakeningBuild, center, 0.5, 0.8)
+	elseif data.Phase == "Engulf" then
+		for _, target in ipairs(data.Targets or {}) do
+			wrap(target, data.Duration, data.Rain)
+		end
+		TuskVFX.CreateGroundCracks(data.Position, { Radius = (data.Radius or 20) * 0.6, Color = pal.Main })
+	elseif data.Phase == "Scatter" then
+		-- Civil War breaks apart: red, yellow and silver pieces scatter and reform.
+		local from, to = data.From, data.To
+		for i = 1, 18 do
+			local p = VFXLib.part({ Size = Vector3.new(0.5, 0.5, 0.5), Color = PIECES[(i - 1) % #PIECES + 1], Material = Enum.Material.SmoothPlastic })
+			local off = Vector3.new(math.random() - 0.5, math.random() * 2 - 0.5, math.random() - 0.5) * 6
+			VFXLib.animate(0.4, function(a)
+				local out = a < 0.5 and VFXLib.easeOut(a * 2) or 1 - VFXLib.easeOut((a - 0.5) * 2)
+				p.CFrame = CFrame.new(from:Lerp(to, a) + off * out) * CFrame.Angles(a * 6, a * 4, 0)
+			end, function()
+				p:Destroy()
+			end)
+		end
+		puff(from, FILM, 16)
+	elseif data.Phase == "Crush" then
+		local list = rises[character]
+		rises[character] = nil
+		if list then
+			for _, it in ipairs(list) do
+				local start = it.Item.Parts[1] and it.Item.Parts[1].CFrame or CFrame.new(it.Spot)
+				VFXLib.animate(0.35, function(a)
+					place(it.Item, CFrame.new(it.Spot + Vector3.new(0, 0.8 - a * 3, 0)) * (start - start.Position))
+				end, function()
+					it.Item.Model:Destroy()
+				end)
+			end
+		end
+		for _, target in ipairs(data.Targets or {}) do
+			local tr = Common.rootOf(target)
+			if tr then
+				Common.finisher({ Character = character, Position = tr.Position, Hit = true }, pal, { Size = 1.2, Layers = 2, Shake = 0.6 })
+			end
+		end
+		if Common.isLocal(character) then
+			CameraFX.impactFrame(pal.Main)
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Every frame
+---------------------------------------------------------------------------
+local function stepStance()
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		if character then
+			local want = character:GetAttribute("TuskAct") == ACT
+			if want and not stanced[character] then
+				stanced[character] = true
+				TuskAnimation.hold(character, "AxlStance")
+			elseif not want and stanced[character] then
+				stanced[character] = nil
+				TuskAnimation.stopHold(character, "AxlStance")
+			end
+		end
+	end
+	for character in pairs(stanced) do
+		if not character.Parent then
+			stanced[character] = nil
+		end
+	end
+end
+
+function AxlVFX.handle(name, data)
+	if name == "M1" then
+		onM1(data)
+	elseif name == "M1Finisher" then
+		onFinisher(data)
+	elseif name == "Ability" then
+		onAbility(data)
+	elseif name == "Ultimate" then
+		onUltimate(data)
+	end
+end
+
+local slowTimer = 0
+function AxlVFX.step(dt)
+	dt = dt or 1 / 60
+	stepJunk()
+	stepMembranes()
+	slowTimer = slowTimer + dt
+	if slowTimer > 0.2 then
+		slowTimer = 0
+		stepStance()
+	end
+end
+
+Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+	if typeof(data) ~= "table" or data.Kind ~= "GuiltJunk" then
+		return
+	end
+	if name == "ProjectileSpawn" then
+		spawnJunk(data)
+	elseif name == "ProjectileEnd" then
+		endJunk(data)
+	end
+end)
+
+return AxlVFX
+```

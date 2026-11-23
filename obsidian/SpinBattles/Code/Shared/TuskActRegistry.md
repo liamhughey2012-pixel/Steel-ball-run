@@ -212,6 +212,24 @@ TuskActRegistry.Acts = {
 		ClientModule = "BlackmoreVFX", -- client visuals (TuskActVFX.BlackmoreVFX)
 		CardTitle = "STAND  ·  CATCH THE RAINBOW",
 	},
+	-- Axl RO: CIVIL WAR (makes a target's guilt real: specters and the things
+	-- they abandoned rise up and engulf them in a crushing membrane; water,
+	-- like the rain, washes it away).
+	[12] = {
+		Name = "CIVIL WAR",
+		Character = "Axl",
+		Tagline = "Guilt made real",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 60, 70), Secondary = Color3.fromRGB(226, 196, 110) },
+		M1 = "GUILT COMBO",
+		Abilities = { "GUILT SPECTER", "ABANDONED JUNK", "GUILT MEMBRANE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "CIVIL WAR",
+		Next = nil,
+		Module = "Axl", -- server moves
+		ClientModule = "AxlVFX", -- client visuals (TuskActVFX.AxlVFX)
+		CardTitle = "STAND  ·  CIVIL WAR",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -221,7 +239,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

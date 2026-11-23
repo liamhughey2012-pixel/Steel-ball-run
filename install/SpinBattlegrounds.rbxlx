@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Workspace" referent="RBX1"><Properties><string name="Name">Workspace</string></Properties></Item><Item class="ReplicatedStorage" referent="RBX12"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="ModuleScript" referent="RBX2"><Properties><string name="Name">SpinConfig</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Workspace" referent="RBX1"><Properties><string name="Name">Workspace</string></Properties></Item><Item class="ReplicatedStorage" referent="RBX13"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="ModuleScript" referent="RBX2"><Properties><string name="Name">SpinConfig</string><ProtectedString name="Source"><![CDATA[--[[
 	SpinConfig  (ModuleScript)
 	PUT IT IN: ReplicatedStorage
 
@@ -268,6 +268,7 @@ TuskConfig.Roster = {
 	{ Id = "MountainTim", Name = "MOUNTAIN TIM", Stand = "OH! LONESOME ME", Available = true, Color = Color3.fromRGB(214, 156, 84) },
 	{ Id = "HotPants", Name = "HOT PANTS", Stand = "CREAM STARTER", Available = true, Color = Color3.fromRGB(242, 140, 172) },
 	{ Id = "Blackmore", Name = "BLACKMORE", Stand = "CATCH THE RAINBOW", Available = true, Color = Color3.fromRGB(110, 180, 255) },
+	{ Id = "Axl", Name = "AXL RO", Stand = "CIVIL WAR", Available = true, Color = Color3.fromRGB(214, 60, 70) },
 }
 
 ---------------------------------------------------------------------------
@@ -293,10 +294,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 8, -- how many at once (each takes a free spot below)
+	Count = 9, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl" },
 	RainWalkChance = 0.05, -- Blackmore NPCs: chance per think tick to start a rain walk while it rains
 	Health = 200,
 	WalkSpeed = 15,
@@ -768,6 +769,50 @@ TuskConfig.Blackmore = {
 	},
 }
 
+---------------------------------------------------------------------------
+-- Axl RO: CIVIL WAR (guilt made real; water / rain washes it away)
+---------------------------------------------------------------------------
+TuskConfig.Axl = {
+	M1 = { -- GUILT COMBO: Civil War's long arms strike with him
+		Interval = 0.29, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.09,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 6 },
+			{ Damage = 7, Stun = 0.5, Knockback = 40, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	GuiltSpecter = { -- a ghost from their past rises out of their shadow and grabs them
+		Cooldown = 7, MissCooldown = 3, Windup = 0.25,
+		Range = 40, Cone = 70,
+		Rise = 0.55, -- warning before it rises (they can dodge out)
+		Radius = 5, Damage = 8, Stun = 0.7, Knockback = 6, Launch = 12,
+	},
+	AbandonedJunk = { -- things they threw away fly at them: a volley of junk
+		Cooldown = 7, Startup = 0.3,
+		Count = 6, Spread = 40,
+		Speed = 110, Radius = 1.1, Range = 60,
+		Damage = 2.5, Stun = 0.35, Knockback = 6, MaxHitsPerTarget = 3,
+	},
+	GuiltMembrane = { -- their guilt wraps them in a membrane that shrinks and crushes
+		Cooldown = 13, MissCooldown = 3, Windup = 0.3,
+		Range = 16, Cone = 60,
+		Damage = 4, Stun = 0.6,
+		Time = 3, Tick = 0.5, TickDamage = 1, TickGrowth = 0.25, -- each squeeze hurts more
+		Slow = 0.5, FinalDamage = 4,
+		RainMultiplier = 0.5, -- water washes guilt away: in the rain it lasts half as long
+	},
+	Ultimate = { -- CIVIL WAR: the junkyard rises; specters engulf everyone near; he breaks apart when hit
+		Windup = 1.0, Radius = 20, Specters = 7,
+		SpecterDamage = 4, SpecterStun = 0.8,
+		Time = 3, Tick = 0.5, TickDamage = 1.5, Slow = 0.4,
+		FinalDamage = 12, FinalKnockback = 45, FinalLaunch = 22, FinalStun = 0.7,
+		ScatterDistance = 9, -- Civil War breaks apart and he reforms this far away
+		RainMultiplier = 0.5,
+	},
+}
+
 TuskConfig.Gyro = {
 	M1 = {
 		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,
@@ -869,7 +914,723 @@ TuskConfig.Colors = {
 }
 
 return TuskConfig
-]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX11"><Properties><string name="Name">SpinCharacters</string></Properties><Item class="ModuleScript" referent="RBX4"><Properties><string name="Name">Blackmore_Client</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX12"><Properties><string name="Name">SpinCharacters</string></Properties><Item class="ModuleScript" referent="RBX4"><Properties><string name="Name">Axl_Client</string><ProtectedString name="Source"><![CDATA[--[[
+	Axl_Client  (ModuleScript)
+	PUT IT IN: ReplicatedStorage > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
+
+	Axl RO: Civil War.
+	Its other half is Axl_Server in ServerScriptService > SpinCharacters.
+	Loaded by Spin_Client: don't put any code in front of this.
+]]
+
+return function(__modules, __require, __hasModule)
+
+-- ======================================================================
+-- MODULE: AxlVFX
+-- ======================================================================
+__modules["AxlVFX"] = function()
+--[[
+	TuskActVFX.AxlVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.AxlVFX)
+
+	Client visuals for Axl RO / CIVIL WAR: guilt made real. Blocky.
+	  * the CIVIL WAR Stand (CivilWarStand) floats behind him with a crimson
+	    aura and strikes with his moves
+	  * GUILT SPECTER: a dark shadow pools under the target, then a pale ghost
+	    rises out of it reaching up
+	  * ABANDONED JUNK: junk (crates, wheels, chairs, bottles, boots, lamps)
+	    materialises round him, shakes, then flies, tumbling
+	  * GUILT MEMBRANE: a grey-violet film wraps the target with junk stuck to
+	    it and slowly shrinks; in the rain it drips and dissolves faster
+	  * CIVIL WAR: junk piles and specters rise in a ring round him; everyone
+	    caught is wrapped; when he's hit he breaks apart into red, yellow and
+	    silver pieces and reforms; then every membrane crushes shut
+]]
+
+local Shared = nil -- (bundled: modules are inlined)
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local Net = __require("Net")
+local TuskStandModels = __require("TuskStandModels")
+local VFXLib = __require("VFXLib")
+local CameraFX = __require("CameraFX")
+local TuskVFX = __require("TuskVFX")
+local TuskAnimation = __require("TuskAnimation")
+local Common = __require("TuskActCommon")
+local Fighters = __require("Fighters")
+local TuskStand = __require("TuskStand")
+local CivilWarStand = __require("CivilWarStand")
+
+local AxlVFX = {}
+local ACT = 12
+local pal = Common.palette(ACT)
+local sounds = TuskConfig.Sounds
+
+-- CIVIL WAR floats behind him (players and NPCs), like Tusk does.
+TuskStandModels.register(ACT, CivilWarStand.build, { Aura = CivilWarStand.Aura, AuraLight = CivilWarStand.AuraLight, Offset = CivilWarStand.Offset })
+
+local GHOST = Color3.fromRGB(210, 222, 255)
+local SHADOW = Color3.fromRGB(30, 18, 36)
+local FILM = Color3.fromRGB(150, 130, 170)
+local WATER = Color3.fromRGB(150, 205, 255)
+local WOOD = Color3.fromRGB(130, 92, 56)
+local WOOD_DARK = Color3.fromRGB(90, 62, 38)
+local METAL = Color3.fromRGB(140, 144, 152)
+local GLASS = Color3.fromRGB(110, 160, 110)
+local LEATHER = Color3.fromRGB(70, 46, 32)
+local PIECES = { Color3.fromRGB(196, 46, 40), Color3.fromRGB(234, 208, 128), Color3.fromRGB(190, 196, 206), Color3.fromRGB(90, 52, 110) }
+
+local projectiles = {} -- [id] = flying junk
+local membranes = {} -- [character] = film
+local stanced = {}
+
+---------------------------------------------------------------------------
+-- Pieces
+---------------------------------------------------------------------------
+local function box(model, size, cf, color, material, transparency)
+	local p = VFXLib.part({ Size = size, CFrame = cf, Color = color, Material = material or Enum.Material.SmoothPlastic, Transparency = transparency or 0 })
+	p.Parent = model
+	return p
+end
+
+local function newModel(name)
+	local m = Instance.new("Model")
+	m.Name = name
+	m.Parent = VFXLib.Folder
+	return m
+end
+
+-- Move every part of a model built round the origin to `cf` (keeps offsets).
+local function place(item, cf)
+	for _, p in ipairs(item.Parts) do
+		p.CFrame = cf * item.Offsets[p]
+	end
+end
+
+local function finish(m)
+	local item = { Model = m, Parts = {}, Offsets = {} }
+	for _, p in ipairs(m:GetChildren()) do
+		if p:IsA("BasePart") then
+			table.insert(item.Parts, p)
+			item.Offsets[p] = p.CFrame
+		end
+	end
+	return item
+end
+
+-- A piece of abandoned junk, built round the origin.
+local function buildJunk(style, scale)
+	local s = scale or 1
+	local m = newModel("Junk")
+	if style == "Wheel" then
+		for i = 0, 7 do
+			local a = i / 8 * math.pi * 2
+			box(m, Vector3.new(0.2, 0.62, 0.2) * s, CFrame.new(math.cos(a) * 0.75 * s, math.sin(a) * 0.75 * s, 0) * CFrame.Angles(0, 0, a), WOOD)
+		end
+		box(m, Vector3.new(1.4, 0.1, 0.1) * s, CFrame.new(), WOOD_DARK)
+		box(m, Vector3.new(0.1, 1.4, 0.1) * s, CFrame.new(), WOOD_DARK)
+		box(m, Vector3.new(0.3, 0.3, 0.3) * s, CFrame.new(), METAL)
+	elseif style == "Chair" then
+		box(m, Vector3.new(1, 0.15, 1) * s, CFrame.new(), WOOD)
+		box(m, Vector3.new(1, 1, 0.14) * s, CFrame.new(0, 0.55 * s, 0.45 * s), WOOD)
+		for _, x in ipairs({ -0.4, 0.4 }) do
+			for _, z in ipairs({ -0.4, 0.4 }) do
+				box(m, Vector3.new(0.12, 0.8, 0.12) * s, CFrame.new(x * s, -0.45 * s, z * s), WOOD_DARK)
+			end
+		end
+	elseif style == "Bottle" then
+		box(m, Vector3.new(0.45, 0.8, 0.45) * s, CFrame.new(), GLASS, Enum.Material.Glass, 0.2)
+		box(m, Vector3.new(0.2, 0.4, 0.2) * s, CFrame.new(0, 0.6 * s, 0), GLASS, Enum.Material.Glass, 0.2)
+		box(m, Vector3.new(0.22, 0.1, 0.22) * s, CFrame.new(0, 0.82 * s, 0), WOOD_DARK)
+	elseif style == "Boot" then
+		box(m, Vector3.new(0.5, 0.9, 0.5) * s, CFrame.new(0, 0.2 * s, 0.15 * s), LEATHER)
+		box(m, Vector3.new(0.5, 0.35, 0.9) * s, CFrame.new(0, -0.3 * s, -0.1 * s), LEATHER)
+	elseif style == "Lamp" then
+		box(m, Vector3.new(0.6, 0.12, 0.6) * s, CFrame.new(0, -0.5 * s, 0), METAL)
+		box(m, Vector3.new(0.12, 0.8, 0.12) * s, CFrame.new(0, -0.05 * s, 0), METAL)
+		box(m, Vector3.new(0.7, 0.45, 0.7) * s, CFrame.new(0, 0.5 * s, 0), Color3.fromRGB(230, 200, 120), Enum.Material.Neon, 0.3)
+	else -- Crate
+		box(m, Vector3.new(1, 1, 1) * s, CFrame.new(), WOOD)
+		for _, y in ipairs({ -0.3, 0.3 }) do
+			box(m, Vector3.new(1.04, 0.12, 1.04) * s, CFrame.new(0, y * s, 0), WOOD_DARK)
+		end
+		box(m, Vector3.new(1.04, 0.12, 1.04) * s, CFrame.new() * CFrame.Angles(0, 0, math.pi / 4), WOOD_DARK)
+	end
+	return finish(m)
+end
+
+-- A pale ghost (a specter of someone they left behind), arms reaching up.
+local function buildGhost(scale)
+	local s = scale or 1
+	local m = newModel("Specter")
+	box(m, Vector3.new(1.4, 1.6, 0.8) * s, CFrame.new(0, 0, 0), GHOST, Enum.Material.Neon, 0.45)
+	box(m, Vector3.new(1, 1, 1) * s, CFrame.new(0, 1.35 * s, 0), GHOST, Enum.Material.Neon, 0.4)
+	box(m, Vector3.new(0.2, 0.25, 0.05) * s, CFrame.new(-0.22 * s, 1.4 * s, -0.5 * s), SHADOW)
+	box(m, Vector3.new(0.2, 0.25, 0.05) * s, CFrame.new(0.22 * s, 1.4 * s, -0.5 * s), SHADOW)
+	box(m, Vector3.new(0.3, 0.35, 0.05) * s, CFrame.new(0, 1.05 * s, -0.5 * s), SHADOW)
+	for _, side in ipairs({ -1, 1 }) do
+		box(m, Vector3.new(0.4, 1.7, 0.4) * s, CFrame.new(side * 0.85 * s, 1.1 * s, -0.2 * s) * CFrame.Angles(-0.4, 0, side * -0.35), GHOST, Enum.Material.Neon, 0.45)
+	end
+	-- Tail of mist fading into the ground.
+	for i = 1, 3 do
+		box(m, Vector3.new(1.2 - i * 0.25, 0.6, 0.7 - i * 0.12) * s, CFrame.new(0, -0.6 * s - i * 0.5 * s, 0), GHOST, Enum.Material.Neon, 0.45 + i * 0.15)
+	end
+	return finish(m)
+end
+
+local function puff(position, color, count)
+	VFXLib.burst(position, { Count = count or 10, Color = color or GHOST, Speed = 10, Lifetime = 0.4, Spread = 180 })
+end
+
+-- A ghost rises out of the ground at `spot`, holds, and fades.
+local function riseGhost(spot, scale, facing)
+	local g = buildGhost(scale)
+	local look = facing or Vector3.new(0, 0, -1)
+	local base = CFrame.lookAt(spot, spot + Vector3.new(look.X, 0, look.Z))
+	VFXLib.animate(0.9, function(a)
+		local up = VFXLib.easeOut(math.min(a / 0.35, 1))
+		place(g, base * CFrame.new(0, -3 + up * 5, 0) * CFrame.Angles(0, math.sin(a * 9) * 0.1, 0))
+		for _, p in ipairs(g.Parts) do
+			if a > 0.6 then
+				p.Transparency = math.min(1, p.Transparency + 0.06)
+			end
+		end
+	end, function()
+		g.Model:Destroy()
+	end)
+	puff(spot + Vector3.new(0, 1, 0), GHOST, 12)
+end
+
+---------------------------------------------------------------------------
+-- Membrane on a target: film + stuck junk, shrinks; drips in the rain
+---------------------------------------------------------------------------
+local function wrap(target, duration, rain)
+	local tr = Common.rootOf(target)
+	if not tr then
+		return
+	end
+	local old = membranes[target]
+	if old then
+		old.Model:Destroy()
+	end
+	local m = newModel("GuiltMembrane")
+	local film = box(m, Vector3.new(3.4, 5.6, 2.4), tr.CFrame, FILM, Enum.Material.Glass, 0.55)
+	local stuck = {}
+	for i = 1, 5 do
+		local styles = { "Crate", "Wheel", "Bottle", "Boot", "Chair" }
+		local j = buildJunk(styles[i], 0.55)
+		j.Model.Parent = m
+		local a = i / 5 * math.pi * 2
+		table.insert(stuck, { Item = j, Offset = CFrame.new(math.cos(a) * 1.5, (i % 3 - 1) * 1.4, math.sin(a) * 1.1) * CFrame.Angles(a, a * 2, 0) })
+	end
+	membranes[target] = { Model = m, Film = film, Stuck = stuck, Target = target, Born = os.clock(), Duration = duration or 3, Rain = rain }
+	puff(tr.Position, FILM, 14)
+end
+
+local function stepMembranes()
+	local now = os.clock()
+	for target, mb in pairs(membranes) do
+		local tr = Common.rootOf(target)
+		local a = (now - mb.Born) / mb.Duration
+		if not tr or a >= 1 or not target.Parent then
+			membranes[target] = nil
+			mb.Model:Destroy()
+			if tr then
+				-- Squeezed shut: a crunch and a puff.
+				VFXLib.burst(tr.Position, { Count = 14, Color = FILM, Speed = 16, Lifetime = 0.35 })
+				TuskVFX.CreateImpactStar(tr.Position, { Size = 3, Rays = 6, Color = pal.Main, Color2 = Color3.new(1, 1, 1), Duration = 0.12 })
+			end
+		else
+			-- Shrinks tighter and tighter (with a heartbeat squeeze each half second).
+			local squeeze = 1.25 - 0.4 * a - 0.05 * math.abs(math.sin((now - mb.Born) * math.pi * 2))
+			mb.Film.Size = Vector3.new(2.7, 5.2, 1.9) * squeeze
+			mb.Film.CFrame = tr.CFrame
+			mb.Film.Transparency = mb.Rain and (0.55 + 0.35 * a) or 0.55
+			for _, st in ipairs(mb.Stuck) do
+				local off = st.Offset
+				place(st.Item, tr.CFrame * CFrame.new(off.Position * squeeze) * (off - off.Position))
+			end
+			if mb.Rain and math.random() < 0.3 then
+				-- Water washes it away: it drips.
+				VFXLib.burst(tr.Position + Vector3.new((math.random() - 0.5) * 2, -1, (math.random() - 0.5) * 2), { Count = 2, Color = WATER, Speed = 4, Lifetime = 0.4, Direction = Vector3.new(0, -1, 0), Spread = 20 })
+			end
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Junk projectiles (server Kind "GuiltJunk")
+---------------------------------------------------------------------------
+local function spawnJunk(data)
+	local style = data.Visual and data.Visual.Style or "Crate"
+	local item = buildJunk(style, 1)
+	projectiles[data.Id] = { Item = item, Origin = data.Origin, Direction = data.Direction, Speed = data.Speed, Range = data.Range, ServerTime = data.ServerTime, Expire = os.clock() + data.Range / math.max(data.Speed, 1) + 0.5, Spin = math.random() * 10 }
+end
+
+local function endJunk(data)
+	local v = projectiles[data.Id]
+	if v then
+		projectiles[data.Id] = nil
+		v.Item.Model:Destroy()
+	end
+	VFXLib.burst(data.Position, { Count = data.HitCharacter and 12 or 6, Color = WOOD, Speed = 14, Lifetime = 0.35 })
+	if data.HitCharacter then
+		TuskVFX.CreateImpactStar(data.Position, { Size = 2.6, Rays = 5, Color = pal.Main, Color2 = Color3.new(1, 1, 1), Duration = 0.12 })
+	end
+end
+
+local function stepJunk()
+	local now = os.clock()
+	local serverNow = workspace:GetServerTimeNow()
+	for id, v in pairs(projectiles) do
+		local t = serverNow - v.ServerTime
+		local distance = math.min(v.Speed * t, v.Range)
+		local pos = v.Origin + v.Direction * math.max(distance, 0)
+		place(v.Item, CFrame.new(pos) * CFrame.Angles(t * 9 + v.Spin, t * 6, t * 4))
+		if now > v.Expire then
+			projectiles[id] = nil
+			v.Item.Model:Destroy()
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Moves
+---------------------------------------------------------------------------
+local function onM1(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if not root then
+		return
+	end
+	local index = data.Index
+	TuskAnimation.play(character, "A_M1_" .. index)
+	TuskStand.action(character, "Lunge", { Target = CFrame.new(index % 2 == 0 and -0.8 or 0.8, 1, -3.2), Duration = 0.3 })
+	VFXLib.sound(sounds.Swing, root, 0.5, 0.95 + index * 0.05)
+	Common.swipe(root, index % 2 == 1 and 1 or -1, index % 2 == 1 and pal.Main or pal.Second)
+end
+
+local function onFinisher(data)
+	Common.finisher(data, pal)
+	if data.Position then
+		puff(data.Position, FILM, 14)
+	end
+end
+
+local function onAbility(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	local move, phase = data.Move, data.Phase
+	if move == "GuiltSpecter" then
+		if phase == "Cast" and character then
+			TuskAnimation.play(character, "AxlSpecter")
+			TuskStand.action(character, "Lunge", { Duration = 0.4 })
+		elseif phase == "Warn" and data.Position then
+			-- A dark pool spreads under them: something is coming up.
+			local pool = VFXLib.part({ Size = Vector3.new(0.2, 1, 1), Color = SHADOW, Material = Enum.Material.SmoothPlastic, Transparency = 0.2 })
+			local r = data.Radius or 5
+			local at = data.Position
+			VFXLib.animate(data.Rise or 0.55, function(a)
+				pool.Size = Vector3.new(0.2, r * 2 * a, r * 2 * a)
+				pool.CFrame = CFrame.new(at + Vector3.new(0, 0.12, 0)) * CFrame.Angles(0, a * 2, math.pi / 2)
+				if math.random() < 0.4 then
+					puff(at + Vector3.new((math.random() - 0.5) * r, 0.5, (math.random() - 0.5) * r), FILM, 2)
+				end
+			end, function()
+				pool:Destroy()
+			end)
+		elseif phase == "Rise" and data.Position then
+			local facing = root and (root.Position - data.Position) or nil
+			riseGhost(data.Position, 1.2, facing)
+			if data.Hit then
+				CameraFX.shake(0.4, 0.2)
+			end
+		elseif phase == "Miss" and root then
+			puff((root.CFrame * CFrame.new(0, 0, -5)).Position, GHOST, 8)
+		end
+	elseif move == "AbandonedJunk" and phase == "Gather" and root then
+		TuskAnimation.play(character, "AxlJunk")
+		TuskStand.action(character, "Lunge", { Duration = (data.Startup or 0.3) + 0.2 })
+		-- Junk rises out of his shadow and shakes before it flies.
+		local styles = { "Crate", "Wheel", "Chair", "Bottle", "Boot", "Lamp" }
+		local items = {}
+		for i = 1, data.Count or 6 do
+			local t = (i - 1) / math.max((data.Count or 6) - 1, 1) - 0.5
+			local item = buildJunk(styles[(i - 1) % #styles + 1], 1)
+			local home = root.CFrame * CFrame.new(t * 5, 1.5 + (i % 3) * 0.6, -2)
+			table.insert(items, { Item = item, Home = home })
+		end
+		VFXLib.animate(data.Startup or 0.3, function(a)
+			for i, it in ipairs(items) do
+				local shake = CFrame.new((math.random() - 0.5) * 0.12, (math.random() - 0.5) * 0.12, 0)
+				place(it.Item, it.Home * CFrame.new(0, -2 * (1 - a), 0) * shake * CFrame.Angles(0, i + a * 2, 0))
+			end
+		end, function()
+			for _, it in ipairs(items) do
+				it.Item.Model:Destroy()
+			end
+		end)
+	elseif move == "GuiltMembrane" then
+		if phase == "Cast" and character then
+			TuskAnimation.play(character, "AxlMembrane")
+			TuskStand.action(character, "Lunge", { Duration = 0.5 })
+		elseif phase == "Engulf" then
+			for _, target in ipairs(data.Targets or {}) do
+				wrap(target, data.Duration, data.Rain)
+			end
+		elseif phase == "Miss" and root then
+			puff((root.CFrame * CFrame.new(0, 0, -6)).Position, FILM, 8)
+		end
+	end
+end
+
+local rises = {} -- piles and specters standing round an ultimate
+
+local function onUltimate(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Phase == "Rise" then
+		TuskAnimation.play(character, "AxlCivilWar")
+		TuskStand.action(character, "Manifest", { Duration = 1 })
+		local center = data.Position
+		local radius = data.Radius or 20
+		-- Junk piles rise in a ring, specters among them reaching inward.
+		local styles = { "Crate", "Wheel", "Chair", "Bottle", "Boot", "Lamp" }
+		local list = {}
+		for i = 1, 12 do
+			local a = i / 12 * math.pi * 2
+			local spot = center + Vector3.new(math.cos(a) * radius * 0.85, 0, math.sin(a) * radius * 0.85)
+			local pile = buildJunk(styles[(i - 1) % #styles + 1], 1.6)
+			table.insert(list, { Item = pile, Spot = spot, Angle = a })
+		end
+		VFXLib.animate(data.Windup or 1, function(a)
+			for _, it in ipairs(list) do
+				place(it.Item, CFrame.new(it.Spot + Vector3.new(0, -2 + VFXLib.easeOut(a) * 2.8, 0)) * CFrame.Angles(it.Angle, it.Angle * 2, 0))
+			end
+		end)
+		rises[character] = list
+		for i = 1, data.Specters or 7 do
+			local a = (i + 0.5) / (data.Specters or 7) * math.pi * 2
+			local spot = center + Vector3.new(math.cos(a) * radius * 0.7, 0, math.sin(a) * radius * 0.7)
+			task.delay((data.Windup or 1) * 0.5 + i * 0.05, function()
+				riseGhost(spot, 1.4, center - spot)
+			end)
+		end
+		if Common.isLocal(character) then
+			TuskVFX.ScreenTint((data.Windup or 1) + 3, { Tint = Color3.fromRGB(230, 200, 210), Saturation = -0.4, Brightness = -0.08 })
+		end
+		VFXLib.sound(sounds.AwakeningBuild, center, 0.5, 0.8)
+	elseif data.Phase == "Engulf" then
+		for _, target in ipairs(data.Targets or {}) do
+			wrap(target, data.Duration, data.Rain)
+		end
+		TuskVFX.CreateGroundCracks(data.Position, { Radius = (data.Radius or 20) * 0.6, Color = pal.Main })
+	elseif data.Phase == "Scatter" then
+		-- Civil War breaks apart: red, yellow and silver pieces scatter and reform.
+		local from, to = data.From, data.To
+		for i = 1, 18 do
+			local p = VFXLib.part({ Size = Vector3.new(0.5, 0.5, 0.5), Color = PIECES[(i - 1) % #PIECES + 1], Material = Enum.Material.SmoothPlastic })
+			local off = Vector3.new(math.random() - 0.5, math.random() * 2 - 0.5, math.random() - 0.5) * 6
+			VFXLib.animate(0.4, function(a)
+				local out = a < 0.5 and VFXLib.easeOut(a * 2) or 1 - VFXLib.easeOut((a - 0.5) * 2)
+				p.CFrame = CFrame.new(from:Lerp(to, a) + off * out) * CFrame.Angles(a * 6, a * 4, 0)
+			end, function()
+				p:Destroy()
+			end)
+		end
+		puff(from, FILM, 16)
+	elseif data.Phase == "Crush" then
+		local list = rises[character]
+		rises[character] = nil
+		if list then
+			for _, it in ipairs(list) do
+				local start = it.Item.Parts[1] and it.Item.Parts[1].CFrame or CFrame.new(it.Spot)
+				VFXLib.animate(0.35, function(a)
+					place(it.Item, CFrame.new(it.Spot + Vector3.new(0, 0.8 - a * 3, 0)) * (start - start.Position))
+				end, function()
+					it.Item.Model:Destroy()
+				end)
+			end
+		end
+		for _, target in ipairs(data.Targets or {}) do
+			local tr = Common.rootOf(target)
+			if tr then
+				Common.finisher({ Character = character, Position = tr.Position, Hit = true }, pal, { Size = 1.2, Layers = 2, Shake = 0.6 })
+			end
+		end
+		if Common.isLocal(character) then
+			CameraFX.impactFrame(pal.Main)
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Every frame
+---------------------------------------------------------------------------
+local function stepStance()
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		if character then
+			local want = character:GetAttribute("TuskAct") == ACT
+			if want and not stanced[character] then
+				stanced[character] = true
+				TuskAnimation.hold(character, "AxlStance")
+			elseif not want and stanced[character] then
+				stanced[character] = nil
+				TuskAnimation.stopHold(character, "AxlStance")
+			end
+		end
+	end
+	for character in pairs(stanced) do
+		if not character.Parent then
+			stanced[character] = nil
+		end
+	end
+end
+
+function AxlVFX.handle(name, data)
+	if name == "M1" then
+		onM1(data)
+	elseif name == "M1Finisher" then
+		onFinisher(data)
+	elseif name == "Ability" then
+		onAbility(data)
+	elseif name == "Ultimate" then
+		onUltimate(data)
+	end
+end
+
+local slowTimer = 0
+function AxlVFX.step(dt)
+	dt = dt or 1 / 60
+	stepJunk()
+	stepMembranes()
+	slowTimer = slowTimer + dt
+	if slowTimer > 0.2 then
+		slowTimer = 0
+		stepStance()
+	end
+end
+
+Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+	if typeof(data) ~= "table" or data.Kind ~= "GuiltJunk" then
+		return
+	end
+	if name == "ProjectileSpawn" then
+		spawnJunk(data)
+	elseif name == "ProjectileEnd" then
+		endJunk(data)
+	end
+end)
+
+return AxlVFX
+end
+
+-- ======================================================================
+-- MODULE: CivilWarStand
+-- ======================================================================
+__modules["CivilWarStand"] = function()
+--[[
+	TuskActVFX.CivilWarStand  (StarterPlayerScripts.SpinClient.TuskActVFX.CivilWarStand)
+
+	The CIVIL WAR Stand model (Axl RO), blocky, matched to the art: red,
+	yellow and silvery metal.
+	  * the head: a distorted metal mask of tall vertical discs pressed
+	    together, a spike on top, three arrow points tapering below
+	  * three gas-mask filter canisters round the base of the neck (front
+	    and both sides)
+	  * a red quilted (tufted) chest and a quilted hump on the back
+	  * silver shoulder balls; long yellow limbs with purple joint rings
+	  * a bare silver spine from the ribcage down to a toothed silver pelvis
+	  * red, fraying bell-bottom lower legs like roots, pointed red feet
+	Registered with TuskStandModels by AxlVFX, so TuskStand floats it behind
+	Axl RO (players and NPCs) with a crimson aura. A custom model at
+	ReplicatedStorage.SpinAssets.TuskAct12 replaces it.
+]]
+
+local CivilWarStand = {}
+
+local RED = Color3.fromRGB(196, 46, 40)
+local RED_DARK = Color3.fromRGB(128, 26, 26)
+local YELLOW = Color3.fromRGB(234, 208, 128)
+local YELLOW_DARK = Color3.fromRGB(196, 166, 90)
+local SILVER = Color3.fromRGB(190, 196, 206)
+local SILVER_DARK = Color3.fromRGB(120, 126, 140)
+local PURPLE = Color3.fromRGB(90, 52, 110)
+local PURPLE_DARK = Color3.fromRGB(40, 24, 52)
+local BUTTON = Color3.fromRGB(214, 170, 80)
+
+CivilWarStand.Aura = Color3.fromRGB(220, 50, 70)
+CivilWarStand.AuraLight = Color3.fromRGB(255, 170, 180)
+CivilWarStand.Offset = CFrame.new(2.5, 1.7, 3.1)
+
+local function newPart(model, name, size, color, material)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Massless = true
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Size = size
+	p.Color = color
+	p.Parent = model
+	return p
+end
+
+local function box(model, parent, name, size, color, cf, material)
+	local p = newPart(model, name, size, color, material)
+	local w = Instance.new("Weld")
+	w.Part0 = parent
+	w.Part1 = p
+	w.C0 = cf
+	w.Parent = p
+	p.CFrame = parent.CFrame * cf
+	return p, w
+end
+
+-- A purple joint ring round a limb (local Y axis) at `cf`.
+local function ring(model, parent, cf, width, s)
+	box(model, parent, "Ring", Vector3.new(width + 0.22 * s, 0.24 * s, width + 0.22 * s), PURPLE, cf)
+	box(model, parent, "RingHole", Vector3.new(0.2, 0.2, 0.06) * s, PURPLE_DARK, cf * CFrame.new(0, 0, -(width / 2 + 0.12 * s)))
+end
+
+-- Quilting on a face: a diamond grid of creases with buttons where they meet.
+local function quilt(model, parent, cf, w, h, s)
+	local cols, rows = math.max(2, math.floor(w / (0.5 * s))), math.max(2, math.floor(h / (0.45 * s)))
+	for i = 0, cols - 1 do
+		for j = 0, rows - 1 do
+			local x = (i - (cols - 1) / 2) * w / cols
+			local y = (j - (rows - 1) / 2) * h / rows
+			box(model, parent, "Quilt", Vector3.new(0.3, 0.05, 0.04) * s, RED_DARK, cf * CFrame.new(x, y, 0) * CFrame.Angles(0, 0, math.pi / 4))
+			box(model, parent, "Quilt", Vector3.new(0.3, 0.05, 0.04) * s, RED_DARK, cf * CFrame.new(x, y, 0) * CFrame.Angles(0, 0, -math.pi / 4))
+			box(model, parent, "Tuft", Vector3.new(0.08, 0.08, 0.05) * s, BUTTON, cf * CFrame.new(x, y, -0.01 * s))
+		end
+	end
+end
+
+function CivilWarStand.build(scale)
+	local s = (scale or 1) * 0.85
+	local model = Instance.new("Model")
+	model.Name = "CivilWar"
+	local rig = { Joints = {} }
+
+	-- Red quilted chest (the anchored root the Stand is moved by).
+	local torso = newPart(model, "Body", Vector3.new(2.1, 1.5, 1.1) * s, RED)
+	torso.Anchored = true
+	torso.Massless = false
+	torso.CFrame = CFrame.new()
+	model.PrimaryPart = torso
+	rig.Body = torso
+	quilt(model, torso, CFrame.new(0, 0, -0.56 * s), 1.9 * s, 1.3 * s, s)
+	-- The quilted hump on its back.
+	local hump = box(model, torso, "Hump", Vector3.new(1.9, 1.4, 0.8) * s, RED, CFrame.new(0, 0.25 * s, 0.85 * s))
+	box(model, torso, "Hump", Vector3.new(1.5, 1.0, 0.3) * s, RED, CFrame.new(0, 0.3 * s, 1.36 * s))
+	quilt(model, hump, CFrame.new(0, 0, 0.41 * s) * CFrame.Angles(0, math.pi, 0), 1.7 * s, 1.2 * s, s)
+	box(model, torso, "ChestTrim", Vector3.new(2.16, 0.14, 1.16) * s, RED_DARK, CFrame.new(0, -0.72 * s, 0))
+
+	-- Bare silver spine from the ribcage to the pelvis.
+	for i = 0, 3 do
+		local y = -0.95 * s - i * 0.34 * s
+		box(model, torso, "Vertebra", Vector3.new(0.34, 0.22, 0.34) * s, SILVER, CFrame.new(0, y, 0.05 * s))
+		box(model, torso, "Vertebra", Vector3.new(0.6, 0.08, 0.14) * s, SILVER_DARK, CFrame.new(0, y, 0.05 * s))
+	end
+	-- Toothed pelvis.
+	box(model, torso, "Pelvis", Vector3.new(1.5, 0.55, 0.9) * s, SILVER, CFrame.new(0, -2.45 * s, 0))
+	for i = -3, 3 do
+		box(model, torso, "PelvisTooth", Vector3.new(0.1, 0.4, 0.06) * s, SILVER_DARK, CFrame.new(i * 0.18 * s, -2.5 * s, -0.47 * s))
+	end
+
+	-- Neck and the three gas-mask filter canisters.
+	box(model, torso, "Neck", Vector3.new(0.5, 0.4, 0.5) * s, SILVER_DARK, CFrame.new(0, 0.9 * s, 0))
+	for _, spot in ipairs({ { 0, -0.55, 0 }, { -0.6, -0.1, math.pi / 2 }, { 0.6, -0.1, -math.pi / 2 } }) do
+		local cf = CFrame.new(spot[1] * s, 0.95 * s, spot[2] * s) * CFrame.Angles(0, spot[3], 0)
+		box(model, torso, "Filter", Vector3.new(0.42, 0.42, 0.32) * s, SILVER, cf)
+		box(model, torso, "FilterCap", Vector3.new(0.34, 0.34, 0.08) * s, SILVER_DARK, cf * CFrame.new(0, 0, -0.18 * s))
+		box(model, torso, "FilterHole", Vector3.new(0.14, 0.14, 0.06) * s, PURPLE_DARK, cf * CFrame.new(0, 0, -0.22 * s))
+	end
+
+	-- Head: tall vertical discs pressed together, a spike, three arrows below.
+	local headBase = CFrame.new(0, 1.1 * s, 0)
+	local headOffset = CFrame.new(0, 0.75 * s, 0)
+	local head, headWeld = box(model, torso, "Head", Vector3.new(0.3, 1.1, 0.9) * s, SILVER, headBase * headOffset, Enum.Material.Metal)
+	rig.Joints.Head = { Weld = headWeld, Base = headBase, Offset = headOffset }
+	local discs = { { -0.48, 0.9 }, { -0.32, 1.2 }, { -0.16, 1.45 }, { 0.16, 1.45 }, { 0.32, 1.2 }, { 0.48, 0.9 } }
+	for i, d in ipairs(discs) do
+		box(model, head, "Disc", Vector3.new(0.13, d[2], 0.95) * s, i % 2 == 0 and SILVER or SILVER_DARK, CFrame.new(d[1] * s, (d[2] - 1.1) * 0.3 * s, 0), Enum.Material.Metal)
+	end
+	box(model, head, "Disc", Vector3.new(0.16, 1.7, 1.0) * s, SILVER, CFrame.new(0, 0.2 * s, 0), Enum.Material.Metal)
+	-- Spike on top with two little cross bars.
+	for i = 0, 4 do
+		local w = (0.22 - i * 0.035) * s
+		box(model, head, "Spike", Vector3.new(w, 0.32 * s, w), SILVER, CFrame.new(0, (1.15 + i * 0.3) * s, 0), Enum.Material.Metal)
+	end
+	box(model, head, "CrossBar", Vector3.new(0.7, 0.06, 0.06) * s, SILVER_DARK, CFrame.new(0, 1.35 * s, 0))
+	box(model, head, "CrossBar", Vector3.new(0.06, 0.06, 0.5) * s, SILVER_DARK, CFrame.new(0, 1.55 * s, 0))
+	-- Three arrow points tapering down below the mask.
+	for _, x in ipairs({ -0.3, 0, 0.3 }) do
+		box(model, head, "Arrow", Vector3.new(0.1, 0.45, 0.1) * s, SILVER, CFrame.new(x * s, -0.75 * s, -0.2 * s), Enum.Material.Metal)
+		box(model, head, "ArrowHead", Vector3.new(0.24, 0.24, 0.08) * s, SILVER_DARK, CFrame.new(x * s, -1.0 * s, -0.2 * s) * CFrame.Angles(0, 0, math.pi / 4), Enum.Material.Metal)
+	end
+	-- A slit of an eye in the mask.
+	box(model, head, "Eye", Vector3.new(0.9, 0.06, 0.04) * s, PURPLE_DARK, CFrame.new(0, 0.25 * s, -0.5 * s))
+
+	-- Shoulders (silver balls) and long yellow arms with purple joint rings.
+	for _, a in ipairs({ { "ArmL", -1 }, { "ArmR", 1 } }) do
+		local side = a[2]
+		box(model, torso, "ShoulderBall", Vector3.new(0.6, 0.6, 0.6) * s, SILVER, CFrame.new(side * 1.25 * s, 0.5 * s, 0), Enum.Material.Metal)
+		local base = CFrame.new(side * 1.3 * s, 0.4 * s, 0)
+		local offset = CFrame.new(0, -1.25 * s, 0)
+		local arm, weld = box(model, torso, a[1], Vector3.new(0.42, 2.5, 0.42) * s, YELLOW, base * offset)
+		rig.Joints[a[1]] = { Weld = weld, Base = base, Offset = offset }
+		ring(model, arm, CFrame.new(0, 1.05 * s, 0), 0.42 * s, s)
+		ring(model, arm, CFrame.new(0, 0, 0), 0.42 * s, s)
+		ring(model, arm, CFrame.new(0, -1.05 * s, 0), 0.42 * s, s)
+		box(model, arm, "Muscle", Vector3.new(0.5, 0.7, 0.5) * s, YELLOW_DARK, CFrame.new(0, 0.55 * s, 0))
+		local hand = box(model, arm, "Hand", Vector3.new(0.4, 0.34, 0.36) * s, YELLOW, CFrame.new(0, -1.38 * s, 0))
+		for f = -1.5, 1.5 do
+			box(model, hand, "Finger", Vector3.new(0.08, 0.5, 0.08) * s, YELLOW_DARK, CFrame.new(f * 0.1 * s, -0.38 * s, -0.06 * s) * CFrame.Angles(0.25, 0, 0))
+		end
+		if a[1] == "ArmR" then
+			local point = Instance.new("Attachment")
+			point.Name = "NailPoint"
+			point.Position = Vector3.new(0, -0.5 * s, 0)
+			point.Parent = hand
+			rig.NailPoint = point
+		end
+	end
+
+	-- Legs: yellow thighs, purple knee rings, red fraying bell-bottoms.
+	for i, side in ipairs({ -1, 1 }) do
+		local base = CFrame.new(side * 0.5 * s, -2.6 * s, 0)
+		local offset = CFrame.new(0, -0.65 * s, 0)
+		local leg, weld = box(model, torso, "Leg" .. i, Vector3.new(0.5, 1.3, 0.5) * s, YELLOW, base * offset)
+		rig.Joints["Leg" .. i] = { Weld = weld, Base = base, Offset = offset }
+		ring(model, leg, CFrame.new(0, 0.6 * s, 0), 0.5 * s, s)
+		ring(model, leg, CFrame.new(0, -0.7 * s, 0), 0.5 * s, s)
+		-- The bell-bottom widens toward the hem.
+		for k = 0, 3 do
+			local w = (0.6 + k * 0.16) * s
+			box(model, leg, "BellBottom", Vector3.new(w, 0.4 * s, w), k % 2 == 0 and RED or RED_DARK, CFrame.new(0, (-1.0 - k * 0.38) * s, 0))
+		end
+		-- Frayed, root-like strips hanging from the hem.
+		for k = 0, 7 do
+			local a = k / 8 * math.pi * 2
+			local len = (0.35 + (k % 3) * 0.18) * s
+			box(model, leg, "Fray", Vector3.new(0.12 * s, len, 0.12 * s), k % 2 == 0 and RED or RED_DARK, CFrame.new(math.cos(a) * 0.5 * s, -2.32 * s - len / 2, math.sin(a) * 0.5 * s) * CFrame.Angles(math.sin(a) * 0.3, 0, -math.cos(a) * 0.3))
+		end
+		box(model, leg, "Foot", Vector3.new(0.5, 0.26, 1.0) * s, RED, CFrame.new(0, -2.4 * s, -0.25 * s))
+		box(model, leg, "Toe", Vector3.new(0.3, 0.2, 0.35) * s, RED_DARK, CFrame.new(0, -2.42 * s, -0.86 * s))
+	end
+	return model, rig
+end
+
+return CivilWarStand
+end
+end
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX5"><Properties><string name="Name">Blackmore_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	Blackmore_Client  (ModuleScript)
 	PUT IT IN: ReplicatedStorage > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -1649,7 +2410,7 @@ end)
 return BlackmoreVFX
 end
 end
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX5"><Properties><string name="Name">Diego_Client</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX6"><Properties><string name="Name">Diego_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	Diego_Client  (ModuleScript)
 	PUT IT IN: ReplicatedStorage > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -2906,7 +3667,7 @@ end
 return RaptorModel
 end
 end
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX6"><Properties><string name="Name">Gyro_Client</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX7"><Properties><string name="Name">Gyro_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	Gyro_Client  (ModuleScript)
 	PUT IT IN: ReplicatedStorage > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -4441,7 +5202,7 @@ end
 return WreckingBallModel
 end
 end
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX7"><Properties><string name="Name">HotPants_Client</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX8"><Properties><string name="Name">HotPants_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	HotPants_Client  (ModuleScript)
 	PUT IT IN: ReplicatedStorage > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -5012,7 +5773,7 @@ end
 return HotPantsVFX
 end
 end
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX8"><Properties><string name="Name">MountainTim_Client</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX9"><Properties><string name="Name">MountainTim_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	MountainTim_Client  (ModuleScript)
 	PUT IT IN: ReplicatedStorage > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -5933,7 +6694,7 @@ end)
 return TimVFX
 end
 end
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX9"><Properties><string name="Name">PorkPie_Client</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX10"><Properties><string name="Name">PorkPie_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	PorkPie_Client  (ModuleScript)
 	PUT IT IN: ReplicatedStorage > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -6603,7 +7364,7 @@ end)
 return PorkPie
 end
 end
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX10"><Properties><string name="Name">Sandman_Client</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX11"><Properties><string name="Name">Sandman_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	Sandman_Client  (ModuleScript)
 	PUT IT IN: ReplicatedStorage > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -7241,7 +8002,7 @@ end
 return SilentWayStand
 end
 end
-]]></ProtectedString></Properties></Item></Item></Item><Item class="ServerScriptService" referent="RBX22"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX13"><Properties><string name="Name">Spin_Server</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item></Item><Item class="ServerScriptService" referent="RBX24"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX14"><Properties><string name="Name">Spin_Server</string><ProtectedString name="Source"><![CDATA[--[[
 	Spin_Server  (Script)
 	PUT IT IN: ServerScriptService
 
@@ -10560,7 +11321,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -10606,6 +11367,7 @@ local LOOKS = {
 	MountainTim = { Skin = Color3.fromRGB(226, 180, 140), Torso = Color3.fromRGB(70, 90, 130), Legs = Color3.fromRGB(60, 50, 70) },
 	HotPants = { Skin = Color3.fromRGB(238, 196, 164), Torso = Color3.fromRGB(96, 60, 120), Legs = Color3.fromRGB(238, 196, 164) },
 	Blackmore = { Skin = Color3.fromRGB(220, 196, 176), Torso = Color3.fromRGB(36, 44, 70), Legs = Color3.fromRGB(30, 30, 40) },
+	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 }
 
 local usedSpots = {} -- [spot index] = slot using it
@@ -12529,6 +13291,24 @@ TuskActRegistry.Acts = {
 		ClientModule = "BlackmoreVFX", -- client visuals (TuskActVFX.BlackmoreVFX)
 		CardTitle = "STAND  ·  CATCH THE RAINBOW",
 	},
+	-- Axl RO: CIVIL WAR (makes a target's guilt real: specters and the things
+	-- they abandoned rise up and engulf them in a crushing membrane; water,
+	-- like the rain, washes it away).
+	[12] = {
+		Name = "CIVIL WAR",
+		Character = "Axl",
+		Tagline = "Guilt made real",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 60, 70), Secondary = Color3.fromRGB(226, 196, 110) },
+		M1 = "GUILT COMBO",
+		Abilities = { "GUILT SPECTER", "ABANDONED JUNK", "GUILT MEMBRANE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "CIVIL WAR",
+		Next = nil,
+		Module = "Axl", -- server moves
+		ClientModule = "AxlVFX", -- client visuals (TuskActVFX.AxlVFX)
+		CardTitle = "STAND  ·  CIVIL WAR",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -12538,7 +13318,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -13162,6 +13942,21 @@ function TuskService.fireRain(player, state, spec)
 		Radius = spec.Radius,
 		Range = spec.Range,
 		Visual = { Style = spec.Style or "Drop" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Server projectile with a piece of abandoned junk as the visual (Axl RO).
+function TuskService.fireJunk(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "GuiltJunk",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Crate" },
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd,
 	})
@@ -14017,7 +14812,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit" }) do
+for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end
@@ -14035,7 +14830,607 @@ __require("BountyService").init()
 NPCService.init()
 TestDummies.init()
 print("[Spin] Server ready")
-]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX21"><Properties><string name="Name">SpinCharacters</string></Properties><Item class="ModuleScript" referent="RBX14"><Properties><string name="Name">Blackmore_Server</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX23"><Properties><string name="Name">SpinCharacters</string></Properties><Item class="ModuleScript" referent="RBX15"><Properties><string name="Name">Axl_Server</string><ProtectedString name="Source"><![CDATA[--[[
+	Axl_Server  (ModuleScript)
+	PUT IT IN: ServerScriptService > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
+
+	Axl RO: Civil War.
+	Its other half is Axl_Client in ReplicatedStorage > SpinCharacters.
+	Loaded by Spin_Server: don't put any code in front of this.
+]]
+
+return function(__modules, __require, __hasModule)
+
+-- ======================================================================
+-- MODULE: Axl
+-- ======================================================================
+__modules["Axl"] = function()
+--[[
+	Axl  (ServerScriptService.SpinServer.TuskActs.Axl)
+
+	Axl RO: CIVIL WAR. His Stand makes a target's guilt real: the people
+	they left behind rise as specters, the things they abandoned fly at them,
+	and their guilt wraps them in a membrane that shrinks until it crushes
+	them. Water washes guilt away: in the rain the membrane dissolves twice
+	as fast. Registered as "Act" 12 so it reuses the Tusk ability system.
+	  M1        GUILT COMBO: strikes with Civil War's long arms
+	  Ability 1 GUILT SPECTER: a ghost rises out of the nearest enemy's shadow
+	            (a warning first, so they can dodge out) and grabs them
+	  Ability 2 ABANDONED JUNK: a volley of junk (crates, wheels, chairs...)
+	  Ability 3 GUILT MEMBRANE: the nearest enemy is wrapped in a membrane:
+	            slowed, squeezed harder every tick, then crushed
+	  Ultimate  CIVIL WAR: the junkyard rises round him: specters grab
+	            everyone nearby and engulf them; while it lasts Civil War
+	            breaks apart when he's hit (the hit misses, he reforms out of
+	            reach); then the membranes crush everyone at once
+Numbers: TuskConfig.Axl. All damage goes through S.hit (CombatAdapter).
+]]
+
+local Shared = nil -- (bundled: modules are inlined)
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local Moves = __require("TuskMoves")
+
+local Axl = {}
+local cfg = TuskConfig.Axl
+local ACT = 12
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function ready(S, player, state, name, slot)
+	return not S.isBusy(state) and not state.Charging and S.cooldownReady(player, state, name, slot)
+end
+
+local function now()
+	return workspace:GetServerTimeNow()
+end
+
+-- Water washes guilt away: shorter in the rain.
+local function rainy()
+	return game:GetService("ReplicatedStorage"):GetAttribute("SpinRaining") == true
+end
+
+function Axl.M1(S, player, state, aim)
+	Moves.m1(S, player, state, aim, cfg.M1, ACT)
+end
+
+local function slow(S, target, key, multiplier, seconds)
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	S.Adapter.setMoveModifier(humanoid, key, multiplier)
+	local token = tostring({})
+	target:SetAttribute(key .. "Token", token)
+	task.delay(seconds, function()
+		if humanoid.Parent and target:GetAttribute(key .. "Token") == token then
+			S.Adapter.setMoveModifier(humanoid, key, nil)
+			target:SetAttribute(key .. "Token", nil)
+		end
+	end)
+end
+
+-- Nearest enemy in a cone in front.
+local function targetInCone(S, character, root, direction, range, cone)
+	local look = Moves.flat(direction)
+	local cosLimit = math.cos(math.rad(cone / 2))
+	local best, bestD
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, range, 8)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and S.Adapter.canBeHit(nil, target) then
+			local offset = tr.Position - root.Position
+			local f = Vector3.new(offset.X, 0, offset.Z)
+			if (f.Magnitude < 1 or f.Unit:Dot(look) >= cosLimit) and S.Hitbox.lineOfSight(root.Position, tr.Position, { character, target }) then
+				if not bestD or offset.Magnitude < bestD then
+					best, bestD = target, offset.Magnitude
+				end
+			end
+		end
+	end
+	return best
+end
+
+---------------------------------------------------------------------------
+-- The membrane (Guilt Membrane and the ultimate): slowed, squeezed harder
+-- each tick, then crushed. Rain halves how long it lasts.
+---------------------------------------------------------------------------
+local function engulf(S, player, target, opts)
+	local t = opts.Time * (rainy() and (opts.RainMultiplier or 0.5) or 1)
+	local untilT = now() + t
+	target:SetAttribute("GuiltMembraneUntil", untilT)
+	slow(S, target, "GuiltMembrane", opts.Slow, t)
+	local ticks = math.max(1, math.floor(t / opts.Tick))
+	for i = 1, ticks do
+		task.delay(i * opts.Tick, function()
+			local tr = target:FindFirstChild("HumanoidRootPart")
+			-- (Ends early if the membrane was cleared, e.g. a new life.)
+			if not tr or (target:GetAttribute("GuiltMembraneUntil") or 0) < untilT - 0.01 then
+				return
+			end
+			local last = i == ticks
+			local damage = (opts.TickDamage + (opts.TickGrowth or 0) * (i - 1)) + (last and (opts.FinalDamage or 0) or 0)
+			S.hit(player, target, {
+				Damage = damage,
+				Stun = last and (opts.FinalStun or 0.5) or 0.3,
+				Knockback = last and (opts.FinalKnockback or 0) or 0,
+				Launch = last and opts.FinalLaunch or nil,
+				Direction = Vector3.new(0, -1, 0),
+				Position = tr.Position,
+				Source = opts.Source,
+			})
+			if last then
+				target:SetAttribute("GuiltMembraneUntil", nil)
+			end
+		end)
+	end
+	return t
+end
+
+---------------------------------------------------------------------------
+-- GUILT SPECTER
+---------------------------------------------------------------------------
+local function guiltSpecter(S, player, state, aim)
+	local c = cfg.GuiltSpecter
+	if not ready(S, player, state, "GuiltSpecter", 1) then
+		return
+	end
+	S.startCooldown(player, state, "GuiltSpecter", c.Cooldown, 1)
+	S.lock(state, c.Windup + 0.25)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "GuiltSpecter", Phase = "Cast", Windup = c.Windup })
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local target = targetInCone(S, char, r, direction, c.Range, c.Cone)
+		local tr = target and target:FindFirstChild("HumanoidRootPart")
+		if not tr then
+			S.startCooldown(player, state, "GuiltSpecter", c.MissCooldown, 1)
+			S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltSpecter", Phase = "Miss" })
+			return
+		end
+		-- It rises where they're standing now: they get a moment to dodge out.
+		local spot = Moves.groundBelow(tr.Position, { target })
+		S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltSpecter", Phase = "Warn", Position = spot, Rise = c.Rise, Radius = c.Radius, Target = target })
+		task.delay(c.Rise, function()
+			if state.Life ~= life then
+				return
+			end
+			local hit = 0
+			for _, victim in ipairs(S.Hitbox.inRadius(char, spot + Vector3.new(0, 2.5, 0), c.Radius, 3)) do
+				local vr = victim:FindFirstChild("HumanoidRootPart")
+				if vr and S.hit(player, victim, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Launch = c.Launch, Direction = vr.Position - spot, Position = vr.Position, Source = "AxlSpecter" }) then
+					hit = hit + 1
+				end
+			end
+			S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltSpecter", Phase = "Rise", Position = spot, Hit = hit > 0 })
+		end)
+	end)
+end
+
+---------------------------------------------------------------------------
+-- ABANDONED JUNK
+---------------------------------------------------------------------------
+local JUNK = { "Crate", "Wheel", "Chair", "Bottle", "Boot", "Lamp" }
+
+local function abandonedJunk(S, player, state, aim)
+	local c = cfg.AbandonedJunk
+	if not ready(S, player, state, "AbandonedJunk", 2) then
+		return
+	end
+	S.startCooldown(player, state, "AbandonedJunk", c.Cooldown, 2)
+	S.lock(state, c.Startup + 0.25)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local flat = Moves.flat(direction)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "AbandonedJunk", Phase = "Gather", Startup = c.Startup, Direction = flat, Count = c.Count })
+	task.delay(c.Startup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local _, _, r = alive(S, player)
+		local hits = {}
+		for i = 1, c.Count do
+			local t = c.Count == 1 and 0 or (i - 1) / (c.Count - 1) - 0.5
+			local dir = (CFrame.lookAt(Vector3.new(), direction) * CFrame.Angles(math.rad((i % 2) * 4), math.rad(-t * c.Spread), 0)).LookVector
+			local side = CFrame.lookAt(Vector3.new(), flat).RightVector
+			local origin = r.Position + Vector3.new(0, 1.5 + (i % 3) * 0.6, 0) + flat * 2 + side * t * 5
+			S.fireJunk(player, state, {
+				Origin = origin,
+				Direction = dir,
+				Speed = c.Speed,
+				Radius = c.Radius,
+				Range = c.Range,
+				Style = JUNK[(i - 1) % #JUNK + 1],
+				OnHit = function(target, position)
+					hits[target] = (hits[target] or 0) + 1
+					if hits[target] <= c.MaxHitsPerTarget then
+						S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = dir, Position = position, Source = "AxlJunk" })
+					end
+				end,
+			})
+		end
+	end)
+end
+
+---------------------------------------------------------------------------
+-- GUILT MEMBRANE
+---------------------------------------------------------------------------
+local function guiltMembrane(S, player, state, aim)
+	local c = cfg.GuiltMembrane
+	if not ready(S, player, state, "GuiltMembrane", 3) then
+		return
+	end
+	S.startCooldown(player, state, "GuiltMembrane", c.Cooldown, 3)
+	S.lock(state, c.Windup + 0.25)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "GuiltMembrane", Phase = "Cast", Windup = c.Windup })
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local target = targetInCone(S, char, r, direction, c.Range, c.Cone)
+		local tr = target and target:FindFirstChild("HumanoidRootPart")
+		if not tr or not S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Direction = direction, Position = tr.Position, Source = "AxlMembrane" }) then
+			S.startCooldown(player, state, "GuiltMembrane", c.MissCooldown, 3)
+			S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltMembrane", Phase = "Miss", Direction = direction })
+			return
+		end
+		local t = engulf(S, player, target, {
+			Time = c.Time, Tick = c.Tick, TickDamage = c.TickDamage, TickGrowth = c.TickGrowth,
+			Slow = c.Slow, FinalDamage = c.FinalDamage, FinalStun = 0.6, RainMultiplier = c.RainMultiplier, Source = "AxlMembrane",
+		})
+		S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltMembrane", Phase = "Engulf", Targets = { target }, Duration = t, Rain = rainy() })
+	end)
+end
+
+function Axl.Ability(S, player, state, slot, phase, aim)
+	if phase ~= "Press" then
+		return
+	end
+	if slot == 1 then
+		guiltSpecter(S, player, state, aim)
+	elseif slot == 2 then
+		abandonedJunk(S, player, state, aim)
+	elseif slot == 3 then
+		guiltMembrane(S, player, state, aim)
+	end
+end
+
+---------------------------------------------------------------------------
+-- CIVIL WAR (ultimate)
+---------------------------------------------------------------------------
+local scatters = setmetatable({}, { __mode = "k" }) -- [character] = break-apart function while it lasts
+
+local function registerScatter(S)
+	if S.Adapter.DodgeHandlers and not S.Adapter.DodgeHandlers.GuiltScatter then
+		S.Adapter.DodgeHandlers.GuiltScatter = function(attackerPlayer, target, info)
+			local f = scatters[target]
+			if f then
+				f(attackerPlayer, info)
+			end
+		end
+	end
+end
+
+function Axl.Ultimate(S, player, state, aim)
+	local u = cfg.Ultimate
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	registerScatter(S)
+	local character, _, root = alive(S, player)
+	local life = state.Life
+	local center = Moves.groundBelow(root.Position, { character })
+	S.lock(state, u.Windup + 0.3)
+	character:SetAttribute("Armored", true)
+	S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Rise", Windup = u.Windup, Position = center, Radius = u.Radius, Specters = u.Specters })
+	task.delay(u.Windup, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+		if state.Life ~= life or not alive(S, player) then
+			return
+		end
+		S.finishUltimate(player, state)
+		local up = center + Vector3.new(0, 2.5, 0)
+		local caught = {}
+		for _, target in ipairs(S.Hitbox.inRadius(character, up, u.Radius, 8)) do
+			local tr = target:FindFirstChild("HumanoidRootPart")
+			if tr and S.hit(player, target, { Damage = u.SpecterDamage, Stun = u.SpecterStun, Knockback = 0, Direction = tr.Position - center, Position = tr.Position, Source = "AxlCivilWar" }) then
+				table.insert(caught, target)
+			end
+		end
+		local t = u.Time * (rainy() and u.RainMultiplier or 1)
+		for _, target in ipairs(caught) do
+			engulf(S, player, target, {
+				Time = u.Time, Tick = u.Tick, TickDamage = u.TickDamage, Slow = u.Slow,
+				FinalDamage = u.FinalDamage - u.TickDamage, FinalStun = u.FinalStun, FinalKnockback = u.FinalKnockback, FinalLaunch = u.FinalLaunch,
+				RainMultiplier = u.RainMultiplier, Source = "AxlCivilWar",
+			})
+		end
+		S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Engulf", Targets = caught, Duration = t, Position = center, Radius = u.Radius, Rain = rainy() })
+		-- While it lasts, a hit on him makes Civil War break apart: the hit misses.
+		character:SetAttribute("GuiltScatter", true)
+		scatters[character] = function(attackerPlayer)
+			scatters[character] = nil
+			character:SetAttribute("GuiltScatter", nil)
+			local attacker = attackerPlayer and attackerPlayer.Character
+			local ar = attacker and attacker:FindFirstChild("HumanoidRootPart")
+			local _, _, r = alive(S, player)
+			if not r then
+				return
+			end
+			local away = ar and Moves.flat(r.Position - ar.Position) or r.CFrame.LookVector * -1
+			local spot = Moves.safeStep(character, r, away, u.ScatterDistance) or r.Position
+			local iframes = S.Adapter.Settings.IFrameAttribute
+			character:SetAttribute(iframes, true)
+			S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Scatter", From = r.Position, To = spot })
+			character:PivotTo(CFrame.lookAt(spot, spot - away))
+			task.delay(0.4, function()
+				character:SetAttribute(iframes, nil)
+			end)
+		end
+		task.delay(t + 0.05, function()
+			scatters[character] = nil
+			if character.Parent then
+				character:SetAttribute("GuiltScatter", nil)
+			end
+			if state.Life == life then
+				S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Crush", Position = center, Radius = u.Radius, Targets = caught })
+			end
+		end)
+	end)
+end
+
+function Axl.Cleanup(S, player, state)
+	if state.Character then
+		state.Character:SetAttribute("Armored", nil)
+		state.Character:SetAttribute("GuiltScatter", nil)
+		scatters[state.Character] = nil
+	end
+end
+
+return Axl
+end
+
+-- ======================================================================
+-- MODULE: AxlOutfit
+-- ======================================================================
+__modules["AxlOutfit"] = function()
+--[[
+	AxlOutfit  (ServerScriptService.SpinServer.AxlOutfit)
+
+	Gives a character Axl RO's look while they play him (TuskAct 12), built
+	from blocky parts (no catalog asset ids). A stand-in look until there's
+	reference art:
+	  * long dark hair tied back, a dark headband
+	  * a grey Civil War-style long coat with a high collar, two rows of
+	    brass buttons, shoulder boards and coat tails, a red sash
+	  * dark trousers and tall black boots
+	The player's own hats/hair are hidden while they play him and come back
+	when they switch. Built on the server so every player sees it.
+]]
+
+local Players = game:GetService("Players")
+
+local AxlOutfit = {}
+AxlOutfit.Act = 12
+
+local C = {
+	Hair = Color3.fromRGB(46, 34, 28),
+	Band = Color3.fromRGB(60, 22, 26),
+	Coat = Color3.fromRGB(116, 120, 130),
+	CoatDark = Color3.fromRGB(84, 88, 98),
+	Brass = Color3.fromRGB(214, 176, 80),
+	Sash = Color3.fromRGB(170, 40, 46),
+	Pants = Color3.fromRGB(46, 42, 50),
+	Boot = Color3.fromRGB(26, 24, 26),
+}
+
+local saved = setmetatable({}, { __mode = "k" })
+
+local function piece(parent, outfit, name, size, color, offset)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.SmoothPlastic
+	p.Size = size
+	p.Color = color
+	p.CFrame = parent.CFrame * offset
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = parent
+	weld.Part1 = p
+	weld.Parent = p
+	p.Parent = outfit
+	return p
+end
+
+local function headPieces(head, outfit)
+	local s = head.Size.Y / 1.2
+	local w, h, d = head.Size.X / 2, head.Size.Y / 2, head.Size.Z / 2
+	-- Long dark hair over the top and sides, tied back in a tail.
+	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.14 * s, 0.3 * s, head.Size.Z + 0.14 * s), C.Hair, CFrame.new(0, h - 0.06 * s, 0.02 * s))
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, "Hair", Vector3.new(0.12 * s, 0.9 * s, head.Size.Z * 0.7), C.Hair, CFrame.new(side * (w + 0.05 * s), -0.02 * s, 0.14 * s))
+	end
+	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.14 * s, 1.0 * s, 0.14 * s), C.Hair, CFrame.new(0, -0.05 * s, d + 0.06 * s))
+	piece(head, outfit, "Bangs", Vector3.new(head.Size.X * 0.8, 0.16 * s, 0.1 * s), C.Hair, CFrame.new(0.1 * s, h - 0.24 * s, -d - 0.03 * s) * CFrame.Angles(0, 0, -0.15))
+	for i = 0, 3 do
+		piece(head, outfit, "Tail", Vector3.new((0.32 - i * 0.04) * s, 0.4 * s, 0.24 * s), C.Hair, CFrame.new(0, -0.4 * s - i * 0.36 * s, d + 0.16 * s))
+	end
+	piece(head, outfit, "Headband", Vector3.new(head.Size.X + 0.18 * s, 0.12 * s, head.Size.Z + 0.18 * s), C.Band, CFrame.new(0, h - 0.26 * s, 0.02 * s))
+end
+
+local function body(character, outfit)
+	local upper = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	local lower = character:FindFirstChild("LowerTorso")
+	if upper then
+		local s = upper.Size
+		local top, front = s.Y / 2, -s.Z / 2
+		piece(upper, outfit, "Coat", s + Vector3.new(0.1, 0.02, 0.1), C.Coat, CFrame.new())
+		piece(upper, outfit, "Collar", Vector3.new(s.X * 0.62, 0.36, s.Z + 0.24), C.CoatDark, CFrame.new(0, top + 0.12, 0))
+		-- Two rows of brass buttons.
+		for row = 0, 4 do
+			for _, side in ipairs({ -1, 1 }) do
+				piece(upper, outfit, "Button", Vector3.new(0.12, 0.12, 0.05), C.Brass, CFrame.new(side * 0.28, top - 0.25 - row * 0.28, front - 0.07))
+			end
+		end
+		-- Shoulder boards and a red sash across the chest.
+		for _, side in ipairs({ -1, 1 }) do
+			piece(upper, outfit, "Board", Vector3.new(0.6, 0.1, s.Z + 0.16), C.CoatDark, CFrame.new(side * (s.X / 2 - 0.3), top + 0.03, 0))
+			piece(upper, outfit, "Board", Vector3.new(0.5, 0.06, 0.06), C.Brass, CFrame.new(side * (s.X / 2 - 0.3), top + 0.09, front - 0.04))
+		end
+		piece(upper, outfit, "Sash", Vector3.new(0.3, s.Y * 1.15, 0.05), C.Sash, CFrame.new(0, 0, front - 0.06) * CFrame.Angles(0, 0, 0.6))
+	end
+	-- Coat skirt and tails, red waist sash.
+	local waist = lower or upper
+	if waist then
+		local ws = waist.Size
+		local waistTop = lower and ws.Y / 2 or -upper.Size.Y / 2 + 0.3
+		piece(waist, outfit, "SashBelt", Vector3.new(ws.X + 0.16, 0.26, ws.Z + 0.16), C.Sash, CFrame.new(0, waistTop - 0.14, 0))
+		local skirtH = lower and 1.6 or 1.3
+		for _, side in ipairs({ -1, 1 }) do
+			piece(waist, outfit, "Skirt", Vector3.new(ws.X / 2 + 0.06, skirtH, 0.12), C.Coat, CFrame.new(side * (ws.X / 4 + 0.08), waistTop - skirtH / 2, -ws.Z / 2 - 0.08) * CFrame.Angles(0, side * 0.1, 0))
+			piece(waist, outfit, "Skirt", Vector3.new(0.12, skirtH, ws.Z + 0.16), C.CoatDark, CFrame.new(side * (ws.X / 2 + 0.1), waistTop - skirtH / 2, 0.02))
+		end
+		piece(waist, outfit, "Skirt", Vector3.new(ws.X + 0.3, skirtH + 0.2, 0.12), C.Coat, CFrame.new(0, waistTop - skirtH / 2 - 0.1, ws.Z / 2 + 0.08))
+	end
+	-- Sleeves with brass cuffs.
+	for _, name in ipairs({ "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm", "Left Arm", "Right Arm" }) do
+		local arm = character:FindFirstChild(name)
+		if arm then
+			local as = arm.Size
+			local tall = as.Y > 1.8
+			local h = tall and as.Y - 0.3 or as.Y
+			piece(arm, outfit, "Sleeve", Vector3.new(as.X + 0.08, h + 0.02, as.Z + 0.08), C.Coat, CFrame.new(0, as.Y / 2 - h / 2, 0))
+			if name:find("Lower") or tall then
+				piece(arm, outfit, "Cuff", Vector3.new(as.X + 0.14, 0.24, as.Z + 0.14), C.CoatDark, CFrame.new(0, as.Y / 2 - h + 0.12, 0))
+				piece(arm, outfit, "CuffButton", Vector3.new(0.1, 0.1, 0.05), C.Brass, CFrame.new(0, as.Y / 2 - h + 0.12, -as.Z / 2 - 0.09))
+			end
+		end
+	end
+	-- Dark trousers and tall boots.
+	for _, name in ipairs({ "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
+		local leg = character:FindFirstChild(name)
+		if leg then
+			local ls = leg.Size
+			piece(leg, outfit, "Pants", ls + Vector3.new(0.05, 0.02, 0.05), C.Pants, CFrame.new())
+			if name:find("Lower") or ls.Y > 1.8 then
+				local bh = ls.Y > 1.8 and 1.0 or ls.Y + 0.05
+				piece(leg, outfit, "Boot", Vector3.new(ls.X + 0.14, bh, ls.Z + 0.14), C.Boot, CFrame.new(0, -ls.Y / 2 + bh / 2, 0))
+			end
+		end
+	end
+	for _, name in ipairs({ "LeftFoot", "RightFoot" }) do
+		local foot = character:FindFirstChild(name)
+		if foot then
+			piece(foot, outfit, "Boot", foot.Size + Vector3.new(0.1, 0.06, 0.14), C.Boot, CFrame.new(0, 0, -0.03))
+		end
+	end
+end
+
+function AxlOutfit.apply(character)
+	if character:FindFirstChild("AxlOutfit") then
+		return
+	end
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local store = { Hidden = {} }
+	saved[character] = store
+	for _, d in ipairs(character:GetChildren()) do
+		if d:IsA("Accessory") then
+			local handle = d:FindFirstChild("Handle")
+			local kind = d.AccessoryType
+			if handle and (kind == Enum.AccessoryType.Hat or kind == Enum.AccessoryType.Hair or kind == Enum.AccessoryType.Unknown) then
+				store.Hidden[handle] = handle.Transparency
+				handle.Transparency = 1
+			end
+		end
+	end
+	local outfit = Instance.new("Model")
+	outfit.Name = "AxlOutfit"
+	outfit.Parent = character
+	headPieces(head, outfit)
+	body(character, outfit)
+end
+
+function AxlOutfit.remove(character)
+	local outfit = character:FindFirstChild("AxlOutfit")
+	if outfit then
+		outfit:Destroy()
+	end
+	local store = saved[character]
+	if not store then
+		return
+	end
+	saved[character] = nil
+	for thing, transparency in pairs(store.Hidden) do
+		if thing.Parent then
+			thing.Transparency = transparency
+		end
+	end
+end
+
+local function watch(character)
+	local function update()
+		if character:GetAttribute("TuskAct") == AxlOutfit.Act then
+			task.delay(0.3, function()
+				if character.Parent and character:GetAttribute("TuskAct") == AxlOutfit.Act then
+					AxlOutfit.apply(character)
+				end
+			end)
+		else
+			AxlOutfit.remove(character)
+		end
+	end
+	character:GetAttributeChangedSignal("TuskAct"):Connect(update)
+	update()
+end
+
+function AxlOutfit.init()
+	local function onPlayer(player)
+		player.CharacterAppearanceLoaded:Connect(watch)
+		if player.Character then
+			watch(player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	-- Stand-user NPCs (StandBots) wear the outfit too.
+	local CollectionService = game:GetService("CollectionService")
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		watch(model)
+	end
+	CollectionService:GetInstanceAddedSignal("SpinFighter"):Connect(watch)
+	for _, player in ipairs(Players:GetPlayers()) do
+		onPlayer(player)
+	end
+end
+
+return AxlOutfit
+end
+end
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX16"><Properties><string name="Name">Blackmore_Server</string><ProtectedString name="Source"><![CDATA[--[[
 	Blackmore_Server  (ModuleScript)
 	PUT IT IN: ServerScriptService > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -14677,7 +16072,7 @@ end
 return BlackmoreOutfit
 end
 end
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX15"><Properties><string name="Name">Diego_Server</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX17"><Properties><string name="Name">Diego_Server</string><ProtectedString name="Source"><![CDATA[--[[
 	Diego_Server  (ModuleScript)
 	PUT IT IN: ServerScriptService > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -15377,7 +16772,7 @@ end
 return DiegoOutfit
 end
 end
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX16"><Properties><string name="Name">Gyro_Server</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX18"><Properties><string name="Name">Gyro_Server</string><ProtectedString name="Source"><![CDATA[--[[
 	Gyro_Server  (ModuleScript)
 	PUT IT IN: ServerScriptService > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -15914,7 +17309,7 @@ end
 return Gyro
 end
 end
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX17"><Properties><string name="Name">HotPants_Server</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX19"><Properties><string name="Name">HotPants_Server</string><ProtectedString name="Source"><![CDATA[--[[
 	HotPants_Server  (ModuleScript)
 	PUT IT IN: ServerScriptService > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -16502,7 +17897,7 @@ end
 return HotPantsOutfit
 end
 end
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX18"><Properties><string name="Name">MountainTim_Server</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX20"><Properties><string name="Name">MountainTim_Server</string><ProtectedString name="Source"><![CDATA[--[[
 	MountainTim_Server  (ModuleScript)
 	PUT IT IN: ServerScriptService > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -17226,7 +18621,7 @@ end
 return MountainTimOutfit
 end
 end
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX19"><Properties><string name="Name">PorkPie_Server</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX21"><Properties><string name="Name">PorkPie_Server</string><ProtectedString name="Source"><![CDATA[--[[
 	PorkPie_Server  (ModuleScript)
 	PUT IT IN: ServerScriptService > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -17903,7 +19298,7 @@ end
 return PorkPieOutfit
 end
 end
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX20"><Properties><string name="Name">Sandman_Server</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX22"><Properties><string name="Name">Sandman_Server</string><ProtectedString name="Source"><![CDATA[--[[
 	Sandman_Server  (ModuleScript)
 	PUT IT IN: ServerScriptService > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -18475,7 +19870,7 @@ end
 return SandmanOutfit
 end
 end
-]]></ProtectedString></Properties></Item></Item></Item><Item class="StarterPlayer" referent="RBX25"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX24"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX23"><Properties><string name="Name">Spin_Client</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item></Item><Item class="StarterPlayer" referent="RBX27"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX26"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX25"><Properties><string name="Name">Spin_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	Spin_Client  (LocalScript)
 	PUT IT IN: StarterPlayer > StarterPlayerScripts
 
@@ -21768,6 +23163,8 @@ local function onHit(data)
 		starColor = Color3.fromRGB(242, 140, 172)
 	elseif source:sub(1, 9) == "Blackmore" then
 		starColor = Color3.fromRGB(110, 180, 255)
+	elseif source:sub(1, 3) == "Axl" then
+		starColor = Color3.fromRGB(214, 60, 70)
 	end
 	if data.Perfect then
 		starColor = colors.Gold
@@ -22192,6 +23589,7 @@ Common.Palettes = {
 	[9] = { Main = Color3.fromRGB(214, 156, 84), Second = Color3.fromRGB(96, 62, 38), Light = Color3.fromRGB(255, 232, 196) }, -- Mountain Tim (leather + rope)
 	[10] = { Main = Color3.fromRGB(242, 140, 172), Second = Color3.fromRGB(120, 60, 92), Light = Color3.fromRGB(255, 220, 230) }, -- Hot Pants (Cream Starter pink)
 	[11] = { Main = Color3.fromRGB(110, 180, 255), Second = Color3.fromRGB(40, 50, 90), Light = Color3.fromRGB(225, 245, 255) }, -- Blackmore (rain blue)
+	[12] = { Main = Color3.fromRGB(214, 60, 70), Second = Color3.fromRGB(226, 196, 110), Light = Color3.fromRGB(255, 200, 200) }, -- Axl RO (Civil War red)
 }
 
 function Common.palette(act)
@@ -22590,6 +23988,24 @@ TuskActRegistry.Acts = {
 		ClientModule = "BlackmoreVFX", -- client visuals (TuskActVFX.BlackmoreVFX)
 		CardTitle = "STAND  ·  CATCH THE RAINBOW",
 	},
+	-- Axl RO: CIVIL WAR (makes a target's guilt real: specters and the things
+	-- they abandoned rise up and engulf them in a crushing membrane; water,
+	-- like the rain, washes it away).
+	[12] = {
+		Name = "CIVIL WAR",
+		Character = "Axl",
+		Tagline = "Guilt made real",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 60, 70), Secondary = Color3.fromRGB(226, 196, 110) },
+		M1 = "GUILT COMBO",
+		Abilities = { "GUILT SPECTER", "ABANDONED JUNK", "GUILT MEMBRANE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "CIVIL WAR",
+		Next = nil,
+		Module = "Axl", -- server moves
+		ClientModule = "AxlVFX", -- client visuals (TuskActVFX.AxlVFX)
+		CardTitle = "STAND  ·  CIVIL WAR",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -22599,7 +24015,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -22806,6 +24222,11 @@ TuskAnimation.Poses = {
 	StormRaise = { Root = { 8, 0, 0, 0.25 }, Waist = { 16, 0, 0 }, Neck = { 30, 0, 0 }, RightArm = { 175, 0, 15 }, RightElbow = { 10, 0, 0 }, LeftArm = { 60, 0, -60 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -50, 0, 0 } },
 	StormSweepL = { Root = { 0, 30, 0, -0.1, 0.2 }, Waist = { -6, 30, 0 }, Neck = { 0, -20, 0 }, RightArm = { 110, -30, 10 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
 	StormSweepR = { Root = { 0, -30, 0, -0.1, 0.2 }, Waist = { -6, -30, 0 }, Neck = { 0, 24, 0 }, RightArm = { 110, 30, 0 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
+	-- AXL RO: slouched and mocking; Civil War does the fighting.
+	AxlStance = { Root = { -4, -8, 0, -0.04 }, Waist = { -6, -6, 4 }, Neck = { -10, 12, 8 }, RightArm = { -6, 0, 8 }, RightElbow = { 10, 0, 0 }, LeftArm = { -4, 0, -8 }, LeftElbow = { 14, 0, 0 }, RightHip = { 4, 0, 0 } },
+	AxlPoint = { Root = { 0, -14, 0, -0.04 }, Waist = { 0, -14, 0 }, Neck = { 6, 14, 0 }, RightArm = { 88, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 0, 0, -10 }, LeftElbow = { 20, 0, 0 } },
+	AxlPress = { Root = { 10, -10, 0, -0.2 }, Waist = { 16, -10, 0 }, Neck = { 20, 10, 0 }, RightArm = { 60, 0, 10 }, RightElbow = { 0, 0, 0 }, LeftArm = { 10, 0, -10 }, LeftElbow = { 20, 0, 0 }, RightKnee = { -24, 0, 0 }, LeftKnee = { -24, 0, 0 }, RightHip = { 20, 0, 0 }, LeftHip = { 20, 0, 0 } },
+	AxlSummon = { Root = { -6, 0, 0, 0.05 }, Waist = { -8, 0, 0 }, Neck = { -18, 0, 0 }, RightArm = { 120, 0, 50 }, RightElbow = { 10, 0, 0 }, LeftArm = { 120, 0, -50 }, LeftElbow = { 10, 0, 0 } },
 	-- BLACKMORE: calm and precise; umbrella in his left hand like a cane.
 	BMStance = { Root = { 0, 6, 0, -0.03 }, Waist = { -2, 6, 0 }, Neck = { 2, -4, 0 }, RightArm = { 20, 0, 12 }, RightElbow = { 40, 0, 0 }, LeftArm = { 18, 0, -8 }, LeftElbow = { 20, 0, 0 }, LeftHip = { 4, 0, 0 } },
 	BladesWind = { Root = { 0, 22, 0, -0.08 }, Waist = { 0, 24, 0 }, Neck = { 0, -14, 0 }, RightArm = { 70, 0, 80 }, RightElbow = { 30, 0, 0 }, LeftArm = { 30, 0, -20 }, RightKnee = { -14, 0, 0 } },
@@ -22870,6 +24291,7 @@ do
 	P.JabCoilL = mirror(P.JabCoil)
 	P.JabStrikeL = mirror(P.JabStrike)
 	P.BladesSweepL = mirror(P.BladesSweep)
+	P.AxlPointL = mirror(P.AxlPoint)
 	P.BladesWindL = mirror(P.BladesWind)
 end
 
@@ -22955,6 +24377,16 @@ TuskAnimation.Actions = {
 	HPSeal = { { 0, "HPStance" }, { 0.1, "CanShakeB", "In" }, { 0.18, "SealDash", "Snap", 4 }, { 0.28, "SealPress", "Snap", 5 }, { 0.5, "SealPress", "Linear", 2 }, { 0.66, "HPStance", "Sine" } },
 	HPMend = { { 0, "HPStance" }, { 0.12, "SelfSprayHigh", "Out" }, { 0.55, "SelfSprayLow", "Sine", 1 }, { 0.92, "SelfSprayHigh", "Sine", 1 }, { 1.12, "MendRelief", "Back" }, { 1.35, "HPStance", "Sine" } },
 	HPStorm = { { 0, "HPStance" }, { 0.05, "CanShakeA", "Snap" }, { 0.1, "CanShakeB", "Snap", 1 }, { 0.15, "CanShakeA", "Snap", 1 }, { 0.2, "CanShakeB", "Snap", 2 }, { 0.38, "StormRaise", "Back", 4 }, { 0.6, "StormSweepL", "Snap", 3 }, { 0.9, "StormSweepR", "Sine", 2 }, { 1.1, "SprayThrust", "Snap", 5 }, { 1.4, "SprayThrust", "Linear", 2 }, { 1.6, "HPStance", "Sine" } },
+
+	-- AXL RO
+	A_M1_1 = { { 0, "AxlStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.3, "AxlStance", "Sine" } },
+	A_M1_2 = { { 0, "AxlStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.16, "JabStrikeL", "Linear" }, { 0.3, "AxlStance", "Sine" } },
+	A_M1_3 = { { 0, "AxlStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "AxlStance", "Sine" } },
+	A_M1_4 = { { 0, "AxlStance" }, { 0.12, "AxlSummon", "In" }, { 0.2, "AxlPoint", "Snap", 7 }, { 0.3, "AxlPoint", "Linear" }, { 0.46, "AxlStance", "Sine" } },
+	AxlSpecter = { { 0, "AxlStance" }, { 0.12, "AxlPoint", "Out" }, { 0.35, "AxlPoint", "Linear" }, { 0.55, "AxlStance", "Sine" } },
+	AxlJunk = { { 0, "AxlStance" }, { 0.15, "AxlSummon", "Out" }, { 0.3, "AxlSummon", "Linear" }, { 0.36, "AxlPointL", "Snap", 5 }, { 0.6, "AxlStance", "Sine" } },
+	AxlMembrane = { { 0, "AxlStance" }, { 0.14, "AxlPoint", "Out" }, { 0.3, "AxlPress", "Snap", 5 }, { 0.5, "AxlPress", "Sine" }, { 0.7, "AxlStance", "Sine" } },
+	AxlCivilWar = { { 0, "AxlStance" }, { 0.4, "AxlSummon", "Back", 3 }, { 1.0, "AxlSummon", "Linear", 3 }, { 1.3, "AxlStance", "Sine" } },
 
 	-- BLACKMORE
 	B_M1_1 = { { 0, "Rest" }, { 0.07, "BladesWind", "In" }, { 0.12, "BladesSweep", "Back", 4 }, { 0.17, "BladesSweep", "Linear" }, { 0.3, "BMStance", "Sine" } },
@@ -25824,7 +27256,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("RAINDROP BLADES") or has("RAINBOW") then
+	if has("GUILT SPECTER") then
+		return "ghost"
+	elseif has("ABANDONED JUNK") then
+		return "junk"
+	elseif has("GUILT MEMBRANE") or has("CIVIL WAR") then
+		return "seal"
+	elseif has("RAINDROP BLADES") or has("RAINBOW") then
 		return "rain"
 	elseif has("RAINDROP STEP") then
 		return "dash"
@@ -25993,6 +27431,18 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "ghost" then
+		-- A ghost: round head, a body that trails off.
+		local head = bar(icon, 0.5, 0.36, 0.34, 0.3, 0)
+		corner(head, 999)
+		bar(icon, 0.5, 0.58, 0.34, 0.24, 0)
+		bar(icon, 0.42, 0.74, 0.1, 0.1, 0)
+		bar(icon, 0.58, 0.74, 0.1, 0.1, 0)
+	elseif kind == "junk" then
+		-- A tumbling crate and a wheel.
+		bar(icon, 0.38, 0.6, 0.3, 0.3, 20)
+		local wheel = bar(icon, 0.64, 0.4, 0.26, 0.26, 0)
+		corner(wheel, 999)
 	elseif kind == "rain" then
 		-- Three falling drops.
 		for i = -1, 1 do

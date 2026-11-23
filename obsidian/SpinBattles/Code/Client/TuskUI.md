@@ -161,7 +161,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("RAINDROP BLADES") or has("RAINBOW") then
+	if has("GUILT SPECTER") then
+		return "ghost"
+	elseif has("ABANDONED JUNK") then
+		return "junk"
+	elseif has("GUILT MEMBRANE") or has("CIVIL WAR") then
+		return "seal"
+	elseif has("RAINDROP BLADES") or has("RAINBOW") then
 		return "rain"
 	elseif has("RAINDROP STEP") then
 		return "dash"
@@ -330,6 +336,18 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "ghost" then
+		-- A ghost: round head, a body that trails off.
+		local head = bar(icon, 0.5, 0.36, 0.34, 0.3, 0)
+		corner(head, 999)
+		bar(icon, 0.5, 0.58, 0.34, 0.24, 0)
+		bar(icon, 0.42, 0.74, 0.1, 0.1, 0)
+		bar(icon, 0.58, 0.74, 0.1, 0.1, 0)
+	elseif kind == "junk" then
+		-- A tumbling crate and a wheel.
+		bar(icon, 0.38, 0.6, 0.3, 0.3, 20)
+		local wheel = bar(icon, 0.64, 0.4, 0.26, 0.26, 0)
+		corner(wheel, 999)
 	elseif kind == "rain" then
 		-- Three falling drops.
 		for i = -1, 1 do

@@ -3317,7 +3317,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -3363,6 +3363,7 @@ local LOOKS = {
 	MountainTim = { Skin = Color3.fromRGB(226, 180, 140), Torso = Color3.fromRGB(70, 90, 130), Legs = Color3.fromRGB(60, 50, 70) },
 	HotPants = { Skin = Color3.fromRGB(238, 196, 164), Torso = Color3.fromRGB(96, 60, 120), Legs = Color3.fromRGB(238, 196, 164) },
 	Blackmore = { Skin = Color3.fromRGB(220, 196, 176), Torso = Color3.fromRGB(36, 44, 70), Legs = Color3.fromRGB(30, 30, 40) },
+	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 }
 
 local usedSpots = {} -- [spot index] = slot using it
@@ -5286,6 +5287,24 @@ TuskActRegistry.Acts = {
 		ClientModule = "BlackmoreVFX", -- client visuals (TuskActVFX.BlackmoreVFX)
 		CardTitle = "STAND  ·  CATCH THE RAINBOW",
 	},
+	-- Axl RO: CIVIL WAR (makes a target's guilt real: specters and the things
+	-- they abandoned rise up and engulf them in a crushing membrane; water,
+	-- like the rain, washes it away).
+	[12] = {
+		Name = "CIVIL WAR",
+		Character = "Axl",
+		Tagline = "Guilt made real",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 60, 70), Secondary = Color3.fromRGB(226, 196, 110) },
+		M1 = "GUILT COMBO",
+		Abilities = { "GUILT SPECTER", "ABANDONED JUNK", "GUILT MEMBRANE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "CIVIL WAR",
+		Next = nil,
+		Module = "Axl", -- server moves
+		ClientModule = "AxlVFX", -- client visuals (TuskActVFX.AxlVFX)
+		CardTitle = "STAND  ·  CIVIL WAR",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -5295,7 +5314,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -5919,6 +5938,21 @@ function TuskService.fireRain(player, state, spec)
 		Radius = spec.Radius,
 		Range = spec.Range,
 		Visual = { Style = spec.Style or "Drop" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Server projectile with a piece of abandoned junk as the visual (Axl RO).
+function TuskService.fireJunk(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "GuiltJunk",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Crate" },
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd,
 	})
@@ -6774,7 +6808,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit" }) do
+for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

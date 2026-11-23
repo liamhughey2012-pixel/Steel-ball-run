@@ -57,6 +57,8 @@ local function onHit(data)
 		starColor = Color3.fromRGB(242, 140, 172)
 	elseif source:sub(1, 9) == "Blackmore" then
 		starColor = Color3.fromRGB(110, 180, 255)
+	elseif source:sub(1, 3) == "Axl" then
+		starColor = Color3.fromRGB(214, 60, 70)
 	end
 	if data.Perfect then
 		starColor = colors.Gold

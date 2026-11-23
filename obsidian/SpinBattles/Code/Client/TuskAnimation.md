@@ -213,6 +213,11 @@ TuskAnimation.Poses = {
 	StormRaise = { Root = { 8, 0, 0, 0.25 }, Waist = { 16, 0, 0 }, Neck = { 30, 0, 0 }, RightArm = { 175, 0, 15 }, RightElbow = { 10, 0, 0 }, LeftArm = { 60, 0, -60 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -50, 0, 0 } },
 	StormSweepL = { Root = { 0, 30, 0, -0.1, 0.2 }, Waist = { -6, 30, 0 }, Neck = { 0, -20, 0 }, RightArm = { 110, -30, 10 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
 	StormSweepR = { Root = { 0, -30, 0, -0.1, 0.2 }, Waist = { -6, -30, 0 }, Neck = { 0, 24, 0 }, RightArm = { 110, 30, 0 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
+	-- AXL RO: slouched and mocking; Civil War does the fighting.
+	AxlStance = { Root = { -4, -8, 0, -0.04 }, Waist = { -6, -6, 4 }, Neck = { -10, 12, 8 }, RightArm = { -6, 0, 8 }, RightElbow = { 10, 0, 0 }, LeftArm = { -4, 0, -8 }, LeftElbow = { 14, 0, 0 }, RightHip = { 4, 0, 0 } },
+	AxlPoint = { Root = { 0, -14, 0, -0.04 }, Waist = { 0, -14, 0 }, Neck = { 6, 14, 0 }, RightArm = { 88, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 0, 0, -10 }, LeftElbow = { 20, 0, 0 } },
+	AxlPress = { Root = { 10, -10, 0, -0.2 }, Waist = { 16, -10, 0 }, Neck = { 20, 10, 0 }, RightArm = { 60, 0, 10 }, RightElbow = { 0, 0, 0 }, LeftArm = { 10, 0, -10 }, LeftElbow = { 20, 0, 0 }, RightKnee = { -24, 0, 0 }, LeftKnee = { -24, 0, 0 }, RightHip = { 20, 0, 0 }, LeftHip = { 20, 0, 0 } },
+	AxlSummon = { Root = { -6, 0, 0, 0.05 }, Waist = { -8, 0, 0 }, Neck = { -18, 0, 0 }, RightArm = { 120, 0, 50 }, RightElbow = { 10, 0, 0 }, LeftArm = { 120, 0, -50 }, LeftElbow = { 10, 0, 0 } },
 	-- BLACKMORE: calm and precise; umbrella in his left hand like a cane.
 	BMStance = { Root = { 0, 6, 0, -0.03 }, Waist = { -2, 6, 0 }, Neck = { 2, -4, 0 }, RightArm = { 20, 0, 12 }, RightElbow = { 40, 0, 0 }, LeftArm = { 18, 0, -8 }, LeftElbow = { 20, 0, 0 }, LeftHip = { 4, 0, 0 } },
 	BladesWind = { Root = { 0, 22, 0, -0.08 }, Waist = { 0, 24, 0 }, Neck = { 0, -14, 0 }, RightArm = { 70, 0, 80 }, RightElbow = { 30, 0, 0 }, LeftArm = { 30, 0, -20 }, RightKnee = { -14, 0, 0 } },
@@ -277,6 +282,7 @@ do
 	P.JabCoilL = mirror(P.JabCoil)
 	P.JabStrikeL = mirror(P.JabStrike)
 	P.BladesSweepL = mirror(P.BladesSweep)
+	P.AxlPointL = mirror(P.AxlPoint)
 	P.BladesWindL = mirror(P.BladesWind)
 end
 
@@ -362,6 +368,16 @@ TuskAnimation.Actions = {
 	HPSeal = { { 0, "HPStance" }, { 0.1, "CanShakeB", "In" }, { 0.18, "SealDash", "Snap", 4 }, { 0.28, "SealPress", "Snap", 5 }, { 0.5, "SealPress", "Linear", 2 }, { 0.66, "HPStance", "Sine" } },
 	HPMend = { { 0, "HPStance" }, { 0.12, "SelfSprayHigh", "Out" }, { 0.55, "SelfSprayLow", "Sine", 1 }, { 0.92, "SelfSprayHigh", "Sine", 1 }, { 1.12, "MendRelief", "Back" }, { 1.35, "HPStance", "Sine" } },
 	HPStorm = { { 0, "HPStance" }, { 0.05, "CanShakeA", "Snap" }, { 0.1, "CanShakeB", "Snap", 1 }, { 0.15, "CanShakeA", "Snap", 1 }, { 0.2, "CanShakeB", "Snap", 2 }, { 0.38, "StormRaise", "Back", 4 }, { 0.6, "StormSweepL", "Snap", 3 }, { 0.9, "StormSweepR", "Sine", 2 }, { 1.1, "SprayThrust", "Snap", 5 }, { 1.4, "SprayThrust", "Linear", 2 }, { 1.6, "HPStance", "Sine" } },
+
+	-- AXL RO
+	A_M1_1 = { { 0, "AxlStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.3, "AxlStance", "Sine" } },
+	A_M1_2 = { { 0, "AxlStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.16, "JabStrikeL", "Linear" }, { 0.3, "AxlStance", "Sine" } },
+	A_M1_3 = { { 0, "AxlStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "AxlStance", "Sine" } },
+	A_M1_4 = { { 0, "AxlStance" }, { 0.12, "AxlSummon", "In" }, { 0.2, "AxlPoint", "Snap", 7 }, { 0.3, "AxlPoint", "Linear" }, { 0.46, "AxlStance", "Sine" } },
+	AxlSpecter = { { 0, "AxlStance" }, { 0.12, "AxlPoint", "Out" }, { 0.35, "AxlPoint", "Linear" }, { 0.55, "AxlStance", "Sine" } },
+	AxlJunk = { { 0, "AxlStance" }, { 0.15, "AxlSummon", "Out" }, { 0.3, "AxlSummon", "Linear" }, { 0.36, "AxlPointL", "Snap", 5 }, { 0.6, "AxlStance", "Sine" } },
+	AxlMembrane = { { 0, "AxlStance" }, { 0.14, "AxlPoint", "Out" }, { 0.3, "AxlPress", "Snap", 5 }, { 0.5, "AxlPress", "Sine" }, { 0.7, "AxlStance", "Sine" } },
+	AxlCivilWar = { { 0, "AxlStance" }, { 0.4, "AxlSummon", "Back", 3 }, { 1.0, "AxlSummon", "Linear", 3 }, { 1.3, "AxlStance", "Sine" } },
 
 	-- BLACKMORE
 	B_M1_1 = { { 0, "Rest" }, { 0.07, "BladesWind", "In" }, { 0.12, "BladesSweep", "Back", 4 }, { 0.17, "BladesSweep", "Linear" }, { 0.3, "BMStance", "Sine" } },

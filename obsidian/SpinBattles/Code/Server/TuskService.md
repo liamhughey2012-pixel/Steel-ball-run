@@ -292,6 +292,21 @@ function TuskService.fireRain(player, state, spec)
 	})
 end
 
+-- Server projectile with a piece of abandoned junk as the visual (Axl RO).
+function TuskService.fireJunk(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "GuiltJunk",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Crate" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
 -- Some characters walk faster or slower (Registry WalkSpeed, e.g. Sandman).
 function TuskService.applyCharacterSpeed(state)
 	local character = state and state.Character

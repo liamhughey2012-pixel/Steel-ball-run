@@ -1207,6 +1207,24 @@ TuskActRegistry.Acts = {
 		ClientModule = "BlackmoreVFX", -- client visuals (TuskActVFX.BlackmoreVFX)
 		CardTitle = "STAND  ·  CATCH THE RAINBOW",
 	},
+	-- Axl RO: CIVIL WAR (makes a target's guilt real: specters and the things
+	-- they abandoned rise up and engulf them in a crushing membrane; water,
+	-- like the rain, washes it away).
+	[12] = {
+		Name = "CIVIL WAR",
+		Character = "Axl",
+		Tagline = "Guilt made real",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 60, 70), Secondary = Color3.fromRGB(226, 196, 110) },
+		M1 = "GUILT COMBO",
+		Abilities = { "GUILT SPECTER", "ABANDONED JUNK", "GUILT MEMBRANE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "CIVIL WAR",
+		Next = nil,
+		Module = "Axl", -- server moves
+		ClientModule = "AxlVFX", -- client visuals (TuskActVFX.AxlVFX)
+		CardTitle = "STAND  ·  CIVIL WAR",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -1216,7 +1234,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -1346,6 +1364,7 @@ TuskConfig.Roster = {
 	{ Id = "MountainTim", Name = "MOUNTAIN TIM", Stand = "OH! LONESOME ME", Available = true, Color = Color3.fromRGB(214, 156, 84) },
 	{ Id = "HotPants", Name = "HOT PANTS", Stand = "CREAM STARTER", Available = true, Color = Color3.fromRGB(242, 140, 172) },
 	{ Id = "Blackmore", Name = "BLACKMORE", Stand = "CATCH THE RAINBOW", Available = true, Color = Color3.fromRGB(110, 180, 255) },
+	{ Id = "Axl", Name = "AXL RO", Stand = "CIVIL WAR", Available = true, Color = Color3.fromRGB(214, 60, 70) },
 }
 
 ---------------------------------------------------------------------------
@@ -1371,10 +1390,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 8, -- how many at once (each takes a free spot below)
+	Count = 9, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl" },
 	RainWalkChance = 0.05, -- Blackmore NPCs: chance per think tick to start a rain walk while it rains
 	Health = 200,
 	WalkSpeed = 15,
@@ -1843,6 +1862,50 @@ TuskConfig.Blackmore = {
 		Windup = 0.8, Radius = 18, Duration = 5, Tick = 0.5, TickDamage = 1.5, TickStun = 0.4,
 		ScatterDistance = 8,
 		BurstDamage = 12, BurstKnockback = 45, BurstLaunch = 20, BurstStun = 0.7,
+	},
+}
+
+---------------------------------------------------------------------------
+-- Axl RO: CIVIL WAR (guilt made real; water / rain washes it away)
+---------------------------------------------------------------------------
+TuskConfig.Axl = {
+	M1 = { -- GUILT COMBO: Civil War's long arms strike with him
+		Interval = 0.29, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.09,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 6 },
+			{ Damage = 7, Stun = 0.5, Knockback = 40, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	GuiltSpecter = { -- a ghost from their past rises out of their shadow and grabs them
+		Cooldown = 7, MissCooldown = 3, Windup = 0.25,
+		Range = 40, Cone = 70,
+		Rise = 0.55, -- warning before it rises (they can dodge out)
+		Radius = 5, Damage = 8, Stun = 0.7, Knockback = 6, Launch = 12,
+	},
+	AbandonedJunk = { -- things they threw away fly at them: a volley of junk
+		Cooldown = 7, Startup = 0.3,
+		Count = 6, Spread = 40,
+		Speed = 110, Radius = 1.1, Range = 60,
+		Damage = 2.5, Stun = 0.35, Knockback = 6, MaxHitsPerTarget = 3,
+	},
+	GuiltMembrane = { -- their guilt wraps them in a membrane that shrinks and crushes
+		Cooldown = 13, MissCooldown = 3, Windup = 0.3,
+		Range = 16, Cone = 60,
+		Damage = 4, Stun = 0.6,
+		Time = 3, Tick = 0.5, TickDamage = 1, TickGrowth = 0.25, -- each squeeze hurts more
+		Slow = 0.5, FinalDamage = 4,
+		RainMultiplier = 0.5, -- water washes guilt away: in the rain it lasts half as long
+	},
+	Ultimate = { -- CIVIL WAR: the junkyard rises; specters engulf everyone near; he breaks apart when hit
+		Windup = 1.0, Radius = 20, Specters = 7,
+		SpecterDamage = 4, SpecterStun = 0.8,
+		Time = 3, Tick = 0.5, TickDamage = 1.5, Slow = 0.4,
+		FinalDamage = 12, FinalKnockback = 45, FinalLaunch = 22, FinalStun = 0.7,
+		ScatterDistance = 9, -- Civil War breaks apart and he reforms this far away
+		RainMultiplier = 0.5,
 	},
 }
 
