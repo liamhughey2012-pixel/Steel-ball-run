@@ -169,6 +169,23 @@ TuskActRegistry.Acts = {
 			{ Slot = 3, Attribute = "FleshMendUntil", Text = "HEALING" },
 		},
 	},
+	-- Blackmore: CATCH THE RAINBOW (freezes raindrops in mid-air: cuts with
+	-- them, walks on them, scatters into them).
+	[11] = {
+		Name = "CATCH THE RAINBOW",
+		Character = "Blackmore",
+		Tagline = "Raindrops frozen in the air",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(110, 180, 255), Secondary = Color3.fromRGB(40, 50, 90) },
+		M1 = "RAINDROP COMBO",
+		Abilities = { "RAINDROP BLADES", "RAINDROP STEP", "RAINDROP CAGE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "CATCH THE RAINBOW",
+		Next = nil,
+		Module = "Blackmore", -- server moves
+		ClientModule = "BlackmoreVFX", -- client visuals (TuskActVFX.BlackmoreVFX)
+		CardTitle = "STAND  ·  CATCH THE RAINBOW",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -178,7 +195,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

@@ -135,7 +135,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("FLESH SPRAY") or has("FLESH STORM") then
+	if has("RAINDROP BLADES") or has("RAINBOW") then
+		return "rain"
+	elseif has("RAINDROP STEP") then
+		return "dash"
+	elseif has("RAINDROP CAGE") then
+		return "portal"
+	elseif has("FLESH SPRAY") or has("FLESH STORM") then
 		return "spray"
 	elseif has("FLESH SEAL") then
 		return "seal"
@@ -298,6 +304,12 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "rain" then
+		-- Three falling drops.
+		for i = -1, 1 do
+			local d = bar(icon, 0.5 + i * 0.25, 0.42 + (i % 2) * 0.18, 0.12, 0.3, 0)
+			corner(d, 999)
+		end
 	elseif kind == "spray" then
 		-- Spray can with a mist puff.
 		bar(icon, 0.32, 0.6, 0.26, 0.5, 0)

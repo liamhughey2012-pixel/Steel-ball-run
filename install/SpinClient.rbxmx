@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="LocalScript" referent="RBX76"><Properties><string name="Name">SpinClient</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="LocalScript" referent="RBX79"><Properties><string name="Name">SpinClient</string><ProtectedString name="Source"><![CDATA[--[[
 	SpinClient  (StarterPlayer.StarterPlayerScripts.SpinClient — LocalScript)
 	Boots every client system: hit feedback, settings, Stands, characters,
 	HUD, character card, NPC bubbles and map ambience.
@@ -27,7 +27,7 @@ CharacterCard.init()
 CombatUI.init()
 DefenseClient.init()
 BountyUI.init()
-]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX45"><Properties><string name="Name">CameraFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX47"><Properties><string name="Name">CameraFX</string><ProtectedString name="Source"><![CDATA[--[[
 	CameraFX  (StarterPlayerScripts.SpinClient.CameraFX)
 	Screen-space feedback: camera shake, FOV punch, anime speed lines and
 	short impact frames. All of it respects VFXQuality and cleans up.
@@ -200,7 +200,7 @@ function CameraFX.impactFrame(tint)
 end
 
 return CameraFX
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX46"><Properties><string name="Name">DefenseClient</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX48"><Properties><string name="Name">DefenseClient</string><ProtectedString name="Source"><![CDATA[--[[
 	DefenseClient  (StarterPlayerScripts.SpinClient.DefenseClient)
 
 	Block and Dash on the client, for every character:
@@ -495,7 +495,7 @@ function DefenseClient.init()
 end
 
 return DefenseClient
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX47"><Properties><string name="Name">Fighters</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX49"><Properties><string name="Name">Fighters</string><ProtectedString name="Source"><![CDATA[--[[
 	Fighters  (StarterPlayerScripts.SpinClient.Fighters)
 
 	Everyone who can use a Stand: the players plus the Stand-user NPCs
@@ -524,7 +524,7 @@ function Fighters.list()
 end
 
 return Fighters
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX48"><Properties><string name="Name">HitFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX50"><Properties><string name="Name">HitFX</string><ProtectedString name="Source"><![CDATA[--[[
 	HitFX  (StarterPlayerScripts.SpinClient.HitFX)
 	Feedback for every hit in the game (any character):
 	  * victim flash (white, or blue when blocked) + camera shake for the victim
@@ -581,6 +581,8 @@ local function onHit(data)
 		starColor = Color3.fromRGB(214, 156, 84)
 	elseif source:sub(1, 8) == "HotPants" then
 		starColor = Color3.fromRGB(242, 140, 172)
+	elseif source:sub(1, 9) == "Blackmore" then
+		starColor = Color3.fromRGB(110, 180, 255)
 	end
 	if data.Perfect then
 		starColor = colors.Gold
@@ -663,7 +665,7 @@ function HitFX.init()
 end
 
 return HitFX
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX49"><Properties><string name="Name">JointCache</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX51"><Properties><string name="Name">JointCache</string><ProtectedString name="Source"><![CDATA[--[[
 	JointCache  (StarterPlayerScripts.SpinClient.JointCache)
 	Reads and writes a joint's offset for the pose system, and remembers
 	each joint's original offset the first time it is touched.
@@ -712,7 +714,7 @@ function JointCache.original(j)
 end
 
 return JointCache
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX50"><Properties><string name="Name">TuskActCommon</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX52"><Properties><string name="Name">TuskActCommon</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActCommon  (StarterPlayerScripts.SpinClient.TuskActCommon)
 
 	Shared client choreography used by every Act's visual module:
@@ -754,6 +756,7 @@ Common.Palettes = {
 	[8] = { Main = Color3.fromRGB(245, 185, 80), Second = Color3.fromRGB(50, 140, 160), Light = Color3.fromRGB(255, 240, 205) }, -- Sandman (sand + turquoise)
 	[9] = { Main = Color3.fromRGB(214, 156, 84), Second = Color3.fromRGB(96, 62, 38), Light = Color3.fromRGB(255, 232, 196) }, -- Mountain Tim (leather + rope)
 	[10] = { Main = Color3.fromRGB(242, 140, 172), Second = Color3.fromRGB(120, 60, 92), Light = Color3.fromRGB(255, 220, 230) }, -- Hot Pants (Cream Starter pink)
+	[11] = { Main = Color3.fromRGB(110, 180, 255), Second = Color3.fromRGB(40, 50, 90), Light = Color3.fromRGB(225, 245, 255) }, -- Blackmore (rain blue)
 }
 
 function Common.palette(act)
@@ -958,7 +961,7 @@ function Common.actName(act)
 end
 
 return Common
-]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX61"><Properties><string name="Name">TuskActVFX</string></Properties><Item class="ModuleScript" referent="RBX51"><Properties><string name="Name">Act1</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX64"><Properties><string name="Name">TuskActVFX</string></Properties><Item class="ModuleScript" referent="RBX53"><Properties><string name="Name">Act1</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Act1  (StarterPlayerScripts.SpinClient.TuskActVFX.Act1)
 
 	Client choreography for Tusk Act 1: poses, Stand motion, effects and
@@ -1334,7 +1337,7 @@ function Act1.step()
 end
 
 return Act1
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX52"><Properties><string name="Name">Act2</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX54"><Properties><string name="Name">Act2</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Act2  (StarterPlayerScripts.SpinClient.TuskActVFX.Act2)
 	Client choreography for Tusk Act 2 (THE GOLDEN RATIO): golden rectangles
 	and golden spirals open where Act 2 used to open portals; nails fly out
@@ -1440,7 +1443,7 @@ function Act2.handle(name, data)
 end
 
 return Act2
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX53"><Properties><string name="Name">Act3</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX55"><Properties><string name="Name">Act3</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Act3  (StarterPlayerScripts.SpinClient.TuskActVFX.Act3)
 	Client choreography for Tusk Act 3 (spatial movement): deep-blue
 	layered portals, blue distortion afterimages, a tearing dimensional break.
@@ -1612,7 +1615,7 @@ function Act3.handle(name, data)
 end
 
 return Act3
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX54"><Properties><string name="Name">Act4</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX56"><Properties><string name="Name">Act4</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Act4  (StarterPlayerScripts.SpinClient.TuskActVFX.Act4)
 	Client choreography for Tusk Act 4 (Infinite Rotation): gold and deep
 	blue, giant rotational rings, golden afterimages, distorted air, and the
@@ -1916,7 +1919,589 @@ function Act4.step()
 end
 
 return Act4
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX55"><Properties><string name="Name">Diego</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX57"><Properties><string name="Name">BlackmoreVFX</string><ProtectedString name="Source"><![CDATA[--[[
+	TuskActVFX.BlackmoreVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.BlackmoreVFX)
+
+	Client visuals for Blackmore / CATCH THE RAINBOW: raindrops frozen in
+	mid-air. Blocky like the rest of the game.
+	  * his UMBRELLA is always in his left hand (closed, like a cane); it
+	    opens above his head during the storm
+	  * RAINDROP BLADES: drops freeze in a fan in front of him, shiver, fire
+	  * RAINDROP STEP: a stair of frozen drops hangs in the air along his dash
+	    for a few seconds, then falls and splashes
+	  * RAINDROP CAGE: a dome of frozen drops follows the target; each cut flashes
+	  * CATCH THE RAINBOW: a dark cloud, a downpour, a rainbow arc overhead,
+	    frozen drops hanging everywhere; he scatters into raindrops when hit;
+	    the end: every drop fires inward
+]]
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local Net = require(Shared.Net)
+local VFXLib = require(script.Parent.Parent.VFXLib)
+local CameraFX = require(script.Parent.Parent.CameraFX)
+local TuskVFX = require(script.Parent.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
+local Common = require(script.Parent.Parent.TuskActCommon)
+local Fighters = require(script.Parent.Parent.Fighters)
+
+local BlackmoreVFX = {}
+local ACT = 11
+local pal = Common.palette(ACT)
+local sounds = TuskConfig.Sounds
+
+local DROP = Color3.fromRGB(150, 205, 255)
+local DROP_LIGHT = Color3.fromRGB(225, 245, 255)
+local CANOPY = Color3.fromRGB(40, 60, 120)
+local CANOPY_TRIM = Color3.fromRGB(110, 170, 240)
+local SHAFT = Color3.fromRGB(30, 30, 36)
+local RAINBOW = {
+	Color3.fromRGB(255, 70, 70), Color3.fromRGB(255, 150, 60), Color3.fromRGB(255, 230, 80), Color3.fromRGB(90, 220, 110),
+	Color3.fromRGB(80, 170, 255), Color3.fromRGB(110, 100, 230), Color3.fromRGB(180, 110, 230),
+}
+
+local umbrellas = {} -- [character] = { Closed, Open }
+local stanced = {}
+local projectiles = {} -- [id] = flying drop
+local cages = {} -- [model] = dome of drops
+local storms = {} -- list of active storms
+
+---------------------------------------------------------------------------
+-- Pieces
+---------------------------------------------------------------------------
+local function box(model, size, cf, color, material, transparency)
+	local p = VFXLib.part({ Size = size, CFrame = cf, Color = color, Material = material or Enum.Material.SmoothPlastic, Transparency = transparency or 0 })
+	p.Parent = model
+	return p
+end
+
+local function newDrop(scale)
+	local s = scale or 1
+	return VFXLib.part({ Size = Vector3.new(0.18, 0.36, 0.18) * s, Color = DROP, Material = Enum.Material.Glass, Transparency = 0.2 })
+end
+
+-- Closed umbrella (a cane): handle at the origin, shaft going down -Y.
+local function buildClosedUmbrella()
+	local m = Instance.new("Model")
+	m.Name = "Umbrella"
+	m.Parent = VFXLib.Folder
+	local grip = box(m, Vector3.new(0.16, 0.5, 0.16), CFrame.new(0, 0.15, 0), SHAFT)
+	box(m, Vector3.new(0.16, 0.16, 0.4), CFrame.new(0, 0.42, -0.14), SHAFT) -- hooked handle
+	box(m, Vector3.new(0.16, 0.3, 0.16), CFrame.new(0, 0.3, -0.32), SHAFT)
+	box(m, Vector3.new(0.08, 2.8, 0.08), CFrame.new(0, -1.3, 0), SHAFT)
+	-- Furled canopy: stacked blocks tapering to the tip.
+	for i = 0, 3 do
+		local w = 0.42 - i * 0.08
+		box(m, Vector3.new(w, 0.5, w), CFrame.new(0, -0.9 - i * 0.45, 0), i % 2 == 0 and CANOPY or CANOPY:Lerp(CANOPY_TRIM, 0.2))
+	end
+	box(m, Vector3.new(0.3, 0.06, 0.3), CFrame.new(0, -0.62, 0), CANOPY_TRIM)
+	box(m, Vector3.new(0.06, 0.3, 0.06), CFrame.new(0, -2.85, 0), Color3.fromRGB(190, 195, 205)) -- tip
+	m.PrimaryPart = grip
+	return m
+end
+
+-- Open umbrella: canopy above, handle at the bottom of the shaft (origin = grip).
+local function buildOpenUmbrella()
+	local m = Instance.new("Model")
+	m.Name = "UmbrellaOpen"
+	m.Parent = VFXLib.Folder
+	local grip = box(m, Vector3.new(0.16, 0.5, 0.16), CFrame.new(), SHAFT)
+	box(m, Vector3.new(0.08, 2.6, 0.08), CFrame.new(0, 1.4, 0), SHAFT)
+	-- Stepped octagon canopy: wide plates getting smaller toward the top.
+	for i = 0, 3 do
+		local r = 2.4 - i * 0.55
+		local y = 2.5 + i * 0.22
+		local color = i % 2 == 0 and CANOPY or CANOPY:Lerp(CANOPY_TRIM, 0.25)
+		box(m, Vector3.new(r * 2, 0.16, r * 1.2), CFrame.new(0, y, 0), color)
+		box(m, Vector3.new(r * 1.2, 0.16, r * 2), CFrame.new(0, y, 0), color)
+	end
+	for i = 0, 7 do
+		local a = i / 8 * math.pi * 2
+		box(m, Vector3.new(0.08, 0.08, 2.4), CFrame.new(math.cos(a) * 1.2, 2.45, math.sin(a) * 1.2) * CFrame.Angles(0, -a + math.pi / 2, 0) * CFrame.Angles(0.15, 0, 0), CANOPY_TRIM)
+	end
+	box(m, Vector3.new(0.1, 0.4, 0.1), CFrame.new(0, 3.5, 0), Color3.fromRGB(190, 195, 205))
+	m.PrimaryPart = grip
+	return m
+end
+
+local function splash(position, size)
+	size = size or 1
+	VFXLib.burst(position, { Count = math.floor(10 * size), Color = DROP_LIGHT, Speed = 14 * size, Lifetime = 0.35, Spread = 60, Direction = Vector3.new(0, 1, 0), Acceleration = Vector3.new(0, -40, 0) })
+end
+
+-- Drops let go: they fall and splash.
+local function release(drops)
+	for _, d in ipairs(drops) do
+		local from = d.Position
+		VFXLib.animate(0.35, function(a)
+			d.CFrame = CFrame.new(from - Vector3.new(0, 9 * a * a, 0))
+			d.Transparency = 0.2 + a * 0.8
+		end, function()
+			d:Destroy()
+		end)
+	end
+end
+
+---------------------------------------------------------------------------
+-- Umbrella in his hand
+---------------------------------------------------------------------------
+local function stormOver(character)
+	for _, st in ipairs(storms) do
+		if st.Character == character then
+			return st
+		end
+	end
+	return nil
+end
+
+local function stepUmbrellas()
+	local seen = {}
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		if character and character:GetAttribute("TuskAct") == ACT then
+			local hand = character:FindFirstChild("LeftHand") or character:FindFirstChild("Left Arm")
+			local root = Common.rootOf(character)
+			if hand and root then
+				seen[character] = true
+				local u = umbrellas[character]
+				if not u then
+					u = { Closed = buildClosedUmbrella(), Open = buildOpenUmbrella() }
+					umbrellas[character] = u
+				end
+				local storm = stormOver(character)
+				local down = hand.Name == "Left Arm" and -hand.Size.Y / 2 + 0.2 or -0.15
+				if storm then
+					-- Open, held above his head.
+					u.Closed:PivotTo(CFrame.new(0, -1000, 0))
+					u.Open:PivotTo(root.CFrame * CFrame.new(-0.6, 1.4, 0) * CFrame.Angles(0, 0, 0.08))
+				else
+					-- Closed, carried like a cane.
+					u.Open:PivotTo(CFrame.new(0, -1000, 0))
+					u.Closed:PivotTo(hand.CFrame * CFrame.new(0, down, 0))
+				end
+			end
+		end
+	end
+	for character, u in pairs(umbrellas) do
+		if not seen[character] then
+			u.Closed:Destroy()
+			u.Open:Destroy()
+			umbrellas[character] = nil
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Raindrop projectiles (server Kind "RainDrop")
+---------------------------------------------------------------------------
+local function spawnDrop(data)
+	local d = newDrop(1.4)
+	local a0 = Instance.new("Attachment")
+	a0.Position = Vector3.new(0, 0.2, 0)
+	a0.Parent = d
+	local a1 = Instance.new("Attachment")
+	a1.Position = Vector3.new(0, -0.2, 0)
+	a1.Parent = d
+	local trail = Instance.new("Trail")
+	trail.Attachment0 = a0
+	trail.Attachment1 = a1
+	trail.Color = ColorSequence.new(DROP_LIGHT, DROP)
+	trail.Lifetime = 0.12
+	trail.LightEmission = 0.6
+	trail.Transparency = NumberSequence.new(0.3, 1)
+	trail.Parent = d
+	projectiles[data.Id] = { Part = d, Origin = data.Origin, Direction = data.Direction, Speed = data.Speed, Range = data.Range, ServerTime = data.ServerTime, Expire = os.clock() + data.Range / math.max(data.Speed, 1) + 0.5 }
+end
+
+local function endDrop(data)
+	local v = projectiles[data.Id]
+	if v then
+		projectiles[data.Id] = nil
+		v.Part:Destroy()
+	end
+	splash(data.Position, data.HitCharacter and 0.9 or 0.5)
+	if data.HitCharacter then
+		TuskVFX.CreateImpactStar(data.Position, { Size = 2.4, Rays = 6, Color = DROP, Color2 = Color3.new(1, 1, 1), Duration = 0.12 })
+	end
+end
+
+local function stepDrops()
+	local now = os.clock()
+	local serverNow = workspace:GetServerTimeNow()
+	for id, v in pairs(projectiles) do
+		local distance = math.min(v.Speed * (serverNow - v.ServerTime), v.Range)
+		local pos = v.Origin + v.Direction * math.max(distance, 0)
+		-- Point along the flight, like a streak.
+		v.Part.CFrame = CFrame.lookAt(pos, pos + v.Direction) * CFrame.Angles(math.pi / 2, 0, 0)
+		if now > v.Expire then
+			projectiles[id] = nil
+			v.Part:Destroy()
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Moves
+---------------------------------------------------------------------------
+local function onM1(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if not root then
+		return
+	end
+	local index = data.Index
+	TuskAnimation.play(character, "B_M1_" .. index)
+	VFXLib.sound(sounds.Swing, root, 0.5, 1.05 + index * 0.06)
+	Common.swipe(root, index % 2 == 1 and 1 or -1, index % 2 == 1 and pal.Main or DROP_LIGHT)
+	-- A few frozen shards flick out with each strike.
+	for i = 1, 3 do
+		local d = newDrop(0.9)
+		local dir = (root.CFrame * CFrame.Angles(0, (i - 2) * 0.25, 0)).LookVector
+		local from = (root.CFrame * CFrame.new(0, 0.5, -1.5)).Position
+		VFXLib.animate(0.18, function(a)
+			local p = from + dir * 6 * a
+			d.CFrame = CFrame.lookAt(p, p + dir) * CFrame.Angles(math.pi / 2, 0, 0)
+			d.Transparency = 0.2 + a * 0.8
+		end, function()
+			d:Destroy()
+		end)
+	end
+end
+
+local function onFinisher(data)
+	Common.finisher(data, pal)
+	-- A fan of hardened drops bursts out.
+	local root = Common.rootOf(data.Character)
+	if not root then
+		return
+	end
+	for i = 1, 9 do
+		local d = newDrop(1.2)
+		local dir = (root.CFrame * CFrame.Angles(0, (i - 5) * 0.18, 0)).LookVector
+		local from = data.Position + Vector3.new(0, 0.5, 0)
+		VFXLib.animate(0.3, function(a)
+			local p = from + dir * 10 * a
+			d.CFrame = CFrame.lookAt(p, p + dir) * CFrame.Angles(math.pi / 2, 0, 0)
+			d.Transparency = 0.2 + a * 0.8
+		end, function()
+			d:Destroy()
+		end)
+	end
+end
+
+-- Fibonacci-sphere points for a dome of drops.
+local function domePoints(n, radius)
+	local pts = {}
+	for i = 0, n - 1 do
+		local y = 1 - (i / (n - 1)) * 1.4 -- top cap down past the middle
+		local r = math.sqrt(math.max(0, 1 - y * y))
+		local phi = i * 2.39996
+		pts[i + 1] = Vector3.new(math.cos(phi) * r, y, math.sin(phi) * r) * radius
+	end
+	return pts
+end
+
+local function onAbility(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	local move, phase = data.Move, data.Phase
+	if move == "RaindropBlades" and phase == "Freeze" and root then
+		TuskAnimation.play(character, "BMBlades")
+		-- Drops freeze in a fan in front of him, shivering, then fire.
+		local drops = {}
+		local count = (data.Drops or 7) * 3
+		local dir = data.Direction or root.CFrame.LookVector
+		local base = CFrame.lookAt(root.Position + Vector3.new(0, 1, 0), root.Position + Vector3.new(0, 1, 0) + dir)
+		for i = 1, count do
+			local t = (i - 1) / (count - 1) - 0.5
+			local d = newDrop(1.1)
+			local cf = base * CFrame.Angles(0, math.rad(-t * (data.Spread or 34)), 0) * CFrame.new((i % 3 - 1) * 0.3, (i % 3 - 1) * 0.5, -2.5 - (i % 3) * 0.4)
+			d.CFrame = cf * CFrame.Angles(math.pi / 2, 0, 0)
+			drops[i] = { Part = d, CF = d.CFrame }
+		end
+		VFXLib.animate(data.Startup or 0.3, function(a)
+			for _, d in ipairs(drops) do
+				d.Part.CFrame = d.CF + Vector3.new((math.random() - 0.5) * 0.08, (math.random() - 0.5) * 0.08, 0)
+			end
+		end, function()
+			for _, d in ipairs(drops) do
+				d.Part:Destroy()
+			end
+		end)
+		VFXLib.sound(sounds.Warning, root, 0.3, 1.8)
+	elseif move == "RaindropStep" and phase == "Step" then
+		TuskAnimation.play(character, "BMStep")
+		local from, to = data.From, data.To
+		local steps = math.max(4, math.floor((to - from).Magnitude / 2.2))
+		local drops = {}
+		for i = 0, steps do
+			local p = from:Lerp(to, i / steps) + Vector3.new(0, -2.4 + math.sin(i / steps * math.pi) * 1.2, 0)
+			for k = 1, 3 do
+				local d = newDrop(1)
+				d.CFrame = CFrame.new(p + Vector3.new((k - 2) * 0.5, (k % 2) * 0.3, 0))
+				table.insert(drops, d)
+			end
+			task.delay(i * (data.Travel or 0.25) / steps, function()
+				if character and character.Parent then
+					VFXLib.afterimage(CFrame.new(from:Lerp(to, i / steps)), 2, DROP)
+				end
+			end)
+		end
+		splash(from - Vector3.new(0, 2.5, 0), 0.6)
+		-- The drops hang (glinting), then fall.
+		local life = data.TrailTime or 3
+		VFXLib.animate(life, function(a)
+			for i, d in ipairs(drops) do
+				if (i + math.floor(a * 30)) % 9 == 0 then
+					d.Color = DROP_LIGHT
+				else
+					d.Color = DROP
+				end
+			end
+		end, function()
+			release(drops)
+		end)
+		if Common.isLocal(character) then
+			CameraFX.fovPunch(6, 0.2)
+		end
+	elseif move == "RaindropCage" then
+		if phase == "Startup" and character then
+			TuskAnimation.play(character, "BMCage")
+		elseif phase == "Cage" and data.Target then
+			local pts = domePoints(36, 3.4)
+			local drops = {}
+			for i, p in ipairs(pts) do
+				drops[i] = { Part = newDrop(1), Offset = p }
+			end
+			cages[data.Target] = { Drops = drops, Expire = os.clock() + (data.Duration or 2.5), Born = os.clock() }
+			local tr = Common.rootOf(data.Target)
+			if tr then
+				splash(tr.Position, 1)
+			end
+		elseif phase == "Cut" and data.Position then
+			VFXLib.burst(data.Position, { Count = 8, Color = DROP_LIGHT, Speed = 18, Lifetime = 0.25 })
+			TuskVFX.CreateImpactStar(data.Position, { Size = 2.5, Rays = 6, Color = DROP, Color2 = Color3.new(1, 1, 1), Duration = 0.12 })
+		elseif phase == "Miss" and root then
+			splash((root.CFrame * CFrame.new(0, 0, -6)).Position - Vector3.new(0, 2, 0), 0.6)
+		end
+	end
+end
+
+-- A rainbow arc over the storm: seven bands of short neon segments.
+local function buildRainbow(frame, radius)
+	local m = Instance.new("Model")
+	m.Name = "Rainbow"
+	m.Parent = VFXLib.Folder
+	for b, color in ipairs(RAINBOW) do
+		local r = radius - (b - 1) * 0.9
+		local n = 22
+		for i = 0, n - 1 do
+			local a0 = i / n * math.pi
+			local a1 = (i + 1) / n * math.pi
+			local p0 = frame * Vector3.new(math.cos(a0) * r, math.sin(a0) * r, 0)
+			local p1 = frame * Vector3.new(math.cos(a1) * r, math.sin(a1) * r, 0)
+			local seg = VFXLib.part({ Size = Vector3.new(0.9, 0.9, (p1 - p0).Magnitude + 0.1), Color = color, Material = Enum.Material.Neon, Transparency = 0.35 })
+			seg.CFrame = CFrame.lookAt((p0 + p1) / 2, p1)
+			seg.Parent = m
+		end
+	end
+	return m
+end
+
+local function onUltimate(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Phase == "Start" then
+		TuskAnimation.play(character, "BMStorm")
+		local center = data.Position
+		local radius = data.Radius or 22
+		local storm = { Character = character, Center = center, Radius = radius, Until = os.clock() + (data.Windup or 0.8) + (data.Duration or 5), Hanging = {}, Next = 0 }
+		-- Dark cloud overhead.
+		storm.Cloud = Instance.new("Model")
+		storm.Cloud.Parent = VFXLib.Folder
+		for i = 1, 9 do
+			local a = i / 9 * math.pi * 2
+			box(storm.Cloud, Vector3.new(12, 3, 12), CFrame.new(center + Vector3.new(math.cos(a) * radius * 0.55, 24 + (i % 3), math.sin(a) * radius * 0.55)), Color3.fromRGB(70, 74, 90), Enum.Material.SmoothPlastic, 0.25)
+		end
+		box(storm.Cloud, Vector3.new(radius, 3, radius), CFrame.new(center + Vector3.new(0, 25, 0)), Color3.fromRGB(60, 64, 80), Enum.Material.SmoothPlastic, 0.2)
+		-- The rainbow arcs over the storm.
+		local look = root and root.CFrame.LookVector or Vector3.new(0, 0, -1)
+		local flatLook = Vector3.new(look.X, 0, look.Z)
+		flatLook = flatLook.Magnitude > 0.01 and flatLook.Unit or Vector3.new(0, 0, -1)
+		local arcAt = center + flatLook * radius * 0.6 + Vector3.new(0, 2, 0)
+		storm.Rainbow = buildRainbow(CFrame.lookAt(arcAt, arcAt + flatLook), radius * 0.9)
+		-- Frozen drops hanging all through the area.
+		for i = 1, 40 do
+			local a = math.random() * math.pi * 2
+			local r = math.sqrt(math.random()) * radius
+			local d = newDrop(1.2)
+			d.CFrame = CFrame.new(center + Vector3.new(math.cos(a) * r, math.random() * 8 - 1, math.sin(a) * r))
+			table.insert(storm.Hanging, d)
+		end
+		table.insert(storms, storm)
+		if Common.isLocal(character) then
+			TuskVFX.ScreenTint((data.Windup or 0.8) + (data.Duration or 5), { Tint = Color3.fromRGB(190, 205, 235), Saturation = -0.3, Brightness = -0.1 })
+		end
+		VFXLib.sound(sounds.AwakeningBuild, center, 0.5, 1.3)
+	elseif data.Phase == "Scatter" then
+		-- He bursts into raindrops and comes back together out of reach.
+		local from, to = data.From, data.To
+		VFXLib.burst(from, { Count = 30, Color = DROP_LIGHT, Speed = 22, Lifetime = 0.4 })
+		for i = 1, 14 do
+			local d = newDrop(1.1)
+			local off = Vector3.new(math.random() - 0.5, math.random() * 2 - 1, math.random() - 0.5) * 3
+			VFXLib.animate(0.25, function(a)
+				d.CFrame = CFrame.new((from + off):Lerp(to + off * (1 - a), a))
+			end, function()
+				d:Destroy()
+			end)
+		end
+		splash(to, 1)
+	elseif data.Phase == "Burst" then
+		local center = data.Position
+		for i = #storms, 1, -1 do
+			local st = storms[i]
+			if st.Character == character then
+				table.remove(storms, i)
+				-- Every hanging drop fires inward.
+				for _, d in ipairs(st.Hanging) do
+					local from = d.Position
+					VFXLib.animate(0.2, function(a)
+						d.CFrame = CFrame.lookAt(from:Lerp(center + Vector3.new(0, 1, 0), a), center) * CFrame.Angles(math.pi / 2, 0, 0)
+					end, function()
+						d:Destroy()
+					end)
+				end
+				st.Cloud:Destroy()
+				st.Rainbow:Destroy()
+			end
+		end
+		task.delay(0.2, function()
+			Common.finisher({ Character = character, Position = center + Vector3.new(0, 1, 0), Radius = data.Radius, Hit = true }, pal, { Size = 1.6, Layers = 3, Shake = 0.9 })
+			splash(center, 2.5)
+		end)
+		if Common.isLocal(character) then
+			CameraFX.impactFrame(DROP_LIGHT)
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Every frame
+---------------------------------------------------------------------------
+local function stepCages()
+	local now = os.clock()
+	for target, cage in pairs(cages) do
+		local tr = Common.rootOf(target)
+		if not tr or now > cage.Expire then
+			cages[target] = nil
+			local parts = {}
+			for _, d in ipairs(cage.Drops) do
+				table.insert(parts, d.Part)
+			end
+			release(parts)
+		else
+			local grow = math.min((now - cage.Born) / 0.2, 1)
+			for i, d in ipairs(cage.Drops) do
+				local jitter = Vector3.new(math.sin(now * 9 + i), math.cos(now * 7 + i), math.sin(now * 8 + i * 2)) * 0.05
+				d.Part.CFrame = CFrame.new(tr.Position + d.Offset * grow + jitter)
+			end
+		end
+	end
+end
+
+local function stepStorms(dt)
+	local now = os.clock()
+	for i = #storms, 1, -1 do
+		local st = storms[i]
+		if now > st.Until + 1 then
+			table.remove(storms, i)
+			release(st.Hanging)
+			st.Cloud:Destroy()
+			st.Rainbow:Destroy()
+		else
+			-- The downpour: streaks falling from the cloud.
+			st.Next = st.Next - dt
+			while st.Next <= 0 do
+				st.Next = st.Next + 0.03
+				local a = math.random() * math.pi * 2
+				local r = math.sqrt(math.random()) * st.Radius
+				local top = st.Center + Vector3.new(math.cos(a) * r, 22, math.sin(a) * r)
+				local streak = VFXLib.part({ Size = Vector3.new(0.08, 1.6, 0.08), Color = DROP_LIGHT, Material = Enum.Material.Glass, Transparency = 0.35 })
+				VFXLib.animate(0.45, function(t)
+					streak.CFrame = CFrame.new(top - Vector3.new(0, 24 * t, 0))
+				end, function()
+					streak:Destroy()
+				end)
+			end
+			-- Hanging drops glint.
+			for k, d in ipairs(st.Hanging) do
+				d.Color = (k + math.floor(now * 12)) % 11 == 0 and DROP_LIGHT or DROP
+			end
+		end
+	end
+end
+
+local function stepStance()
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		if character then
+			local want = character:GetAttribute("TuskAct") == ACT
+			if want and not stanced[character] then
+				stanced[character] = true
+				TuskAnimation.hold(character, "BMStance")
+			elseif not want and stanced[character] then
+				stanced[character] = nil
+				TuskAnimation.stopHold(character, "BMStance")
+			end
+		end
+	end
+	for character in pairs(stanced) do
+		if not character.Parent then
+			stanced[character] = nil
+		end
+	end
+end
+
+function BlackmoreVFX.handle(name, data)
+	if name == "M1" then
+		onM1(data)
+	elseif name == "M1Finisher" then
+		onFinisher(data)
+	elseif name == "Ability" then
+		onAbility(data)
+	elseif name == "Ultimate" then
+		onUltimate(data)
+	end
+end
+
+local slowTimer = 0
+function BlackmoreVFX.step(dt)
+	dt = dt or 1 / 60
+	stepUmbrellas()
+	stepDrops()
+	stepCages()
+	stepStorms(dt)
+	slowTimer = slowTimer + dt
+	if slowTimer > 0.2 then
+		slowTimer = 0
+		stepStance()
+	end
+end
+
+Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+	if typeof(data) ~= "table" or data.Kind ~= "RainDrop" then
+		return
+	end
+	if name == "ProjectileSpawn" then
+		spawnDrop(data)
+	elseif name == "ProjectileEnd" then
+		endDrop(data)
+	end
+end)
+
+return BlackmoreVFX
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX58"><Properties><string name="Name">Diego</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Diego  (StarterPlayerScripts.SpinClient.TuskActVFX.Diego)
 
 	Client visuals for Diego Brando / SCARY MONSTERS:
@@ -2802,7 +3387,7 @@ function Diego.step(dt)
 end
 
 return Diego
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX56"><Properties><string name="Name">Gyro</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX59"><Properties><string name="Name">Gyro</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Gyro  (StarterPlayerScripts.SpinClient.TuskActVFX.Gyro)
 
 	Client visuals for Gyro Zeppeli (Steel Ball moveset):
@@ -3931,7 +4516,7 @@ Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
 end)
 
 return Gyro
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX57"><Properties><string name="Name">HotPantsVFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX60"><Properties><string name="Name">HotPantsVFX</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.HotPantsVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.HotPantsVFX)
 
 	Client visuals for Hot Pants / CREAM STARTER, a spray can that sprays
@@ -4485,7 +5070,7 @@ function HotPantsVFX.step(dt)
 end
 
 return HotPantsVFX
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX58"><Properties><string name="Name">MountainTimVFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX61"><Properties><string name="Name">MountainTimVFX</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.MountainTimVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.MountainTimVFX)
 
 	Client visuals for Mountain Tim / OH! LONESOME ME: bodies come apart into
@@ -5389,7 +5974,7 @@ Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
 end)
 
 return TimVFX
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX59"><Properties><string name="Name">PorkPie</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX62"><Properties><string name="Name">PorkPie</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.PorkPie  (StarterPlayerScripts.SpinClient.TuskActVFX.PorkPie)
 
 	Client visuals for Pork Pie Hat Kid / WIRED (from the owner's pictures):
@@ -6042,7 +6627,7 @@ Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
 end)
 
 return PorkPie
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX60"><Properties><string name="Name">SandmanVFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX63"><Properties><string name="Name">SandmanVFX</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.SandmanVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.SandmanVFX)
 
 	Client visuals for Sandman (Soundman) / IN A SILENT WAY: sounds become
@@ -6438,7 +7023,7 @@ Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
 end)
 
 return SandmanVFX
-]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX62"><Properties><string name="Name">TuskAnimation</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX65"><Properties><string name="Name">TuskAnimation</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAnimation  (StarterPlayerScripts.SpinClient.TuskAnimation)
 	("TuskAnimationController" in the design doc)
 
@@ -6627,6 +7212,15 @@ TuskAnimation.Poses = {
 	StormRaise = { Root = { 8, 0, 0, 0.25 }, Waist = { 16, 0, 0 }, Neck = { 30, 0, 0 }, RightArm = { 175, 0, 15 }, RightElbow = { 10, 0, 0 }, LeftArm = { 60, 0, -60 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -50, 0, 0 } },
 	StormSweepL = { Root = { 0, 30, 0, -0.1, 0.2 }, Waist = { -6, 30, 0 }, Neck = { 0, -20, 0 }, RightArm = { 110, -30, 10 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
 	StormSweepR = { Root = { 0, -30, 0, -0.1, 0.2 }, Waist = { -6, -30, 0 }, Neck = { 0, 24, 0 }, RightArm = { 110, 30, 0 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
+	-- BLACKMORE: calm and precise; umbrella in his left hand like a cane.
+	BMStance = { Root = { 0, 6, 0, -0.03 }, Waist = { -2, 6, 0 }, Neck = { 2, -4, 0 }, RightArm = { 20, 0, 12 }, RightElbow = { 40, 0, 0 }, LeftArm = { 18, 0, -8 }, LeftElbow = { 20, 0, 0 }, LeftHip = { 4, 0, 0 } },
+	BladesWind = { Root = { 0, 22, 0, -0.08 }, Waist = { 0, 24, 0 }, Neck = { 0, -14, 0 }, RightArm = { 70, 0, 80 }, RightElbow = { 30, 0, 0 }, LeftArm = { 30, 0, -20 }, RightKnee = { -14, 0, 0 } },
+	BladesSweep = { Root = { 0, -26, 0, -0.1, 0.3 }, Waist = { 0, -32, 0 }, Neck = { 0, 18, 0 }, RightArm = { 92, -50, -10 }, RightElbow = { 0, 0, 0 }, LeftArm = { 40, 0, -30 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	RainStep = { Root = { -20, 0, 0, 0.3, 0.5 }, Waist = { -16, 0, 0 }, Neck = { 14, 0, 0 }, RightArm = { -30, 0, 20 }, LeftArm = { -30, 0, -20 }, RightHip = { 80, 0, 0 }, RightKnee = { -70, 0, 0 }, LeftHip = { -20, 0, 0 }, LeftKnee = { -40, 0, 0 } },
+	CagePalm = { Root = { -8, -10, 0, -0.1, 0.4 }, Waist = { -10, -14, 0 }, RightArm = { 95, 0, 10 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -20 }, LeftElbow = { 30, 0, 0 }, RightHip = { 24, 0, 0 }, RightKnee = { -26, 0, 0 }, Neck = { 4, 8, 0 } },
+	CageClose = { Root = { -6, -8, 0, -0.1, 0.3 }, Waist = { -8, -10, 0 }, RightArm = { 100, 0, 30 }, RightElbow = { 70, 0, 0 }, LeftArm = { 30, 0, -20 }, LeftElbow = { 30, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -22, 0, 0 } },
+	StormCall = { Root = { 8, 0, 0, 0.05 }, Waist = { 14, 0, 0 }, Neck = { 34, 0, 0 }, RightArm = { 165, 0, 30 }, RightElbow = { 20, 0, 0 }, LeftArm = { 150, 0, -10 }, LeftElbow = { 30, 0, 0 } },
+	StormHold = { Root = { 0, 0, 0, 0 }, Waist = { 4, 0, 0 }, Neck = { 10, 0, 0 }, RightArm = { 60, 0, 40 }, RightElbow = { 40, 0, 0 }, LeftArm = { 120, 0, -10 }, LeftElbow = { 60, 0, 0 } },
 	-- SANDMAN: a light-footed runner; knife-hand chops and spinning kicks.
 	SandStance = { Root = { 0, 10, 0, -0.18 }, Waist = { -8, 8, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, 18 }, RightElbow = { 70, 0, 0 }, LeftArm = { 55, 0, -22 }, LeftElbow = { 60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -8, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 	ChopCoil = { Root = { 0, 26, 0, -0.14 }, Waist = { 6, 30, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 60, 0, 0 }, LeftArm = { 60, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -14, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightKnee = { -12, 0, 0 } },
@@ -6681,6 +7275,8 @@ do
 	P.DashLeft = mirror(P.DashRight)
 	P.JabCoilL = mirror(P.JabCoil)
 	P.JabStrikeL = mirror(P.JabStrike)
+	P.BladesSweepL = mirror(P.BladesSweep)
+	P.BladesWindL = mirror(P.BladesWind)
 end
 
 --[[
@@ -6765,6 +7361,16 @@ TuskAnimation.Actions = {
 	HPSeal = { { 0, "HPStance" }, { 0.1, "CanShakeB", "In" }, { 0.18, "SealDash", "Snap", 4 }, { 0.28, "SealPress", "Snap", 5 }, { 0.5, "SealPress", "Linear", 2 }, { 0.66, "HPStance", "Sine" } },
 	HPMend = { { 0, "HPStance" }, { 0.12, "SelfSprayHigh", "Out" }, { 0.55, "SelfSprayLow", "Sine", 1 }, { 0.92, "SelfSprayHigh", "Sine", 1 }, { 1.12, "MendRelief", "Back" }, { 1.35, "HPStance", "Sine" } },
 	HPStorm = { { 0, "HPStance" }, { 0.05, "CanShakeA", "Snap" }, { 0.1, "CanShakeB", "Snap", 1 }, { 0.15, "CanShakeA", "Snap", 1 }, { 0.2, "CanShakeB", "Snap", 2 }, { 0.38, "StormRaise", "Back", 4 }, { 0.6, "StormSweepL", "Snap", 3 }, { 0.9, "StormSweepR", "Sine", 2 }, { 1.1, "SprayThrust", "Snap", 5 }, { 1.4, "SprayThrust", "Linear", 2 }, { 1.6, "HPStance", "Sine" } },
+
+	-- BLACKMORE
+	B_M1_1 = { { 0, "Rest" }, { 0.07, "BladesWind", "In" }, { 0.12, "BladesSweep", "Back", 4 }, { 0.17, "BladesSweep", "Linear" }, { 0.3, "BMStance", "Sine" } },
+	B_M1_2 = { { 0, "BladesSweep" }, { 0.07, "BladesWindL", "In" }, { 0.12, "BladesSweepL", "Back", 4 }, { 0.17, "BladesSweepL", "Linear" }, { 0.3, "BMStance", "Sine" } },
+	B_M1_3 = { { 0, "Rest" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "BMStance", "Sine" } },
+	B_M1_4 = { { 0, "Rest" }, { 0.12, "CagePalm", "In" }, { 0.2, "BladesSweep", "Snap", 7 }, { 0.26, "BladesSweep", "Linear" }, { 0.44, "BMStance", "Sine" } },
+	BMBlades = { { 0, "Rest" }, { 0.12, "BladesWind", "In" }, { 0.3, "BladesWind", "Linear", 1 }, { 0.36, "BladesSweep", "Snap", 5 }, { 0.55, "BMStance", "Sine" } },
+	BMStep = { { 0, "Rest" }, { 0.06, "RainStep", "Snap", 2 }, { 0.3, "RainStep", "Linear" }, { 0.45, "BMStance", "Sine" } },
+	BMCage = { { 0, "Rest" }, { 0.12, "CagePalm", "Out" }, { 0.24, "CageClose", "Snap", 5 }, { 0.45, "CageClose", "Sine" }, { 0.6, "BMStance", "Sine" } },
+	BMStorm = { { 0, "Rest" }, { 0.3, "StormCall", "Back", 3 }, { 0.8, "StormCall", "Linear", 3 }, { 1.1, "StormHold", "Sine" }, { 1.4, "StormHold" } },
 
 	-- SANDMAN
 	S_M1_1 = { { 0, "Rest" }, { 0.07, "ChopCoil", "In" }, { 0.12, "ChopStrike", "Back", 4 }, { 0.17, "ChopStrike", "Linear" }, { 0.3, "SandStance", "Sine" } },
@@ -7135,7 +7741,7 @@ Players.LocalPlayer.CharacterRemoving:Connect(function(character)
 end)
 
 return TuskAnimation
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX63"><Properties><string name="Name">TuskController</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX66"><Properties><string name="Name">TuskController</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskController  (StarterPlayerScripts.SpinClient.TuskController)
 	("TuskAbilityController" in the design doc)
 
@@ -7377,7 +7983,7 @@ function TuskController.init()
 end
 
 return TuskController
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX64"><Properties><string name="Name">TuskProjectiles</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX67"><Properties><string name="Name">TuskProjectiles</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskProjectiles  (StarterPlayerScripts.SpinClient.TuskProjectiles)
 
 	Draws every server "TuskNail" projectile (ProjectileService events on
@@ -7647,7 +8253,7 @@ function TuskProjectiles.init()
 end
 
 return TuskProjectiles
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX65"><Properties><string name="Name">TuskSneakController</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX68"><Properties><string name="Name">TuskSneakController</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskSneakController  (StarterPlayerScripts.SpinClient.TuskSneakController)
 
 	Client side of Tusk Sneak and the Sneak Attack, for every Act.
@@ -7926,7 +8532,7 @@ function TuskSneakController.init()
 end
 
 return TuskSneakController
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX66"><Properties><string name="Name">TuskStand</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX69"><Properties><string name="Name">TuskStand</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskStand  (StarterPlayerScripts.SpinClient.TuskStand)
 
 	Builds and animates the Tusk Stand for every player whose character
@@ -8285,7 +8891,7 @@ function TuskStand.init()
 end
 
 return TuskStand
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX67"><Properties><string name="Name">TuskVFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX70"><Properties><string name="Name">TuskVFX</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskVFX  (StarterPlayerScripts.SpinClient.TuskVFX)
 
 	Reusable procedural VFX framework for every Tusk Act (built on VFXLib).
@@ -9523,7 +10129,7 @@ end
 
 
 return TuskVFX
-]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX73"><Properties><string name="Name">UI</string></Properties><Item class="ModuleScript" referent="RBX68"><Properties><string name="Name">BountyUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX76"><Properties><string name="Name">UI</string></Properties><Item class="ModuleScript" referent="RBX71"><Properties><string name="Name">BountyUI</string><ProtectedString name="Source"><![CDATA[--[[
 	BountyUI  (StarterPlayerScripts.SpinClient.UI.BountyUI)
 
 	The bounty board screen (owner's design):
@@ -10119,7 +10725,7 @@ function BountyUI.init()
 end
 
 return BountyUI
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX69"><Properties><string name="Name">CharacterCard</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX72"><Properties><string name="Name">CharacterCard</string><ProtectedString name="Source"><![CDATA[--[[
 	CharacterCard  (StarterPlayerScripts.SpinClient.UI.CharacterCard)
 
 	Top-left character card:
@@ -10726,7 +11332,7 @@ function CharacterCard.step()
 end
 
 return CharacterCard
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX70"><Properties><string name="Name">CombatUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX73"><Properties><string name="Name">CombatUI</string><ProtectedString name="Source"><![CDATA[--[[
 	CombatUI  (StarterPlayerScripts.SpinClient.UI.CombatUI)
 
 	Battlegrounds-style fight feedback:
@@ -11066,7 +11672,7 @@ function CombatUI.init()
 end
 
 return CombatUI
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX71"><Properties><string name="Name">SettingsUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX74"><Properties><string name="Name">SettingsUI</string><ProtectedString name="Source"><![CDATA[--[[
 	SettingsUI  (StarterPlayerScripts.SpinClient.UI.SettingsUI)
 	The small "VFX: MEDIUM" button (top right) that cycles Low / Medium / High.
 	Phones start on Low to keep the frame rate smooth.
@@ -11135,7 +11741,7 @@ function SettingsUI.init()
 end
 
 return SettingsUI
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX72"><Properties><string name="Name">TuskUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX75"><Properties><string name="Name">TuskUI</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskUI  (StarterPlayerScripts.SpinClient.UI.TuskUI)
 
 	Battlegrounds-style move HUD (shown while Johnny or Gyro is equipped):
@@ -11272,7 +11878,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("FLESH SPRAY") or has("FLESH STORM") then
+	if has("RAINDROP BLADES") or has("RAINBOW") then
+		return "rain"
+	elseif has("RAINDROP STEP") then
+		return "dash"
+	elseif has("RAINDROP CAGE") then
+		return "portal"
+	elseif has("FLESH SPRAY") or has("FLESH STORM") then
 		return "spray"
 	elseif has("FLESH SEAL") then
 		return "seal"
@@ -11435,6 +12047,12 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "rain" then
+		-- Three falling drops.
+		for i = -1, 1 do
+			local d = bar(icon, 0.5 + i * 0.25, 0.42 + (i % 2) * 0.18, 0.12, 0.3, 0)
+			corner(d, 999)
+		end
 	elseif kind == "spray" then
 		-- Spray can with a mist puff.
 		bar(icon, 0.32, 0.6, 0.26, 0.5, 0)
@@ -12267,7 +12885,7 @@ function TuskUI.onState(data)
 end
 
 return TuskUI
-]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX74"><Properties><string name="Name">VFXLib</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX77"><Properties><string name="Name">VFXLib</string><ProtectedString name="Source"><![CDATA[--[[
 	VFXLib  (StarterPlayerScripts.SpinClient.VFXLib)
 
 	Reusable procedural VFX building blocks. Built for Spin first, and meant
@@ -12627,7 +13245,7 @@ function VFXLib.sound(soundId, parentOrPosition, volume, pitch, looped)
 end
 
 return VFXLib
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX75"><Properties><string name="Name">WorldClient</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX78"><Properties><string name="Name">WorldClient</string><ProtectedString name="Source"><![CDATA[--[[
 	WorldClient  (StarterPlayerScripts.SpinClient.WorldClient)
 	Client side of the SBR map:
 	  * NPC speech bubbles (from NPCService "NPCSay"), shown within 60 studs

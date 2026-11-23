@@ -3356,6 +3356,7 @@ local LOOKS = {
 	Sandman = { Skin = Color3.fromRGB(170, 115, 80), Torso = Color3.fromRGB(200, 160, 100), Legs = Color3.fromRGB(120, 85, 55) },
 	MountainTim = { Skin = Color3.fromRGB(226, 180, 140), Torso = Color3.fromRGB(70, 90, 130), Legs = Color3.fromRGB(60, 50, 70) },
 	HotPants = { Skin = Color3.fromRGB(238, 196, 164), Torso = Color3.fromRGB(96, 60, 120), Legs = Color3.fromRGB(238, 196, 164) },
+	Blackmore = { Skin = Color3.fromRGB(220, 196, 176), Torso = Color3.fromRGB(36, 44, 70), Legs = Color3.fromRGB(30, 30, 40) },
 }
 
 local usedSpots = {} -- [spot index] = slot using it
@@ -5088,6 +5089,23 @@ TuskActRegistry.Acts = {
 			{ Slot = 3, Attribute = "FleshMendUntil", Text = "HEALING" },
 		},
 	},
+	-- Blackmore: CATCH THE RAINBOW (freezes raindrops in mid-air: cuts with
+	-- them, walks on them, scatters into them).
+	[11] = {
+		Name = "CATCH THE RAINBOW",
+		Character = "Blackmore",
+		Tagline = "Raindrops frozen in the air",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(110, 180, 255), Secondary = Color3.fromRGB(40, 50, 90) },
+		M1 = "RAINDROP COMBO",
+		Abilities = { "RAINDROP BLADES", "RAINDROP STEP", "RAINDROP CAGE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "CATCH THE RAINBOW",
+		Next = nil,
+		Module = "Blackmore", -- server moves
+		ClientModule = "BlackmoreVFX", -- client visuals (TuskActVFX.BlackmoreVFX)
+		CardTitle = "STAND  ·  CATCH THE RAINBOW",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -5097,7 +5115,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -5706,6 +5724,21 @@ function TuskService.fireLasso(player, state, spec)
 		Radius = spec.Radius,
 		Range = spec.Range,
 		Visual = { Style = spec.Style or "Lasso", Character = spec.Character },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Server projectile with a frozen-raindrop visual (Blackmore).
+function TuskService.fireRain(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "RainDrop",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Drop" },
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd,
 	})
@@ -6475,7 +6508,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit" }) do
+for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

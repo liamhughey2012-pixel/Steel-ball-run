@@ -187,6 +187,15 @@ TuskAnimation.Poses = {
 	StormRaise = { Root = { 8, 0, 0, 0.25 }, Waist = { 16, 0, 0 }, Neck = { 30, 0, 0 }, RightArm = { 175, 0, 15 }, RightElbow = { 10, 0, 0 }, LeftArm = { 60, 0, -60 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -50, 0, 0 } },
 	StormSweepL = { Root = { 0, 30, 0, -0.1, 0.2 }, Waist = { -6, 30, 0 }, Neck = { 0, -20, 0 }, RightArm = { 110, -30, 10 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
 	StormSweepR = { Root = { 0, -30, 0, -0.1, 0.2 }, Waist = { -6, -30, 0 }, Neck = { 0, 24, 0 }, RightArm = { 110, 30, 0 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
+	-- BLACKMORE: calm and precise; umbrella in his left hand like a cane.
+	BMStance = { Root = { 0, 6, 0, -0.03 }, Waist = { -2, 6, 0 }, Neck = { 2, -4, 0 }, RightArm = { 20, 0, 12 }, RightElbow = { 40, 0, 0 }, LeftArm = { 18, 0, -8 }, LeftElbow = { 20, 0, 0 }, LeftHip = { 4, 0, 0 } },
+	BladesWind = { Root = { 0, 22, 0, -0.08 }, Waist = { 0, 24, 0 }, Neck = { 0, -14, 0 }, RightArm = { 70, 0, 80 }, RightElbow = { 30, 0, 0 }, LeftArm = { 30, 0, -20 }, RightKnee = { -14, 0, 0 } },
+	BladesSweep = { Root = { 0, -26, 0, -0.1, 0.3 }, Waist = { 0, -32, 0 }, Neck = { 0, 18, 0 }, RightArm = { 92, -50, -10 }, RightElbow = { 0, 0, 0 }, LeftArm = { 40, 0, -30 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	RainStep = { Root = { -20, 0, 0, 0.3, 0.5 }, Waist = { -16, 0, 0 }, Neck = { 14, 0, 0 }, RightArm = { -30, 0, 20 }, LeftArm = { -30, 0, -20 }, RightHip = { 80, 0, 0 }, RightKnee = { -70, 0, 0 }, LeftHip = { -20, 0, 0 }, LeftKnee = { -40, 0, 0 } },
+	CagePalm = { Root = { -8, -10, 0, -0.1, 0.4 }, Waist = { -10, -14, 0 }, RightArm = { 95, 0, 10 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -20 }, LeftElbow = { 30, 0, 0 }, RightHip = { 24, 0, 0 }, RightKnee = { -26, 0, 0 }, Neck = { 4, 8, 0 } },
+	CageClose = { Root = { -6, -8, 0, -0.1, 0.3 }, Waist = { -8, -10, 0 }, RightArm = { 100, 0, 30 }, RightElbow = { 70, 0, 0 }, LeftArm = { 30, 0, -20 }, LeftElbow = { 30, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -22, 0, 0 } },
+	StormCall = { Root = { 8, 0, 0, 0.05 }, Waist = { 14, 0, 0 }, Neck = { 34, 0, 0 }, RightArm = { 165, 0, 30 }, RightElbow = { 20, 0, 0 }, LeftArm = { 150, 0, -10 }, LeftElbow = { 30, 0, 0 } },
+	StormHold = { Root = { 0, 0, 0, 0 }, Waist = { 4, 0, 0 }, Neck = { 10, 0, 0 }, RightArm = { 60, 0, 40 }, RightElbow = { 40, 0, 0 }, LeftArm = { 120, 0, -10 }, LeftElbow = { 60, 0, 0 } },
 	-- SANDMAN: a light-footed runner; knife-hand chops and spinning kicks.
 	SandStance = { Root = { 0, 10, 0, -0.18 }, Waist = { -8, 8, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, 18 }, RightElbow = { 70, 0, 0 }, LeftArm = { 55, 0, -22 }, LeftElbow = { 60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -8, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 	ChopCoil = { Root = { 0, 26, 0, -0.14 }, Waist = { 6, 30, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 60, 0, 0 }, LeftArm = { 60, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -14, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightKnee = { -12, 0, 0 } },
@@ -241,6 +250,8 @@ do
 	P.DashLeft = mirror(P.DashRight)
 	P.JabCoilL = mirror(P.JabCoil)
 	P.JabStrikeL = mirror(P.JabStrike)
+	P.BladesSweepL = mirror(P.BladesSweep)
+	P.BladesWindL = mirror(P.BladesWind)
 end
 
 --[[
@@ -325,6 +336,16 @@ TuskAnimation.Actions = {
 	HPSeal = { { 0, "HPStance" }, { 0.1, "CanShakeB", "In" }, { 0.18, "SealDash", "Snap", 4 }, { 0.28, "SealPress", "Snap", 5 }, { 0.5, "SealPress", "Linear", 2 }, { 0.66, "HPStance", "Sine" } },
 	HPMend = { { 0, "HPStance" }, { 0.12, "SelfSprayHigh", "Out" }, { 0.55, "SelfSprayLow", "Sine", 1 }, { 0.92, "SelfSprayHigh", "Sine", 1 }, { 1.12, "MendRelief", "Back" }, { 1.35, "HPStance", "Sine" } },
 	HPStorm = { { 0, "HPStance" }, { 0.05, "CanShakeA", "Snap" }, { 0.1, "CanShakeB", "Snap", 1 }, { 0.15, "CanShakeA", "Snap", 1 }, { 0.2, "CanShakeB", "Snap", 2 }, { 0.38, "StormRaise", "Back", 4 }, { 0.6, "StormSweepL", "Snap", 3 }, { 0.9, "StormSweepR", "Sine", 2 }, { 1.1, "SprayThrust", "Snap", 5 }, { 1.4, "SprayThrust", "Linear", 2 }, { 1.6, "HPStance", "Sine" } },
+
+	-- BLACKMORE
+	B_M1_1 = { { 0, "Rest" }, { 0.07, "BladesWind", "In" }, { 0.12, "BladesSweep", "Back", 4 }, { 0.17, "BladesSweep", "Linear" }, { 0.3, "BMStance", "Sine" } },
+	B_M1_2 = { { 0, "BladesSweep" }, { 0.07, "BladesWindL", "In" }, { 0.12, "BladesSweepL", "Back", 4 }, { 0.17, "BladesSweepL", "Linear" }, { 0.3, "BMStance", "Sine" } },
+	B_M1_3 = { { 0, "Rest" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "BMStance", "Sine" } },
+	B_M1_4 = { { 0, "Rest" }, { 0.12, "CagePalm", "In" }, { 0.2, "BladesSweep", "Snap", 7 }, { 0.26, "BladesSweep", "Linear" }, { 0.44, "BMStance", "Sine" } },
+	BMBlades = { { 0, "Rest" }, { 0.12, "BladesWind", "In" }, { 0.3, "BladesWind", "Linear", 1 }, { 0.36, "BladesSweep", "Snap", 5 }, { 0.55, "BMStance", "Sine" } },
+	BMStep = { { 0, "Rest" }, { 0.06, "RainStep", "Snap", 2 }, { 0.3, "RainStep", "Linear" }, { 0.45, "BMStance", "Sine" } },
+	BMCage = { { 0, "Rest" }, { 0.12, "CagePalm", "Out" }, { 0.24, "CageClose", "Snap", 5 }, { 0.45, "CageClose", "Sine" }, { 0.6, "BMStance", "Sine" } },
+	BMStorm = { { 0, "Rest" }, { 0.3, "StormCall", "Back", 3 }, { 0.8, "StormCall", "Linear", 3 }, { 1.1, "StormHold", "Sine" }, { 1.4, "StormHold" } },
 
 	-- SANDMAN
 	S_M1_1 = { { 0, "Rest" }, { 0.07, "ChopCoil", "In" }, { 0.12, "ChopStrike", "Back", 4 }, { 0.17, "ChopStrike", "Linear" }, { 0.3, "SandStance", "Sine" } },

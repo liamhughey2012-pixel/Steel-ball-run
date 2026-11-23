@@ -277,6 +277,21 @@ function TuskService.fireLasso(player, state, spec)
 	})
 end
 
+-- Server projectile with a frozen-raindrop visual (Blackmore).
+function TuskService.fireRain(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "RainDrop",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Drop" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
 -- Some characters walk faster or slower (Registry WalkSpeed, e.g. Sandman).
 function TuskService.applyCharacterSpeed(state)
 	local character = state and state.Character

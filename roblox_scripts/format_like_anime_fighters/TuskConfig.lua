@@ -116,6 +116,7 @@ TuskConfig.Roster = {
 	{ Id = "Sandman", Name = "SANDMAN", Stand = "IN A SILENT WAY", Available = true, Color = Color3.fromRGB(245, 185, 80) },
 	{ Id = "MountainTim", Name = "MOUNTAIN TIM", Stand = "OH! LONESOME ME", Available = true, Color = Color3.fromRGB(214, 156, 84) },
 	{ Id = "HotPants", Name = "HOT PANTS", Stand = "CREAM STARTER", Available = true, Color = Color3.fromRGB(242, 140, 172) },
+	{ Id = "Blackmore", Name = "BLACKMORE", Stand = "CATCH THE RAINBOW", Available = true, Color = Color3.fromRGB(110, 180, 255) },
 }
 
 ---------------------------------------------------------------------------
@@ -142,7 +143,7 @@ TuskConfig.Bounty = {
 TuskConfig.StandBots = {
 	Enabled = true,
 	Count = 6, -- how many at once (each takes a free spot below)
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants" }, -- picked at random (only installed ones)
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore" }, -- picked at random (only installed ones)
 	Health = 200,
 	WalkSpeed = 15,
 	-- Where they hang out, scattered round the SBR map (offsets from the map's
@@ -568,6 +569,43 @@ TuskConfig.HotPants = {
 		Windup = 0.7, Distance = 12, Radius = 13,
 		EncaseDamage = 5, EncaseStun = 1.0, EncaseTime = 1.6, CrushEvery = 0.4, CrushDamage = 2,
 		BurstDamage = 12, BurstKnockback = 50, BurstLaunch = 25, BurstStun = 0.7,
+	},
+}
+
+---------------------------------------------------------------------------
+-- Blackmore: CATCH THE RAINBOW (frozen raindrops)
+---------------------------------------------------------------------------
+TuskConfig.Blackmore = {
+	M1 = { -- RAINDROP COMBO: shard strikes, the finisher fans out hardened drops
+		Interval = 0.28, ResetAfter = 1.1, EndLag = 0.8, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.5, Knockback = 40, Launch = 10, ShockwaveRadius = 7, AoeRadius = 7 },
+		},
+	},
+	RaindropBlades = { -- drops freeze in a fan, then fire as a volley
+		Cooldown = 6, Startup = 0.3,
+		Drops = 7, Spread = 34, -- degrees across the fan
+		Speed = 140, Radius = 0.8, Range = 55,
+		Damage = 3, Stun = 0.35, Knockback = 4, MaxHitsPerTarget = 3,
+	},
+	RaindropStep = { -- dash along a stair of frozen drops; the hanging drops cut anyone who walks through
+		Cooldown = 7, Windup = 0.08, Distance = 28, Travel = 0.25,
+		TrailTime = 3, TrailWidth = 4, TrailTick = 0.25, TrailDamage = 2, TrailStun = 0.3, TrailHitEvery = 0.5,
+	},
+	RaindropCage = { -- a dome of frozen drops round the nearest enemy: moving cuts them
+		Cooldown = 11, MissCooldown = 3, Windup = 0.22,
+		Range = 16, Cone = 60,
+		Damage = 5, Stun = 0.6,
+		CageTime = 2.5, Slow = 0.3, Tick = 0.3, MoveDamage = 2.5, MoveThreshold = 0.8,
+	},
+	Ultimate = { -- CATCH THE RAINBOW: a downpour round him; the rain slices everyone, he scatters from the first hit, then every drop fires inward
+		Windup = 0.8, Radius = 22, Duration = 5, Tick = 0.5, TickDamage = 2, TickStun = 0.4,
+		ScatterDistance = 8,
+		BurstDamage = 12, BurstKnockback = 45, BurstLaunch = 20, BurstStun = 0.7,
 	},
 }
 

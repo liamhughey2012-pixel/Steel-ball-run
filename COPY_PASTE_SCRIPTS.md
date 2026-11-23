@@ -1247,6 +1247,23 @@ TuskActRegistry.Acts = {
 			{ Slot = 3, Attribute = "FleshMendUntil", Text = "HEALING" },
 		},
 	},
+	-- Blackmore: CATCH THE RAINBOW (freezes raindrops in mid-air: cuts with
+	-- them, walks on them, scatters into them).
+	[11] = {
+		Name = "CATCH THE RAINBOW",
+		Character = "Blackmore",
+		Tagline = "Raindrops frozen in the air",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(110, 180, 255), Secondary = Color3.fromRGB(40, 50, 90) },
+		M1 = "RAINDROP COMBO",
+		Abilities = { "RAINDROP BLADES", "RAINDROP STEP", "RAINDROP CAGE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "CATCH THE RAINBOW",
+		Next = nil,
+		Module = "Blackmore", -- server moves
+		ClientModule = "BlackmoreVFX", -- client visuals (TuskActVFX.BlackmoreVFX)
+		CardTitle = "STAND  ·  CATCH THE RAINBOW",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -1256,7 +1273,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -1391,6 +1408,7 @@ TuskConfig.Roster = {
 	{ Id = "Sandman", Name = "SANDMAN", Stand = "IN A SILENT WAY", Available = true, Color = Color3.fromRGB(245, 185, 80) },
 	{ Id = "MountainTim", Name = "MOUNTAIN TIM", Stand = "OH! LONESOME ME", Available = true, Color = Color3.fromRGB(214, 156, 84) },
 	{ Id = "HotPants", Name = "HOT PANTS", Stand = "CREAM STARTER", Available = true, Color = Color3.fromRGB(242, 140, 172) },
+	{ Id = "Blackmore", Name = "BLACKMORE", Stand = "CATCH THE RAINBOW", Available = true, Color = Color3.fromRGB(110, 180, 255) },
 }
 
 ---------------------------------------------------------------------------
@@ -1417,7 +1435,7 @@ TuskConfig.Bounty = {
 TuskConfig.StandBots = {
 	Enabled = true,
 	Count = 6, -- how many at once (each takes a free spot below)
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants" }, -- picked at random (only installed ones)
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore" }, -- picked at random (only installed ones)
 	Health = 200,
 	WalkSpeed = 15,
 	-- Where they hang out, scattered round the SBR map (offsets from the map's
@@ -1843,6 +1861,43 @@ TuskConfig.HotPants = {
 		Windup = 0.7, Distance = 12, Radius = 13,
 		EncaseDamage = 5, EncaseStun = 1.0, EncaseTime = 1.6, CrushEvery = 0.4, CrushDamage = 2,
 		BurstDamage = 12, BurstKnockback = 50, BurstLaunch = 25, BurstStun = 0.7,
+	},
+}
+
+---------------------------------------------------------------------------
+-- Blackmore: CATCH THE RAINBOW (frozen raindrops)
+---------------------------------------------------------------------------
+TuskConfig.Blackmore = {
+	M1 = { -- RAINDROP COMBO: shard strikes, the finisher fans out hardened drops
+		Interval = 0.28, ResetAfter = 1.1, EndLag = 0.8, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.5, Knockback = 40, Launch = 10, ShockwaveRadius = 7, AoeRadius = 7 },
+		},
+	},
+	RaindropBlades = { -- drops freeze in a fan, then fire as a volley
+		Cooldown = 6, Startup = 0.3,
+		Drops = 7, Spread = 34, -- degrees across the fan
+		Speed = 140, Radius = 0.8, Range = 55,
+		Damage = 3, Stun = 0.35, Knockback = 4, MaxHitsPerTarget = 3,
+	},
+	RaindropStep = { -- dash along a stair of frozen drops; the hanging drops cut anyone who walks through
+		Cooldown = 7, Windup = 0.08, Distance = 28, Travel = 0.25,
+		TrailTime = 3, TrailWidth = 4, TrailTick = 0.25, TrailDamage = 2, TrailStun = 0.3, TrailHitEvery = 0.5,
+	},
+	RaindropCage = { -- a dome of frozen drops round the nearest enemy: moving cuts them
+		Cooldown = 11, MissCooldown = 3, Windup = 0.22,
+		Range = 16, Cone = 60,
+		Damage = 5, Stun = 0.6,
+		CageTime = 2.5, Slow = 0.3, Tick = 0.3, MoveDamage = 2.5, MoveThreshold = 0.8,
+	},
+	Ultimate = { -- CATCH THE RAINBOW: a downpour round him; the rain slices everyone, he scatters from the first hit, then every drop fires inward
+		Windup = 0.8, Radius = 22, Duration = 5, Tick = 0.5, TickDamage = 2, TickStun = 0.4,
+		ScatterDistance = 8,
+		BurstDamage = 12, BurstKnockback = 45, BurstLaunch = 20, BurstStun = 0.7,
 	},
 }
 
@@ -3377,6 +3432,7 @@ local PorkPieOutfit = require(script.PorkPieOutfit)
 local SandmanOutfit = require(script.SandmanOutfit)
 local MountainTimOutfit = require(script.MountainTimOutfit)
 local HotPantsOutfit = require(script.HotPantsOutfit)
+local BlackmoreOutfit = require(script.BlackmoreOutfit)
 local StandBots = require(script.StandBots)
 local BountyService = require(script.BountyService)
 
@@ -3391,13 +3447,216 @@ PorkPieOutfit.init()
 SandmanOutfit.init()
 MountainTimOutfit.init()
 HotPantsOutfit.init()
+BlackmoreOutfit.init()
 StandBots.init(TuskService)
 BountyService.init()
 NPCService.init()
 TestDummies.init()
 ```
 
-## 15. BountyService  (ModuleScript)
+## 15. BlackmoreOutfit  (ModuleScript)
+**Put it in:** `ServerScriptService › SpinServer`
+
+```lua
+--[[
+	BlackmoreOutfit  (ServerScriptService.SpinServer.BlackmoreOutfit)
+
+	Gives a character Blackmore's look while they play him (TuskAct 11),
+	built from blocky parts (no catalog asset ids):
+	  * a dark wide-brimmed hat
+	  * a blue mask over the lower face
+	  * a long dark navy coat with a high collar, buttons and coat tails
+	  * dark gloves and boots
+	  (his umbrella is drawn in his hand by the client)
+	The player's own hats/hair are hidden while they play him and come back
+	when they switch. Built on the server so every player sees it.
+]]
+
+local Players = game:GetService("Players")
+
+local BlackmoreOutfit = {}
+BlackmoreOutfit.Act = 11
+
+local C = {
+	Hat = Color3.fromRGB(34, 36, 48),
+	HatBand = Color3.fromRGB(70, 110, 170),
+	Mask = Color3.fromRGB(80, 130, 200),
+	Coat = Color3.fromRGB(36, 44, 70),
+	CoatDark = Color3.fromRGB(24, 28, 46),
+	Button = Color3.fromRGB(200, 210, 230),
+	Glove = Color3.fromRGB(28, 28, 34),
+	Boot = Color3.fromRGB(30, 30, 38),
+}
+
+local saved = setmetatable({}, { __mode = "k" })
+
+local function piece(parent, outfit, name, size, color, offset)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.SmoothPlastic
+	p.Size = size
+	p.Color = color
+	p.CFrame = parent.CFrame * offset
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = parent
+	weld.Part1 = p
+	weld.Parent = p
+	p.Parent = outfit
+	return p
+end
+
+local function headPieces(head, outfit)
+	local s = head.Size.Y / 1.2
+	local top, d = head.Size.Y / 2, head.Size.Z / 2
+	-- Wide-brimmed hat with a blue band.
+	piece(head, outfit, "Brim", Vector3.new(head.Size.X + 1.1 * s, 0.12 * s, head.Size.Z + 1.0 * s), C.Hat, CFrame.new(0, top + 0.02 * s, 0))
+	piece(head, outfit, "Crown", Vector3.new(head.Size.X * 0.86, 0.6 * s, head.Size.Z * 0.82), C.Hat, CFrame.new(0, top + 0.36 * s, 0.02 * s))
+	piece(head, outfit, "Band", Vector3.new(head.Size.X * 0.88, 0.14 * s, head.Size.Z * 0.84), C.HatBand, CFrame.new(0, top + 0.14 * s, 0.02 * s))
+	-- Blue mask over the lower face.
+	piece(head, outfit, "Mask", Vector3.new(head.Size.X + 0.06 * s, 0.5 * s, head.Size.Z + 0.06 * s), C.Mask, CFrame.new(0, -0.3 * s, 0))
+	piece(head, outfit, "MaskSeam", Vector3.new(0.06 * s, 0.5 * s, 0.04 * s), C.CoatDark, CFrame.new(0, -0.3 * s, -d - 0.04 * s))
+end
+
+local function body(character, outfit)
+	local upper = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	local lower = character:FindFirstChild("LowerTorso")
+	if upper then
+		local s = upper.Size
+		piece(upper, outfit, "Coat", s + Vector3.new(0.1, 0.04, 0.1), C.Coat, CFrame.new())
+		-- High collar standing up round the neck.
+		piece(upper, outfit, "Collar", Vector3.new(s.X * 0.7, 0.5, s.Z + 0.2), C.CoatDark, CFrame.new(0, s.Y / 2 + 0.2, 0.02))
+		for i = 0, 2 do
+			piece(upper, outfit, "Button", Vector3.new(0.14, 0.14, 0.06), C.Button, CFrame.new(0.18, s.Y * 0.3 - i * s.Y * 0.28, -s.Z / 2 - 0.08))
+		end
+		piece(upper, outfit, "CoatEdge", Vector3.new(0.08, s.Y + 0.06, 0.06), C.CoatDark, CFrame.new(0, 0, -s.Z / 2 - 0.07))
+	end
+	local waist = lower or upper
+	if waist then
+		local y = lower and 0 or -upper.Size.Y / 2
+		if lower then
+			piece(lower, outfit, "Coat", lower.Size + Vector3.new(0.1, 0.04, 0.1), C.Coat, CFrame.new())
+		end
+		-- Long coat tails down to the knees (front split, back closed).
+		for _, side in ipairs({ -1, 1 }) do
+			piece(waist, outfit, "CoatTail", Vector3.new(waist.Size.X * 0.48, 1.8, 0.14), C.Coat, CFrame.new(side * waist.Size.X * 0.26, y - 0.9, -waist.Size.Z / 2 - 0.1) * CFrame.Angles(-0.08, 0, side * 0.05))
+			piece(waist, outfit, "CoatSide", Vector3.new(0.14, 1.8, waist.Size.Z + 0.2), C.CoatDark, CFrame.new(side * (waist.Size.X / 2 + 0.1), y - 0.9, 0))
+		end
+		piece(waist, outfit, "CoatBack", Vector3.new(waist.Size.X + 0.2, 1.9, 0.14), C.Coat, CFrame.new(0, y - 0.95, waist.Size.Z / 2 + 0.12) * CFrame.Angles(0.08, 0, 0))
+	end
+	-- Coat sleeves, gloves, boots.
+	for _, name in ipairs({ "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm", "Left Arm", "Right Arm" }) do
+		local arm = character:FindFirstChild(name)
+		if arm then
+			piece(arm, outfit, "Sleeve", arm.Size + Vector3.new(0.08, 0.02, 0.08), C.Coat, CFrame.new())
+		end
+	end
+	for _, name in ipairs({ "LeftHand", "RightHand" }) do
+		local hand = character:FindFirstChild(name)
+		if hand then
+			piece(hand, outfit, "Glove", hand.Size + Vector3.new(0.1, 0.06, 0.1), C.Glove, CFrame.new())
+		end
+	end
+	for _, name in ipairs({ "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
+		local leg = character:FindFirstChild(name)
+		if leg then
+			local tall = leg.Size.Y > 1.8
+			local h = tall and 0.9 or leg.Size.Y * 0.8
+			piece(leg, outfit, "Boot", Vector3.new(leg.Size.X + 0.12, h, leg.Size.Z + 0.14), C.Boot, CFrame.new(0, -leg.Size.Y / 2 + h / 2, 0))
+		end
+	end
+end
+
+function BlackmoreOutfit.apply(character)
+	if character:FindFirstChild("BlackmoreOutfit") then
+		return
+	end
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local store = { Hidden = {} }
+	saved[character] = store
+	for _, d in ipairs(character:GetChildren()) do
+		if d:IsA("Accessory") then
+			local handle = d:FindFirstChild("Handle")
+			local kind = d.AccessoryType
+			if handle and (kind == Enum.AccessoryType.Hat or kind == Enum.AccessoryType.Hair or kind == Enum.AccessoryType.Unknown) then
+				store.Hidden[handle] = handle.Transparency
+				handle.Transparency = 1
+			end
+		end
+	end
+	local outfit = Instance.new("Model")
+	outfit.Name = "BlackmoreOutfit"
+	outfit.Parent = character
+	headPieces(head, outfit)
+	body(character, outfit)
+end
+
+function BlackmoreOutfit.remove(character)
+	local outfit = character:FindFirstChild("BlackmoreOutfit")
+	if outfit then
+		outfit:Destroy()
+	end
+	local store = saved[character]
+	if not store then
+		return
+	end
+	saved[character] = nil
+	for thing, transparency in pairs(store.Hidden) do
+		if thing.Parent then
+			thing.Transparency = transparency
+		end
+	end
+end
+
+local function watch(character)
+	local function update()
+		if character:GetAttribute("TuskAct") == BlackmoreOutfit.Act then
+			task.delay(0.3, function()
+				if character.Parent and character:GetAttribute("TuskAct") == BlackmoreOutfit.Act then
+					BlackmoreOutfit.apply(character)
+				end
+			end)
+		else
+			BlackmoreOutfit.remove(character)
+		end
+	end
+	character:GetAttributeChangedSignal("TuskAct"):Connect(update)
+	update()
+end
+
+function BlackmoreOutfit.init()
+	local function onPlayer(player)
+		player.CharacterAppearanceLoaded:Connect(watch)
+		if player.Character then
+			watch(player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	-- Stand-user NPCs (StandBots) wear the outfit too.
+	local CollectionService = game:GetService("CollectionService")
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		watch(model)
+	end
+	CollectionService:GetInstanceAddedSignal("SpinFighter"):Connect(watch)
+	for _, player in ipairs(Players:GetPlayers()) do
+		onPlayer(player)
+	end
+end
+
+return BlackmoreOutfit
+```
+
+## 16. BountyService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -3847,7 +4106,7 @@ end
 return BountyService
 ```
 
-## 16. CombatAdapter  (ModuleScript)
+## 17. CombatAdapter  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -4177,7 +4436,7 @@ end
 return Adapter
 ```
 
-## 17. CooldownService  (ModuleScript)
+## 18. CooldownService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -4227,7 +4486,7 @@ end)
 return CooldownService
 ```
 
-## 18. DefenseService  (ModuleScript)
+## 19. DefenseService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -4390,7 +4649,7 @@ end
 return DefenseService
 ```
 
-## 19. DiegoOutfit  (ModuleScript)
+## 20. DiegoOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -4621,7 +4880,7 @@ end
 return DiegoOutfit
 ```
 
-## 20. GyroOutfit  (ModuleScript)
+## 21. GyroOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -4823,7 +5082,7 @@ end
 return GyroOutfit
 ```
 
-## 21. HotPantsOutfit  (ModuleScript)
+## 22. HotPantsOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5045,7 +5304,7 @@ end
 return HotPantsOutfit
 ```
 
-## 22. MountainTimOutfit  (ModuleScript)
+## 23. MountainTimOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5245,7 +5504,7 @@ end
 return MountainTimOutfit
 ```
 
-## 23. NPCService  (ModuleScript)
+## 24. NPCService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5465,7 +5724,7 @@ end
 return NPCService
 ```
 
-## 24. PorkPieOutfit  (ModuleScript)
+## 25. PorkPieOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5741,7 +6000,7 @@ end
 return PorkPieOutfit
 ```
 
-## 25. ProjectileService  (ModuleScript)
+## 26. ProjectileService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5942,7 +6201,7 @@ end)
 return ProjectileService
 ```
 
-## 26. SandmanOutfit  (ModuleScript)
+## 27. SandmanOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6157,7 +6416,7 @@ end
 return SandmanOutfit
 ```
 
-## 27. StandAssetLoader  (ModuleScript)
+## 28. StandAssetLoader  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6247,7 +6506,7 @@ end
 return StandAssetLoader
 ```
 
-## 28. StandBots  (ModuleScript)
+## 29. StandBots  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6294,6 +6553,7 @@ local LOOKS = {
 	Sandman = { Skin = Color3.fromRGB(170, 115, 80), Torso = Color3.fromRGB(200, 160, 100), Legs = Color3.fromRGB(120, 85, 55) },
 	MountainTim = { Skin = Color3.fromRGB(226, 180, 140), Torso = Color3.fromRGB(70, 90, 130), Legs = Color3.fromRGB(60, 50, 70) },
 	HotPants = { Skin = Color3.fromRGB(238, 196, 164), Torso = Color3.fromRGB(96, 60, 120), Legs = Color3.fromRGB(238, 196, 164) },
+	Blackmore = { Skin = Color3.fromRGB(220, 196, 176), Torso = Color3.fromRGB(36, 44, 70), Legs = Color3.fromRGB(30, 30, 40) },
 }
 
 local usedSpots = {} -- [spot index] = slot using it
@@ -6584,7 +6844,7 @@ end
 return StandBots
 ```
 
-## 29. TestDummies  (ModuleScript)
+## 30. TestDummies  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6754,12 +7014,354 @@ end
 return TestDummies
 ```
 
-## 30. TuskActs  (Folder)
+## 31. TuskActs  (Folder)
 **Put it in:** `ServerScriptService › SpinServer`
 
 _Empty folder: nothing to paste._
 
-## 31. DiegoBrando  (ModuleScript)
+## 32. Blackmore  (ModuleScript)
+**Put it in:** `ServerScriptService › SpinServer › TuskActs`
+
+```lua
+--[[
+	Blackmore  (ServerScriptService.SpinServer.TuskActs.Blackmore)
+
+	Blackmore: CATCH THE RAINBOW. His Stand freezes raindrops in mid-air: he
+	cuts with them, walks on them, and when he's hit in the rain he bursts
+	into raindrops. Registered as "Act" 11 so it reuses the Tusk ability system.
+	  M1        RAINDROP COMBO: shard strikes; the finisher fans out hardened drops
+	  Ability 1 RAINDROP BLADES: drops freeze in a fan in front of him, then
+	            fire as a volley (each enemy takes at most a few)
+	  Ability 2 RAINDROP STEP: he dashes along a stair of frozen drops (can't
+	            be hit), leaving a line of hanging drops that cut anyone who
+	            walks through it for a few seconds
+	  Ability 3 RAINDROP CAGE: a dome of frozen drops round the nearest enemy:
+	            they're slowed, and every time they move the drops cut them
+	  Ultimate  CATCH THE RAINBOW: a downpour round him (a rainbow overhead):
+	            the rain slices every enemy inside, the first hit on him makes
+	            him scatter into raindrops (cancelled, he reappears out of
+	            reach), then every frozen drop fires inward at once
+	Numbers: TuskConfig.Blackmore. All damage goes through S.hit (CombatAdapter).
+]]
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+local Moves = require(script.Parent.Parent.TuskMoves)
+
+local Blackmore = {}
+local cfg = TuskConfig.Blackmore
+local ACT = 11
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function ready(S, player, state, name, slot)
+	return not S.isBusy(state) and not state.Charging and S.cooldownReady(player, state, name, slot)
+end
+
+local function now()
+	return workspace:GetServerTimeNow()
+end
+
+function Blackmore.M1(S, player, state, aim)
+	Moves.m1(S, player, state, aim, cfg.M1, ACT)
+end
+
+local function slow(S, target, key, multiplier, seconds)
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	S.Adapter.setMoveModifier(humanoid, key, multiplier)
+	local token = tostring({})
+	target:SetAttribute(key .. "Token", token)
+	task.delay(seconds, function()
+		if humanoid.Parent and target:GetAttribute(key .. "Token") == token then
+			S.Adapter.setMoveModifier(humanoid, key, nil)
+			target:SetAttribute(key .. "Token", nil)
+		end
+	end)
+end
+
+---------------------------------------------------------------------------
+-- RAINDROP BLADES
+---------------------------------------------------------------------------
+local function raindropBlades(S, player, state, aim)
+	local c = cfg.RaindropBlades
+	if not ready(S, player, state, "RaindropBlades", 1) then
+		return
+	end
+	S.startCooldown(player, state, "RaindropBlades", c.Cooldown, 1)
+	S.lock(state, c.Startup + 0.25)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local flat = Moves.flat(direction)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "RaindropBlades", Phase = "Freeze", Startup = c.Startup, Direction = flat, Drops = c.Drops, Spread = c.Spread })
+	task.delay(c.Startup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local hits = {}
+		for i = 1, c.Drops do
+			local t = c.Drops == 1 and 0 or (i - 1) / (c.Drops - 1) - 0.5
+			local dir = (CFrame.lookAt(Vector3.new(), direction) * CFrame.Angles(0, math.rad(-t * c.Spread), 0)).LookVector
+			local origin = r.Position + Vector3.new(0, 1, 0) + flat * 2.5 + (CFrame.lookAt(Vector3.new(), flat).RightVector * t * 4)
+			S.fireRain(player, state, {
+				Origin = origin,
+				Direction = dir,
+				Speed = c.Speed,
+				Radius = c.Radius,
+				Range = c.Range,
+				OnHit = function(target, position)
+					hits[target] = (hits[target] or 0) + 1
+					if hits[target] <= c.MaxHitsPerTarget then
+						S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = dir, Position = position, Source = "BlackmoreBlades" })
+					end
+				end,
+			})
+		end
+	end)
+end
+
+---------------------------------------------------------------------------
+-- RAINDROP STEP
+---------------------------------------------------------------------------
+local function raindropStep(S, player, state, aim)
+	local c = cfg.RaindropStep
+	if not ready(S, player, state, "RaindropStep", 2) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	local destination = Moves.safeStep(character, root, direction, c.Distance)
+	if not destination then
+		S.tell(player, "Denied", { Reason = "Blocked" })
+		return
+	end
+	S.startCooldown(player, state, "RaindropStep", c.Cooldown, 2)
+	S.lock(state, c.Windup + c.Travel + 0.1)
+	local life = state.Life
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local from = r.Position
+		local to = Moves.safeStep(char, r, direction, c.Distance) or destination
+		local iframes = S.Adapter.Settings.IFrameAttribute
+		char:SetAttribute(iframes, true)
+		S.fx("Ability", { Character = char, Act = ACT, Move = "RaindropStep", Phase = "Step", From = from, To = to, Direction = direction, Travel = c.Travel, TrailTime = c.TrailTime })
+		task.delay(c.Travel, function()
+			char:SetAttribute(iframes, nil)
+			if char.Parent and state.Life == life then
+				char:PivotTo(CFrame.lookAt(to, to + direction))
+			end
+		end)
+		-- The hanging drops cut anyone who walks through the line.
+		local mid = (from + to) / 2
+		local box = CFrame.lookAt(mid, mid + direction)
+		local size = Vector3.new(c.TrailWidth, 6, (to - from).Magnitude + 2)
+		local lastHit = {}
+		for i = 1, math.floor(c.TrailTime / c.TrailTick) do
+			task.delay(i * c.TrailTick, function()
+				if not player.Character then
+					return
+				end
+				for _, target in ipairs(S.Hitbox.inBox(player.Character, box, size, 6)) do
+					local tr = target:FindFirstChild("HumanoidRootPart")
+					local t = os.clock()
+					if tr and t - (lastHit[target] or -math.huge) >= c.TrailHitEvery then
+						lastHit[target] = t
+						S.hit(player, target, { Damage = c.TrailDamage, Stun = c.TrailStun, Knockback = 0, Direction = direction, Position = tr.Position, Source = "BlackmoreStep" })
+					end
+				end
+			end)
+		end
+	end)
+end
+
+---------------------------------------------------------------------------
+-- RAINDROP CAGE
+---------------------------------------------------------------------------
+local function targetInCone(S, character, root, direction, range, cone)
+	local look = Moves.flat(direction)
+	local cosLimit = math.cos(math.rad(cone / 2))
+	local best, bestD
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, range, 8)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and S.Adapter.canBeHit(nil, target) then
+			local offset = tr.Position - root.Position
+			local f = Vector3.new(offset.X, 0, offset.Z)
+			if (f.Magnitude < 1 or f.Unit:Dot(look) >= cosLimit) and S.Hitbox.lineOfSight(root.Position, tr.Position, { character, target }) then
+				if not bestD or offset.Magnitude < bestD then
+					best, bestD = target, offset.Magnitude
+				end
+			end
+		end
+	end
+	return best
+end
+
+local function raindropCage(S, player, state, aim)
+	local c = cfg.RaindropCage
+	if not ready(S, player, state, "RaindropCage", 3) then
+		return
+	end
+	S.startCooldown(player, state, "RaindropCage", c.Cooldown, 3)
+	S.lock(state, c.Windup + 0.25)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "RaindropCage", Phase = "Startup", Windup = c.Windup })
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local target = targetInCone(S, char, r, direction, c.Range, c.Cone)
+		local tr = target and target:FindFirstChild("HumanoidRootPart")
+		if not tr or not S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Direction = direction, Position = tr.Position, Source = "BlackmoreCage" }) then
+			S.startCooldown(player, state, "RaindropCage", c.MissCooldown, 3)
+			S.fx("Ability", { Character = char, Act = ACT, Move = "RaindropCage", Phase = "Miss", Direction = direction })
+			return
+		end
+		local untilT = now() + c.CageTime
+		target:SetAttribute("RainCagedUntil", untilT)
+		slow(S, target, "RainCage", c.Slow, c.CageTime)
+		S.fx("Ability", { Character = char, Act = ACT, Move = "RaindropCage", Phase = "Cage", Target = target, Duration = c.CageTime })
+		-- Every tick they've moved, the drops cut them.
+		local last = tr.Position
+		for i = 1, math.floor(c.CageTime / c.Tick) do
+			task.delay(i * c.Tick, function()
+				local t = target:FindFirstChild("HumanoidRootPart")
+				if not t or (target:GetAttribute("RainCagedUntil") or 0) < untilT - 0.01 then
+					return
+				end
+				local moved = (t.Position - last).Magnitude
+				last = t.Position
+				if moved > c.MoveThreshold then
+					S.hit(player, target, { Damage = c.MoveDamage, Stun = 0.2, Knockback = 0, Direction = t.Position - r.Position, Position = t.Position, Source = "BlackmoreCage" })
+					S.fx("Ability", { Act = ACT, Move = "RaindropCage", Phase = "Cut", Position = t.Position })
+				end
+			end)
+		end
+	end)
+end
+
+function Blackmore.Ability(S, player, state, slot, phase, aim)
+	if phase ~= "Press" then
+		return
+	end
+	if slot == 1 then
+		raindropBlades(S, player, state, aim)
+	elseif slot == 2 then
+		raindropStep(S, player, state, aim)
+	elseif slot == 3 then
+		raindropCage(S, player, state, aim)
+	end
+end
+
+---------------------------------------------------------------------------
+-- CATCH THE RAINBOW (ultimate)
+---------------------------------------------------------------------------
+local scatters = setmetatable({}, { __mode = "k" }) -- [character] = scatter function while the storm is up
+
+local function registerScatter(S)
+	if S.Adapter.DodgeHandlers and not S.Adapter.DodgeHandlers.RainScatter then
+		S.Adapter.DodgeHandlers.RainScatter = function(attackerPlayer, target, info)
+			local f = scatters[target]
+			if f then
+				f(attackerPlayer, info)
+			end
+		end
+	end
+end
+
+function Blackmore.Ultimate(S, player, state, aim)
+	local u = cfg.Ultimate
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	registerScatter(S)
+	local character, _, root = alive(S, player)
+	local life = state.Life
+	local center = root.Position
+	S.lock(state, u.Windup + 0.3)
+	character:SetAttribute("Armored", true)
+	S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Start", Windup = u.Windup, Position = center, Radius = u.Radius, Duration = u.Duration })
+	task.delay(u.Windup, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+		if state.Life ~= life or not alive(S, player) then
+			return
+		end
+		S.finishUltimate(player, state)
+		character:SetAttribute("RainStormUntil", now() + u.Duration)
+		-- In the rain, the first hit on him scatters him into raindrops.
+		character:SetAttribute("RainScatter", true)
+		scatters[character] = function(attackerPlayer)
+			scatters[character] = nil
+			character:SetAttribute("RainScatter", nil)
+			local attacker = attackerPlayer and attackerPlayer.Character
+			local ar = attacker and attacker:FindFirstChild("HumanoidRootPart")
+			local _, _, r = alive(S, player)
+			if not r then
+				return
+			end
+			local away = ar and Moves.flat(r.Position - ar.Position) or r.CFrame.LookVector * -1
+			local spot = Moves.safeStep(character, r, away, u.ScatterDistance) or r.Position
+			local iframes = S.Adapter.Settings.IFrameAttribute
+			character:SetAttribute(iframes, true)
+			S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Scatter", From = r.Position, To = spot })
+			character:PivotTo(CFrame.lookAt(spot, spot - away))
+			task.delay(0.4, function()
+				character:SetAttribute(iframes, nil)
+			end)
+		end
+		for i = 1, math.floor(u.Duration / u.Tick) - 1 do
+			task.delay(i * u.Tick, function()
+				if state.Life ~= life then
+					return
+				end
+				Moves.aoe(S, player, center + Vector3.new(0, 2, 0), u.Radius, { Damage = u.TickDamage, Stun = u.TickStun, Knockback = 0, Source = "BlackmoreRain" }, 8)
+			end)
+		end
+		task.delay(u.Duration, function()
+			scatters[character] = nil
+			if character.Parent then
+				character:SetAttribute("RainScatter", nil)
+				character:SetAttribute("RainStormUntil", nil)
+			end
+			if state.Life ~= life then
+				return
+			end
+			-- Every frozen drop fires inward at once.
+			Moves.aoe(S, player, center + Vector3.new(0, 2, 0), u.Radius, { Damage = u.BurstDamage, Stun = u.BurstStun, Knockback = u.BurstKnockback, Launch = u.BurstLaunch, Source = "BlackmoreRain" }, 8)
+			S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Burst", Position = center, Radius = u.Radius })
+		end)
+	end)
+end
+
+function Blackmore.Cleanup(S, player, state)
+	if state.Character then
+		state.Character:SetAttribute("Armored", nil)
+		state.Character:SetAttribute("RainScatter", nil)
+		state.Character:SetAttribute("RainStormUntil", nil)
+		scatters[state.Character] = nil
+	end
+end
+
+return Blackmore
+```
+
+## 33. DiegoBrando  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -7217,7 +7819,7 @@ end
 return Diego
 ```
 
-## 32. GyroZeppeli  (ModuleScript)
+## 34. GyroZeppeli  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -7541,7 +8143,7 @@ end
 return Gyro
 ```
 
-## 33. HotPants  (ModuleScript)
+## 35. HotPants  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -7824,7 +8426,7 @@ end
 return HotPants
 ```
 
-## 34. MountainTim  (ModuleScript)
+## 36. MountainTim  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -8229,7 +8831,7 @@ end
 return Tim
 ```
 
-## 35. PorkPieHatKid  (ModuleScript)
+## 37. PorkPieHatKid  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -8619,7 +9221,7 @@ end
 return PorkPie
 ```
 
-## 36. Sandman  (ModuleScript)
+## 38. Sandman  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -8892,7 +9494,7 @@ end
 return Sandman
 ```
 
-## 37. TuskAct1  (ModuleScript)
+## 39. TuskAct1  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -9252,7 +9854,7 @@ end
 return Act1
 ```
 
-## 38. TuskAct2  (ModuleScript)
+## 40. TuskAct2  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -9525,7 +10127,7 @@ end
 return Act2
 ```
 
-## 39. TuskAct3  (ModuleScript)
+## 41. TuskAct3  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -9716,7 +10318,7 @@ end
 return Act3
 ```
 
-## 40. TuskAct4  (ModuleScript)
+## 42. TuskAct4  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -9989,7 +10591,7 @@ end
 return Act4
 ```
 
-## 41. TuskHitbox  (ModuleScript)
+## 43. TuskHitbox  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -10070,7 +10672,7 @@ end
 return TuskHitbox
 ```
 
-## 42. TuskMoves  (ModuleScript)
+## 44. TuskMoves  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -10332,7 +10934,7 @@ TuskMoves.Config = TuskConfig
 return TuskMoves
 ```
 
-## 43. TuskService  (ModuleScript)
+## 45. TuskService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -10584,6 +11186,21 @@ function TuskService.fireLasso(player, state, spec)
 		Radius = spec.Radius,
 		Range = spec.Range,
 		Visual = { Style = spec.Style or "Lasso", Character = spec.Character },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Server projectile with a frozen-raindrop visual (Blackmore).
+function TuskService.fireRain(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "RainDrop",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Drop" },
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd,
 	})
@@ -11014,7 +11631,7 @@ end
 return TuskService
 ```
 
-## 44. TuskSneakService  (ModuleScript)
+## 46. TuskSneakService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -11277,7 +11894,7 @@ end
 return TuskSneakService
 ```
 
-## 45. SpinClient  (LocalScript)
+## 47. SpinClient  (LocalScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts`
 
 ```lua
@@ -11312,7 +11929,7 @@ DefenseClient.init()
 BountyUI.init()
 ```
 
-## 46. CameraFX  (ModuleScript)
+## 48. CameraFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -11491,7 +12108,7 @@ end
 return CameraFX
 ```
 
-## 47. DefenseClient  (ModuleScript)
+## 49. DefenseClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -11792,7 +12409,7 @@ end
 return DefenseClient
 ```
 
-## 48. Fighters  (ModuleScript)
+## 50. Fighters  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -11827,7 +12444,7 @@ end
 return Fighters
 ```
 
-## 49. HitFX  (ModuleScript)
+## 51. HitFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -11888,6 +12505,8 @@ local function onHit(data)
 		starColor = Color3.fromRGB(214, 156, 84)
 	elseif source:sub(1, 8) == "HotPants" then
 		starColor = Color3.fromRGB(242, 140, 172)
+	elseif source:sub(1, 9) == "Blackmore" then
+		starColor = Color3.fromRGB(110, 180, 255)
 	end
 	if data.Perfect then
 		starColor = colors.Gold
@@ -11972,7 +12591,7 @@ end
 return HitFX
 ```
 
-## 50. JointCache  (ModuleScript)
+## 52. JointCache  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -12027,7 +12646,7 @@ end
 return JointCache
 ```
 
-## 51. TuskActCommon  (ModuleScript)
+## 53. TuskActCommon  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -12073,6 +12692,7 @@ Common.Palettes = {
 	[8] = { Main = Color3.fromRGB(245, 185, 80), Second = Color3.fromRGB(50, 140, 160), Light = Color3.fromRGB(255, 240, 205) }, -- Sandman (sand + turquoise)
 	[9] = { Main = Color3.fromRGB(214, 156, 84), Second = Color3.fromRGB(96, 62, 38), Light = Color3.fromRGB(255, 232, 196) }, -- Mountain Tim (leather + rope)
 	[10] = { Main = Color3.fromRGB(242, 140, 172), Second = Color3.fromRGB(120, 60, 92), Light = Color3.fromRGB(255, 220, 230) }, -- Hot Pants (Cream Starter pink)
+	[11] = { Main = Color3.fromRGB(110, 180, 255), Second = Color3.fromRGB(40, 50, 90), Light = Color3.fromRGB(225, 245, 255) }, -- Blackmore (rain blue)
 }
 
 function Common.palette(act)
@@ -12279,12 +12899,12 @@ end
 return Common
 ```
 
-## 52. TuskActVFX  (Folder)
+## 54. TuskActVFX  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 53. Act1  (ModuleScript)
+## 55. Act1  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -12666,7 +13286,7 @@ end
 return Act1
 ```
 
-## 54. Act2  (ModuleScript)
+## 56. Act2  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -12778,7 +13398,7 @@ end
 return Act2
 ```
 
-## 55. Act3  (ModuleScript)
+## 57. Act3  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -12956,7 +13576,7 @@ end
 return Act3
 ```
 
-## 56. Act4  (ModuleScript)
+## 58. Act4  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -13266,7 +13886,595 @@ end
 return Act4
 ```
 
-## 57. Diego  (ModuleScript)
+## 59. BlackmoreVFX  (ModuleScript)
+**Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
+
+```lua
+--[[
+	TuskActVFX.BlackmoreVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.BlackmoreVFX)
+
+	Client visuals for Blackmore / CATCH THE RAINBOW: raindrops frozen in
+	mid-air. Blocky like the rest of the game.
+	  * his UMBRELLA is always in his left hand (closed, like a cane); it
+	    opens above his head during the storm
+	  * RAINDROP BLADES: drops freeze in a fan in front of him, shiver, fire
+	  * RAINDROP STEP: a stair of frozen drops hangs in the air along his dash
+	    for a few seconds, then falls and splashes
+	  * RAINDROP CAGE: a dome of frozen drops follows the target; each cut flashes
+	  * CATCH THE RAINBOW: a dark cloud, a downpour, a rainbow arc overhead,
+	    frozen drops hanging everywhere; he scatters into raindrops when hit;
+	    the end: every drop fires inward
+]]
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local Net = require(Shared.Net)
+local VFXLib = require(script.Parent.Parent.VFXLib)
+local CameraFX = require(script.Parent.Parent.CameraFX)
+local TuskVFX = require(script.Parent.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
+local Common = require(script.Parent.Parent.TuskActCommon)
+local Fighters = require(script.Parent.Parent.Fighters)
+
+local BlackmoreVFX = {}
+local ACT = 11
+local pal = Common.palette(ACT)
+local sounds = TuskConfig.Sounds
+
+local DROP = Color3.fromRGB(150, 205, 255)
+local DROP_LIGHT = Color3.fromRGB(225, 245, 255)
+local CANOPY = Color3.fromRGB(40, 60, 120)
+local CANOPY_TRIM = Color3.fromRGB(110, 170, 240)
+local SHAFT = Color3.fromRGB(30, 30, 36)
+local RAINBOW = {
+	Color3.fromRGB(255, 70, 70), Color3.fromRGB(255, 150, 60), Color3.fromRGB(255, 230, 80), Color3.fromRGB(90, 220, 110),
+	Color3.fromRGB(80, 170, 255), Color3.fromRGB(110, 100, 230), Color3.fromRGB(180, 110, 230),
+}
+
+local umbrellas = {} -- [character] = { Closed, Open }
+local stanced = {}
+local projectiles = {} -- [id] = flying drop
+local cages = {} -- [model] = dome of drops
+local storms = {} -- list of active storms
+
+---------------------------------------------------------------------------
+-- Pieces
+---------------------------------------------------------------------------
+local function box(model, size, cf, color, material, transparency)
+	local p = VFXLib.part({ Size = size, CFrame = cf, Color = color, Material = material or Enum.Material.SmoothPlastic, Transparency = transparency or 0 })
+	p.Parent = model
+	return p
+end
+
+local function newDrop(scale)
+	local s = scale or 1
+	return VFXLib.part({ Size = Vector3.new(0.18, 0.36, 0.18) * s, Color = DROP, Material = Enum.Material.Glass, Transparency = 0.2 })
+end
+
+-- Closed umbrella (a cane): handle at the origin, shaft going down -Y.
+local function buildClosedUmbrella()
+	local m = Instance.new("Model")
+	m.Name = "Umbrella"
+	m.Parent = VFXLib.Folder
+	local grip = box(m, Vector3.new(0.16, 0.5, 0.16), CFrame.new(0, 0.15, 0), SHAFT)
+	box(m, Vector3.new(0.16, 0.16, 0.4), CFrame.new(0, 0.42, -0.14), SHAFT) -- hooked handle
+	box(m, Vector3.new(0.16, 0.3, 0.16), CFrame.new(0, 0.3, -0.32), SHAFT)
+	box(m, Vector3.new(0.08, 2.8, 0.08), CFrame.new(0, -1.3, 0), SHAFT)
+	-- Furled canopy: stacked blocks tapering to the tip.
+	for i = 0, 3 do
+		local w = 0.42 - i * 0.08
+		box(m, Vector3.new(w, 0.5, w), CFrame.new(0, -0.9 - i * 0.45, 0), i % 2 == 0 and CANOPY or CANOPY:Lerp(CANOPY_TRIM, 0.2))
+	end
+	box(m, Vector3.new(0.3, 0.06, 0.3), CFrame.new(0, -0.62, 0), CANOPY_TRIM)
+	box(m, Vector3.new(0.06, 0.3, 0.06), CFrame.new(0, -2.85, 0), Color3.fromRGB(190, 195, 205)) -- tip
+	m.PrimaryPart = grip
+	return m
+end
+
+-- Open umbrella: canopy above, handle at the bottom of the shaft (origin = grip).
+local function buildOpenUmbrella()
+	local m = Instance.new("Model")
+	m.Name = "UmbrellaOpen"
+	m.Parent = VFXLib.Folder
+	local grip = box(m, Vector3.new(0.16, 0.5, 0.16), CFrame.new(), SHAFT)
+	box(m, Vector3.new(0.08, 2.6, 0.08), CFrame.new(0, 1.4, 0), SHAFT)
+	-- Stepped octagon canopy: wide plates getting smaller toward the top.
+	for i = 0, 3 do
+		local r = 2.4 - i * 0.55
+		local y = 2.5 + i * 0.22
+		local color = i % 2 == 0 and CANOPY or CANOPY:Lerp(CANOPY_TRIM, 0.25)
+		box(m, Vector3.new(r * 2, 0.16, r * 1.2), CFrame.new(0, y, 0), color)
+		box(m, Vector3.new(r * 1.2, 0.16, r * 2), CFrame.new(0, y, 0), color)
+	end
+	for i = 0, 7 do
+		local a = i / 8 * math.pi * 2
+		box(m, Vector3.new(0.08, 0.08, 2.4), CFrame.new(math.cos(a) * 1.2, 2.45, math.sin(a) * 1.2) * CFrame.Angles(0, -a + math.pi / 2, 0) * CFrame.Angles(0.15, 0, 0), CANOPY_TRIM)
+	end
+	box(m, Vector3.new(0.1, 0.4, 0.1), CFrame.new(0, 3.5, 0), Color3.fromRGB(190, 195, 205))
+	m.PrimaryPart = grip
+	return m
+end
+
+local function splash(position, size)
+	size = size or 1
+	VFXLib.burst(position, { Count = math.floor(10 * size), Color = DROP_LIGHT, Speed = 14 * size, Lifetime = 0.35, Spread = 60, Direction = Vector3.new(0, 1, 0), Acceleration = Vector3.new(0, -40, 0) })
+end
+
+-- Drops let go: they fall and splash.
+local function release(drops)
+	for _, d in ipairs(drops) do
+		local from = d.Position
+		VFXLib.animate(0.35, function(a)
+			d.CFrame = CFrame.new(from - Vector3.new(0, 9 * a * a, 0))
+			d.Transparency = 0.2 + a * 0.8
+		end, function()
+			d:Destroy()
+		end)
+	end
+end
+
+---------------------------------------------------------------------------
+-- Umbrella in his hand
+---------------------------------------------------------------------------
+local function stormOver(character)
+	for _, st in ipairs(storms) do
+		if st.Character == character then
+			return st
+		end
+	end
+	return nil
+end
+
+local function stepUmbrellas()
+	local seen = {}
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		if character and character:GetAttribute("TuskAct") == ACT then
+			local hand = character:FindFirstChild("LeftHand") or character:FindFirstChild("Left Arm")
+			local root = Common.rootOf(character)
+			if hand and root then
+				seen[character] = true
+				local u = umbrellas[character]
+				if not u then
+					u = { Closed = buildClosedUmbrella(), Open = buildOpenUmbrella() }
+					umbrellas[character] = u
+				end
+				local storm = stormOver(character)
+				local down = hand.Name == "Left Arm" and -hand.Size.Y / 2 + 0.2 or -0.15
+				if storm then
+					-- Open, held above his head.
+					u.Closed:PivotTo(CFrame.new(0, -1000, 0))
+					u.Open:PivotTo(root.CFrame * CFrame.new(-0.6, 1.4, 0) * CFrame.Angles(0, 0, 0.08))
+				else
+					-- Closed, carried like a cane.
+					u.Open:PivotTo(CFrame.new(0, -1000, 0))
+					u.Closed:PivotTo(hand.CFrame * CFrame.new(0, down, 0))
+				end
+			end
+		end
+	end
+	for character, u in pairs(umbrellas) do
+		if not seen[character] then
+			u.Closed:Destroy()
+			u.Open:Destroy()
+			umbrellas[character] = nil
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Raindrop projectiles (server Kind "RainDrop")
+---------------------------------------------------------------------------
+local function spawnDrop(data)
+	local d = newDrop(1.4)
+	local a0 = Instance.new("Attachment")
+	a0.Position = Vector3.new(0, 0.2, 0)
+	a0.Parent = d
+	local a1 = Instance.new("Attachment")
+	a1.Position = Vector3.new(0, -0.2, 0)
+	a1.Parent = d
+	local trail = Instance.new("Trail")
+	trail.Attachment0 = a0
+	trail.Attachment1 = a1
+	trail.Color = ColorSequence.new(DROP_LIGHT, DROP)
+	trail.Lifetime = 0.12
+	trail.LightEmission = 0.6
+	trail.Transparency = NumberSequence.new(0.3, 1)
+	trail.Parent = d
+	projectiles[data.Id] = { Part = d, Origin = data.Origin, Direction = data.Direction, Speed = data.Speed, Range = data.Range, ServerTime = data.ServerTime, Expire = os.clock() + data.Range / math.max(data.Speed, 1) + 0.5 }
+end
+
+local function endDrop(data)
+	local v = projectiles[data.Id]
+	if v then
+		projectiles[data.Id] = nil
+		v.Part:Destroy()
+	end
+	splash(data.Position, data.HitCharacter and 0.9 or 0.5)
+	if data.HitCharacter then
+		TuskVFX.CreateImpactStar(data.Position, { Size = 2.4, Rays = 6, Color = DROP, Color2 = Color3.new(1, 1, 1), Duration = 0.12 })
+	end
+end
+
+local function stepDrops()
+	local now = os.clock()
+	local serverNow = workspace:GetServerTimeNow()
+	for id, v in pairs(projectiles) do
+		local distance = math.min(v.Speed * (serverNow - v.ServerTime), v.Range)
+		local pos = v.Origin + v.Direction * math.max(distance, 0)
+		-- Point along the flight, like a streak.
+		v.Part.CFrame = CFrame.lookAt(pos, pos + v.Direction) * CFrame.Angles(math.pi / 2, 0, 0)
+		if now > v.Expire then
+			projectiles[id] = nil
+			v.Part:Destroy()
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Moves
+---------------------------------------------------------------------------
+local function onM1(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if not root then
+		return
+	end
+	local index = data.Index
+	TuskAnimation.play(character, "B_M1_" .. index)
+	VFXLib.sound(sounds.Swing, root, 0.5, 1.05 + index * 0.06)
+	Common.swipe(root, index % 2 == 1 and 1 or -1, index % 2 == 1 and pal.Main or DROP_LIGHT)
+	-- A few frozen shards flick out with each strike.
+	for i = 1, 3 do
+		local d = newDrop(0.9)
+		local dir = (root.CFrame * CFrame.Angles(0, (i - 2) * 0.25, 0)).LookVector
+		local from = (root.CFrame * CFrame.new(0, 0.5, -1.5)).Position
+		VFXLib.animate(0.18, function(a)
+			local p = from + dir * 6 * a
+			d.CFrame = CFrame.lookAt(p, p + dir) * CFrame.Angles(math.pi / 2, 0, 0)
+			d.Transparency = 0.2 + a * 0.8
+		end, function()
+			d:Destroy()
+		end)
+	end
+end
+
+local function onFinisher(data)
+	Common.finisher(data, pal)
+	-- A fan of hardened drops bursts out.
+	local root = Common.rootOf(data.Character)
+	if not root then
+		return
+	end
+	for i = 1, 9 do
+		local d = newDrop(1.2)
+		local dir = (root.CFrame * CFrame.Angles(0, (i - 5) * 0.18, 0)).LookVector
+		local from = data.Position + Vector3.new(0, 0.5, 0)
+		VFXLib.animate(0.3, function(a)
+			local p = from + dir * 10 * a
+			d.CFrame = CFrame.lookAt(p, p + dir) * CFrame.Angles(math.pi / 2, 0, 0)
+			d.Transparency = 0.2 + a * 0.8
+		end, function()
+			d:Destroy()
+		end)
+	end
+end
+
+-- Fibonacci-sphere points for a dome of drops.
+local function domePoints(n, radius)
+	local pts = {}
+	for i = 0, n - 1 do
+		local y = 1 - (i / (n - 1)) * 1.4 -- top cap down past the middle
+		local r = math.sqrt(math.max(0, 1 - y * y))
+		local phi = i * 2.39996
+		pts[i + 1] = Vector3.new(math.cos(phi) * r, y, math.sin(phi) * r) * radius
+	end
+	return pts
+end
+
+local function onAbility(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	local move, phase = data.Move, data.Phase
+	if move == "RaindropBlades" and phase == "Freeze" and root then
+		TuskAnimation.play(character, "BMBlades")
+		-- Drops freeze in a fan in front of him, shivering, then fire.
+		local drops = {}
+		local count = (data.Drops or 7) * 3
+		local dir = data.Direction or root.CFrame.LookVector
+		local base = CFrame.lookAt(root.Position + Vector3.new(0, 1, 0), root.Position + Vector3.new(0, 1, 0) + dir)
+		for i = 1, count do
+			local t = (i - 1) / (count - 1) - 0.5
+			local d = newDrop(1.1)
+			local cf = base * CFrame.Angles(0, math.rad(-t * (data.Spread or 34)), 0) * CFrame.new((i % 3 - 1) * 0.3, (i % 3 - 1) * 0.5, -2.5 - (i % 3) * 0.4)
+			d.CFrame = cf * CFrame.Angles(math.pi / 2, 0, 0)
+			drops[i] = { Part = d, CF = d.CFrame }
+		end
+		VFXLib.animate(data.Startup or 0.3, function(a)
+			for _, d in ipairs(drops) do
+				d.Part.CFrame = d.CF + Vector3.new((math.random() - 0.5) * 0.08, (math.random() - 0.5) * 0.08, 0)
+			end
+		end, function()
+			for _, d in ipairs(drops) do
+				d.Part:Destroy()
+			end
+		end)
+		VFXLib.sound(sounds.Warning, root, 0.3, 1.8)
+	elseif move == "RaindropStep" and phase == "Step" then
+		TuskAnimation.play(character, "BMStep")
+		local from, to = data.From, data.To
+		local steps = math.max(4, math.floor((to - from).Magnitude / 2.2))
+		local drops = {}
+		for i = 0, steps do
+			local p = from:Lerp(to, i / steps) + Vector3.new(0, -2.4 + math.sin(i / steps * math.pi) * 1.2, 0)
+			for k = 1, 3 do
+				local d = newDrop(1)
+				d.CFrame = CFrame.new(p + Vector3.new((k - 2) * 0.5, (k % 2) * 0.3, 0))
+				table.insert(drops, d)
+			end
+			task.delay(i * (data.Travel or 0.25) / steps, function()
+				if character and character.Parent then
+					VFXLib.afterimage(CFrame.new(from:Lerp(to, i / steps)), 2, DROP)
+				end
+			end)
+		end
+		splash(from - Vector3.new(0, 2.5, 0), 0.6)
+		-- The drops hang (glinting), then fall.
+		local life = data.TrailTime or 3
+		VFXLib.animate(life, function(a)
+			for i, d in ipairs(drops) do
+				if (i + math.floor(a * 30)) % 9 == 0 then
+					d.Color = DROP_LIGHT
+				else
+					d.Color = DROP
+				end
+			end
+		end, function()
+			release(drops)
+		end)
+		if Common.isLocal(character) then
+			CameraFX.fovPunch(6, 0.2)
+		end
+	elseif move == "RaindropCage" then
+		if phase == "Startup" and character then
+			TuskAnimation.play(character, "BMCage")
+		elseif phase == "Cage" and data.Target then
+			local pts = domePoints(36, 3.4)
+			local drops = {}
+			for i, p in ipairs(pts) do
+				drops[i] = { Part = newDrop(1), Offset = p }
+			end
+			cages[data.Target] = { Drops = drops, Expire = os.clock() + (data.Duration or 2.5), Born = os.clock() }
+			local tr = Common.rootOf(data.Target)
+			if tr then
+				splash(tr.Position, 1)
+			end
+		elseif phase == "Cut" and data.Position then
+			VFXLib.burst(data.Position, { Count = 8, Color = DROP_LIGHT, Speed = 18, Lifetime = 0.25 })
+			TuskVFX.CreateImpactStar(data.Position, { Size = 2.5, Rays = 6, Color = DROP, Color2 = Color3.new(1, 1, 1), Duration = 0.12 })
+		elseif phase == "Miss" and root then
+			splash((root.CFrame * CFrame.new(0, 0, -6)).Position - Vector3.new(0, 2, 0), 0.6)
+		end
+	end
+end
+
+-- A rainbow arc over the storm: seven bands of short neon segments.
+local function buildRainbow(frame, radius)
+	local m = Instance.new("Model")
+	m.Name = "Rainbow"
+	m.Parent = VFXLib.Folder
+	for b, color in ipairs(RAINBOW) do
+		local r = radius - (b - 1) * 0.9
+		local n = 22
+		for i = 0, n - 1 do
+			local a0 = i / n * math.pi
+			local a1 = (i + 1) / n * math.pi
+			local p0 = frame * Vector3.new(math.cos(a0) * r, math.sin(a0) * r, 0)
+			local p1 = frame * Vector3.new(math.cos(a1) * r, math.sin(a1) * r, 0)
+			local seg = VFXLib.part({ Size = Vector3.new(0.9, 0.9, (p1 - p0).Magnitude + 0.1), Color = color, Material = Enum.Material.Neon, Transparency = 0.35 })
+			seg.CFrame = CFrame.lookAt((p0 + p1) / 2, p1)
+			seg.Parent = m
+		end
+	end
+	return m
+end
+
+local function onUltimate(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Phase == "Start" then
+		TuskAnimation.play(character, "BMStorm")
+		local center = data.Position
+		local radius = data.Radius or 22
+		local storm = { Character = character, Center = center, Radius = radius, Until = os.clock() + (data.Windup or 0.8) + (data.Duration or 5), Hanging = {}, Next = 0 }
+		-- Dark cloud overhead.
+		storm.Cloud = Instance.new("Model")
+		storm.Cloud.Parent = VFXLib.Folder
+		for i = 1, 9 do
+			local a = i / 9 * math.pi * 2
+			box(storm.Cloud, Vector3.new(12, 3, 12), CFrame.new(center + Vector3.new(math.cos(a) * radius * 0.55, 24 + (i % 3), math.sin(a) * radius * 0.55)), Color3.fromRGB(70, 74, 90), Enum.Material.SmoothPlastic, 0.25)
+		end
+		box(storm.Cloud, Vector3.new(radius, 3, radius), CFrame.new(center + Vector3.new(0, 25, 0)), Color3.fromRGB(60, 64, 80), Enum.Material.SmoothPlastic, 0.2)
+		-- The rainbow arcs over the storm.
+		local look = root and root.CFrame.LookVector or Vector3.new(0, 0, -1)
+		local flatLook = Vector3.new(look.X, 0, look.Z)
+		flatLook = flatLook.Magnitude > 0.01 and flatLook.Unit or Vector3.new(0, 0, -1)
+		local arcAt = center + flatLook * radius * 0.6 + Vector3.new(0, 2, 0)
+		storm.Rainbow = buildRainbow(CFrame.lookAt(arcAt, arcAt + flatLook), radius * 0.9)
+		-- Frozen drops hanging all through the area.
+		for i = 1, 40 do
+			local a = math.random() * math.pi * 2
+			local r = math.sqrt(math.random()) * radius
+			local d = newDrop(1.2)
+			d.CFrame = CFrame.new(center + Vector3.new(math.cos(a) * r, math.random() * 8 - 1, math.sin(a) * r))
+			table.insert(storm.Hanging, d)
+		end
+		table.insert(storms, storm)
+		if Common.isLocal(character) then
+			TuskVFX.ScreenTint((data.Windup or 0.8) + (data.Duration or 5), { Tint = Color3.fromRGB(190, 205, 235), Saturation = -0.3, Brightness = -0.1 })
+		end
+		VFXLib.sound(sounds.AwakeningBuild, center, 0.5, 1.3)
+	elseif data.Phase == "Scatter" then
+		-- He bursts into raindrops and comes back together out of reach.
+		local from, to = data.From, data.To
+		VFXLib.burst(from, { Count = 30, Color = DROP_LIGHT, Speed = 22, Lifetime = 0.4 })
+		for i = 1, 14 do
+			local d = newDrop(1.1)
+			local off = Vector3.new(math.random() - 0.5, math.random() * 2 - 1, math.random() - 0.5) * 3
+			VFXLib.animate(0.25, function(a)
+				d.CFrame = CFrame.new((from + off):Lerp(to + off * (1 - a), a))
+			end, function()
+				d:Destroy()
+			end)
+		end
+		splash(to, 1)
+	elseif data.Phase == "Burst" then
+		local center = data.Position
+		for i = #storms, 1, -1 do
+			local st = storms[i]
+			if st.Character == character then
+				table.remove(storms, i)
+				-- Every hanging drop fires inward.
+				for _, d in ipairs(st.Hanging) do
+					local from = d.Position
+					VFXLib.animate(0.2, function(a)
+						d.CFrame = CFrame.lookAt(from:Lerp(center + Vector3.new(0, 1, 0), a), center) * CFrame.Angles(math.pi / 2, 0, 0)
+					end, function()
+						d:Destroy()
+					end)
+				end
+				st.Cloud:Destroy()
+				st.Rainbow:Destroy()
+			end
+		end
+		task.delay(0.2, function()
+			Common.finisher({ Character = character, Position = center + Vector3.new(0, 1, 0), Radius = data.Radius, Hit = true }, pal, { Size = 1.6, Layers = 3, Shake = 0.9 })
+			splash(center, 2.5)
+		end)
+		if Common.isLocal(character) then
+			CameraFX.impactFrame(DROP_LIGHT)
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Every frame
+---------------------------------------------------------------------------
+local function stepCages()
+	local now = os.clock()
+	for target, cage in pairs(cages) do
+		local tr = Common.rootOf(target)
+		if not tr or now > cage.Expire then
+			cages[target] = nil
+			local parts = {}
+			for _, d in ipairs(cage.Drops) do
+				table.insert(parts, d.Part)
+			end
+			release(parts)
+		else
+			local grow = math.min((now - cage.Born) / 0.2, 1)
+			for i, d in ipairs(cage.Drops) do
+				local jitter = Vector3.new(math.sin(now * 9 + i), math.cos(now * 7 + i), math.sin(now * 8 + i * 2)) * 0.05
+				d.Part.CFrame = CFrame.new(tr.Position + d.Offset * grow + jitter)
+			end
+		end
+	end
+end
+
+local function stepStorms(dt)
+	local now = os.clock()
+	for i = #storms, 1, -1 do
+		local st = storms[i]
+		if now > st.Until + 1 then
+			table.remove(storms, i)
+			release(st.Hanging)
+			st.Cloud:Destroy()
+			st.Rainbow:Destroy()
+		else
+			-- The downpour: streaks falling from the cloud.
+			st.Next = st.Next - dt
+			while st.Next <= 0 do
+				st.Next = st.Next + 0.03
+				local a = math.random() * math.pi * 2
+				local r = math.sqrt(math.random()) * st.Radius
+				local top = st.Center + Vector3.new(math.cos(a) * r, 22, math.sin(a) * r)
+				local streak = VFXLib.part({ Size = Vector3.new(0.08, 1.6, 0.08), Color = DROP_LIGHT, Material = Enum.Material.Glass, Transparency = 0.35 })
+				VFXLib.animate(0.45, function(t)
+					streak.CFrame = CFrame.new(top - Vector3.new(0, 24 * t, 0))
+				end, function()
+					streak:Destroy()
+				end)
+			end
+			-- Hanging drops glint.
+			for k, d in ipairs(st.Hanging) do
+				d.Color = (k + math.floor(now * 12)) % 11 == 0 and DROP_LIGHT or DROP
+			end
+		end
+	end
+end
+
+local function stepStance()
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		if character then
+			local want = character:GetAttribute("TuskAct") == ACT
+			if want and not stanced[character] then
+				stanced[character] = true
+				TuskAnimation.hold(character, "BMStance")
+			elseif not want and stanced[character] then
+				stanced[character] = nil
+				TuskAnimation.stopHold(character, "BMStance")
+			end
+		end
+	end
+	for character in pairs(stanced) do
+		if not character.Parent then
+			stanced[character] = nil
+		end
+	end
+end
+
+function BlackmoreVFX.handle(name, data)
+	if name == "M1" then
+		onM1(data)
+	elseif name == "M1Finisher" then
+		onFinisher(data)
+	elseif name == "Ability" then
+		onAbility(data)
+	elseif name == "Ultimate" then
+		onUltimate(data)
+	end
+end
+
+local slowTimer = 0
+function BlackmoreVFX.step(dt)
+	dt = dt or 1 / 60
+	stepUmbrellas()
+	stepDrops()
+	stepCages()
+	stepStorms(dt)
+	slowTimer = slowTimer + dt
+	if slowTimer > 0.2 then
+		slowTimer = 0
+		stepStance()
+	end
+end
+
+Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+	if typeof(data) ~= "table" or data.Kind ~= "RainDrop" then
+		return
+	end
+	if name == "ProjectileSpawn" then
+		spawnDrop(data)
+	elseif name == "ProjectileEnd" then
+		endDrop(data)
+	end
+end)
+
+return BlackmoreVFX
+```
+
+## 60. Diego  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -14158,7 +15366,7 @@ end
 return Diego
 ```
 
-## 58. Gyro  (ModuleScript)
+## 61. Gyro  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -15293,7 +16501,7 @@ end)
 return Gyro
 ```
 
-## 59. HotPantsVFX  (ModuleScript)
+## 62. HotPantsVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -15853,7 +17061,7 @@ end
 return HotPantsVFX
 ```
 
-## 60. MountainTimVFX  (ModuleScript)
+## 63. MountainTimVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -16763,7 +17971,7 @@ end)
 return TimVFX
 ```
 
-## 61. PorkPie  (ModuleScript)
+## 64. PorkPie  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -17422,7 +18630,7 @@ end)
 return PorkPie
 ```
 
-## 62. SandmanVFX  (ModuleScript)
+## 65. SandmanVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -17824,7 +19032,7 @@ end)
 return SandmanVFX
 ```
 
-## 63. TuskAnimation  (ModuleScript)
+## 66. TuskAnimation  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -18017,6 +19225,15 @@ TuskAnimation.Poses = {
 	StormRaise = { Root = { 8, 0, 0, 0.25 }, Waist = { 16, 0, 0 }, Neck = { 30, 0, 0 }, RightArm = { 175, 0, 15 }, RightElbow = { 10, 0, 0 }, LeftArm = { 60, 0, -60 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -50, 0, 0 } },
 	StormSweepL = { Root = { 0, 30, 0, -0.1, 0.2 }, Waist = { -6, 30, 0 }, Neck = { 0, -20, 0 }, RightArm = { 110, -30, 10 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
 	StormSweepR = { Root = { 0, -30, 0, -0.1, 0.2 }, Waist = { -6, -30, 0 }, Neck = { 0, 24, 0 }, RightArm = { 110, 30, 0 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
+	-- BLACKMORE: calm and precise; umbrella in his left hand like a cane.
+	BMStance = { Root = { 0, 6, 0, -0.03 }, Waist = { -2, 6, 0 }, Neck = { 2, -4, 0 }, RightArm = { 20, 0, 12 }, RightElbow = { 40, 0, 0 }, LeftArm = { 18, 0, -8 }, LeftElbow = { 20, 0, 0 }, LeftHip = { 4, 0, 0 } },
+	BladesWind = { Root = { 0, 22, 0, -0.08 }, Waist = { 0, 24, 0 }, Neck = { 0, -14, 0 }, RightArm = { 70, 0, 80 }, RightElbow = { 30, 0, 0 }, LeftArm = { 30, 0, -20 }, RightKnee = { -14, 0, 0 } },
+	BladesSweep = { Root = { 0, -26, 0, -0.1, 0.3 }, Waist = { 0, -32, 0 }, Neck = { 0, 18, 0 }, RightArm = { 92, -50, -10 }, RightElbow = { 0, 0, 0 }, LeftArm = { 40, 0, -30 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	RainStep = { Root = { -20, 0, 0, 0.3, 0.5 }, Waist = { -16, 0, 0 }, Neck = { 14, 0, 0 }, RightArm = { -30, 0, 20 }, LeftArm = { -30, 0, -20 }, RightHip = { 80, 0, 0 }, RightKnee = { -70, 0, 0 }, LeftHip = { -20, 0, 0 }, LeftKnee = { -40, 0, 0 } },
+	CagePalm = { Root = { -8, -10, 0, -0.1, 0.4 }, Waist = { -10, -14, 0 }, RightArm = { 95, 0, 10 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -20 }, LeftElbow = { 30, 0, 0 }, RightHip = { 24, 0, 0 }, RightKnee = { -26, 0, 0 }, Neck = { 4, 8, 0 } },
+	CageClose = { Root = { -6, -8, 0, -0.1, 0.3 }, Waist = { -8, -10, 0 }, RightArm = { 100, 0, 30 }, RightElbow = { 70, 0, 0 }, LeftArm = { 30, 0, -20 }, LeftElbow = { 30, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -22, 0, 0 } },
+	StormCall = { Root = { 8, 0, 0, 0.05 }, Waist = { 14, 0, 0 }, Neck = { 34, 0, 0 }, RightArm = { 165, 0, 30 }, RightElbow = { 20, 0, 0 }, LeftArm = { 150, 0, -10 }, LeftElbow = { 30, 0, 0 } },
+	StormHold = { Root = { 0, 0, 0, 0 }, Waist = { 4, 0, 0 }, Neck = { 10, 0, 0 }, RightArm = { 60, 0, 40 }, RightElbow = { 40, 0, 0 }, LeftArm = { 120, 0, -10 }, LeftElbow = { 60, 0, 0 } },
 	-- SANDMAN: a light-footed runner; knife-hand chops and spinning kicks.
 	SandStance = { Root = { 0, 10, 0, -0.18 }, Waist = { -8, 8, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, 18 }, RightElbow = { 70, 0, 0 }, LeftArm = { 55, 0, -22 }, LeftElbow = { 60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -8, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 	ChopCoil = { Root = { 0, 26, 0, -0.14 }, Waist = { 6, 30, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 60, 0, 0 }, LeftArm = { 60, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -14, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightKnee = { -12, 0, 0 } },
@@ -18071,6 +19288,8 @@ do
 	P.DashLeft = mirror(P.DashRight)
 	P.JabCoilL = mirror(P.JabCoil)
 	P.JabStrikeL = mirror(P.JabStrike)
+	P.BladesSweepL = mirror(P.BladesSweep)
+	P.BladesWindL = mirror(P.BladesWind)
 end
 
 --[[
@@ -18155,6 +19374,16 @@ TuskAnimation.Actions = {
 	HPSeal = { { 0, "HPStance" }, { 0.1, "CanShakeB", "In" }, { 0.18, "SealDash", "Snap", 4 }, { 0.28, "SealPress", "Snap", 5 }, { 0.5, "SealPress", "Linear", 2 }, { 0.66, "HPStance", "Sine" } },
 	HPMend = { { 0, "HPStance" }, { 0.12, "SelfSprayHigh", "Out" }, { 0.55, "SelfSprayLow", "Sine", 1 }, { 0.92, "SelfSprayHigh", "Sine", 1 }, { 1.12, "MendRelief", "Back" }, { 1.35, "HPStance", "Sine" } },
 	HPStorm = { { 0, "HPStance" }, { 0.05, "CanShakeA", "Snap" }, { 0.1, "CanShakeB", "Snap", 1 }, { 0.15, "CanShakeA", "Snap", 1 }, { 0.2, "CanShakeB", "Snap", 2 }, { 0.38, "StormRaise", "Back", 4 }, { 0.6, "StormSweepL", "Snap", 3 }, { 0.9, "StormSweepR", "Sine", 2 }, { 1.1, "SprayThrust", "Snap", 5 }, { 1.4, "SprayThrust", "Linear", 2 }, { 1.6, "HPStance", "Sine" } },
+
+	-- BLACKMORE
+	B_M1_1 = { { 0, "Rest" }, { 0.07, "BladesWind", "In" }, { 0.12, "BladesSweep", "Back", 4 }, { 0.17, "BladesSweep", "Linear" }, { 0.3, "BMStance", "Sine" } },
+	B_M1_2 = { { 0, "BladesSweep" }, { 0.07, "BladesWindL", "In" }, { 0.12, "BladesSweepL", "Back", 4 }, { 0.17, "BladesSweepL", "Linear" }, { 0.3, "BMStance", "Sine" } },
+	B_M1_3 = { { 0, "Rest" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "BMStance", "Sine" } },
+	B_M1_4 = { { 0, "Rest" }, { 0.12, "CagePalm", "In" }, { 0.2, "BladesSweep", "Snap", 7 }, { 0.26, "BladesSweep", "Linear" }, { 0.44, "BMStance", "Sine" } },
+	BMBlades = { { 0, "Rest" }, { 0.12, "BladesWind", "In" }, { 0.3, "BladesWind", "Linear", 1 }, { 0.36, "BladesSweep", "Snap", 5 }, { 0.55, "BMStance", "Sine" } },
+	BMStep = { { 0, "Rest" }, { 0.06, "RainStep", "Snap", 2 }, { 0.3, "RainStep", "Linear" }, { 0.45, "BMStance", "Sine" } },
+	BMCage = { { 0, "Rest" }, { 0.12, "CagePalm", "Out" }, { 0.24, "CageClose", "Snap", 5 }, { 0.45, "CageClose", "Sine" }, { 0.6, "BMStance", "Sine" } },
+	BMStorm = { { 0, "Rest" }, { 0.3, "StormCall", "Back", 3 }, { 0.8, "StormCall", "Linear", 3 }, { 1.1, "StormHold", "Sine" }, { 1.4, "StormHold" } },
 
 	-- SANDMAN
 	S_M1_1 = { { 0, "Rest" }, { 0.07, "ChopCoil", "In" }, { 0.12, "ChopStrike", "Back", 4 }, { 0.17, "ChopStrike", "Linear" }, { 0.3, "SandStance", "Sine" } },
@@ -18527,7 +19756,7 @@ end)
 return TuskAnimation
 ```
 
-## 64. TuskController  (ModuleScript)
+## 67. TuskController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -18775,7 +20004,7 @@ end
 return TuskController
 ```
 
-## 65. TuskProjectiles  (ModuleScript)
+## 68. TuskProjectiles  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -19051,7 +20280,7 @@ end
 return TuskProjectiles
 ```
 
-## 66. TuskSneakController  (ModuleScript)
+## 69. TuskSneakController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -19336,7 +20565,7 @@ end
 return TuskSneakController
 ```
 
-## 67. TuskStand  (ModuleScript)
+## 70. TuskStand  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -19701,7 +20930,7 @@ end
 return TuskStand
 ```
 
-## 68. TuskVFX  (ModuleScript)
+## 71. TuskVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -20945,12 +22174,12 @@ end
 return TuskVFX
 ```
 
-## 69. UI  (Folder)
+## 72. UI  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 70. BountyUI  (ModuleScript)
+## 73. BountyUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -21552,7 +22781,7 @@ end
 return BountyUI
 ```
 
-## 71. CharacterCard  (ModuleScript)
+## 74. CharacterCard  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -22165,7 +23394,7 @@ end
 return CharacterCard
 ```
 
-## 72. CombatUI  (ModuleScript)
+## 75. CombatUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -22511,7 +23740,7 @@ end
 return CombatUI
 ```
 
-## 73. SettingsUI  (ModuleScript)
+## 76. SettingsUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -22586,7 +23815,7 @@ end
 return SettingsUI
 ```
 
-## 74. TuskUI  (ModuleScript)
+## 77. TuskUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -22727,7 +23956,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("FLESH SPRAY") or has("FLESH STORM") then
+	if has("RAINDROP BLADES") or has("RAINBOW") then
+		return "rain"
+	elseif has("RAINDROP STEP") then
+		return "dash"
+	elseif has("RAINDROP CAGE") then
+		return "portal"
+	elseif has("FLESH SPRAY") or has("FLESH STORM") then
 		return "spray"
 	elseif has("FLESH SEAL") then
 		return "seal"
@@ -22890,6 +24125,12 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "rain" then
+		-- Three falling drops.
+		for i = -1, 1 do
+			local d = bar(icon, 0.5 + i * 0.25, 0.42 + (i % 2) * 0.18, 0.12, 0.3, 0)
+			corner(d, 999)
+		end
 	elseif kind == "spray" then
 		-- Spray can with a mist puff.
 		bar(icon, 0.32, 0.6, 0.26, 0.5, 0)
@@ -23724,7 +24965,7 @@ end
 return TuskUI
 ```
 
-## 75. VFXLib  (ModuleScript)
+## 78. VFXLib  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -24090,7 +25331,7 @@ end
 return VFXLib
 ```
 
-## 76. WorldClient  (ModuleScript)
+## 79. WorldClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -24327,12 +25568,12 @@ end
 return WorldClient
 ```
 
-## 77. SpinTools  (Folder)
+## 80. SpinTools  (Folder)
 **Put it in:** `ServerStorage`
 
 _Empty folder: nothing to paste._
 
-## 78. SBRMapBuilder  (ModuleScript)
+## 81. SBRMapBuilder  (ModuleScript)
 **Put it in:** `ServerStorage › SpinTools`
 
 ```lua
