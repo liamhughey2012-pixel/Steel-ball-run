@@ -3072,6 +3072,20 @@ local SIGNATURE_ROUND = {
 	[4] = with({ "Head", "Visor", "HelmetRidge", "Emblem", "Chest", "ShoulderPad" }),
 }
 
+-- Other characters' Stands: a character pack registers its own builder.
+--   TuskStandModels.register(act, builder, { Aura = Color3, AuraLight = Color3, Offset = CFrame })
+-- builder(scale) -> model, rig (same shape as the Tusk rigs). Registered
+-- Stands are built blocky already, so they're not run through Blockify.
+local registered = {}
+function TuskStandModels.register(act, builder, info)
+	builders[act] = builder
+	registered[act] = info or {}
+end
+
+function TuskStandModels.info(act)
+	return registered[act]
+end
+
 function TuskStandModels.build(act, scale)
 	scale = scale or 1
 	local model, rig = override(act, scale)
@@ -3087,7 +3101,7 @@ function TuskStandModels.build(act, scale)
 	-- left as they are. Only the eyes stay round.
 	local style = act == 1 and TuskConfig.StandModels and TuskConfig.StandModels[1] and TuskConfig.StandModels[1].Style
 	local smooth = act == 1 and (style == "Model" or style == nil) -- the Studio-model look is smooth, like the screenshots
-	if built and Blockify.enabled(TuskConfig) and not smooth then
+	if built and Blockify.enabled(TuskConfig) and not smooth and not registered[act] then
 		Blockify.apply(built, { KeepRound = SIGNATURE_ROUND[act] })
 	end
 	return built, rig

@@ -26,3 +26,15 @@ Built from the character's description (no reference images yet). Send pictures 
 - Light runner's stance while equipped. Hit sparks are sand-gold.
 
 - **Faster than everyone:** Sandman walks 30% faster than the other characters (`WalkSpeed = 1.3` in his registry entry).
+
+## Stand: In a Silent Way (2026-11-23)
+![[in_a_silent_way_preview.png]]
+- Blocky model matched to the user's reference art (`TuskActVFX/SilentWayStand`, in `Sandman_Client`):
+  - a golden armoured body with six orange roses down the chest;
+  - a skull face under a gold helmet with round orange goggle eyes and a spiral on the forehead;
+  - a huge feather headdress (white feathers with dark red tips, and a shorter inner row with orange tips);
+  - spiked gold shoulder pads and gold arms with zigzag bands;
+  - bony white hands;
+  - a gold skirt with zigzags and spirals, and patterned gold legs.
+- It floats behind him with a **golden aura** (players and NPCs). It throws a strike with every M1 and ability, and does a big manifest spin on Silent Symphony.
+- How it works: the core now has `TuskStandModels.register(act, builder, { Aura, AuraLight, Offset })`, so any character pack can bring its own Stand. A custom model at `ReplicatedStorage.SpinAssets.TuskAct8` replaces the built-in one.

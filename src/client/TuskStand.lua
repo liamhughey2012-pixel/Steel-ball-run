@@ -42,7 +42,7 @@ local stands = {} -- [character] = stand
 local AURA = Color3.fromRGB(255, 105, 205)
 local AURA_LIGHT = Color3.fromRGB(255, 195, 238)
 
-local function addAura(model, rig)
+local function addAura(model, rig, AURA, AURA_LIGHT)
 	local body = rig and rig.Body or model.PrimaryPart
 	if not body then
 		return nil
@@ -141,18 +141,24 @@ local function build(character, act)
 			transparency[d] = d.Transparency
 		end
 	end
-	local aura = addAura(model, rig)
+	-- Pink Spin aura for Tusk; a registered Stand can bring its own colour.
+	local info = TuskStandModels.info and TuskStandModels.info(act) or {}
+	local auraColor, auraLight = info.Aura or AURA, info.AuraLight or AURA_LIGHT
+	local aura = addAura(model, rig, auraColor, auraLight)
 	-- Pink aura glow + outline (pulses in update); flashes brighter on Manifest.
 	local highlight = Instance.new("Highlight")
-	highlight.FillColor = AURA
+	highlight.FillColor = auraColor
 	highlight.FillTransparency = 0.85
-	highlight.OutlineColor = AURA
+	highlight.OutlineColor = auraColor
 	highlight.OutlineTransparency = 0.4
 	highlight.DepthMode = Enum.HighlightDepthMode.Occluded
 	highlight.Adornee = model
 	highlight.Parent = model
 	model.Parent = VFXLib.Folder
 	local root = character:FindFirstChild("HumanoidRootPart")
+	if info.Offset then
+		IDLE_OFFSETS[act] = info.Offset
+	end
 	local start = root and root.CFrame * (IDLE_OFFSETS[act] or IDLE_OFFSET) or CFrame.new()
 	model:PivotTo(start)
 	return {

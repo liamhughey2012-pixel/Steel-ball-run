@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
 | **Exact name** | `SandmanVFX` (capitals matter) |
 
-**What it does:** Client visuals for Sandman (Soundman) / IN A SILENT WAY: sounds become solid, written sound effects (blocky 3D words) that do what they say. M1: chops and a kick, each hit pops a written sound ("ZAN!", "DOGO!") SOUND SLASH: "ZBAAK!" skims along the ground, cutting what it touches SOUND TRAP: "DOGOOON" lies on the ground, pulsing; it explodes when stepped near SAND RUN: a sprint with a sand trail, "ZAZAZA" along the path SILENT SYMPHONY: sounds gather around him, rain down, then "DOOOOM!!"
+**What it does:** Client visuals for Sandman (Soundman) / IN A SILENT WAY: sounds become solid, written sound effects (blocky 3D words) that do what they say. M1: chops and a kick, each hit pops a written sound ("ZAN!", "DOGO!") SOUND SLASH: "ZBAAK!" skims along the ground, cutting what it touches SOUND TRAP: "DOGOOON" lies on the ground, pulsing; it explodes when stepped near SAND RUN: a sprint with a sand trail, "ZAZAZA" along the path the IN A SILENT WAY Stand (SilentWayStand) floats behind him and strikes with his moves SILENT SYMPHONY: sounds gather around him, rain down, then "DOOOOM!!"
 
 ## How to add it
 1. In Studio's Explorer, find **TuskActVFX** (StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX).
@@ -33,6 +33,8 @@ Back to [[Where To Put Code]]
 	  * SOUND SLASH: "ZBAAK!" skims along the ground, cutting what it touches
 	  * SOUND TRAP: "DOGOOON" lies on the ground, pulsing; it explodes when stepped near
 	  * SAND RUN: a sprint with a sand trail, "ZAZAZA" along the path
+	  * the IN A SILENT WAY Stand (SilentWayStand) floats behind him and
+	    strikes with his moves
 	  * SILENT SYMPHONY: sounds gather around him, rain down, then "DOOOOM!!"
 ]]
 
@@ -46,6 +48,12 @@ local CameraFX = require(script.Parent.Parent.CameraFX)
 local TuskVFX = require(script.Parent.Parent.TuskVFX)
 local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
 local Common = require(script.Parent.Parent.TuskActCommon)
+local TuskStand = require(script.Parent.Parent.TuskStand)
+local SilentWayStand = require(script.Parent.SilentWayStand)
+local TuskStandModels = require(game:GetService("ReplicatedStorage"):WaitForChild("SpinShared").TuskStandModels)
+
+-- IN A SILENT WAY floats behind him (players and NPCs), like Tusk does.
+TuskStandModels.register(8, SilentWayStand.build, { Aura = SilentWayStand.Aura, AuraLight = SilentWayStand.AuraLight, Offset = SilentWayStand.Offset })
 
 local SandmanVFX = {}
 local ACT = 8
@@ -197,6 +205,8 @@ local function onM1(data)
 	end
 	local index = data.Index
 	TuskAnimation.play(character, "S_M1_" .. index)
+	-- The Stand strikes with him.
+	TuskStand.action(character, "Lunge", { Target = CFrame.new(index % 2 == 0 and -0.8 or 0.8, 1, -3), Duration = 0.3 })
 	VFXLib.sound(sounds.Swing, root, 0.5, 1.05 + index * 0.06)
 	local side = index % 2 == 1 and 1 or -1
 	if index <= 2 then
@@ -218,12 +228,14 @@ local function onAbility(data)
 	local move, phase = data.Move, data.Phase
 	if move == "SoundSlash" and phase == "Startup" and character then
 		TuskAnimation.play(character, "SandSlash")
+		TuskStand.action(character, "Lunge", { Duration = 0.4 })
 		if root then
 			popWord("SHH...", (root.CFrame * CFrame.new(0, 2.5, -1)).Position, 0.9, pal.Light, nil, 0.4)
 		end
 	elseif move == "SoundTrap" then
 		if phase == "Startup" and character then
 			TuskAnimation.play(character, "SandTrap")
+			TuskStand.action(character, "Lunge", { Duration = 0.45 })
 		elseif phase == "Place" then
 			local w = newWord("DOGOOON", 1.6, FIRE)
 			local spin = math.random() * math.pi * 2
@@ -250,6 +262,7 @@ local function onAbility(data)
 	elseif move == "SandRun" then
 		if phase == "Startup" and character then
 			TuskAnimation.play(character, "SandRun")
+			TuskStand.action(character, "Lunge", { Duration = 0.5 })
 			if root then
 				sandBurst(root.Position - Vector3.new(0, 2.6, 0), 14, 18)
 			end
@@ -287,6 +300,7 @@ local function onUltimate(data)
 	local root = Common.rootOf(character)
 	if data.Phase == "Start" then
 		TuskAnimation.play(character, "SandSymphony")
+		TuskStand.action(character, "Manifest", { Duration = 0.9 })
 		if root then
 			-- Sounds gather round him, orbiting.
 			local list = {}

@@ -93,7 +93,7 @@ PACKS = [
      "Diego Brando: Scary Monsters."),
     ("PorkPie", {"server": ["PorkPieHatKid", "PorkPieOutfit"], "client": ["PorkPie"]},
      "Pork Pie Hat Kid: Wired."),
-    ("Sandman", {"server": ["Sandman", "SandmanOutfit"], "client": ["SandmanVFX"]},
+    ("Sandman", {"server": ["Sandman", "SandmanOutfit"], "client": ["SandmanVFX", "SilentWayStand"]},
      "Sandman (Soundman): In a Silent Way."),
     ("MountainTim", {"server": ["MountainTim", "MountainTimOutfit"], "client": ["MountainTimVFX"]},
      "Mountain Tim: Oh! Lonesome Me."),
