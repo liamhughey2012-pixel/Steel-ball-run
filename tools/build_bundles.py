@@ -83,7 +83,7 @@ end
 
 # Which modules live in which separate script. Johnny (the default character,
 # Tusk Stands, Tusk Sneak) is built into the core so the core always works on
-# its own; every other character and the map are optional extra scripts.
+# its own, and so is the map; every other character is an optional extra script.
 PACKS = [
     ("Gyro", {"server": ["GyroZeppeli", "GyroOutfit"], "client": ["Gyro", "SteelBallModel", "WreckingBallModel"]},
      "Gyro Zeppeli: Steel Balls and Ball Breaker."),
@@ -91,8 +91,6 @@ PACKS = [
      "Diego Brando: Scary Monsters."),
     ("PorkPie", {"server": ["PorkPieHatKid", "PorkPieOutfit"], "client": ["PorkPie"]},
      "Pork Pie Hat Kid: Wired."),
-    ("Map", {"server": ["SBRMapBuilder"], "client": []},
-     "The Steel Ball Run map (built when the server starts). Optional."),
 ]
 
 def deps(code):
@@ -170,8 +168,8 @@ SERVER_HEADER = '''--[[
 	Spin Battlegrounds server CORE: combat, cooldowns, projectiles, NPCs and
 	Studio practice dummies. Each character is its own script (ModuleScripts
 	in ServerScriptService > SpinCharacters): Gyro_Server, Diego_Server,
-	PorkPie_Server, and Map_Server (the SBR map, built automatically when the
-	server starts). Johnny is built in, so this works on its own.
+	PorkPie_Server. Johnny and the SBR map (built automatically when the
+	server starts) are built in, so this works on its own.
 
 	Needs these ModuleScripts in ReplicatedStorage: SpinConfig, TuskConfig.
 	Works with the LocalScript Spin_Client in StarterPlayerScripts.
@@ -201,9 +199,6 @@ for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end
-end
-if BUILD_MAP_ON_START and not __hasModule("SBRMapBuilder") and not workspace:FindFirstChild("SBRMap") then
-	print("[Spin] Map_Server isn't installed, so the SBR map wasn't built. Add it to ServerScriptService > SpinCharacters to build the map.")
 end
 if BUILD_MAP_ON_START and __hasModule("SBRMapBuilder") and not workspace:FindFirstChild("SBRMap") then
 	local ok, err = pcall(function()

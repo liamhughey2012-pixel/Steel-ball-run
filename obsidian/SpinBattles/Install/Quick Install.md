@@ -21,13 +21,12 @@ Make a **Folder** named `SpinCharacters` in **ServerScriptService** and another 
 | Gyro Zeppeli (Ball Breaker) | `Gyro_Server` | `Gyro_Client` |
 | Diego Brando (Scary Monsters) | `Diego_Server` | `Diego_Client` |
 | Pork Pie Hat Kid (Wired) | `PorkPie_Server` | `PorkPie_Client` |
-| The SBR map (optional) | `Map_Server` | — |
 
 1. Explorer › right-click the place (or the folder) › ➕ Insert Object › pick the type › rename it exactly.
 2. Open it, Ctrl+A, paste the matching file.
 3. Press **Play**. Watch the Output window for "[Spin] Server ready".
 
-**Johnny is built into Spin_Server / Spin_Client**, so the core 4 files work on their own. A character whose two scripts aren't installed just can't be picked; without `Map_Server` the map isn't built.
+**Johnny and the SBR map are built into Spin_Server / Spin_Client**, so the core 4 files work on their own. A character whose two scripts aren't installed just can't be picked.
 
 **Updates:** only the files listed in an update change. Open the script, Ctrl+A, paste the new version.
 **Settings** (damage, cooldowns, keys, sound ids) live only in SpinConfig and TuskConfig.

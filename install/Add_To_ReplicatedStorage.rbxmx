@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">SpinConfig</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="ModuleScript" referent="RBX23"><Properties><string name="Name">SpinConfig</string><ProtectedString name="Source"><![CDATA[--[[
 	SpinConfig  (ModuleScript)
 	PUT IT IN: ReplicatedStorage
 
@@ -149,7 +149,7 @@ function SpinConfig.getLevel(chargeTime, tolerance)
 end
 
 return SpinConfig
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX26"><Properties><string name="Name">TuskConfig</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX24"><Properties><string name="Name">TuskConfig</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskConfig  (ModuleScript)
 	PUT IT IN: ReplicatedStorage
 
@@ -614,7 +614,7 @@ TuskConfig.Colors = {
 }
 
 return TuskConfig
-]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX30"><Properties><string name="Name">SpinCharacters</string></Properties><Item class="ModuleScript" referent="RBX27"><Properties><string name="Name">Diego_Client</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX28"><Properties><string name="Name">SpinCharacters</string></Properties><Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">Diego_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	Diego_Client  (ModuleScript)
 	PUT IT IN: ReplicatedStorage > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -1870,7 +1870,7 @@ end
 return RaptorModel
 end
 end
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX28"><Properties><string name="Name">Gyro_Client</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX26"><Properties><string name="Name">Gyro_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	Gyro_Client  (ModuleScript)
 	PUT IT IN: ReplicatedStorage > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
@@ -3404,7 +3404,7 @@ end
 return WreckingBallModel
 end
 end
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX29"><Properties><string name="Name">PorkPie_Client</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX27"><Properties><string name="Name">PorkPie_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	PorkPie_Client  (ModuleScript)
 	PUT IT IN: ReplicatedStorage > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
 
