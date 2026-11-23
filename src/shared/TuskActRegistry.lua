@@ -196,13 +196,14 @@ TuskActRegistry.Acts = {
 		Implemented = true,
 		Theme = { Primary = Color3.fromRGB(214, 60, 70), Secondary = Color3.fromRGB(226, 196, 110) },
 		M1 = "GUILT COMBO",
-		Abilities = { "GUILT SPECTER", "ABANDONED JUNK", "GUILT MEMBRANE" },
+		Abilities = { "GUILT SPECTERS", "ABANDONED JUNK", "GUILT MEMBRANE" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Ultimate = "CIVIL WAR",
 		Next = nil,
 		Module = "Axl", -- server moves
 		ClientModule = "AxlVFX", -- client visuals (TuskActVFX.AxlVFX)
 		CardTitle = "STAND  ·  CIVIL WAR",
+		Passive = "GUILT: your hits mark them; your moves feed on it",
 	},
 }
 

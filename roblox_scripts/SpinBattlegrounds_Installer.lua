@@ -1255,13 +1255,14 @@ TuskActRegistry.Acts = {
 		Implemented = true,
 		Theme = { Primary = Color3.fromRGB(214, 60, 70), Secondary = Color3.fromRGB(226, 196, 110) },
 		M1 = "GUILT COMBO",
-		Abilities = { "GUILT SPECTER", "ABANDONED JUNK", "GUILT MEMBRANE" },
+		Abilities = { "GUILT SPECTERS", "ABANDONED JUNK", "GUILT MEMBRANE" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Ultimate = "CIVIL WAR",
 		Next = nil,
 		Module = "Axl", -- server moves
 		ClientModule = "AxlVFX", -- client visuals (TuskActVFX.AxlVFX)
 		CardTitle = "STAND  ·  CIVIL WAR",
+		Passive = "GUILT: your hits mark them; your moves feed on it",
 	},
 }
 
@@ -1919,32 +1920,40 @@ TuskConfig.Axl = {
 			{ Damage = 7, Stun = 0.5, Knockback = 40, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
 		},
 	},
-	GuiltSpecter = { -- a ghost from their past rises out of their shadow and grabs them
-		Cooldown = 7, MissCooldown = 3, Windup = 0.25,
-		Range = 40, Cone = 70,
-		Rise = 0.55, -- warning before it rises (they can dodge out)
-		Radius = 5, Damage = 8, Stun = 0.7, Knockback = 6, Launch = 12,
+	Guilt = { -- PASSIVE: every hit he lands marks the target with guilt; his moves feed on it
+		Max = 5, FadeAfter = 8, -- stacks fade this long after the last one
 	},
-	AbandonedJunk = { -- things they threw away fly at them: a volley of junk
+	GuiltSpecter = { -- ghosts rise from his shadow and hunt the nearest enemy, grabbing on contact
+		Cooldown = 8, MissCooldown = 3, Windup = 0.25,
+		Range = 45, -- picks the nearest enemy this close (any direction)
+		Count = 1, GuiltPerExtra = 2, MaxCount = 3, -- +1 specter per 2 guilt on the target
+		Speed = 24, Life = 3.2, GrabRadius = 3.5, Spread = 4,
+		Damage = 5, Stun = 0.6, Knockback = 4, Launch = 8,
+	},
+	AbandonedJunk = { -- things they threw away fly at them and stick to their body
 		Cooldown = 7, Startup = 0.3,
 		Count = 6, Spread = 40,
 		Speed = 110, Radius = 1.1, Range = 60,
-		Damage = 2.5, Stun = 0.35, Knockback = 6, MaxHitsPerTarget = 3,
+		Damage = 2.5, Stun = 0.35, Knockback = 4, MaxHitsPerTarget = 3,
+		StickTime = 4, SlowPerPiece = 0.1, -- each stuck piece slows them a bit more
 	},
-	GuiltMembrane = { -- their guilt wraps them in a membrane that shrinks and crushes
+	GuiltMembrane = { -- their guilt wraps them in a membrane that shrinks and crushes; uses up their guilt
 		Cooldown = 13, MissCooldown = 3, Windup = 0.3,
 		Range = 16, Cone = 60,
 		Damage = 4, Stun = 0.6,
 		Time = 3, Tick = 0.5, TickDamage = 1, TickGrowth = 0.25, -- each squeeze hurts more
 		Slow = 0.5, FinalDamage = 4,
+		PerGuilt = 0.15, -- +15% squeeze damage per guilt used up
+		FlattenStun = 1.2, FlattenLaunch = 16, -- at max guilt they're flattened
 		RainMultiplier = 0.5, -- water washes guilt away: in the rain it lasts half as long
 	},
 	Ultimate = { -- CIVIL WAR: the junkyard rises; specters engulf everyone near; he breaks apart when hit
 		Windup = 1.0, Radius = 20, Specters = 7,
 		SpecterDamage = 4, SpecterStun = 0.8,
 		Time = 3, Tick = 0.5, TickDamage = 1.5, Slow = 0.4,
-		FinalDamage = 12, FinalKnockback = 45, FinalLaunch = 22, FinalStun = 0.7,
+		FinalDamage = 10, FinalKnockback = 45, FinalLaunch = 22, FinalStun = 0.7, -- the crush grows with their guilt
 		ScatterDistance = 9, -- Civil War breaks apart and he reforms this far away
+		GuiltAdded = 3, -- everyone caught is loaded with guilt; the crush uses it up
 		RainMultiplier = 0.5,
 	},
 }
@@ -7810,20 +7819,24 @@ return TestDummies
 	Axl  (ServerScriptService.SpinServer.TuskActs.Axl)
 
 	Axl RO: CIVIL WAR. His Stand makes a target's guilt real: the people
-	they left behind rise as specters, the things they abandoned fly at them,
-	and their guilt wraps them in a membrane that shrinks until it crushes
-	them. Water washes guilt away: in the rain the membrane dissolves twice
-	as fast. Registered as "Act" 12 so it reuses the Tusk ability system.
-	  M1        GUILT COMBO: strikes with Civil War's long arms
-	  Ability 1 GUILT SPECTER: a ghost rises out of the nearest enemy's shadow
-	            (a warning first, so they can dodge out) and grabs them
-	  Ability 2 ABANDONED JUNK: a volley of junk (crates, wheels, chairs...)
-	  Ability 3 GUILT MEMBRANE: the nearest enemy is wrapped in a membrane:
-	            slowed, squeezed harder every tick, then crushed
-	  Ultimate  CIVIL WAR: the junkyard rises round him: specters grab
-	            everyone nearby and engulf them; while it lasts Civil War
-	            breaks apart when he's hit (the hit misses, he reforms out of
-	            reach); then the membranes crush everyone at once
+	they left behind rise as specters, the things they abandoned fly at them
+	and stick, and their guilt wraps them in a membrane that shrinks until it
+	crushes them. Water washes guilt away: in the rain the membrane dissolves
+	twice as fast. Registered as "Act" 12 so it reuses the Tusk ability system.
+	  Passive   GUILT: every hit he lands marks the target (up to 5 stacks,
+	            fading 8 s after the last); his moves feed on it
+	  M1        GUILT COMBO: strikes with Civil War's long arms (+1 guilt a hit)
+	  Ability 1 GUILT SPECTERS: specters rise from his shadow and HUNT the
+	            nearest enemy, grabbing on contact (more guilt = more specters)
+	  Ability 2 ABANDONED JUNK: a volley of junk that sticks to whoever it
+	            hits: each stuck piece slows them and adds guilt
+	  Ability 3 GUILT MEMBRANE: wraps the nearest enemy; it squeezes harder
+	            with every tick and USES UP their guilt to squeeze harder
+	            still; at max guilt they're flattened
+	  Ultimate  CIVIL WAR: the junkyard rises round him: everyone nearby is
+	            loaded with guilt, grabbed and engulfed; while it lasts Civil
+	            War breaks apart when he's hit (the hit misses, he reforms out
+	            of reach); then every membrane crushes shut
 Numbers: TuskConfig.Axl. All damage goes through S.hit (CombatAdapter).
 ]]
 
@@ -7834,6 +7847,8 @@ local Moves = require(script.Parent.Parent.TuskMoves)
 local Axl = {}
 local cfg = TuskConfig.Axl
 local ACT = 12
+
+local stick -- (defined with the junk)
 
 local function alive(S, player)
 	return S.Adapter.getAlive(player)
@@ -7852,8 +7867,62 @@ local function rainy()
 	return game:GetService("ReplicatedStorage"):GetAttribute("SpinRaining") == true
 end
 
+---------------------------------------------------------------------------
+-- GUILT (passive): stacks on the target, fading after a while
+---------------------------------------------------------------------------
+local function guiltOf(target)
+	local g = target:GetAttribute("Guilt") or 0
+	if g > 0 and os.clock() - (target:GetAttribute("GuiltAt") or 0) > cfg.Guilt.FadeAfter then
+		return 0
+	end
+	return g
+end
+
+local function setGuilt(S, target, g)
+	g = math.clamp(g, 0, cfg.Guilt.Max)
+	local stamp = os.clock()
+	target:SetAttribute("Guilt", g > 0 and g or nil)
+	target:SetAttribute("GuiltAt", g > 0 and stamp or nil)
+	S.fx("Ability", { Act = ACT, Move = "Guilt", Phase = "Mark", Target = target, Stacks = g })
+	if g > 0 then
+		task.delay(cfg.Guilt.FadeAfter + 0.05, function()
+			if target.Parent and target:GetAttribute("GuiltAt") == stamp then
+				target:SetAttribute("Guilt", nil)
+				target:SetAttribute("GuiltAt", nil)
+				S.fx("Ability", { Act = ACT, Move = "Guilt", Phase = "Mark", Target = target, Stacks = 0 })
+			end
+		end)
+	end
+end
+
+local function addGuilt(S, target, n)
+	setGuilt(S, target, guiltOf(target) + (n or 1))
+end
+
+-- Uses up all their guilt; returns how much there was.
+local function consumeGuilt(S, target)
+	local g = guiltOf(target)
+	if g > 0 then
+		setGuilt(S, target, 0)
+	end
+	return g
+end
+
+-- Every hit he lands adds guilt: S with a hit() that marks the target.
+local function guiltyHits(S)
+	return setmetatable({
+		hit = function(player, target, info)
+			local ok = S.hit(player, target, info)
+			if ok then
+				addGuilt(S, target, 1)
+			end
+			return ok
+		end,
+	}, { __index = S })
+end
+
 function Axl.M1(S, player, state, aim)
-	Moves.m1(S, player, state, aim, cfg.M1, ACT)
+	Moves.m1(guiltyHits(S), player, state, aim, cfg.M1, ACT)
 end
 
 local function slow(S, target, key, multiplier, seconds)
@@ -7929,17 +7998,32 @@ local function engulf(S, player, target, opts)
 end
 
 ---------------------------------------------------------------------------
--- GUILT SPECTER
+-- GUILT SPECTERS: they rise from his shadow and hunt the nearest enemy
 ---------------------------------------------------------------------------
-local function guiltSpecter(S, player, state, aim)
+local nextSpecter = 0
+
+local function nearestEnemy(S, character, root, range)
+	local best, bestD
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, range, 8)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and S.Adapter.canBeHit(nil, target) then
+			local d = (tr.Position - root.Position).Magnitude
+			if not bestD or d < bestD then
+				best, bestD = target, d
+			end
+		end
+	end
+	return best
+end
+
+local function guiltSpecters(S, player, state)
 	local c = cfg.GuiltSpecter
 	if not ready(S, player, state, "GuiltSpecter", 1) then
 		return
 	end
 	S.startCooldown(player, state, "GuiltSpecter", c.Cooldown, 1)
 	S.lock(state, c.Windup + 0.25)
-	local character, _, root = alive(S, player)
-	local direction = S.aim(aim, root)
+	local character = alive(S, player)
 	local life = state.Life
 	S.fx("Ability", { Character = character, Act = ACT, Move = "GuiltSpecter", Phase = "Cast", Windup = c.Windup })
 	task.delay(c.Windup, function()
@@ -7947,29 +8031,43 @@ local function guiltSpecter(S, player, state, aim)
 			return
 		end
 		local char, _, r = alive(S, player)
-		local target = targetInCone(S, char, r, direction, c.Range, c.Cone)
-		local tr = target and target:FindFirstChild("HumanoidRootPart")
-		if not tr then
+		local target = nearestEnemy(S, char, r, c.Range)
+		if not target then
 			S.startCooldown(player, state, "GuiltSpecter", c.MissCooldown, 1)
 			S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltSpecter", Phase = "Miss" })
 			return
 		end
-		-- It rises where they're standing now: they get a moment to dodge out.
-		local spot = Moves.groundBelow(tr.Position, { target })
-		S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltSpecter", Phase = "Warn", Position = spot, Rise = c.Rise, Radius = c.Radius, Target = target })
-		task.delay(c.Rise, function()
-			if state.Life ~= life then
-				return
-			end
-			local hit = 0
-			for _, victim in ipairs(S.Hitbox.inRadius(char, spot + Vector3.new(0, 2.5, 0), c.Radius, 3)) do
-				local vr = victim:FindFirstChild("HumanoidRootPart")
-				if vr and S.hit(player, victim, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Launch = c.Launch, Direction = vr.Position - spot, Position = vr.Position, Source = "AxlSpecter" }) then
-					hit = hit + 1
+		-- More guilt on them, more of their past comes back for them.
+		local count = math.min(c.MaxCount, c.Count + math.floor(guiltOf(target) / c.GuiltPerExtra))
+		local guilty = guiltyHits(S)
+		for i = 1, count do
+			nextSpecter = nextSpecter + 1
+			local id = nextSpecter
+			local side = (i - (count + 1) / 2) * c.Spread
+			local pos = (r.CFrame * CFrame.new(side, 0, 1.5)).Position
+			S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltSpecter", Phase = "Spawn", Id = id, From = pos, Target = target, Speed = c.Speed, Life = c.Life, Delay = (i - 1) * 0.15 })
+			task.delay((i - 1) * 0.15, function()
+				local born = os.clock()
+				local step = 0.1
+				local function tick()
+					local tr = target.Parent and target:FindFirstChild("HumanoidRootPart")
+					local hum = target:FindFirstChildOfClass("Humanoid")
+					if not tr or not hum or hum.Health <= 0 or os.clock() - born > c.Life or state.Life ~= life then
+						S.fx("Ability", { Act = ACT, Move = "GuiltSpecter", Phase = "Fade", Id = id, Position = pos })
+						return
+					end
+					local to = tr.Position - pos
+					if to.Magnitude <= c.GrabRadius then
+						guilty.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Launch = c.Launch, Direction = to, Position = tr.Position, Source = "AxlSpecter" })
+						S.fx("Ability", { Act = ACT, Move = "GuiltSpecter", Phase = "Grab", Id = id, Position = tr.Position, Target = target })
+						return
+					end
+					pos = pos + to.Unit * math.min(c.Speed * step, to.Magnitude)
+					task.delay(step, tick)
 				end
-			end
-			S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltSpecter", Phase = "Rise", Position = spot, Hit = hit > 0 })
-		end)
+				tick()
+			end)
+		end
 	end)
 end
 
@@ -7977,6 +8075,25 @@ end
 -- ABANDONED JUNK
 ---------------------------------------------------------------------------
 local JUNK = { "Crate", "Wheel", "Chair", "Bottle", "Boot", "Lamp" }
+
+-- Junk stuck to a target: each piece slows them a bit more until it falls off.
+stick = function(S, target, style, c)
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	local n = (target:GetAttribute("JunkStuck") or 0) + 1
+	target:SetAttribute("JunkStuck", n)
+	S.Adapter.setMoveModifier(humanoid, "GuiltJunk", math.max(0.5, 1 - c.SlowPerPiece * n))
+	S.fx("Ability", { Act = ACT, Move = "AbandonedJunk", Phase = "Stick", Target = target, Style = style, Duration = c.StickTime })
+	task.delay(c.StickTime, function()
+		local left = math.max(0, (target:GetAttribute("JunkStuck") or 1) - 1)
+		target:SetAttribute("JunkStuck", left > 0 and left or nil)
+		if humanoid.Parent then
+			S.Adapter.setMoveModifier(humanoid, "GuiltJunk", left > 0 and math.max(0.5, 1 - c.SlowPerPiece * left) or nil)
+		end
+	end)
+end
 
 local function abandonedJunk(S, player, state, aim)
 	local c = cfg.AbandonedJunk
@@ -8010,8 +8127,10 @@ local function abandonedJunk(S, player, state, aim)
 				Style = JUNK[(i - 1) % #JUNK + 1],
 				OnHit = function(target, position)
 					hits[target] = (hits[target] or 0) + 1
-					if hits[target] <= c.MaxHitsPerTarget then
-						S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = dir, Position = position, Source = "AxlJunk" })
+					if hits[target] <= c.MaxHitsPerTarget and S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = dir, Position = position, Source = "AxlJunk" }) then
+						-- It sticks to them: slower with every piece, and more guilt.
+						addGuilt(S, target, 1)
+						stick(S, target, JUNK[(i - 1) % #JUNK + 1], c)
 					end
 				end,
 			})
@@ -8045,11 +8164,16 @@ local function guiltMembrane(S, player, state, aim)
 			S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltMembrane", Phase = "Miss", Direction = direction })
 			return
 		end
+		-- It feeds on their guilt (and uses it up): harder squeezes; at max guilt, flattened.
+		local g = consumeGuilt(S, target)
+		local mult = 1 + c.PerGuilt * g
+		local flatten = g >= cfg.Guilt.Max
 		local t = engulf(S, player, target, {
-			Time = c.Time, Tick = c.Tick, TickDamage = c.TickDamage, TickGrowth = c.TickGrowth,
-			Slow = c.Slow, FinalDamage = c.FinalDamage, FinalStun = 0.6, RainMultiplier = c.RainMultiplier, Source = "AxlMembrane",
+			Time = c.Time, Tick = c.Tick, TickDamage = c.TickDamage * mult, TickGrowth = c.TickGrowth * mult,
+			Slow = c.Slow, FinalDamage = c.FinalDamage * mult, FinalStun = flatten and c.FlattenStun or 0.6,
+			FinalLaunch = flatten and c.FlattenLaunch or nil, RainMultiplier = c.RainMultiplier, Source = "AxlMembrane",
 		})
-		S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltMembrane", Phase = "Engulf", Targets = { target }, Duration = t, Rain = rainy() })
+		S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltMembrane", Phase = "Engulf", Targets = { target }, Duration = t, Rain = rainy(), Guilt = g, Flatten = flatten })
 	end)
 end
 
@@ -8058,7 +8182,7 @@ function Axl.Ability(S, player, state, slot, phase, aim)
 		return
 	end
 	if slot == 1 then
-		guiltSpecter(S, player, state, aim)
+		guiltSpecters(S, player, state)
 	elseif slot == 2 then
 		abandonedJunk(S, player, state, aim)
 	elseif slot == 3 then
@@ -8114,10 +8238,14 @@ function Axl.Ultimate(S, player, state, aim)
 			end
 		end
 		local t = u.Time * (rainy() and u.RainMultiplier or 1)
+		local perGuilt = cfg.GuiltMembrane.PerGuilt
 		for _, target in ipairs(caught) do
+			-- Loaded with guilt, then the crush feeds on all of it.
+			addGuilt(S, target, u.GuiltAdded)
+			local mult = 1 + perGuilt * consumeGuilt(S, target)
 			engulf(S, player, target, {
 				Time = u.Time, Tick = u.Tick, TickDamage = u.TickDamage, Slow = u.Slow,
-				FinalDamage = u.FinalDamage - u.TickDamage, FinalStun = u.FinalStun, FinalKnockback = u.FinalKnockback, FinalLaunch = u.FinalLaunch,
+				FinalDamage = (u.FinalDamage - u.TickDamage) * mult, FinalStun = u.FinalStun, FinalKnockback = u.FinalKnockback, FinalLaunch = u.FinalLaunch,
 				RainMultiplier = u.RainMultiplier, Source = "AxlCivilWar",
 			})
 		end
@@ -15033,12 +15161,16 @@ return Act4
 	Client visuals for Axl RO / CIVIL WAR: guilt made real. Blocky.
 	  * the CIVIL WAR Stand (CivilWarStand) floats behind him with a crimson
 	    aura and strikes with his moves
-	  * GUILT SPECTER: a dark shadow pools under the target, then a pale ghost
-	    rises out of it reaching up
+	  * GUILT (passive): crimson marks above anyone carrying guilt (1-5)
+	  * GUILT SPECTERS: pale ghosts rise from his shadow and chase their
+	    target, reaching for them, and grab with a flash
 	  * ABANDONED JUNK: junk (crates, wheels, chairs, bottles, boots, lamps)
-	    materialises round him, shakes, then flies, tumbling
+	    materialises round him, shakes, then flies, tumbling; what hits sticks
+	    to their body until it falls off
 	  * GUILT MEMBRANE: a grey-violet film wraps the target with junk stuck to
-	    it and slowly shrinks; in the rain it drips and dissolves faster
+	    it and slowly shrinks; in the rain it drips and dissolves faster. The
+	    victim's own screen darkens and their guilt whispers at them; at max
+	    guilt the crush flattens them
 	  * CIVIL WAR: junk piles and specters rise in a ring round him; everyone
 	    caught is wrapped; when he's hit he breaks apart into red, yellow and
 	    silver pieces and reforms; then every membrane crushes shut
@@ -15077,6 +15209,9 @@ local LEATHER = Color3.fromRGB(70, 46, 32)
 local PIECES = { Color3.fromRGB(196, 46, 40), Color3.fromRGB(234, 208, 128), Color3.fromRGB(190, 196, 206), Color3.fromRGB(90, 52, 110) }
 
 local projectiles = {} -- [id] = flying junk
+local hunters = {} -- [id] = specter chasing its target
+local marks = {} -- [character] = guilt marks above their head
+local stuckJunk = {} -- list of junk stuck to bodies
 local membranes = {} -- [character] = film
 local stanced = {}
 
@@ -15200,7 +15335,7 @@ end
 ---------------------------------------------------------------------------
 -- Membrane on a target: film + stuck junk, shrinks; drips in the rain
 ---------------------------------------------------------------------------
-local function wrap(target, duration, rain)
+local function wrap(target, duration, rain, flatten)
 	local tr = Common.rootOf(target)
 	if not tr then
 		return
@@ -15219,7 +15354,7 @@ local function wrap(target, duration, rain)
 		local a = i / 5 * math.pi * 2
 		table.insert(stuck, { Item = j, Offset = CFrame.new(math.cos(a) * 1.5, (i % 3 - 1) * 1.4, math.sin(a) * 1.1) * CFrame.Angles(a, a * 2, 0) })
 	end
-	membranes[target] = { Model = m, Film = film, Stuck = stuck, Target = target, Born = os.clock(), Duration = duration or 3, Rain = rain }
+	membranes[target] = { Model = m, Film = film, Stuck = stuck, Target = target, Born = os.clock(), Duration = duration or 3, Rain = rain, Flatten = flatten }
 	puff(tr.Position, FILM, 14)
 end
 
@@ -15234,7 +15369,20 @@ local function stepMembranes()
 			if tr then
 				-- Squeezed shut: a crunch and a puff.
 				VFXLib.burst(tr.Position, { Count = 14, Color = FILM, Speed = 16, Lifetime = 0.35 })
-				TuskVFX.CreateImpactStar(tr.Position, { Size = 3, Rays = 6, Color = pal.Main, Color2 = Color3.new(1, 1, 1), Duration = 0.12 })
+				TuskVFX.CreateImpactStar(tr.Position, { Size = mb.Flatten and 6 or 3, Rays = 6, Color = pal.Main, Color2 = Color3.new(1, 1, 1), Duration = 0.12 })
+				if mb.Flatten then
+					-- Max guilt: flattened like paper for a moment.
+					local sheet = VFXLib.part({ Size = Vector3.new(3.2, 0.15, 2.2), Color = FILM, Material = Enum.Material.Glass, Transparency = 0.3 })
+					local at = tr.CFrame
+					VFXLib.animate(0.6, function(a)
+						sheet.CFrame = at * CFrame.new(0, -2.4, 0)
+						sheet.Size = Vector3.new(3.2 + a, 0.15, 2.2 + a)
+						sheet.Transparency = 0.3 + 0.7 * a
+					end, function()
+						sheet:Destroy()
+					end)
+					TuskVFX.CreateGroundCracks(tr.Position - Vector3.new(0, 2.5, 0), { Radius = 6, Color = pal.Main })
+				end
 			end
 		else
 			-- Shrinks tighter and tighter (with a heartbeat squeeze each half second).
@@ -15252,6 +15400,212 @@ local function stepMembranes()
 			end
 		end
 	end
+end
+
+---------------------------------------------------------------------------
+-- GUILT marks above a head: five pips, the lit ones crimson
+---------------------------------------------------------------------------
+local function setMarks(target, stacks)
+	if typeof(target) ~= "Instance" then
+		return
+	end
+	local m = marks[target]
+	if stacks <= 0 then
+		if m then
+			m.Gui:Destroy()
+			marks[target] = nil
+		end
+		return
+	end
+	local head = target:FindFirstChild("Head") or Common.rootOf(target)
+	if not head then
+		return
+	end
+	if not m then
+		local gui = Instance.new("BillboardGui")
+		gui.Name = "GuiltMarks"
+		gui.Size = UDim2.fromOffset(96, 26)
+		gui.StudsOffset = Vector3.new(0, 2.8, 0)
+		gui.AlwaysOnTop = true
+		gui.MaxDistance = 90
+		gui.Adornee = head
+		gui.Parent = VFXLib.Folder
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.new(1, 0, 0, 11)
+		label.Font = Enum.Font.GothamBlack
+		label.TextSize = 10
+		label.TextColor3 = Color3.fromRGB(255, 170, 180)
+		label.TextStrokeTransparency = 0.3
+		label.Text = "GUILT"
+		label.Parent = gui
+		local pips = {}
+		for i = 1, 5 do
+			local pip = Instance.new("Frame")
+			pip.AnchorPoint = Vector2.new(0.5, 0)
+			pip.Position = UDim2.new(0.5, (i - 3) * 17, 0, 13)
+			pip.Size = UDim2.fromOffset(12, 12)
+			pip.Rotation = 45
+			pip.BorderSizePixel = 0
+			pip.Parent = gui
+			pips[i] = pip
+		end
+		m = { Gui = gui, Pips = pips, Stacks = 0 }
+		marks[target] = m
+	end
+	if stacks > m.Stacks then
+		-- A new mark flares as it lands.
+		local pip = m.Pips[stacks]
+		if pip then
+			VFXLib.animate(0.25, function(a)
+				pip.Size = UDim2.fromOffset(12 + 10 * (1 - a), 12 + 10 * (1 - a))
+			end)
+		end
+	end
+	m.Stacks = stacks
+	for i, pip in ipairs(m.Pips) do
+		local lit = i <= stacks
+		pip.BackgroundColor3 = lit and (stacks >= 5 and Color3.fromRGB(255, 60, 90) or pal.Main) or Color3.fromRGB(40, 24, 36)
+		pip.BackgroundTransparency = lit and 0 or 0.35
+	end
+end
+
+---------------------------------------------------------------------------
+-- Specters hunting their target (the server decides the grab)
+---------------------------------------------------------------------------
+local function spawnHunter(data)
+	local target = data.Target
+	local g = buildGhost(0.95)
+	local h = { Ghost = g, Pos = data.From, Target = target, Speed = data.Speed or 24, Born = os.clock() + (data.Delay or 0), Life = (data.Life or 3) + 0.5, Next = 0 }
+	hunters[data.Id] = h
+	place(g, CFrame.new(data.From - Vector3.new(0, 3, 0)))
+	puff(data.From, GHOST, 8)
+end
+
+local function endHunter(id, grabbed, position)
+	local h = hunters[id]
+	if not h then
+		return
+	end
+	hunters[id] = nil
+	local at = position or h.Pos
+	if grabbed then
+		-- It lunges in and pours into them.
+		local g = h.Ghost
+		local from = h.Pos
+		VFXLib.animate(0.25, function(a)
+			place(g, CFrame.lookAt(from:Lerp(at, a), at) * CFrame.new(0, 0, 0) * CFrame.Angles(-0.6 * a, 0, 0))
+			for _, p in ipairs(g.Parts) do
+				p.Transparency = math.min(1, p.Transparency + 0.08)
+			end
+		end, function()
+			g.Model:Destroy()
+		end)
+		TuskVFX.CreateImpactStar(at, { Size = 3.5, Rays = 7, Color = GHOST, Color2 = pal.Main, Duration = 0.15 })
+		puff(at, GHOST, 16)
+	else
+		h.Ghost.Model:Destroy()
+		puff(at, GHOST, 10)
+	end
+end
+
+local function stepHunters(dt)
+	local now = os.clock()
+	for id, h in pairs(hunters) do
+		local tr = Common.rootOf(h.Target)
+		if now - h.Born > h.Life or (now > h.Born and not tr) then
+			endHunter(id, false)
+		elseif now >= h.Born then
+			local to = tr.Position - h.Pos
+			if to.Magnitude > 0.5 then
+				h.Pos = h.Pos + to.Unit * math.min(h.Speed * dt, to.Magnitude)
+			end
+			-- Floats low, swaying, arms out toward them.
+			local rise = math.min((now - h.Born) / 0.3, 1)
+			local look = Vector3.new(to.X, 0, to.Z)
+			local cf = CFrame.lookAt(h.Pos, h.Pos + (look.Magnitude > 0.1 and look or Vector3.new(0, 0, -1)))
+			place(h.Ghost, cf * CFrame.new(math.sin(now * 5 + id) * 0.3, -3 + rise * 3.3 + math.sin(now * 3) * 0.2, 0) * CFrame.Angles(0.25, 0, 0))
+			h.Next = h.Next - dt
+			if h.Next <= 0 then
+				h.Next = 0.12
+				puff(h.Pos - Vector3.new(0, 1.5, 0), GHOST, 1)
+			end
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Junk stuck to a body
+---------------------------------------------------------------------------
+local function stickJunk(target, style, duration)
+	local tr = Common.rootOf(target)
+	if not tr then
+		return
+	end
+	local item = buildJunk(style or "Crate", 0.5)
+	local a = math.random() * math.pi * 2
+	table.insert(stuckJunk, { Item = item, Target = target, Offset = CFrame.new(math.cos(a) * 1.1, math.random() * 2 - 0.8, math.sin(a) * 0.7) * CFrame.Angles(a, a * 2, 0), Until = os.clock() + (duration or 4) })
+end
+
+local function stepStuck()
+	local now = os.clock()
+	for i = #stuckJunk, 1, -1 do
+		local st = stuckJunk[i]
+		local tr = Common.rootOf(st.Target)
+		if not tr or now > st.Until then
+			table.remove(stuckJunk, i)
+			-- It drops off and fades.
+			local item = st.Item
+			local from = item.Parts[1] and item.Parts[1].CFrame or CFrame.new()
+			VFXLib.animate(0.4, function(a)
+				place(item, from * CFrame.new(0, -3 * a * a, 0))
+				for _, p in ipairs(item.Parts) do
+					p.Transparency = math.min(1, p.Transparency + 0.06)
+				end
+			end, function()
+				item.Model:Destroy()
+			end)
+		else
+			place(st.Item, tr.CFrame * st.Offset)
+		end
+	end
+end
+
+-- The victim's own screen: their guilt closes in on them.
+local WHISPERS = { "...you left it behind.", "...you gave it up.", "...remember?", "...it was your fault.", "...you never went back." }
+local function guiltScreen(duration, strong)
+	TuskVFX.ScreenTint(duration, { Tint = Color3.fromRGB(200, 170, 210), Saturation = -0.5, Brightness = -0.12 })
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "GuiltWhispers"
+	gui.IgnoreGuiInset = true
+	gui.DisplayOrder = 5
+	gui.Parent = game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	local count = strong and 4 or 2
+	for i = 1, count do
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.AnchorPoint = Vector2.new(0.5, 0.5)
+		label.Position = UDim2.fromScale(0.25 + math.random() * 0.5, 0.3 + math.random() * 0.4)
+		label.Size = UDim2.fromOffset(360, 30)
+		label.Font = Enum.Font.Fondamento
+		label.TextSize = strong and 28 or 22
+		label.TextColor3 = Color3.fromRGB(235, 215, 240)
+		label.TextStrokeColor3 = Color3.fromRGB(40, 10, 30)
+		label.Text = WHISPERS[math.random(1, #WHISPERS)]
+		label.TextTransparency = 1
+		label.TextStrokeTransparency = 1
+		label.Parent = gui
+		local start = (i - 1) * duration / (count + 1)
+		VFXLib.animate(duration, function(a)
+			local t = a * duration - start
+			local alpha = t < 0 and 0 or math.min(t / 0.4, 1) * math.max(0, 1 - (t - 1.2) / 0.6)
+			label.TextTransparency = 1 - alpha * 0.9
+			label.TextStrokeTransparency = 1 - alpha * 0.6
+		end)
+	end
+	task.delay(duration + 0.1, function()
+		gui:Destroy()
+	end)
 end
 
 ---------------------------------------------------------------------------
@@ -15317,8 +15671,21 @@ local function onAbility(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
 	local move, phase = data.Move, data.Phase
+	if move == "Guilt" and phase == "Mark" then
+		setMarks(data.Target, data.Stacks or 0)
+		return
+	end
 	if move == "GuiltSpecter" then
-		if phase == "Cast" and character then
+		if phase == "Spawn" then
+			spawnHunter(data)
+		elseif phase == "Grab" then
+			endHunter(data.Id, true, data.Position)
+			if data.Target and Common.isLocal(data.Target) then
+				CameraFX.shake(0.5, 0.25)
+			end
+		elseif phase == "Fade" then
+			endHunter(data.Id, false, data.Position)
+		elseif phase == "Cast" and character then
 			TuskAnimation.play(character, "AxlSpecter")
 			TuskStand.action(character, "Lunge", { Duration = 0.4 })
 		elseif phase == "Warn" and data.Position then
@@ -15344,6 +15711,8 @@ local function onAbility(data)
 		elseif phase == "Miss" and root then
 			puff((root.CFrame * CFrame.new(0, 0, -5)).Position, GHOST, 8)
 		end
+	elseif move == "AbandonedJunk" and phase == "Stick" then
+		stickJunk(data.Target, data.Style, data.Duration)
 	elseif move == "AbandonedJunk" and phase == "Gather" and root then
 		TuskAnimation.play(character, "AxlJunk")
 		TuskStand.action(character, "Lunge", { Duration = (data.Startup or 0.3) + 0.2 })
@@ -15372,7 +15741,10 @@ local function onAbility(data)
 			TuskStand.action(character, "Lunge", { Duration = 0.5 })
 		elseif phase == "Engulf" then
 			for _, target in ipairs(data.Targets or {}) do
-				wrap(target, data.Duration, data.Rain)
+				wrap(target, data.Duration, data.Rain, data.Flatten)
+				if Common.isLocal(target) then
+					guiltScreen(data.Duration or 3, data.Flatten)
+				end
 			end
 		elseif phase == "Miss" and root then
 			puff((root.CFrame * CFrame.new(0, 0, -6)).Position, FILM, 8)
@@ -15418,7 +15790,10 @@ local function onUltimate(data)
 		VFXLib.sound(sounds.AwakeningBuild, center, 0.5, 0.8)
 	elseif data.Phase == "Engulf" then
 		for _, target in ipairs(data.Targets or {}) do
-			wrap(target, data.Duration, data.Rain)
+			wrap(target, data.Duration, data.Rain, true)
+			if Common.isLocal(target) then
+				guiltScreen(data.Duration or 3, true)
+			end
 		end
 		TuskVFX.CreateGroundCracks(data.Position, { Radius = (data.Radius or 20) * 0.6, Color = pal.Main })
 	elseif data.Phase == "Scatter" then
@@ -15501,6 +15876,15 @@ function AxlVFX.step(dt)
 	dt = dt or 1 / 60
 	stepJunk()
 	stepMembranes()
+	stepHunters(dt)
+	stepStuck()
+	-- Marks go when the character does.
+	for target, m in pairs(marks) do
+		if not target.Parent then
+			m.Gui:Destroy()
+			marks[target] = nil
+		end
+	end
 	slowTimer = slowTimer + dt
 	if slowTimer > 0.2 then
 		slowTimer = 0

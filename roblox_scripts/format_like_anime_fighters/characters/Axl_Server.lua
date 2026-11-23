@@ -17,20 +17,24 @@ __modules["Axl"] = function()
 	Axl  (ServerScriptService.SpinServer.TuskActs.Axl)
 
 	Axl RO: CIVIL WAR. His Stand makes a target's guilt real: the people
-	they left behind rise as specters, the things they abandoned fly at them,
-	and their guilt wraps them in a membrane that shrinks until it crushes
-	them. Water washes guilt away: in the rain the membrane dissolves twice
-	as fast. Registered as "Act" 12 so it reuses the Tusk ability system.
-	  M1        GUILT COMBO: strikes with Civil War's long arms
-	  Ability 1 GUILT SPECTER: a ghost rises out of the nearest enemy's shadow
-	            (a warning first, so they can dodge out) and grabs them
-	  Ability 2 ABANDONED JUNK: a volley of junk (crates, wheels, chairs...)
-	  Ability 3 GUILT MEMBRANE: the nearest enemy is wrapped in a membrane:
-	            slowed, squeezed harder every tick, then crushed
-	  Ultimate  CIVIL WAR: the junkyard rises round him: specters grab
-	            everyone nearby and engulf them; while it lasts Civil War
-	            breaks apart when he's hit (the hit misses, he reforms out of
-	            reach); then the membranes crush everyone at once
+	they left behind rise as specters, the things they abandoned fly at them
+	and stick, and their guilt wraps them in a membrane that shrinks until it
+	crushes them. Water washes guilt away: in the rain the membrane dissolves
+	twice as fast. Registered as "Act" 12 so it reuses the Tusk ability system.
+	  Passive   GUILT: every hit he lands marks the target (up to 5 stacks,
+	            fading 8 s after the last); his moves feed on it
+	  M1        GUILT COMBO: strikes with Civil War's long arms (+1 guilt a hit)
+	  Ability 1 GUILT SPECTERS: specters rise from his shadow and HUNT the
+	            nearest enemy, grabbing on contact (more guilt = more specters)
+	  Ability 2 ABANDONED JUNK: a volley of junk that sticks to whoever it
+	            hits: each stuck piece slows them and adds guilt
+	  Ability 3 GUILT MEMBRANE: wraps the nearest enemy; it squeezes harder
+	            with every tick and USES UP their guilt to squeeze harder
+	            still; at max guilt they're flattened
+	  Ultimate  CIVIL WAR: the junkyard rises round him: everyone nearby is
+	            loaded with guilt, grabbed and engulfed; while it lasts Civil
+	            War breaks apart when he's hit (the hit misses, he reforms out
+	            of reach); then every membrane crushes shut
 Numbers: TuskConfig.Axl. All damage goes through S.hit (CombatAdapter).
 ]]
 
@@ -41,6 +45,8 @@ local Moves = __require("TuskMoves")
 local Axl = {}
 local cfg = TuskConfig.Axl
 local ACT = 12
+
+local stick -- (defined with the junk)
 
 local function alive(S, player)
 	return S.Adapter.getAlive(player)
@@ -59,8 +65,62 @@ local function rainy()
 	return game:GetService("ReplicatedStorage"):GetAttribute("SpinRaining") == true
 end
 
+---------------------------------------------------------------------------
+-- GUILT (passive): stacks on the target, fading after a while
+---------------------------------------------------------------------------
+local function guiltOf(target)
+	local g = target:GetAttribute("Guilt") or 0
+	if g > 0 and os.clock() - (target:GetAttribute("GuiltAt") or 0) > cfg.Guilt.FadeAfter then
+		return 0
+	end
+	return g
+end
+
+local function setGuilt(S, target, g)
+	g = math.clamp(g, 0, cfg.Guilt.Max)
+	local stamp = os.clock()
+	target:SetAttribute("Guilt", g > 0 and g or nil)
+	target:SetAttribute("GuiltAt", g > 0 and stamp or nil)
+	S.fx("Ability", { Act = ACT, Move = "Guilt", Phase = "Mark", Target = target, Stacks = g })
+	if g > 0 then
+		task.delay(cfg.Guilt.FadeAfter + 0.05, function()
+			if target.Parent and target:GetAttribute("GuiltAt") == stamp then
+				target:SetAttribute("Guilt", nil)
+				target:SetAttribute("GuiltAt", nil)
+				S.fx("Ability", { Act = ACT, Move = "Guilt", Phase = "Mark", Target = target, Stacks = 0 })
+			end
+		end)
+	end
+end
+
+local function addGuilt(S, target, n)
+	setGuilt(S, target, guiltOf(target) + (n or 1))
+end
+
+-- Uses up all their guilt; returns how much there was.
+local function consumeGuilt(S, target)
+	local g = guiltOf(target)
+	if g > 0 then
+		setGuilt(S, target, 0)
+	end
+	return g
+end
+
+-- Every hit he lands adds guilt: S with a hit() that marks the target.
+local function guiltyHits(S)
+	return setmetatable({
+		hit = function(player, target, info)
+			local ok = S.hit(player, target, info)
+			if ok then
+				addGuilt(S, target, 1)
+			end
+			return ok
+		end,
+	}, { __index = S })
+end
+
 function Axl.M1(S, player, state, aim)
-	Moves.m1(S, player, state, aim, cfg.M1, ACT)
+	Moves.m1(guiltyHits(S), player, state, aim, cfg.M1, ACT)
 end
 
 local function slow(S, target, key, multiplier, seconds)
@@ -136,17 +196,32 @@ local function engulf(S, player, target, opts)
 end
 
 ---------------------------------------------------------------------------
--- GUILT SPECTER
+-- GUILT SPECTERS: they rise from his shadow and hunt the nearest enemy
 ---------------------------------------------------------------------------
-local function guiltSpecter(S, player, state, aim)
+local nextSpecter = 0
+
+local function nearestEnemy(S, character, root, range)
+	local best, bestD
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, range, 8)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and S.Adapter.canBeHit(nil, target) then
+			local d = (tr.Position - root.Position).Magnitude
+			if not bestD or d < bestD then
+				best, bestD = target, d
+			end
+		end
+	end
+	return best
+end
+
+local function guiltSpecters(S, player, state)
 	local c = cfg.GuiltSpecter
 	if not ready(S, player, state, "GuiltSpecter", 1) then
 		return
 	end
 	S.startCooldown(player, state, "GuiltSpecter", c.Cooldown, 1)
 	S.lock(state, c.Windup + 0.25)
-	local character, _, root = alive(S, player)
-	local direction = S.aim(aim, root)
+	local character = alive(S, player)
 	local life = state.Life
 	S.fx("Ability", { Character = character, Act = ACT, Move = "GuiltSpecter", Phase = "Cast", Windup = c.Windup })
 	task.delay(c.Windup, function()
@@ -154,29 +229,43 @@ local function guiltSpecter(S, player, state, aim)
 			return
 		end
 		local char, _, r = alive(S, player)
-		local target = targetInCone(S, char, r, direction, c.Range, c.Cone)
-		local tr = target and target:FindFirstChild("HumanoidRootPart")
-		if not tr then
+		local target = nearestEnemy(S, char, r, c.Range)
+		if not target then
 			S.startCooldown(player, state, "GuiltSpecter", c.MissCooldown, 1)
 			S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltSpecter", Phase = "Miss" })
 			return
 		end
-		-- It rises where they're standing now: they get a moment to dodge out.
-		local spot = Moves.groundBelow(tr.Position, { target })
-		S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltSpecter", Phase = "Warn", Position = spot, Rise = c.Rise, Radius = c.Radius, Target = target })
-		task.delay(c.Rise, function()
-			if state.Life ~= life then
-				return
-			end
-			local hit = 0
-			for _, victim in ipairs(S.Hitbox.inRadius(char, spot + Vector3.new(0, 2.5, 0), c.Radius, 3)) do
-				local vr = victim:FindFirstChild("HumanoidRootPart")
-				if vr and S.hit(player, victim, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Launch = c.Launch, Direction = vr.Position - spot, Position = vr.Position, Source = "AxlSpecter" }) then
-					hit = hit + 1
+		-- More guilt on them, more of their past comes back for them.
+		local count = math.min(c.MaxCount, c.Count + math.floor(guiltOf(target) / c.GuiltPerExtra))
+		local guilty = guiltyHits(S)
+		for i = 1, count do
+			nextSpecter = nextSpecter + 1
+			local id = nextSpecter
+			local side = (i - (count + 1) / 2) * c.Spread
+			local pos = (r.CFrame * CFrame.new(side, 0, 1.5)).Position
+			S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltSpecter", Phase = "Spawn", Id = id, From = pos, Target = target, Speed = c.Speed, Life = c.Life, Delay = (i - 1) * 0.15 })
+			task.delay((i - 1) * 0.15, function()
+				local born = os.clock()
+				local step = 0.1
+				local function tick()
+					local tr = target.Parent and target:FindFirstChild("HumanoidRootPart")
+					local hum = target:FindFirstChildOfClass("Humanoid")
+					if not tr or not hum or hum.Health <= 0 or os.clock() - born > c.Life or state.Life ~= life then
+						S.fx("Ability", { Act = ACT, Move = "GuiltSpecter", Phase = "Fade", Id = id, Position = pos })
+						return
+					end
+					local to = tr.Position - pos
+					if to.Magnitude <= c.GrabRadius then
+						guilty.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Launch = c.Launch, Direction = to, Position = tr.Position, Source = "AxlSpecter" })
+						S.fx("Ability", { Act = ACT, Move = "GuiltSpecter", Phase = "Grab", Id = id, Position = tr.Position, Target = target })
+						return
+					end
+					pos = pos + to.Unit * math.min(c.Speed * step, to.Magnitude)
+					task.delay(step, tick)
 				end
-			end
-			S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltSpecter", Phase = "Rise", Position = spot, Hit = hit > 0 })
-		end)
+				tick()
+			end)
+		end
 	end)
 end
 
@@ -184,6 +273,25 @@ end
 -- ABANDONED JUNK
 ---------------------------------------------------------------------------
 local JUNK = { "Crate", "Wheel", "Chair", "Bottle", "Boot", "Lamp" }
+
+-- Junk stuck to a target: each piece slows them a bit more until it falls off.
+stick = function(S, target, style, c)
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	local n = (target:GetAttribute("JunkStuck") or 0) + 1
+	target:SetAttribute("JunkStuck", n)
+	S.Adapter.setMoveModifier(humanoid, "GuiltJunk", math.max(0.5, 1 - c.SlowPerPiece * n))
+	S.fx("Ability", { Act = ACT, Move = "AbandonedJunk", Phase = "Stick", Target = target, Style = style, Duration = c.StickTime })
+	task.delay(c.StickTime, function()
+		local left = math.max(0, (target:GetAttribute("JunkStuck") or 1) - 1)
+		target:SetAttribute("JunkStuck", left > 0 and left or nil)
+		if humanoid.Parent then
+			S.Adapter.setMoveModifier(humanoid, "GuiltJunk", left > 0 and math.max(0.5, 1 - c.SlowPerPiece * left) or nil)
+		end
+	end)
+end
 
 local function abandonedJunk(S, player, state, aim)
 	local c = cfg.AbandonedJunk
@@ -217,8 +325,10 @@ local function abandonedJunk(S, player, state, aim)
 				Style = JUNK[(i - 1) % #JUNK + 1],
 				OnHit = function(target, position)
 					hits[target] = (hits[target] or 0) + 1
-					if hits[target] <= c.MaxHitsPerTarget then
-						S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = dir, Position = position, Source = "AxlJunk" })
+					if hits[target] <= c.MaxHitsPerTarget and S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = dir, Position = position, Source = "AxlJunk" }) then
+						-- It sticks to them: slower with every piece, and more guilt.
+						addGuilt(S, target, 1)
+						stick(S, target, JUNK[(i - 1) % #JUNK + 1], c)
 					end
 				end,
 			})
@@ -252,11 +362,16 @@ local function guiltMembrane(S, player, state, aim)
 			S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltMembrane", Phase = "Miss", Direction = direction })
 			return
 		end
+		-- It feeds on their guilt (and uses it up): harder squeezes; at max guilt, flattened.
+		local g = consumeGuilt(S, target)
+		local mult = 1 + c.PerGuilt * g
+		local flatten = g >= cfg.Guilt.Max
 		local t = engulf(S, player, target, {
-			Time = c.Time, Tick = c.Tick, TickDamage = c.TickDamage, TickGrowth = c.TickGrowth,
-			Slow = c.Slow, FinalDamage = c.FinalDamage, FinalStun = 0.6, RainMultiplier = c.RainMultiplier, Source = "AxlMembrane",
+			Time = c.Time, Tick = c.Tick, TickDamage = c.TickDamage * mult, TickGrowth = c.TickGrowth * mult,
+			Slow = c.Slow, FinalDamage = c.FinalDamage * mult, FinalStun = flatten and c.FlattenStun or 0.6,
+			FinalLaunch = flatten and c.FlattenLaunch or nil, RainMultiplier = c.RainMultiplier, Source = "AxlMembrane",
 		})
-		S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltMembrane", Phase = "Engulf", Targets = { target }, Duration = t, Rain = rainy() })
+		S.fx("Ability", { Character = char, Act = ACT, Move = "GuiltMembrane", Phase = "Engulf", Targets = { target }, Duration = t, Rain = rainy(), Guilt = g, Flatten = flatten })
 	end)
 end
 
@@ -265,7 +380,7 @@ function Axl.Ability(S, player, state, slot, phase, aim)
 		return
 	end
 	if slot == 1 then
-		guiltSpecter(S, player, state, aim)
+		guiltSpecters(S, player, state)
 	elseif slot == 2 then
 		abandonedJunk(S, player, state, aim)
 	elseif slot == 3 then
@@ -321,10 +436,14 @@ function Axl.Ultimate(S, player, state, aim)
 			end
 		end
 		local t = u.Time * (rainy() and u.RainMultiplier or 1)
+		local perGuilt = cfg.GuiltMembrane.PerGuilt
 		for _, target in ipairs(caught) do
+			-- Loaded with guilt, then the crush feeds on all of it.
+			addGuilt(S, target, u.GuiltAdded)
+			local mult = 1 + perGuilt * consumeGuilt(S, target)
 			engulf(S, player, target, {
 				Time = u.Time, Tick = u.Tick, TickDamage = u.TickDamage, Slow = u.Slow,
-				FinalDamage = u.FinalDamage - u.TickDamage, FinalStun = u.FinalStun, FinalKnockback = u.FinalKnockback, FinalLaunch = u.FinalLaunch,
+				FinalDamage = (u.FinalDamage - u.TickDamage) * mult, FinalStun = u.FinalStun, FinalKnockback = u.FinalKnockback, FinalLaunch = u.FinalLaunch,
 				RainMultiplier = u.RainMultiplier, Source = "AxlCivilWar",
 			})
 		end

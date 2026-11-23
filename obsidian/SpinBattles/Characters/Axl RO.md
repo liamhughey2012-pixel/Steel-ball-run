@@ -26,12 +26,17 @@ Server moves: `TuskActs/Axl`. Visuals: `TuskActVFX/AxlVFX`. Stand model: `TuskAc
 - **Arms:** black clips down the outside of both sleeves.
 - **Legs:** khaki trousers and dark boots.
 
+## Moves (reworked 2026-11-23: built around GUILT)
+**Passive: GUILT.** Every hit he lands (M1, specters, junk) marks the target with guilt: up to 5 stacks, shown as crimson marks above their head, fading 8 s after the last. His moves feed on it.
+
 | Input | Move | What it does |
 |---|---|---|
-| M1 | GUILT COMBO | jab, jab, kick, then a summoning point. Civil War strikes with each hit |
-| 1 | GUILT SPECTER | the nearest enemy in front (40 studs): a dark pool spreads under them for 0.55 s (dodge out!), then a ghost from their past rises and grabs them (8, launch). 7 s (3 s on a miss) |
-| 2 | ABANDONED JUNK | junk rises out of his shadow (crate, wheel, chair, bottle, boot, lamp) and flies in a fan: 6 pieces of 2.5, max 3 per enemy. 7 s |
-| 3 | GUILT MEMBRANE | the nearest enemy (16 studs) is wrapped in a grey-violet film with junk stuck to it: 4, slowed to 50%, squeezed every 0.5 s (1, then 1.25, 1.5...), then crushed (+4). 3 s. **In the rain it lasts half as long** (water washes guilt away). 13 s (3 s on a miss) |
-| G | CIVIL WAR | junk piles and 7 specters rise in a ring (20 studs). Everyone inside is grabbed (4) and wrapped (1.5 every 0.5 s, slowed), then crushed (12, launches). While it lasts, **the first hit on him makes Civil War break apart** (the hit misses, and he reforms 9 studs away). Shorter in the rain |
+| M1 | GUILT COMBO | jab, jab, kick, summoning point; Civil War strikes with each. +1 guilt a hit |
+| 1 | GUILT SPECTERS | ghosts rise from his shadow and **hunt** the nearest enemy (45 studs, any direction), chasing at 24 studs/s for 3 s, grabbing on contact (5, launch, +1 guilt). **1 specter, +1 per 2 guilt on them (max 3).** A dash can shake them. 8 s |
+| 2 | ABANDONED JUNK | a fan of 6 pieces of junk (2.5 each, max 3 per enemy). What hits **sticks to their body** for 4 s: each piece slows them 10% more and adds guilt. 7 s |
+| 3 | GUILT MEMBRANE | wraps the nearest enemy in front (16 studs): 4, slowed to 50%, squeezed harder each tick, then crushed. It **uses up their guilt**: +15% squeeze damage per stack; at 5 guilt they're **flattened** (long stun, launch). The victim's own screen darkens and their guilt whispers at them. In the rain it lasts half as long. 13 s |
+| G | CIVIL WAR | junk piles and 7 specters rise in a ring (20 studs): everyone inside is grabbed (4), **loaded with 3 guilt**, wrapped (1.5 every 0.5 s), then crushed (10, boosted by their guilt, launches). While it lasts the first hit on him makes Civil War break apart (the hit misses, he reforms 9 studs away). Shorter in the rain |
+
+**How to play him:** M1 or junk to stack guilt, then specters (more of them) or membrane (harder squeeze, flatten at 5). Rain is bad for him.
 
 - He's also a Stand-user NPC and a bounty-board target ("STAND: CIVIL WAR").

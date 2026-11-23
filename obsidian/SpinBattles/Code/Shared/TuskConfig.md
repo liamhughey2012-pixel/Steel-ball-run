@@ -657,32 +657,40 @@ TuskConfig.Axl = {
 			{ Damage = 7, Stun = 0.5, Knockback = 40, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
 		},
 	},
-	GuiltSpecter = { -- a ghost from their past rises out of their shadow and grabs them
-		Cooldown = 7, MissCooldown = 3, Windup = 0.25,
-		Range = 40, Cone = 70,
-		Rise = 0.55, -- warning before it rises (they can dodge out)
-		Radius = 5, Damage = 8, Stun = 0.7, Knockback = 6, Launch = 12,
+	Guilt = { -- PASSIVE: every hit he lands marks the target with guilt; his moves feed on it
+		Max = 5, FadeAfter = 8, -- stacks fade this long after the last one
 	},
-	AbandonedJunk = { -- things they threw away fly at them: a volley of junk
+	GuiltSpecter = { -- ghosts rise from his shadow and hunt the nearest enemy, grabbing on contact
+		Cooldown = 8, MissCooldown = 3, Windup = 0.25,
+		Range = 45, -- picks the nearest enemy this close (any direction)
+		Count = 1, GuiltPerExtra = 2, MaxCount = 3, -- +1 specter per 2 guilt on the target
+		Speed = 24, Life = 3.2, GrabRadius = 3.5, Spread = 4,
+		Damage = 5, Stun = 0.6, Knockback = 4, Launch = 8,
+	},
+	AbandonedJunk = { -- things they threw away fly at them and stick to their body
 		Cooldown = 7, Startup = 0.3,
 		Count = 6, Spread = 40,
 		Speed = 110, Radius = 1.1, Range = 60,
-		Damage = 2.5, Stun = 0.35, Knockback = 6, MaxHitsPerTarget = 3,
+		Damage = 2.5, Stun = 0.35, Knockback = 4, MaxHitsPerTarget = 3,
+		StickTime = 4, SlowPerPiece = 0.1, -- each stuck piece slows them a bit more
 	},
-	GuiltMembrane = { -- their guilt wraps them in a membrane that shrinks and crushes
+	GuiltMembrane = { -- their guilt wraps them in a membrane that shrinks and crushes; uses up their guilt
 		Cooldown = 13, MissCooldown = 3, Windup = 0.3,
 		Range = 16, Cone = 60,
 		Damage = 4, Stun = 0.6,
 		Time = 3, Tick = 0.5, TickDamage = 1, TickGrowth = 0.25, -- each squeeze hurts more
 		Slow = 0.5, FinalDamage = 4,
+		PerGuilt = 0.15, -- +15% squeeze damage per guilt used up
+		FlattenStun = 1.2, FlattenLaunch = 16, -- at max guilt they're flattened
 		RainMultiplier = 0.5, -- water washes guilt away: in the rain it lasts half as long
 	},
 	Ultimate = { -- CIVIL WAR: the junkyard rises; specters engulf everyone near; he breaks apart when hit
 		Windup = 1.0, Radius = 20, Specters = 7,
 		SpecterDamage = 4, SpecterStun = 0.8,
 		Time = 3, Tick = 0.5, TickDamage = 1.5, Slow = 0.4,
-		FinalDamage = 12, FinalKnockback = 45, FinalLaunch = 22, FinalStun = 0.7,
+		FinalDamage = 10, FinalKnockback = 45, FinalLaunch = 22, FinalStun = 0.7, -- the crush grows with their guilt
 		ScatterDistance = 9, -- Civil War breaks apart and he reforms this far away
+		GuiltAdded = 3, -- everyone caught is loaded with guilt; the crush uses it up
 		RainMultiplier = 0.5,
 	},
 }
