@@ -376,6 +376,7 @@ local function listBounties(viewer)
 				Name = p.DisplayName,
 				Reward = (cfg.BaseReward or 100) + streak * (cfg.StreakReward or 50),
 				Streak = streak,
+				Act = p.Character:GetAttribute("TuskAct"),
 			})
 		end
 	end
@@ -406,7 +407,7 @@ local function send(player, kind, data)
 end
 
 local function publicBounty(b)
-	return { Key = b.Key, Kind = b.Kind, UserId = b.UserId, Model = b.Model, Name = b.Name, Reward = b.Reward, Expires = b.Expires }
+	return { Key = b.Key, Kind = b.Kind, UserId = b.UserId, Model = b.Model, Name = b.Name, Reward = b.Reward, Expires = b.Expires, Act = b.Act }
 end
 
 local function accept(player, key)

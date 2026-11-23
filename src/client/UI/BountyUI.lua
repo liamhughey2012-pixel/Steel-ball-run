@@ -2,10 +2,15 @@
 	BountyUI  (StarterPlayerScripts.SpinClient.UI.BountyUI)
 
 	The bounty board screen (owner's design):
-	  * a wooden board full of parchment WANTED posters, one per player (their
-	    avatar headshot) or Stand-user NPC, each with its reward
-	  * HOVER a poster: it straightens, lifts, grows and gets a shadow
-	  * CLICK it: "ACCEPT BOUNTY?" with ACCEPT / DECLINE
+	  * a framed wooden board (grain, nails, metal corner brackets, a hanging
+	    title sign) that drops in from the top; a header strip with your Cash,
+	    ALL / PLAYERS / NPCS tabs and your current bounty
+	  * aged parchment WANTED posters with a red pin: face (avatar headshot,
+	    or the NPC's face), name, Stand, "DEAD OR ALIVE", danger pips, a red
+	    reward ribbon and a kill-streak badge
+	  * HOVER a poster: it straightens, lifts, grows, glows gold, "CLICK TO HUNT"
+	  * CLICK it: a BOUNTY CONTRACT card with ACCEPT / DECLINE; accepting
+	    thumps an ACCEPTED stamp on it
 	  * ACCEPT: the board closes and a bounty tracker appears on the left
 	    (target, reward, distance, time left, abandon button), plus a red
 	    TARGET marker over their head that only you can see
@@ -20,6 +25,7 @@ local RunService = game:GetService("RunService")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local Net = require(Shared.Net)
 local Registry = require(Shared.TuskActRegistry)
+local TuskConfig = require(Shared.TuskConfig)
 
 local BountyUI = {}
 local player = Players.LocalPlayer
@@ -112,13 +118,61 @@ end
 ---------------------------------------------------------------------------
 -- Board
 ---------------------------------------------------------------------------
-local function closeBoard()
-	if dim then
-		dim.Visible = false
+local lastList = {}
+local filter = "ALL"
+local tabs = {}
+local cashLabel, huntingLabel, countLabel
+local SLIDE = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local GLOW = Color3.fromRGB(255, 214, 110)
+local BURNT = Color3.fromRGB(120, 78, 40)
+local NAIL = Color3.fromRGB(70, 70, 76)
+
+-- "STAND: BALL BREAKER" from the Act a character is playing.
+local function standOf(act)
+	if not act then
+		return nil
 	end
+	local who = Registry.characterOf(act)
+	if who == "Johnny" then
+		local info = Registry.get(act)
+		return info and info.Name
+	end
+	for _, entry in ipairs(TuskConfig.Roster or {}) do
+		if entry.Id == who then
+			return entry.Stand
+		end
+	end
+	return nil
+end
+
+local function themeOf(act)
+	local info = act and Registry.get(act)
+	return info and info.Theme.Primary or PAPER_DARK
+end
+
+local function cashText()
+	local ls = player:FindFirstChild("leaderstats")
+	local cash = ls and ls:FindFirstChild("Cash")
+	return "$" .. tostring(cash and cash.Value or 0)
+end
+
+local openToken = 0
+local function closeBoard()
 	if confirmLayer then
 		confirmLayer.Visible = false
 	end
+	if not dim or not dim.Visible then
+		return
+	end
+	-- Slide up and away.
+	TweenService:Create(board, SOFT, { Position = UDim2.fromScale(0.5, -0.6) }):Play()
+	TweenService:Create(dim, SOFT, { BackgroundTransparency = 1 }):Play()
+	local token = openToken
+	task.delay(0.22, function()
+		if openToken == token then
+			dim.Visible = false
+		end
+	end)
 end
 
 local function showConfirm(entry)
@@ -131,132 +185,258 @@ local function showConfirm(entry)
 		end
 	end
 	local photo = photoFor(entry, body)
-	photo.Position = UDim2.fromScale(0.36, 0.2)
-	photo.Size = UDim2.fromScale(0.28, 0.36)
+	photo.AnchorPoint = Vector2.new(0.5, 0)
+	photo.Position = UDim2.new(0.5, 0, 0, 62)
+	photo.Size = UDim2.fromOffset(118, 118)
+	new("UIStroke", { Color = INK, Thickness = 3 }, photo)
 	body:FindFirstChild("Who").Text = string.upper(entry.Name)
-	body:FindFirstChild("Pay").Text = "REWARD  $" .. entry.Reward
-	body:FindFirstChild("Note").Text = (current and current.Key ~= entry.Key) and ("This replaces your bounty on " .. current.Name .. ".") or "Land the final hit to claim it."
+	local stand = standOf(entry.Act)
+	body:FindFirstChild("Stand").Text = stand and ("STAND: " .. stand) or ""
+	body:FindFirstChild("Stand").TextColor3 = themeOf(entry.Act):Lerp(INK, 0.45)
+	body:FindFirstChild("Pay").Text = "$" .. entry.Reward
+	local minutes = math.floor((TuskConfig.Bounty and TuskConfig.Bounty.Duration or 300) / 60)
+	body:FindFirstChild("Note").Text = (current and current.Key ~= entry.Key) and ("Replaces your bounty on " .. current.Name .. ".") or ("You have " .. minutes .. " minutes. Land the final hit to claim it.")
+	body:FindFirstChild("Stamp").Visible = false
 	confirmEntry = entry
 	local scale = confirm:FindFirstChildOfClass("UIScale")
 	scale.Scale = 0.6
+	confirm.Rotation = -4
 	TweenService:Create(scale, FAST, { Scale = 1 }):Play()
+	TweenService:Create(confirm, FAST, { Rotation = 0 }):Play()
 end
 
 local function makePoster(entry, index)
 	local col = (index - 1) % 4
 	local row = math.floor((index - 1) / 4)
-	local tilt = ((index * 37) % 11 - 5) * 1.2
-	local holder = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(126, 166), Position = UDim2.fromOffset(16 + col * 140, 12 + row * 178) }, grid)
-	local shadow = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Position = UDim2.fromOffset(6, 8), Rotation = tilt }, holder)
+	local tilt = ((index * 37) % 11 - 5) * 1.1
+	local holder = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(146, 204), Position = UDim2.fromOffset(14 + col * 160, 16 + row * 222) }, grid)
+	local shadow = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.82, Size = UDim2.fromScale(1, 1), Position = UDim2.fromOffset(5, 6), Rotation = tilt }, holder)
 	corner(shadow, 4)
 	local paper = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = PAPER, Size = UDim2.fromScale(1, 1), Rotation = tilt }, holder)
 	corner(paper, 3)
 	local scale = new("UIScale", { Scale = 1 }, paper)
-	new("UIGradient", { Color = ColorSequence.new(PAPER, PAPER_DARK), Rotation = 90 }, paper)
-	new("UIStroke", { Color = PAPER_DARK:Lerp(INK, 0.3), Thickness = 1.5 }, paper)
-	new("Frame", { BackgroundColor3 = Color3.fromRGB(70, 70, 76), Size = UDim2.fromOffset(9, 9), Position = UDim2.new(0.5, -4, 0, 4) }, paper) -- nail
-	label(paper, { Position = UDim2.fromScale(0.05, 0.07), Size = UDim2.fromScale(0.9, 0.14), Text = "WANTED", Font = Enum.Font.Bangers })
+	-- Aged paper: lighter middle, browner edges, a burnt-looking border.
+	new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, PAPER_DARK), ColorSequenceKeypoint.new(0.35, PAPER), ColorSequenceKeypoint.new(1, PAPER_DARK) }), Rotation = 70 }, paper)
+	local edge = new("UIStroke", { Color = BURNT, Thickness = 2, Transparency = 0.25 }, paper)
+	-- Red pin with a shine.
+	local pin = new("Frame", { BackgroundColor3 = RED, Size = UDim2.fromOffset(14, 14), Position = UDim2.new(0.5, -7, 0, -4), ZIndex = 3 }, paper)
+	corner(pin, 99)
+	new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.4, Size = UDim2.fromOffset(4, 4), Position = UDim2.fromOffset(3, 3), ZIndex = 3 }, pin)
+	label(paper, { Position = UDim2.fromScale(0.06, 0.06), Size = UDim2.fromScale(0.88, 0.13), Text = "WANTED", Font = Enum.Font.Bangers })
+	label(paper, { Position = UDim2.fromScale(0.1, 0.185), Size = UDim2.fromScale(0.8, 0.05), Text = "DEAD OR ALIVE", Font = Enum.Font.GothamBold, TextColor3 = INK:Lerp(PAPER, 0.25) })
 	local photo = photoFor(entry, paper)
-	photo.Position = UDim2.fromScale(0.14, 0.23)
-	photo.Size = UDim2.fromScale(0.72, 0.42)
-	label(paper, { Position = UDim2.fromScale(0.05, 0.67), Size = UDim2.fromScale(0.9, 0.1), Text = string.upper(entry.Name), TextTruncate = Enum.TextTruncate.AtEnd })
-	label(paper, { Position = UDim2.fromScale(0.05, 0.79), Size = UDim2.fromScale(0.9, 0.13), Text = "$" .. entry.Reward, Font = Enum.Font.Bangers, TextColor3 = RED })
-	if (entry.Streak or 0) > 0 then
-		label(paper, { Position = UDim2.fromScale(0.05, 0.92), Size = UDim2.fromScale(0.9, 0.06), Text = entry.Streak .. " KILL STREAK", TextColor3 = INK:Lerp(PAPER, 0.3) })
+	photo.Position = UDim2.fromScale(0.15, 0.25)
+	photo.Size = UDim2.fromScale(0.7, 0.36)
+	new("UIStroke", { Color = INK, Thickness = 2 }, photo)
+	label(paper, { Position = UDim2.fromScale(0.05, 0.63), Size = UDim2.fromScale(0.9, 0.08), Text = string.upper(entry.Name), TextTruncate = Enum.TextTruncate.AtEnd })
+	local stand = standOf(entry.Act)
+	if stand then
+		label(paper, { Position = UDim2.fromScale(0.05, 0.71), Size = UDim2.fromScale(0.9, 0.05), Text = "STAND: " .. stand, Font = Enum.Font.GothamBold, TextColor3 = themeOf(entry.Act):Lerp(INK, 0.5) })
 	end
+	-- Danger pips: more pips, more reward.
+	local danger = math.clamp(math.floor(entry.Reward / 75 + 0.5), 1, 5)
+	for i = 1, 5 do
+		local pip = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, (i - 3) * 13, 0.795, 0), Size = UDim2.fromOffset(7, 7), Rotation = 45, BackgroundColor3 = i <= danger and RED or PAPER_DARK }, paper)
+		new("UIStroke", { Color = INK, Thickness = 1, Transparency = 0.4 }, pip)
+	end
+	-- Reward ribbon.
+	local ribbon = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.84, 0), Size = UDim2.fromScale(0.72, 0.12), BackgroundColor3 = RED }, paper)
+	corner(ribbon, 4)
+	label(ribbon, { Size = UDim2.fromScale(1, 1), Text = "$" .. entry.Reward, Font = Enum.Font.Bangers, TextColor3 = PAPER })
+	if (entry.Streak or 0) > 0 then
+		local badge = new("Frame", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 6, 0, -6), Size = UDim2.fromOffset(46, 22), BackgroundColor3 = INK, Rotation = 8, ZIndex = 3 }, paper)
+		corner(badge, 6)
+		label(badge, { Size = UDim2.fromScale(1, 1), Text = "x" .. entry.Streak .. " KILLS", TextColor3 = GOLD, ZIndex = 3 })
+	end
+	-- "CLICK TO HUNT" tag shown while hovered.
+	local tag = new("Frame", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 14), Size = UDim2.fromOffset(110, 20), BackgroundColor3 = INK, BackgroundTransparency = 1, ZIndex = 4 }, paper)
+	corner(tag, 6)
+	local tagText = label(tag, { Size = UDim2.fromScale(1, 1), Text = "CLICK TO HUNT", TextColor3 = GOLD, TextTransparency = 1, ZIndex = 4 })
 	if current and current.Key == entry.Key then
-		local stamp = label(paper, { Position = UDim2.fromScale(0.05, 0.36), Size = UDim2.fromScale(0.9, 0.2), Rotation = -18, Text = "HUNTING", Font = Enum.Font.Bangers, TextColor3 = RED, TextTransparency = 0.15, ZIndex = 3 })
+		local stamp = label(paper, { Position = UDim2.fromScale(0.05, 0.34), Size = UDim2.fromScale(0.9, 0.18), Rotation = -18, Text = "HUNTING", Font = Enum.Font.Bangers, TextColor3 = RED, TextTransparency = 0.1, ZIndex = 3 })
 		new("UIStroke", { Color = RED, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Transparency = 0.3 }, stamp)
 	end
-	-- Hover: straighten, lift, grow, cast a shadow. Leave: settle back.
+	-- Hover: straighten, lift, grow, glow gold, cast a bigger shadow.
 	paper.MouseEnter:Connect(function()
 		holder.ZIndex = 5
-		TweenService:Create(paper, FAST, { Rotation = 0, Position = UDim2.fromOffset(0, -8) }):Play()
-		TweenService:Create(scale, FAST, { Scale = 1.12 }):Play()
-		TweenService:Create(shadow, SOFT, { BackgroundTransparency = 0.6, Rotation = 0, Position = UDim2.fromOffset(8, 6) }):Play()
+		TweenService:Create(paper, FAST, { Rotation = 0, Position = UDim2.fromOffset(0, -10) }):Play()
+		TweenService:Create(scale, FAST, { Scale = 1.1 }):Play()
+		TweenService:Create(edge, SOFT, { Color = GLOW, Thickness = 3, Transparency = 0 }):Play()
+		TweenService:Create(shadow, SOFT, { BackgroundTransparency = 0.55, Rotation = 0, Position = UDim2.fromOffset(10, 10) }):Play()
+		TweenService:Create(tag, SOFT, { BackgroundTransparency = 0.1 }):Play()
+		TweenService:Create(tagText, SOFT, { TextTransparency = 0 }):Play()
 	end)
 	paper.MouseLeave:Connect(function()
 		holder.ZIndex = 1
 		TweenService:Create(paper, SOFT, { Rotation = tilt, Position = UDim2.fromOffset(0, 0) }):Play()
 		TweenService:Create(scale, SOFT, { Scale = 1 }):Play()
-		TweenService:Create(shadow, SOFT, { BackgroundTransparency = 1, Rotation = tilt, Position = UDim2.fromOffset(6, 8) }):Play()
+		TweenService:Create(edge, SOFT, { Color = BURNT, Thickness = 2, Transparency = 0.25 }):Play()
+		TweenService:Create(shadow, SOFT, { BackgroundTransparency = 0.82, Rotation = tilt, Position = UDim2.fromOffset(5, 6) }):Play()
+		TweenService:Create(tag, SOFT, { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(tagText, SOFT, { TextTransparency = 1 }):Play()
 	end)
 	paper.Activated:Connect(function()
 		-- A little "tug" when picked.
-		scale.Scale = 1.2
-		TweenService:Create(scale, FAST, { Scale = 1.12 }):Play()
+		scale.Scale = 1.18
+		TweenService:Create(scale, FAST, { Scale = 1.1 }):Play()
 		showConfirm(entry)
 	end)
 	-- Posters drop onto the board one after another.
-	paper.Position = UDim2.fromOffset(0, -30)
-	paper.BackgroundTransparency = 1
-	task.delay(index * 0.04, function()
-		TweenService:Create(paper, FAST, { Position = UDim2.fromOffset(0, 0), BackgroundTransparency = 0 }):Play()
+	paper.Position = UDim2.fromOffset(0, -40)
+	task.delay(0.15 + index * 0.05, function()
+		TweenService:Create(paper, FAST, { Position = UDim2.fromOffset(0, 0) }):Play()
 	end)
 end
 
-local function openBoard(data)
-	dim.Visible = true
-	confirmLayer.Visible = false
+local function fillGrid()
 	for _, c in ipairs(grid:GetChildren()) do
 		if c:IsA("Frame") then
 			c:Destroy()
 		end
 	end
-	current = data.Active or current
-	local list = data.Bounties or {}
-	grid:FindFirstChild("Empty").Visible = #list == 0
-	for i, entry in ipairs(list) do
+	local shown = {}
+	for _, entry in ipairs(lastList) do
+		if filter == "ALL" or (filter == "PLAYERS" and entry.Kind == "Player") or (filter == "NPCS" and entry.Kind == "NPC") then
+			table.insert(shown, entry)
+		end
+	end
+	local empty = grid:FindFirstChild("Empty")
+	empty.Visible = #shown == 0
+	empty.Text = filter == "PLAYERS" and "No other players are wanted right now.\n(Testing alone? Try Test > Clients and Servers.)" or "No bounties right now. Check back later!"
+	for i, entry in ipairs(shown) do
 		makePoster(entry, i)
 	end
-	grid.CanvasSize = UDim2.fromOffset(0, 24 + math.ceil(#list / 4) * 178)
+	grid.CanvasSize = UDim2.fromOffset(0, 30 + math.ceil(#shown / 4) * 222)
+	for name, tab in pairs(tabs) do
+		local on = name == filter
+		tab.BackgroundColor3 = on and GOLD or WOOD_DARK
+		tab.TextColor3 = on and INK or PAPER
+	end
+	local players, npcs = 0, 0
+	for _, e in ipairs(lastList) do
+		if e.Kind == "Player" then
+			players = players + 1
+		else
+			npcs = npcs + 1
+		end
+	end
+	countLabel.Text = players .. " PLAYERS · " .. npcs .. " NPCS"
+end
+
+local function openBoard(data)
+	confirmLayer.Visible = false
+	current = data.Active or current
+	lastList = data.Bounties or {}
+	cashLabel.Text = cashText()
+	huntingLabel.Text = current and ("HUNTING: " .. string.upper(current.Name)) or "NO ACTIVE BOUNTY"
+	fillGrid()
 	local scale = board:FindFirstChildOfClass("UIScale")
 	local view = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
-	local fit = math.min(1, view.X / 640, view.Y / 520)
-	scale.Scale = fit * 0.85
-	TweenService:Create(scale, FAST, { Scale = fit }):Play()
+	scale.Scale = math.min(1, (view.X - 24) / 700, (view.Y - 24) / 560)
+	-- Drop in from the top.
+	openToken = openToken + 1
+	dim.Visible = true
+	dim.BackgroundTransparency = 1
+	board.Position = UDim2.fromScale(0.5, -0.6)
+	TweenService:Create(dim, SOFT, { BackgroundTransparency = 0.4 }):Play()
+	TweenService:Create(board, SLIDE, { Position = UDim2.fromScale(0.5, 0.5) }):Play()
 end
 
 local function buildBoard()
-	dim = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Size = UDim2.fromScale(1, 1), Visible = false }, gui)
+	dim = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.4, Size = UDim2.fromScale(1, 1), Visible = false }, gui)
 	dim.Activated:Connect(closeBoard)
-	board = new("TextButton", { Text = "", AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(600, 470), BackgroundColor3 = WOOD }, dim)
-	corner(board, 6)
+	-- Board: a dark wood frame round plank boards.
+	board = new("TextButton", { Text = "", AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(700, 560), BackgroundColor3 = WOOD_DARK }, dim)
+	corner(board, 8)
 	new("UIScale", { Scale = 1 }, board)
-	new("UIStroke", { Color = WOOD_DARK, Thickness = 4 }, board)
-	-- Planks.
-	for i = 0, 5 do
-		new("Frame", { BackgroundColor3 = i % 2 == 0 and WOOD_LIGHT or WOOD, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 60 + i * 68), Size = UDim2.new(1, 0, 0, 66), BackgroundTransparency = 0.2 }, board)
+	new("UIStroke", { Color = Color3.fromRGB(45, 28, 16), Thickness = 3 }, board)
+	local inner = new("Frame", { BackgroundColor3 = WOOD, Position = UDim2.fromOffset(12, 12), Size = UDim2.new(1, -24, 1, -24), ClipsDescendants = true }, board)
+	corner(inner, 4)
+	for i = 0, 7 do
+		local plank = new("Frame", { BackgroundColor3 = (i % 3 == 0) and WOOD_LIGHT or (i % 3 == 1 and WOOD or Color3.fromRGB(122, 82, 50)), BorderSizePixel = 0, Position = UDim2.fromOffset(0, i * 68), Size = UDim2.new(1, 0, 0, 66) }, inner)
+		-- Wood grain lines and a seam under each plank.
+		for g = 1, 3 do
+			local line = new("Frame", { BackgroundColor3 = WOOD_DARK, BorderSizePixel = 0, BackgroundTransparency = 0.55, Position = UDim2.new(((i * 7 + g * 13) % 10) / 20, 0, 0, 10 + g * 15 + (i % 2) * 4), Size = UDim2.new(0.5 + ((i + g) % 4) * 0.1, 0, 0, 2) }, plank)
+			new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0), NumberSequenceKeypoint.new(0.7, 0), NumberSequenceKeypoint.new(1, 1) }) }, line)
+		end
+		new("Frame", { BackgroundColor3 = Color3.fromRGB(50, 32, 18), BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 2) }, plank)
+		for _, x in ipairs({ 0, 1 }) do
+			local nail = new("Frame", { BackgroundColor3 = NAIL, AnchorPoint = Vector2.new(x, 0.5), Position = UDim2.new(x, x == 0 and 8 or -8, 0.5, 0), Size = UDim2.fromOffset(6, 6) }, plank)
+			corner(nail, 99)
+		end
 	end
-	local title = new("Frame", { BackgroundColor3 = WOOD_DARK, Position = UDim2.fromOffset(-10, -16), Size = UDim2.new(1, 20, 0, 64) }, board)
-	corner(title, 6)
-	label(title, { Size = UDim2.fromScale(1, 1), Text = "BOUNTY BOARD", Font = Enum.Font.Bangers, TextColor3 = PAPER, TextStrokeTransparency = 0.5 })
-	local close = new("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 4, 0, 4), Size = UDim2.fromOffset(40, 40), BackgroundColor3 = RED, Text = "X", Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, title)
-	corner(close, 8)
+	-- Dark edges (vignette) over the planks.
+	local shade = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0, Size = UDim2.fromScale(1, 1), ZIndex = 2 }, inner)
+	new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(0.15, 1), NumberSequenceKeypoint.new(0.85, 1), NumberSequenceKeypoint.new(1, 0.55) }) }, shade)
+	-- Metal corner brackets.
+	for _, c in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do
+		local bracket = new("Frame", { AnchorPoint = Vector2.new(c[1], c[2]), Position = UDim2.fromScale(c[1], c[2]), Size = UDim2.fromOffset(30, 30), BackgroundColor3 = Color3.fromRGB(90, 92, 100), ZIndex = 3 }, board)
+		corner(bracket, 5)
+		new("UIStroke", { Color = Color3.fromRGB(40, 40, 46), Thickness = 2 }, bracket)
+		local bolt = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(8, 8), BackgroundColor3 = Color3.fromRGB(170, 172, 180), ZIndex = 3 }, bracket)
+		corner(bolt, 99)
+	end
+	-- Hanging title sign (inside the board, so it never goes off-screen).
+	for _, x in ipairs({ -120, 120 }) do
+		new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, x, 0, 0), Size = UDim2.fromOffset(3, 18), BackgroundColor3 = Color3.fromRGB(200, 170, 110), BorderSizePixel = 0, ZIndex = 4 }, board)
+	end
+	local sign = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 14), Size = UDim2.fromOffset(330, 54), BackgroundColor3 = WOOD_DARK, ZIndex = 4 }, board)
+	corner(sign, 6)
+	new("UIStroke", { Color = Color3.fromRGB(40, 24, 12), Thickness = 2 }, sign)
+	label(sign, { Size = UDim2.new(1, 0, 0.78, 0), Text = "BOUNTY BOARD", Font = Enum.Font.Bangers, TextColor3 = PAPER, TextStrokeTransparency = 0.4, ZIndex = 4 })
+	label(sign, { Position = UDim2.fromScale(0, 0.72), Size = UDim2.fromScale(1, 0.24), Text = "HUNT THEM DOWN · GET PAID", Font = Enum.Font.GothamBold, TextColor3 = GOLD, ZIndex = 4 })
+	local close = new("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -22, 0, 20), Size = UDim2.fromOffset(40, 40), BackgroundColor3 = RED, Text = "X", Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), ZIndex = 4 }, board)
+	corner(close, 99)
+	new("UIStroke", { Color = Color3.fromRGB(90, 15, 12), Thickness = 2 }, close)
 	close.Activated:Connect(closeBoard)
-	grid = new("ScrollingFrame", { Name = "Grid", BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(8, 56), Size = UDim2.new(1, -16, 1, -64), ScrollBarThickness = 6, CanvasSize = UDim2.new() }, board)
-	label(grid, { Name = "Empty", Position = UDim2.fromScale(0.1, 0.35), Size = UDim2.fromScale(0.8, 0.12), Text = "No bounties right now. Check back later!", TextColor3 = PAPER, Visible = false })
+	-- Header strip: cash, tabs, current bounty.
+	local strip = new("Frame", { Position = UDim2.fromOffset(22, 78), Size = UDim2.new(1, -44, 0, 34), BackgroundColor3 = Color3.fromRGB(40, 26, 15), BackgroundTransparency = 0.25, ZIndex = 4 }, board)
+	corner(strip, 8)
+	local cashChip = new("Frame", { Position = UDim2.fromOffset(6, 4), Size = UDim2.fromOffset(110, 26), BackgroundColor3 = GOLD, ZIndex = 4 }, strip)
+	corner(cashChip, 6)
+	cashLabel = label(cashChip, { Size = UDim2.fromScale(1, 1), Text = "$0", Font = Enum.Font.Bangers, ZIndex = 4 })
+	for i, name in ipairs({ "ALL", "PLAYERS", "NPCS" }) do
+		local tab = new("TextButton", { Position = UDim2.fromOffset(126 + (i - 1) * 86, 4), Size = UDim2.fromOffset(80, 26), BackgroundColor3 = WOOD_DARK, Text = name, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = PAPER, ZIndex = 4 }, strip)
+		corner(tab, 6)
+		new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, tab)
+		tab.Activated:Connect(function()
+			filter = name
+			fillGrid()
+		end)
+		tabs[name] = tab
+	end
+	huntingLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 2), Size = UDim2.fromOffset(200, 16), Text = "", TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+	countLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 18), Size = UDim2.fromOffset(200, 12), Text = "", Font = Enum.Font.GothamBold, TextColor3 = PAPER_DARK, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+	grid = new("ScrollingFrame", { Name = "Grid", BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(22, 118), Size = UDim2.new(1, -44, 1, -136), ScrollBarThickness = 6, ScrollBarImageColor3 = PAPER_DARK, CanvasSize = UDim2.new(), ZIndex = 4 }, board)
+	label(grid, { Name = "Empty", Position = UDim2.fromScale(0.08, 0.32), Size = UDim2.fromScale(0.84, 0.14), Text = "", TextColor3 = PAPER, Visible = false, ZIndex = 4 })
 
-	-- Accept / decline.
-	-- The Accept / Decline card sits on its own layer above the board, so
-	-- nothing on the board can cover it or swallow its clicks.
+	-- The contract card (Accept / Decline) sits on its own layer above the
+	-- board, so nothing on the board can cover it or swallow its clicks.
 	local top = new("ScreenGui", { Name = "BountyConfirm", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 9 }, player:WaitForChild("PlayerGui"))
 	confirmLayer = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), Visible = false }, top)
 	confirmLayer.Activated:Connect(function()
 		confirmLayer.Visible = false
 	end)
-	confirm = new("TextButton", { Text = "", AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(330, 300), BackgroundColor3 = PAPER }, confirmLayer)
+	confirm = new("TextButton", { Text = "", AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(360, 400), BackgroundColor3 = PAPER }, confirmLayer)
 	corner(confirm, 6)
 	new("UIScale", { Scale = 1 }, confirm)
-	new("UIStroke", { Color = INK, Thickness = 3 }, confirm)
+	new("UIStroke", { Color = BURNT, Thickness = 4 }, confirm)
+	new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, PAPER_DARK), ColorSequenceKeypoint.new(0.4, PAPER), ColorSequenceKeypoint.new(1, PAPER_DARK) }), Rotation = 80 }, confirm)
 	local body = new("Frame", { Name = "Body", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, confirm)
-	label(body, { Position = UDim2.fromScale(0.05, 0.03), Size = UDim2.fromScale(0.9, 0.13), Text = "ACCEPT BOUNTY?", Font = Enum.Font.Bangers })
-	label(body, { Name = "Who", Position = UDim2.fromScale(0.05, 0.58), Size = UDim2.fromScale(0.9, 0.09), Text = "" })
-	label(body, { Name = "Pay", Position = UDim2.fromScale(0.05, 0.67), Size = UDim2.fromScale(0.9, 0.09), Text = "", Font = Enum.Font.Bangers, TextColor3 = RED })
-	label(body, { Name = "Note", Position = UDim2.fromScale(0.05, 0.76), Size = UDim2.fromScale(0.9, 0.06), Text = "", Font = Enum.Font.Gotham })
+	label(body, { Position = UDim2.fromOffset(16, 10), Size = UDim2.new(1, -32, 0, 34), Text = "BOUNTY CONTRACT", Font = Enum.Font.Bangers })
+	new("Frame", { BackgroundColor3 = INK, BorderSizePixel = 0, Position = UDim2.fromOffset(30, 48), Size = UDim2.new(1, -60, 0, 2) }, body)
+	label(body, { Name = "Who", Position = UDim2.fromOffset(16, 188), Size = UDim2.new(1, -32, 0, 24), Text = "" })
+	label(body, { Name = "Stand", Position = UDim2.fromOffset(16, 212), Size = UDim2.new(1, -32, 0, 14), Text = "", Font = Enum.Font.GothamBold })
+	label(body, { Name = "Pay", Position = UDim2.fromOffset(16, 230), Size = UDim2.new(1, -32, 0, 44), Text = "", Font = Enum.Font.Bangers, TextColor3 = RED })
+	label(body, { Name = "Note", Position = UDim2.fromOffset(24, 278), Size = UDim2.new(1, -48, 0, 30), Text = "", Font = Enum.Font.Gotham, TextWrapped = true })
+	local stamp = label(body, { Name = "Stamp", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.42), Size = UDim2.fromOffset(250, 70), Rotation = -14, Text = "ACCEPTED", Font = Enum.Font.Bangers, TextColor3 = RED, Visible = false, ZIndex = 5 })
+	new("UIStroke", { Color = RED, Thickness = 4, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, stamp)
+	local stampScale = new("UIScale", { Scale = 1 }, stamp)
 	local function button(text, color, x)
-		local b = new("TextButton", { Position = UDim2.fromScale(x, 0.85), Size = UDim2.fromScale(0.4, 0.11), BackgroundColor3 = color, Text = text, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, body)
+		local b = new("TextButton", { Position = UDim2.new(x, 0, 1, -66), Size = UDim2.new(0.42, 0, 0, 46), BackgroundColor3 = color, Text = text, Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, body)
 		corner(b, 8)
+		new("UIStroke", { Color = color:Lerp(Color3.new(0, 0, 0), 0.45), Thickness = 2 }, b)
+		new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }, b)
 		local s = new("UIScale", { Scale = 1 }, b)
 		b.MouseEnter:Connect(function()
 			TweenService:Create(s, FAST, { Scale = 1.08 }):Play()
@@ -266,13 +446,24 @@ local function buildBoard()
 		end)
 		return b
 	end
-	button("ACCEPT", GREEN, 0.07).Activated:Connect(function()
-		if confirmEntry then
-			Remote:FireServer("Accept", confirmEntry.Key)
+	local accepting = false
+	button("ACCEPT", GREEN, 0.06).Activated:Connect(function()
+		if accepting or not confirmEntry then
+			return
 		end
-		closeBoard()
+		accepting = true
+		-- Thump an ACCEPTED stamp onto the contract, then go.
+		stamp.Visible = true
+		stampScale.Scale = 2.2
+		TweenService:Create(stampScale, FAST, { Scale = 1 }):Play()
+		local entry = confirmEntry
+		task.delay(0.45, function()
+			accepting = false
+			Remote:FireServer("Accept", entry.Key)
+			closeBoard()
+		end)
 	end)
-	button("DECLINE", RED, 0.53).Activated:Connect(function()
+	button("DECLINE", RED, 0.52).Activated:Connect(function()
 		confirmLayer.Visible = false
 	end)
 end

@@ -20,3 +20,11 @@ Server: `BountyService` (built into Spin_Server). Client: `UI/BountyUI` (built i
 **Rewards:** players $100 + $50 per kill on their current streak; Stand-user NPCs $75. Bounties last 5 minutes. One at a time (a new one replaces the old). If someone else takes down your NPC target, or your target leaves, the bounty is lost.
 
 **Note:** the board only lists *other* players. Playing alone in Studio you'll only see the NPCs; use Test › Clients and Servers with 2+ players to see player posters.
+
+## Board UI (2026-11-23 polish)
+- Framed wooden board (grain lines, plank seams, nails, metal corner brackets, dark edges) that **drops in from the top** and slides away when closed.
+- Hanging **BOUNTY BOARD** sign ("HUNT THEM DOWN · GET PAID"), round red close button.
+- Header strip: your **Cash**, **ALL / PLAYERS / NPCS** tabs, who you're hunting, and how many players / NPCs are wanted.
+- Posters: aged parchment with a burnt edge and a red pin, WANTED / DEAD OR ALIVE, face, name, **Stand** (e.g. STAND: BALL BREAKER), **danger pips** (by reward), a red **reward ribbon**, and an "xN KILLS" badge for players on a streak.
+- Hover: straightens, lifts, grows, **glows gold**, shows "CLICK TO HUNT".
+- Click: a **BOUNTY CONTRACT** card (face, name, Stand, reward, time limit) with ACCEPT / DECLINE; accepting thumps an **ACCEPTED** stamp onto it.

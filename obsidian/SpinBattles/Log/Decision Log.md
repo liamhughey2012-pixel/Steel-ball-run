@@ -72,3 +72,4 @@ updated: 2026-11-22
 | 2026-11-23 | Bounty board by the spawn (owner's design): wanted-poster UI, accept/decline, tracker + target marker, Cash and kill streaks in leaderstats |
 | 2026-11-23 | Tusk Act 1 rebuilt from the owner's Studio screenshots (smooth lilac, bat-wing ears); bounty Accept button bug fixed |
 | 2026-11-23 | Bounty posters show NPC faces (live viewport); the Accept/Decline card sits on its own top layer |
+| 2026-11-23 | Bounty board UI polished: framed board, tabs, cash, richer posters, contract card with ACCEPTED stamp |
