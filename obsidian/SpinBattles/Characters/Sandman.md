@@ -11,7 +11,7 @@ Built from the character's description (no reference images yet). Send pictures 
 ![[sandman_outfit_preview.png]]
 *(stand-in render on a test avatar)*
 
-**Look** (blocky): long straight black hair down his back with side locks, a red beaded headband with a feather, a sand-coloured scarf and sleeveless vest, bare arms, a red sash with a pouch, wrapped forearms and shins. He keeps the player's own face.
+**Look** (blocky, matched to the reference art the user sent 2026-11-23): mint-green hair over the top of his head with a black stripe down the middle, two mint braids in front tied with gold beads, a long black ponytail; a yellow collar with a black zigzag; bare chest with the red chevron tattoo and green shoulder tattoos; a dark red corset studded with gold; a sand loincloth with gold pyramid studs and hanging flaps; yellow arm bands and long yellow gauntlets; fringed sand wraps under the knees and at the ankles, black shin bands, bare feet with sandal straps.
 
 **In a Silent Way:** sounds become solid, written sound effects (blocky 3D words) that do what they say when touched.
 
