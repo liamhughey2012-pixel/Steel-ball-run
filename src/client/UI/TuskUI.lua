@@ -135,7 +135,11 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("SCARY MONSTERS") then
+	if has("BAIT") then
+		return "bait"
+	elseif has("HOOK") or has("WIRED") then
+		return "hook"
+	elseif has("SCARY MONSTERS") then
 		return "dino"
 	elseif has("INFECTION") or has("BITE") then
 		return "fang"
@@ -261,6 +265,21 @@ local function drawIcon(icon, kind)
 			bar(icon, 0.2 + i * 0.1, 0.16 - (i == 1 and 0.04 or 0), 0.05, 0.2, -30 + i * 30)
 		end
 		frame(icon, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.42, 0.36), Size = UDim2.fromScale(0.08, 0.08), BackgroundColor3 = DARK, Rotation = 45 })
+	elseif kind == "hook" then
+		-- Fish hook on a cable: shank, J bend, barbed point.
+		bar(icon, 0.5, 0.08, 0.05, 0.16, 0) -- cable
+		ring(icon, 0.16, 2, UDim2.fromScale(0.5, 0.2))
+		bar(icon, 0.5, 0.48, 0.09, 0.5, 0)
+		bar(icon, 0.38, 0.75, 0.3, 0.09, 0)
+		bar(icon, 0.26, 0.64, 0.09, 0.26, 0)
+		bar(icon, 0.3, 0.55, 0.07, 0.14, -40) -- barb
+	elseif kind == "bait" then
+		-- Pan of water with a feather above it.
+		bar(icon, 0.45, 0.78, 0.7, 0.14, 0)
+		bar(icon, 0.88, 0.72, 0.26, 0.07, -15)
+		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
+		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
+		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
 	elseif kind == "slash" then
 		for i = -1, 1 do
 			bar(icon, 0.5 + i * 0.18, 0.5, 0.08, 0.8 - math.abs(i) * 0.2, 30)

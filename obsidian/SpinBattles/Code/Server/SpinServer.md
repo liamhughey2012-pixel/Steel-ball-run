@@ -38,6 +38,7 @@ local TestDummies = require(script.TestDummies)
 local StandAssetLoader = require(script.StandAssetLoader)
 local GyroOutfit = require(script.GyroOutfit)
 local DiegoOutfit = require(script.DiegoOutfit)
+local PorkPieOutfit = require(script.PorkPieOutfit)
 
 -- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
@@ -46,6 +47,7 @@ StandAssetLoader.init()
 TuskService.init()
 GyroOutfit.init()
 DiegoOutfit.init()
+PorkPieOutfit.init()
 NPCService.init()
 TestDummies.init()
 ```

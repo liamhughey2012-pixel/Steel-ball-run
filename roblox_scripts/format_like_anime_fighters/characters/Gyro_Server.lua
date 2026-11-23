@@ -1,0 +1,531 @@
+--[[
+	Gyro_Server  (ModuleScript)
+	PUT IT IN: ServerScriptService > SpinCharacters   (make a Folder named SpinCharacters there if it doesn't exist)
+
+	Gyro Zeppeli: Steel Balls and Ball Breaker.
+	Its other half is Gyro_Client in ReplicatedStorage > SpinCharacters.
+	Loaded by Spin_Server: don't put any code in front of this.
+]]
+
+return function(__modules, __require, __hasModule)
+
+-- ======================================================================
+-- MODULE: GyroOutfit
+-- ======================================================================
+__modules["GyroOutfit"] = function()
+--[[
+	GyroOutfit  (ServerScriptService.SpinServer.GyroOutfit)
+
+	Gives a character Gyro Zeppeli's hat and hair while they play Gyro
+	(TuskAct 5), built from parts so no catalog asset ids are needed:
+	  * tan wide-brimmed hat with slots cut round the brim, slits round the
+	    crown, a domed top and two big ridged silver goggles on a strap
+	  * long blond hair with side locks, braids and a fringe
+	The player's own clothes stay on. Their own hats/hair are hidden while
+	they play Gyro and come back when they switch. Built on the server so
+	every player sees it.
+]]
+
+local Players = game:GetService("Players")
+
+local GyroOutfit = {}
+GyroOutfit.GyroAct = 5
+
+local C = {
+	Hat = Color3.fromRGB(206, 168, 128),
+	HatShade = Color3.fromRGB(150, 105, 70),
+	Slot = Color3.fromRGB(55, 38, 26),
+	Strap = Color3.fromRGB(80, 84, 92),
+	Goggle = Color3.fromRGB(176, 182, 192),
+	HatBand = Color3.fromRGB(60, 40, 90),
+	Gold = Color3.fromRGB(235, 190, 70),
+	Hair = Color3.fromRGB(240, 205, 110),
+	HairDark = Color3.fromRGB(210, 170, 80),
+	Shirt = Color3.fromRGB(102, 64, 150),
+	Pants = Color3.fromRGB(70, 46, 110),
+}
+
+local saved = setmetatable({}, { __mode = "k" }) -- character -> what to restore
+
+local function piece(parent, outfit, props, offset, ellipsoid)
+	local p = Instance.new("Part")
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.SmoothPlastic
+	for k, v in pairs(props) do
+		p[k] = v
+	end
+	if ellipsoid then
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = p
+	end
+	p.CFrame = parent.CFrame * offset
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = parent
+	weld.Part1 = p
+	weld.Parent = p
+	p.Parent = outfit
+	return p
+end
+
+-- Gyro's hat (from the owner's pictures): tan, a wide brim with slots cut
+-- all the way round, slits around the crown, a domed top, and two big silver
+-- goggles with ridged lenses strapped to the front.
+local function hat(head, outfit)
+	local s = head.Size.Y / 1.2
+	local top = head.Size.Y * 0.5
+	local base = CFrame.new(0, top - 0.05 * s, 0.05 * s) * CFrame.Angles(-0.12, 0, 0)
+	local tan, tanDark = C.Hat, C.HatShade
+	piece(head, outfit, { Name = "HatBrim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.1 * s, 2.9 * s, 2.9 * s), Color = tan }, base * CFrame.Angles(0, 0, math.pi / 2))
+	piece(head, outfit, { Name = "HatBrimEdge", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.09 * s, 2.96 * s, 2.96 * s), Color = tanDark }, base * CFrame.new(0, -0.01 * s, 0) * CFrame.Angles(0, 0, math.pi / 2))
+	-- Slots cut into the brim, all the way round.
+	for i = 0, 21 do
+		local a = i / 22 * math.pi * 2
+		local r = 1.08 * s
+		piece(head, outfit, { Name = "BrimSlot", Size = Vector3.new(0.08 * s, 0.03 * s, 0.34 * s), Color = C.Slot }, base * CFrame.Angles(0, a, 0) * CFrame.new(0, 0.055 * s, -r))
+	end
+	-- Crown with slits, domed top.
+	piece(head, outfit, { Name = "HatCrown", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.72 * s, 1.45 * s, 1.45 * s), Color = tan }, base * CFrame.new(0, 0.4 * s, 0) * CFrame.Angles(0, 0, math.pi / 2))
+	piece(head, outfit, { Name = "HatTop", Size = Vector3.new(1.45, 0.42, 1.45) * s, Color = Color3.fromRGB(226, 196, 160) }, base * CFrame.new(0, 0.76 * s, 0), true)
+	for i = 0, 15 do
+		local a = i / 16 * math.pi * 2
+		piece(head, outfit, { Name = "CrownSlit", Size = Vector3.new(0.06 * s, 0.34 * s, 0.03 * s), Color = C.Slot }, base * CFrame.new(0, 0.48 * s, 0) * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, -0.73 * s))
+	end
+	-- Goggle strap around the crown.
+	piece(head, outfit, { Name = "GoggleStrap", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.16 * s, 1.5 * s, 1.5 * s), Color = C.Strap }, base * CFrame.new(0, 0.24 * s, 0) * CFrame.Angles(0, 0, math.pi / 2))
+	-- Two big silver goggles with horizontal ridges, joined by a bridge.
+	for _, side in ipairs({ -1, 1 }) do
+		local lensCF = base * CFrame.new(side * 0.4 * s, 0.38 * s, -0.8 * s) * CFrame.Angles(0, side * 0.35, 0)
+		piece(head, outfit, { Name = "GoggleRim", Size = Vector3.new(0.8, 0.62, 0.28) * s, Color = C.Strap, Material = Enum.Material.Metal }, lensCF * CFrame.new(0, 0, 0.04 * s), true)
+		piece(head, outfit, { Name = "GoggleLens", Size = Vector3.new(0.72, 0.55, 0.32) * s, Color = C.Goggle, Material = Enum.Material.Metal, Reflectance = 0.25 }, lensCF, true)
+		for r = -1, 1 do
+			piece(head, outfit, { Name = "GoggleRidge", Size = Vector3.new(0.58 * s, 0.04 * s, 0.05 * s), Color = C.Strap, Material = Enum.Material.Metal }, lensCF * CFrame.new(0, r * 0.13 * s, -0.15 * s))
+		end
+	end
+	piece(head, outfit, { Name = "GoggleBridge", Size = Vector3.new(0.22, 0.14, 0.14) * s, Color = C.Strap, Material = Enum.Material.Metal }, base * CFrame.new(0, 0.38 * s, -0.84 * s))
+end
+
+local function hair(head, outfit)
+	local s = head.Size.Y / 1.2
+	piece(head, outfit, { Name = "HairBack", Size = Vector3.new(1.25, 1.5, 0.55) * s, Color = C.Hair }, CFrame.new(0, -0.25 * s, 0.45 * s), true)
+	piece(head, outfit, { Name = "HairTop", Size = Vector3.new(1.28, 0.6, 1.25) * s, Color = C.Hair }, CFrame.new(0, 0.38 * s, 0.05 * s), true)
+	-- Long side locks framing the face, and two braids hanging past the shoulders.
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, { Name = "SideHair", Size = Vector3.new(0.32, 1.5, 0.7) * s, Color = C.Hair }, CFrame.new(side * 0.66 * s, -0.35 * s, 0.12 * s), true)
+		for i = 0, 5 do
+			piece(head, outfit, { Name = "Braid", Size = Vector3.new(0.26, 0.34, 0.26) * s, Color = (i % 2 == 0) and C.Hair or C.HairDark }, CFrame.new(side * 0.78 * s, (-0.55 - i * 0.28) * s, -0.05 * s), true)
+		end
+	end
+	-- Short fringe peeking out under the hat brim.
+	piece(head, outfit, { Name = "Fringe", Size = Vector3.new(1.1, 0.25, 0.3) * s, Color = C.Hair }, CFrame.new(0, 0.42 * s, -0.5 * s), true)
+end
+
+function GyroOutfit.apply(character)
+	if character:FindFirstChild("GyroOutfit") then
+		return
+	end
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local store = { Hidden = {} }
+	saved[character] = store
+	-- Hide the player's own hats and hair so they don't poke through Gyro's.
+	for _, d in ipairs(character:GetChildren()) do
+		if d:IsA("Accessory") then
+			local handle = d:FindFirstChild("Handle")
+			local kind = d.AccessoryType
+			if handle and (kind == Enum.AccessoryType.Hat or kind == Enum.AccessoryType.Hair or kind == Enum.AccessoryType.Unknown) then
+				store.Hidden[handle] = handle.Transparency
+				handle.Transparency = 1
+			end
+		end
+	end
+	local outfit = Instance.new("Model")
+	outfit.Name = "GyroOutfit"
+	outfit.Parent = character
+	hat(head, outfit)
+	hair(head, outfit)
+end
+
+function GyroOutfit.remove(character)
+	local outfit = character:FindFirstChild("GyroOutfit")
+	if outfit then
+		outfit:Destroy()
+	end
+	local store = saved[character]
+	if not store then
+		return
+	end
+	saved[character] = nil
+	for handle, transparency in pairs(store.Hidden) do
+		if handle.Parent then
+			handle.Transparency = transparency
+		end
+	end
+end
+
+local function watch(character)
+	local function update()
+		if character:GetAttribute("TuskAct") == GyroOutfit.GyroAct then
+			-- Wait for the avatar's clothes/accessories to load before swapping them.
+			task.delay(0.3, function()
+				if character.Parent and character:GetAttribute("TuskAct") == GyroOutfit.GyroAct then
+					GyroOutfit.apply(character)
+				end
+			end)
+		else
+			GyroOutfit.remove(character)
+		end
+	end
+	character:GetAttributeChangedSignal("TuskAct"):Connect(update)
+	update()
+end
+
+function GyroOutfit.init()
+	local function onPlayer(player)
+		player.CharacterAppearanceLoaded:Connect(watch)
+		if player.Character then
+			watch(player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	for _, player in ipairs(Players:GetPlayers()) do
+		onPlayer(player)
+	end
+end
+
+return GyroOutfit
+end
+
+-- ======================================================================
+-- MODULE: GyroZeppeli
+-- ======================================================================
+__modules["GyroZeppeli"] = function()
+--[[
+	GyroZeppeli  (ServerScriptService.SpinServer.TuskActs.GyroZeppeli)
+
+	Gyro Zeppeli: Steel Ball moveset (registered as "Act" 5 so it reuses the
+	Tusk ability system: cooldowns, HUD, ultimate meter, input).
+	  M1        STEEL BALL COMBO: jab, hook, kick, spinning-ball smash (area)
+	  Ability 1 STEEL BALL THROW: the ball flies out and BOUNCES off walls (up
+	            to MaxBounces times, each bank shot hits harder), then returns
+	            to Gyro's hand (it can hit on the way back)
+	  Ability 2 SPIN TORNADO: bowl the spinning ball along the ground; it
+	            becomes a travelling tornado that pulls enemies in, juggles
+	            them and bursts (stops at walls)
+	  Ability 3 SPIN VIBRATION: press the spinning ball into the enemy in front:
+	            paralysis (long stun) and a small launch
+	  Ultimate  BALL BREAKER: spiral build-up, a huge ball opens a spinning
+	            vortex that pulls enemies in, then bursts
+	Numbers: TuskConfig.Gyro. All damage goes through S.hit (CombatAdapter).
+]]
+
+local Shared = nil -- (bundled: modules are inlined)
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local Moves = __require("TuskMoves")
+
+local Gyro = {}
+local cfg = TuskConfig.Gyro
+local HAND = CFrame.new(0.9, 0.6, -1.6)
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function ready(S, player, state, name, slot)
+	return not S.isBusy(state) and not state.Charging and S.cooldownReady(player, state, name, slot)
+end
+
+function Gyro.M1(S, player, state, aim)
+	Moves.m1(S, player, state, aim, cfg.M1, 5)
+end
+
+-- Short body "shake" slow from the Spin (stackable, always removed).
+local function spinSlow(S, target, multiplier, seconds)
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	local key = "GyroSpin"
+	S.Adapter.setMoveModifier(humanoid, key, multiplier)
+	target:SetAttribute("GyroSpinShake", true)
+	local token = {}
+	target:SetAttribute("GyroSpinToken", tostring(token))
+	task.delay(seconds, function()
+		if humanoid.Parent and target:GetAttribute("GyroSpinToken") == tostring(token) then
+			S.Adapter.setMoveModifier(humanoid, key, nil)
+			target:SetAttribute("GyroSpinShake", nil)
+		end
+	end)
+end
+
+local function steelBallThrow(S, player, state, aim)
+	local c = cfg.SteelBallThrow
+	if not ready(S, player, state, "SteelBallThrow", 1) then
+		return
+	end
+	S.startCooldown(player, state, "SteelBallThrow", c.Cooldown, 1)
+	S.lock(state, c.Startup + 0.25)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = 5, Move = "SteelBallThrow", Phase = "Startup", Startup = c.Startup, Direction = direction })
+	task.delay(c.Startup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local hitOut = {}
+		local maxBounces = c.MaxBounces or 3
+
+		-- The ball spins its way back to Gyro's hand from wherever it stopped.
+		local function returnToHand(position)
+			local _, _, rr = alive(S, player)
+			if not rr or state.Life ~= life then
+				S.fx("Ability", { Character = char, Act = 5, Move = "SteelBallThrow", Phase = "Caught" })
+				return
+			end
+			local back = rr.Position + Vector3.new(0, 1, 0) - position
+			if back.Magnitude < 2 then
+				S.fx("Ability", { Character = char, Act = 5, Move = "SteelBallThrow", Phase = "Caught" })
+				return
+			end
+			S.fireBall(player, state, {
+				Origin = position,
+				Direction = back.Unit,
+				Speed = c.ReturnSpeed,
+				Radius = c.Radius,
+				Range = back.Magnitude,
+				Style = "Return",
+				OnHit = function(target, pos)
+					if not hitOut[target] then
+						hitOut[target] = true
+						S.hit(player, target, { Damage = c.ReturnDamage, Stun = 0.3, Knockback = 8, Direction = back.Unit, Position = pos, Source = "GyroSteelBall" })
+					end
+				end,
+				OnEnd = function()
+					S.fx("Ability", { Character = char, Act = 5, Move = "SteelBallThrow", Phase = "Caught" })
+				end,
+			})
+		end
+
+		-- One straight flight. When it hits a wall it bounces off (reflects
+		-- around the surface normal) and keeps flying with the range it has left.
+		local function launch(origin, dir, rangeLeft, bounce)
+			S.fireBall(player, state, {
+				Origin = origin,
+				Direction = dir,
+				Speed = c.Speed * (1 + bounce * 0.08), -- each bounce comes off a little faster
+				Radius = c.Radius,
+				Range = rangeLeft,
+				Style = "Throw",
+				Bounce = bounce,
+				OnHit = function(target, position)
+					if hitOut[target] then
+						return
+					end
+					hitOut[target] = true
+					-- Bank shots hit harder.
+					local damage = c.Damage + bounce * (c.BounceBonusDamage or 2)
+					S.hit(player, target, { Damage = damage, Stun = c.Stun, Knockback = c.Knockback, Direction = dir, Position = position, Source = "GyroSteelBall" })
+				end,
+				OnEnd = function(position, normal, hitCharacter, projectile)
+					if state.Life ~= life then
+						S.fx("Ability", { Character = char, Act = 5, Move = "SteelBallThrow", Phase = "Caught" })
+						return
+					end
+					local traveled = projectile and projectile.Traveled or rangeLeft
+					local remaining = rangeLeft - traveled
+					if not hitCharacter and projectile and projectile.HitWall and bounce < maxBounces and remaining > 6 then
+						local n = normal.Unit
+						local reflected = dir - 2 * dir:Dot(n) * n
+						if reflected.Magnitude < 0.1 then
+							reflected = -dir
+						end
+						reflected = reflected.Unit
+						-- Start just off the surface so it doesn't hit the same wall again.
+						local from = position + n * (c.Radius + 0.3)
+						S.fx("Ability", { Character = char, Act = 5, Move = "SteelBallThrow", Phase = "Bounce", Position = position, Normal = n, Direction = reflected, Bounce = bounce + 1 })
+						launch(from, reflected, remaining, bounce + 1)
+						return
+					end
+					returnToHand(position)
+				end,
+			})
+		end
+
+		launch(S.origin(char, r, HAND), direction, c.Range, 0)
+	end)
+end
+
+-- SPIN TORNADO: the spinning ball is bowled along the ground and becomes a
+-- travelling tornado that pulls enemies in, juggles them, then bursts.
+local function spinTornado(S, player, state, aim)
+	local c = cfg.SpinTornado
+	if not ready(S, player, state, "SpinTornado", 2) then
+		return
+	end
+	S.startCooldown(player, state, "SpinTornado", c.Cooldown, 2)
+	S.lock(state, c.Startup + 0.3)
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	local life = state.Life
+	local id = tostring(os.clock()) .. player.UserId
+	S.fx("Ability", { Character = character, Act = 5, Move = "SpinTornado", Phase = "Startup", Startup = c.Startup, Direction = direction })
+	task.delay(c.Startup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = { char }
+		local pos = Moves.groundBelow(r.Position + direction * 4, { char }) + Vector3.new(0, 3, 0)
+		S.fx("Tornado", { Act = 5, Id = id, Phase = "Start", Position = pos, Radius = c.Radius, Duration = c.Duration })
+		local ticks = math.floor(c.Duration / c.Tick)
+		local stopped = false
+		for i = 1, ticks do
+			task.delay(i * c.Tick, function()
+				if stopped then
+					return
+				end
+				-- Move forward; stop at walls; follow the ground.
+				local step = direction * c.Speed * c.Tick
+				if workspace:Raycast(pos, step * 1.5, params) then
+					stopped = true
+				else
+					pos = Moves.groundBelow(pos + step, { char }) + Vector3.new(0, 3, 0)
+				end
+				S.fx("Tornado", { Act = 5, Id = id, Phase = "Move", Position = pos })
+				for _, target in ipairs(S.Hitbox.inRadius(player.Character, pos, c.Radius, 6)) do
+					local tr = target:FindFirstChild("HumanoidRootPart")
+					if tr and S.Adapter.canBeHit(player, target) then
+						local inward = pos - tr.Position
+						S.Adapter.applyKnockback(target, inward, c.Pull, c.Lift)
+						S.hit(player, target, { Damage = c.TickDamage, Stun = 0.3, Knockback = 0, Direction = inward, Position = tr.Position, Source = "GyroSpinTornado" })
+					end
+				end
+			end)
+		end
+		task.delay(c.Duration + 0.05, function()
+			Moves.aoe(S, player, pos, c.Radius + 1.5, { Damage = c.BurstDamage, Stun = 0.4, Knockback = c.BurstKnockback, Launch = c.BurstLaunch, Source = "GyroSpinTornado" }, 6)
+			S.fx("Tornado", { Act = 5, Id = id, Phase = "Burst", Position = pos, Radius = c.Radius + 1.5 })
+		end)
+	end)
+end
+
+local function spinVibration(S, player, state, aim)
+	local c = cfg.SpinVibration
+	if not ready(S, player, state, "SpinVibration", 3) then
+		return
+	end
+	S.startCooldown(player, state, "SpinVibration", c.Cooldown, 3)
+	S.lock(state, c.Windup + 0.4)
+	local character = alive(S, player)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = 5, Move = "SpinVibration", Phase = "Startup", Windup = c.Windup })
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local _, _, r = alive(S, player)
+		local cf = r.CFrame * CFrame.new(0, 0, -c.HitboxForward)
+		local count, hitSet = Moves.boxHit(S, player, cf, c.HitboxSize, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Launch = c.Launch, Source = "GyroSpinVibration" }, 2)
+		for target in pairs(hitSet) do
+			spinSlow(S, target, 0.4, 1.5)
+		end
+		S.fx("Ability", { Character = character, Act = 5, Move = "SpinVibration", Phase = "Hit", Position = cf.Position, Hit = count > 0 })
+	end)
+end
+
+function Gyro.Ability(S, player, state, slot, phase, aim)
+	if phase ~= "Press" then
+		return
+	end
+	if slot == 1 then
+		steelBallThrow(S, player, state, aim)
+	elseif slot == 2 then
+		spinTornado(S, player, state, aim)
+	elseif slot == 3 then
+		spinVibration(S, player, state, aim)
+	end
+end
+
+-- BALL BREAKER
+function Gyro.Ultimate(S, player, state, aim)
+	local u = cfg.Ultimate
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.lock(state, u.Windup + 0.5)
+	character:SetAttribute("Armored", true)
+	S.fx("Ultimate", { Character = character, Act = 5, Phase = "Start", Windup = u.Windup, Direction = direction })
+	task.delay(u.Windup, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+		if state.Life ~= life or not alive(S, player) then
+			return
+		end
+		local _, _, r = alive(S, player)
+		S.fx("Ultimate", { Character = character, Act = 5, Phase = "Release", Position = r.Position, Direction = direction })
+		S.fireBall(player, state, {
+			Origin = S.origin(character, r, CFrame.new(0, 1.5, -3)),
+			Direction = direction,
+			Speed = u.Speed,
+			Radius = u.Radius,
+			Range = u.Range,
+			Style = "Breaker",
+			Scale = u.Radius * 2,
+			OnHit = function(target, position)
+				S.hit(player, target, { Damage = u.Damage, Stun = 0.5, Knockback = 10, Direction = direction, Position = position, Source = "GyroBallBreaker" })
+			end,
+			OnEnd = function(position)
+				-- The spinning vortex: pulls enemies in, then bursts.
+				S.fx("Ultimate", { Character = character, Act = 5, Phase = "Vortex", Position = position, Radius = u.VortexRadius, Duration = u.VortexTime })
+				local ticks = math.floor(u.VortexTime / u.TickInterval)
+				for i = 1, ticks do
+					task.delay(i * u.TickInterval, function()
+						for _, target in ipairs(S.Hitbox.inRadius(player.Character, position, u.VortexRadius, 8)) do
+							local tr = target:FindFirstChild("HumanoidRootPart")
+							if tr and S.Adapter.canBeHit(player, target) then
+								local inward = position - tr.Position
+								S.Adapter.applyKnockback(target, inward, u.PullStrength, 2)
+								S.hit(player, target, { Damage = u.TickDamage, Stun = 0.25, Knockback = 0, Direction = inward, Position = tr.Position, Source = "GyroBallBreaker" })
+							end
+						end
+					end)
+				end
+				task.delay(u.VortexTime + 0.05, function()
+					Moves.aoe(S, player, position, u.VortexRadius + 2, { Damage = u.BurstDamage, Stun = u.Stun, Knockback = u.BurstKnockback, Launch = u.Launch, Source = "GyroBallBreaker" }, 8)
+					S.fx("Ultimate", { Character = character, Act = 5, Phase = "Burst", Position = position, Radius = u.VortexRadius + 2 })
+				end)
+			end,
+		})
+		S.finishUltimate(player, state)
+	end)
+end
+
+function Gyro.Cleanup(S, player, state)
+	if state.Character then
+		state.Character:SetAttribute("Armored", nil)
+	end
+end
+
+return Gyro
+end
+end

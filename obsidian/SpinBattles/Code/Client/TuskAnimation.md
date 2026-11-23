@@ -157,6 +157,17 @@ TuskAnimation.Poses = {
 	PounceLand = { Root = { -18, 0, 0, -0.65, 0.3 }, Waist = { -28, 0, 0 }, Neck = { 22, 0, 0 }, RightArm = { 72, 0, 20 }, LeftArm = { 72, 0, -20 }, RightElbow = { 30, 0, 0 }, LeftElbow = { 30, 0, 0 }, RightHip = { 62, 0, 0 }, LeftHip = { 40, 0, 0 }, RightKnee = { -92, 0, 0 }, LeftKnee = { -60, 0, 0 } },
 	TransformHunch = { Root = { -10, 0, 0, -0.45 }, Waist = { -36, 0, 0 }, Neck = { -22, 0, 0 }, RightArm = { 20, 0, 42 }, LeftArm = { 20, 0, -42 }, RightElbow = { 92, 0, 0 }, LeftElbow = { 92, 0, 0 }, RightKnee = { -52, 0, 0 }, LeftKnee = { -52, 0, 0 }, RightHip = { 32, 0, 0 }, LeftHip = { 32, 0, 0 } },
 	Roar = { Root = { 10, 0, 0, 0.05 }, Waist = { 18, 0, 0 }, Neck = { 32, 0, 0 }, RightArm = { 100, 0, 72 }, LeftArm = { 100, 0, -72 }, RightElbow = { 40, 0, 0 }, LeftElbow = { 40, 0, 0 }, RightHip = { -10, 0, 0 }, LeftHip = { 10, 0, 0 }, LeftKnee = { -14, 0, 0 } },
+	-- PORK PIE HAT KID: a crouched, twitchy kid; the hooks come out of his mouth.
+	PPStance = { Root = { 0, 8, 0, -0.25 }, Waist = { -10, 6, 0 }, Neck = { 10, -6, 0 }, RightArm = { 20, 0, 30 }, RightElbow = { 30, 0, 0 }, LeftArm = { -10, 0, -35 }, LeftElbow = { 20, 0, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -45, 0, 0 }, LeftHip = { 12, 0, 0 }, LeftKnee = { -25, 0, 0 } },
+	SpitWind = { Root = { 10, 0, 0, -0.1 }, Waist = { 16, 0, 0 }, Neck = { 34, 0, 0 }, RightArm = { 30, 0, 40 }, LeftArm = { 30, 0, -40 }, RightElbow = { 50, 0, 0 }, LeftElbow = { 50, 0, 0 }, RightKnee = { -18, 0, 0 }, LeftKnee = { -18, 0, 0 } },
+	Spit = { Root = { -14, 0, 0, -0.2, 0.4 }, Waist = { -22, 0, 0 }, Neck = { -24, 0, 0 }, RightArm = { -20, 0, 30 }, LeftArm = { -20, 0, -30 }, RightHip = { 30, 0, 0 }, RightKnee = { -36, 0, 0 }, LeftHip = { -16, 0, 0 } },
+	ReelBack = { Root = { 12, 0, 0, -0.2, -0.3 }, Waist = { 20, 0, 0 }, Neck = { 12, 0, 0 }, RightArm = { 70, 0, 20 }, RightElbow = { 80, 0, 0 }, LeftArm = { 70, 0, -20 }, LeftElbow = { 80, 0, 0 }, RightHip = { -20, 0, 0 }, LeftHip = { 34, 0, 0 }, LeftKnee = { -40, 0, 0 } },
+	HoistUp = { Root = { 18, 0, 0, -0.1, -0.2 }, Waist = { 26, 0, 0 }, Neck = { 40, 0, 0 }, RightArm = { 150, 0, 30 }, LeftArm = { 150, 0, -30 }, RightElbow = { 20, 0, 0 }, LeftElbow = { 20, 0, 0 }, RightKnee = { -20, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	HoistSlam = { Root = { -20, 0, 0, -0.5, 0.3 }, Waist = { -32, 0, 0 }, Neck = { -30, 0, 0 }, RightArm = { 40, 0, 20 }, LeftArm = { 40, 0, -20 }, RightHip = { 50, 0, 0 }, RightKnee = { -60, 0, 0 }, LeftHip = { 40, 0, 0 }, LeftKnee = { -50, 0, 0 } },
+	SlapWind = { Root = { 0, 20, 0 }, Waist = { 0, 24, 0 }, RightArm = { 100, 0, 90 }, RightElbow = { 30, 0, 0 }, LeftArm = { 20, 0, -30 }, Neck = { 0, -10, 0 }, RightKnee = { -14, 0, 0 } },
+	Slap = { Root = { 0, -26, 0, -0.08, 0.3 }, Waist = { 0, -34, 0 }, RightArm = { 88, -40, -10 }, RightElbow = { 10, 0, 0 }, LeftArm = { 24, 0, -30 }, Neck = { 0, 20, 0 }, LeftHip = { 18, 0, 0 }, LeftKnee = { -18, 0, 0 } },
+	FlyKickWind = { Root = { -6, 0, 0, -0.3 }, RightHip = { 60, 0, 0 }, RightKnee = { -100, 0, 0 }, LeftHip = { 40, 0, 0 }, LeftKnee = { -80, 0, 0 }, Waist = { -10, 0, 0 }, RightArm = { 40, 0, 50 }, LeftArm = { 40, 0, -50 } },
+	FlyKick = { Root = { 24, 0, 0, 0.3, 0.6 }, RightHip = { 96, 0, 0 }, RightKnee = { 0, 0, 0 }, LeftHip = { -10, 0, 0 }, LeftKnee = { -70, 0, 0 }, Waist = { 16, 0, 0 }, Neck = { -10, 0, 0 }, RightArm = { 20, 0, 70 }, LeftArm = { 20, 0, -70 } },
 }
 
 -- Left-handed version of a pose: swap Right/Left joints and flip Y/Z.
@@ -186,6 +197,8 @@ do
 	P.SpinPoke = P.FlickR
 	P.ClawWindL = mirror(P.ClawWindR)
 	P.ClawL = mirror(P.ClawR)
+	P.SlapWindL = mirror(P.SlapWind)
+	P.SlapL = mirror(P.Slap)
 end
 
 --[[
@@ -236,6 +249,20 @@ TuskAnimation.Actions = {
 	DiegoBite = { { 0, "Rest" }, { 0.14, "BiteWind", "In" }, { 0.22, "Bite", "Snap", 6 }, { 0.5, "Bite", "Sine" } },
 	DiegoTransform = { { 0, "Rest" }, { 0.18, "TransformHunch", "In" }, { 0.35, "TransformHunch", "Linear", 4 }, { 0.5, "Roar", "Back", 6 } },
 	DiegoRoar = { { 0, "Rest" }, { 0.2, "BiteWind", "In" }, { 0.35, "Roar", "Back", 6 }, { 0.9, "Roar", "Linear", 4 }, { 1.2, "Roar", "Sine", 2 } },
+
+	-- PORK PIE HAT KID
+	P_M1_1 = { { 0, "Rest" }, { 0.05, "SlapWind", "In" }, { 0.11, "Slap", "Back", 3 }, { 0.26, "Slap", "Sine" } },
+	P_M1_2 = { { 0, "Rest" }, { 0.05, "SlapWindL", "In" }, { 0.11, "SlapL", "Back", 3 }, { 0.26, "SlapL", "Sine" } },
+	P_M1_3 = { { 0, "Rest" }, { 0.07, "SpitWind", "In" }, { 0.13, "Spit", "Snap", 4 }, { 0.3, "Spit", "Sine" } },
+	P_M1_4 = { { 0, "Rest" }, { 0.12, "FlyKickWind", "In" }, { 0.2, "FlyKick", "Snap", 6 }, { 0.42, "FlyKick", "Sine" }, { 0.55, "FlyKick" } },
+	PPHookSpit = { { 0, "Rest" }, { 0.18, "SpitWind", "In" }, { 0.26, "Spit", "Snap", 5 }, { 0.42, "Spit", "Sine" } },
+	PPReel = { { 0, "Spit" }, { 0.1, "ReelBack", "Snap", 3 }, { 0.3, "ReelBack", "Linear", 2 }, { 0.55, "ReelBack", "Sine" } },
+	PPBaitToss = { { 0, "Rest" }, { 0.14, "BowlWind", "In" }, { 0.26, "BowlRelease", "Snap", 3 }, { 0.42, "BowlFollow", "Sine" } },
+	PPHoist = { { 0, "Rest" }, { 0.2, "SpitWind", "In" }, { 0.3, "Spit", "Snap", 4 }, { 0.45, "HoistUp", "Back", 5 }, { 0.8, "HoistUp", "Linear", 2 }, { 0.92, "HoistSlam", "Snap", 7 }, { 1.2, "HoistSlam", "Sine" } },
+	PPWinch = {
+		{ 0, "Rest" }, { 0.3, "Spread", "Back", 3 }, { 0.9, "Spread", "Linear", 2 }, { 1.05, "Spit", "Snap", 5 },
+		{ 1.3, "ReelBack", "Snap", 3 }, { 1.7, "HoistUp", "Sine", 2 }, { 2.1, "ReelBack", "Sine", 2 }, { 2.35, "HoistSlam", "Snap", 8 }, { 2.7, "HoistSlam", "Sine" },
+	},
 	Awakening = {
 		{ 0, "Rest" }, { 0.35, "AwakenCrouch", "In" }, { 0.7, "AwakenCrouch", "Linear", 1 }, { 1.0, "AwakenCrouch", "Linear", 2 },
 		{ 1.2, "AwakenCrouch", "Linear", 3 }, { 1.45, "AwakenRise", "Back", 6 }, { 2.2, "AwakenRise", "Sine" },

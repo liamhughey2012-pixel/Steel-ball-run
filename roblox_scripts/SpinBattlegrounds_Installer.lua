@@ -1153,6 +1153,25 @@ TuskActRegistry.Acts = {
 			{ Slot = 2, Attribute = "ThrallUntil", Text = "COMMAND" },
 		},
 	},
+	-- Pork Pie Hat Kid: WIRED (fish hooks and steel cables from a winch in his mouth).
+	[7] = {
+		Name = "WIRED",
+		Character = "PorkPie",
+		Tagline = "Hooks from the water",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(165, 215, 80), Secondary = Color3.fromRGB(95, 105, 125) },
+		M1 = "HOOK COMBO",
+		Abilities = { "WIRED HOOK", "BAIT PAN", "DOUBLE HOOK LIFT" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "WIRED WINCH",
+		Next = nil,
+		Module = "PorkPieHatKid", -- server moves
+		ClientModule = "PorkPie", -- client visuals (TuskActVFX.PorkPie)
+		CardTitle = "STAND  ·  WIRED",
+		Buffs = {
+			{ Slot = 2, Attribute = "BaitPanUntil", Text = "BAITED" },
+		},
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -1162,7 +1181,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -1266,6 +1285,7 @@ TuskConfig.Roster = {
 	{ Id = "Johnny", Name = "JOHNNY JOESTAR", Stand = "TUSK (ACT 1-4)", Available = true, Color = Color3.fromRGB(90, 230, 255) },
 	{ Id = "Gyro", Name = "GYRO ZEPPELI", Stand = "BALL BREAKER", Available = true, Color = Color3.fromRGB(110, 210, 90) },
 	{ Id = "Diego", Name = "DIEGO BRANDO", Stand = "SCARY MONSTERS", Available = true, Color = Color3.fromRGB(80, 210, 220) },
+	{ Id = "PorkPie", Name = "PORK PIE HAT KID", Stand = "WIRED", Available = true, Color = Color3.fromRGB(165, 215, 80) },
 }
 
 ---------------------------------------------------------------------------
@@ -1505,6 +1525,48 @@ TuskConfig.Diego = {
 		Speed = 48, Range = 75, Tick = 0.08, HitRadius = 5,
 		Damage = 12, Stun = 0.5, Knockback = 35, Launch = 14,
 		MaxHitsPerTarget = 2, -- one enemy can be bitten by at most this many raptors
+	},
+}
+
+---------------------------------------------------------------------------
+-- Pork Pie Hat Kid: WIRED (fish hooks on steel cables from his mouth)
+---------------------------------------------------------------------------
+TuskConfig.PorkPie = {
+	M1 = { -- HOOK COMBO: slap, slap, hook lash from the mouth, flying kick
+		Interval = 0.29, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.09,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 6 },
+			{ Damage = 7, Stun = 0.5, Knockback = 42, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	WiredHook = { -- a hook shoots out of his mouth; a hit snags the enemy and reels them in
+		Cooldown = 7, Startup = 0.25,
+		Speed = 120, Radius = 1.2, Range = 75,
+		Damage = 6, Stun = 1.0,
+		ReelTime = 0.6, ReelTick = 0.15, ReelStopDistance = 5, -- pulled in until this close
+	},
+	BaitPan = { -- a pan of water with a feather bait; hooks burst out at anyone who comes near
+		Cooldown = 12, Startup = 0.3,
+		Distance = 10, -- placed this far in front
+		Duration = 10, -- how long the trap waits
+		TriggerRadius = 7, CheckEvery = 0.15, MaxTargets = 2,
+		Damage = 8, Stun = 1.0, Lift = 70, -- hooks hoist the victim high
+		SlamAfter = 0.5, SlamDamage = 4, -- then yank them back down into the ground
+	},
+	DoubleHookLift = { -- both hooks: snag up to two enemies in front and hoist them like a horse
+		Cooldown = 10, MissCooldown = 3, Windup = 0.3,
+		Range = 22, Cone = 50, MaxTargets = 2,
+		Damage = 6, Stun = 1.0, Lift = 75,
+		SlamAfter = 0.55, SlamDamage = 7, SlamRadius = 6,
+	},
+	Ultimate = { -- WIRED WINCH: puddles all around, hooks erupt from every one, the winch reels everyone in, slam
+		Windup = 1.0, Radius = 24, Puddles = 6, PuddleRadius = 14,
+		SnagDamage = 6, SnagStun = 1.0, SnagLift = 55,
+		ReelTime = 1.35, ReelTick = 0.15, TickDamage = 1.5, TickEvery = 0.3,
+		SlamDamage = 14, SlamRadius = 10, SlamKnockback = 60, SlamLaunch = 30, SlamStun = 0.8,
 	},
 }
 
@@ -2566,16 +2628,11 @@ local builders = {
 	[4] = buildAct4,
 }
 
--- Round pieces that make each Act recognisable as Tusk (kept smooth when blocky).
-local SIGNATURE_ROUND = {
-	-- Act 1 keeps every rounded shape so it reads as the drawing; only the thin legs become square rods.
-	[1] = setmetatable({ Leg1 = false, Leg2 = false, Leg3 = false, Leg4 = false, Leg5 = false }, { __index = function()
-		return true
-	end }),
-	[2] = { Body = true, Head = true, Cheek = true, EarDisc = true, Drum = true, DrumRim = true, DrumHole = true, Pod = true, PodHole = true, Visor = true },
-	[3] = { Body = true, BackShade = true, ShoulderBall = true, BellyLens = true, LensRim = true, Mask = true },
-	[4] = { Head = true, Visor = true, HelmetRidge = true, Emblem = true },
-}
+-- All Stands are mostly blocky (owner's request): every round piece becomes
+-- a box or a stepped "voxel-round" shape. Only the eyes stay smooth so each
+-- Act's face still reads.
+local EYES = { Eye = true, Pupil = true, EyeRim = true, Shine = true, Glint = true }
+local SIGNATURE_ROUND = { [1] = EYES, [2] = EYES, [3] = EYES, [4] = EYES }
 
 function TuskStandModels.build(act, scale)
 	scale = scale or 1
@@ -2589,8 +2646,7 @@ function TuskStandModels.build(act, scale)
 	end
 	local built, rig = builder(scale)
 	-- Blocky (classic Roblox) look for the procedural Stands; custom models are
-	-- left as they are. Each Act keeps its signature round shapes smooth so it
-	-- still reads as Tusk (egg body and face, ear discs, ball body, dome head...).
+	-- left as they are. Only the eyes stay round.
 	if built and Blockify.enabled(TuskConfig) then
 		Blockify.apply(built, { KeepRound = SIGNATURE_ROUND[act] })
 	end
@@ -2870,6 +2926,7 @@ local TestDummies = require(script.TestDummies)
 local StandAssetLoader = require(script.StandAssetLoader)
 local GyroOutfit = require(script.GyroOutfit)
 local DiegoOutfit = require(script.DiegoOutfit)
+local PorkPieOutfit = require(script.PorkPieOutfit)
 
 -- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
@@ -2878,6 +2935,7 @@ StandAssetLoader.init()
 TuskService.init()
 GyroOutfit.init()
 DiegoOutfit.init()
+PorkPieOutfit.init()
 NPCService.init()
 TestDummies.init()
 ]=] },
@@ -3806,6 +3864,272 @@ function NPCService.init()
 end
 
 return NPCService
+]=] },
+	{ Service = "ServerScriptService", Path = "SpinServer/PorkPieOutfit", Class = "ModuleScript", Source = [=[
+--[[
+	PorkPieOutfit  (ServerScriptService.SpinServer.PorkPieOutfit)
+
+	Gives a character Pork Pie Hat Kid's look while they play him (TuskAct 7),
+	built from blocky parts so no catalog asset ids are needed (from the
+	owner's pictures):
+	  * green bamboo sticks tied round his bald head with a rope band,
+	    sticking up and hanging down the sides like dreadlocks
+	  * big round eyes with large black irises and bared teeth
+	  * a green sleeveless suit with light-green studs in rows down both
+	    sides of the chest and down both legs
+	  * short golden feathers on the shoulders and a short frilly tutu
+	  * big brown bracelets with leaves on both wrists
+	The player's own hats/hair (and face) are hidden while they play him and
+	come back when they switch. Built on the server so every player sees it.
+]]
+
+local Players = game:GetService("Players")
+
+local PorkPieOutfit = {}
+PorkPieOutfit.Act = 7
+
+local C = {
+	Bamboo = Color3.fromRGB(130, 200, 70),
+	BambooDark = Color3.fromRGB(80, 140, 45),
+	BambooNode = Color3.fromRGB(175, 225, 110),
+	Rope = Color3.fromRGB(150, 110, 70),
+	Suit = Color3.fromRGB(95, 115, 45),
+	SuitDark = Color3.fromRGB(70, 88, 32),
+	Stud = Color3.fromRGB(165, 215, 80),
+	Feather = Color3.fromRGB(215, 160, 60),
+	FeatherDark = Color3.fromRGB(160, 105, 40),
+	Bracelet = Color3.fromRGB(120, 75, 45),
+	Leaf = Color3.fromRGB(200, 120, 50),
+	EyeWhite = Color3.fromRGB(245, 245, 240),
+	Iris = Color3.fromRGB(15, 15, 18),
+	Teeth = Color3.fromRGB(250, 248, 235),
+	Mouth = Color3.fromRGB(60, 25, 25),
+}
+
+local saved = setmetatable({}, { __mode = "k" })
+
+local function piece(parent, outfit, name, size, color, offset)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.SmoothPlastic
+	p.Size = size
+	p.Color = color
+	p.CFrame = parent.CFrame * offset
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = parent
+	weld.Part1 = p
+	weld.Parent = p
+	p.Parent = outfit
+	return p
+end
+
+-- One bamboo stick: a green rod with lighter node bands.
+local function bamboo(head, outfit, s, cf, length)
+	piece(head, outfit, "Bamboo", Vector3.new(0.26, length, 0.26) * s, C.Bamboo, cf)
+	piece(head, outfit, "BambooNode", Vector3.new(0.3, 0.06, 0.3) * s, C.BambooNode, cf * CFrame.new(0, length * 0.15 * s, 0))
+	piece(head, outfit, "BambooTip", Vector3.new(0.3, 0.05, 0.3) * s, C.BambooDark, cf * CFrame.new(0, length * 0.5 * s, 0))
+end
+
+local function headPieces(head, outfit)
+	local s = head.Size.Y / 1.2
+	local w, h, d = head.Size.X / 2, head.Size.Y / 2, head.Size.Z / 2
+	-- Rope band round the forehead (four sides) with a knot at the back.
+	local bandY = h * 0.45
+	piece(head, outfit, "Rope", Vector3.new(head.Size.X + 0.12 * s, 0.22 * s, 0.12 * s), C.Rope, CFrame.new(0, bandY, -d - 0.04 * s))
+	piece(head, outfit, "Rope", Vector3.new(head.Size.X + 0.12 * s, 0.22 * s, 0.12 * s), C.Rope, CFrame.new(0, bandY, d + 0.04 * s))
+	piece(head, outfit, "Rope", Vector3.new(0.12 * s, 0.22 * s, head.Size.Z + 0.12 * s), C.Rope, CFrame.new(-w - 0.04 * s, bandY, 0))
+	piece(head, outfit, "Rope", Vector3.new(0.12 * s, 0.22 * s, head.Size.Z + 0.12 * s), C.Rope, CFrame.new(w + 0.04 * s, bandY, 0))
+	piece(head, outfit, "RopeKnot", Vector3.new(0.3, 0.3, 0.2) * s, C.Rope, CFrame.new(0.2 * s, bandY, d + 0.12 * s))
+	-- Bamboo crown: sticks pushed under the band, leaning out all round.
+	local crown = {
+		{ -0.45, -0.3, -0.25, 0.35 }, { -0.15, -0.35, -0.05, 0.1 }, { 0.15, -0.35, 0.05, -0.1 }, { 0.45, -0.3, 0.25, -0.35 },
+		{ -0.5, 0.0, 0, 0.5 }, { 0.5, 0.0, 0, -0.5 }, { -0.3, 0.35, 0.35, 0.3 }, { 0.3, 0.35, 0.35, -0.3 }, { 0, 0.4, 0.4, 0 },
+	}
+	for _, b in ipairs(crown) do
+		local base = CFrame.new(b[1] * head.Size.X, bandY + 0.2 * s, b[2] * head.Size.Z)
+		bamboo(head, outfit, s, base * CFrame.Angles(b[3], 0, b[4]) * CFrame.new(0, 0.45 * s, 0), 1.0)
+	end
+	-- Sticks hanging down the sides and back like dreadlocks.
+	local hang = { { -1, -0.25 }, { -1, 0.15 }, { 1, -0.25 }, { 1, 0.15 }, { -0.4, 1 }, { 0.4, 1 } }
+	for _, b in ipairs(hang) do
+		local x, z
+		if math.abs(b[1]) == 1 then
+			x, z = b[1] * (w + 0.18 * s), b[2] * head.Size.Z
+		else
+			x, z = b[1] * head.Size.X, d + 0.18 * s
+		end
+		local tilt = math.abs(b[1]) == 1 and CFrame.Angles(0, 0, b[1] * 0.25) or CFrame.Angles(-0.25, 0, 0)
+		bamboo(head, outfit, s, CFrame.new(x, bandY - 0.45 * s, z) * tilt, 0.95)
+	end
+	-- Face: big round eyes with large black irises, bared teeth.
+	local front = -d - 0.02 * s
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, "EyeWhite", Vector3.new(0.4, 0.36, 0.04) * s, C.EyeWhite, CFrame.new(side * 0.25 * s, 0.08 * s, front))
+		piece(head, outfit, "Iris", Vector3.new(0.28, 0.28, 0.04) * s, C.Iris, CFrame.new(side * 0.25 * s, 0.07 * s, front - 0.02 * s))
+	end
+	piece(head, outfit, "Mouth", Vector3.new(0.62, 0.24, 0.04) * s, C.Mouth, CFrame.new(0, -0.3 * s, front))
+	piece(head, outfit, "Teeth", Vector3.new(0.58, 0.08, 0.04) * s, C.Teeth, CFrame.new(0, -0.23 * s, front - 0.02 * s))
+	piece(head, outfit, "Teeth", Vector3.new(0.58, 0.08, 0.04) * s, C.Teeth, CFrame.new(0, -0.37 * s, front - 0.02 * s))
+	-- Large angular jaw.
+	piece(head, outfit, "Jaw", Vector3.new(head.Size.X * 0.9, 0.18 * s, head.Size.Z * 0.85), head.Color, CFrame.new(0, -h - 0.02 * s, -0.05 * s))
+end
+
+-- Green suit shell over a body part, with a row of studs on the front.
+local function suit(part, outfit, studsX, studCount)
+	local s = part.Size
+	piece(part, outfit, "Suit", s + Vector3.new(0.1, 0.04, 0.1), C.Suit, CFrame.new())
+	for _, x in ipairs(studsX) do
+		for i = 1, studCount do
+			local y = s.Y / 2 - (i - 0.5) * s.Y / studCount
+			piece(part, outfit, "Stud", Vector3.new(0.24, 0.2, 0.12), C.Stud, CFrame.new(x * s.X / 2, y, -s.Z / 2 - 0.08))
+		end
+	end
+end
+
+local function body(character, outfit)
+	local upper = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	local lower = character:FindFirstChild("LowerTorso")
+	if upper then
+		suit(upper, outfit, { -0.55, 0.55 }, lower and 3 or 4)
+		-- Short feathers on both shoulders.
+		for _, side in ipairs({ -1, 1 }) do
+			for k = 0, 2 do
+				local cf = CFrame.new(side * (upper.Size.X / 2 - 0.1), upper.Size.Y / 2 - 0.05, -0.25 + k * 0.25)
+					* CFrame.Angles(0, 0, side * (-0.9 - k * 0.15)) * CFrame.new(0, 0.35, 0)
+				piece(upper, outfit, "Feather", Vector3.new(0.18, 0.8, 0.3), k % 2 == 0 and C.Feather or C.FeatherDark, cf)
+			end
+		end
+	end
+	local waist = lower or upper
+	if waist then
+		if lower then
+			suit(lower, outfit, {}, 0)
+		end
+		-- Short frilly tutu round the waist.
+		local y = lower and -lower.Size.Y * 0.25 or -upper.Size.Y / 2 + 0.1
+		local rx, rz = waist.Size.X / 2 + 0.15, waist.Size.Z / 2 + 0.15
+		for i = 0, 11 do
+			local a = i / 12 * math.pi * 2
+			local pos = Vector3.new(math.cos(a) * rx, y, math.sin(a) * rz)
+			local cf = CFrame.lookAt(pos, pos + Vector3.new(math.cos(a), 0, math.sin(a))) * CFrame.Angles(-0.55, 0, 0)
+			piece(waist, outfit, "Tutu", Vector3.new(0.7, 0.12, 0.7), i % 2 == 0 and C.Suit or C.SuitDark, cf)
+		end
+	end
+	-- Legs: suit with studs down the front.
+	for _, name in ipairs({ "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
+		local leg = character:FindFirstChild(name)
+		if leg then
+			suit(leg, outfit, { 0 }, name:find("Leg") and leg.Size.Y > 1.8 and 4 or 2)
+		end
+	end
+	-- Sleeveless: bare arms (skin-coloured sleeves over whatever shirt the avatar wears).
+	local headPart = character:FindFirstChild("Head")
+	local skin = headPart and headPart.Color or Color3.fromRGB(230, 185, 140)
+	for _, name in ipairs({ "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm", "Left Arm", "Right Arm" }) do
+		local arm = character:FindFirstChild(name)
+		if arm then
+			piece(arm, outfit, "Skin", arm.Size + Vector3.new(0.04, 0.02, 0.04), skin, CFrame.new())
+		end
+	end
+	-- Big bracelets with leaves on both wrists.
+	for _, name in ipairs({ "LeftLowerArm", "RightLowerArm", "Left Arm", "Right Arm" }) do
+		local arm = character:FindFirstChild(name)
+		if arm then
+			local y = -arm.Size.Y / 2 + (arm.Size.Y > 1.8 and 0.55 or 0.25)
+			piece(arm, outfit, "Bracelet", Vector3.new(arm.Size.X + 0.22, 0.45, arm.Size.Z + 0.22), C.Bracelet, CFrame.new(0, y, 0))
+			piece(arm, outfit, "Leaf", Vector3.new(0.5, 0.08, 0.32), C.Leaf, CFrame.new(0, y + 0.1, -arm.Size.Z / 2 - 0.16) * CFrame.Angles(0.4, 0, 0.5))
+			piece(arm, outfit, "Leaf", Vector3.new(0.4, 0.08, 0.26), C.FeatherDark, CFrame.new(0.15, y - 0.08, -arm.Size.Z / 2 - 0.15) * CFrame.Angles(-0.3, 0, -0.6))
+		end
+	end
+end
+
+function PorkPieOutfit.apply(character)
+	if character:FindFirstChild("PorkPieOutfit") then
+		return
+	end
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local store = { Hidden = {} }
+	saved[character] = store
+	for _, d in ipairs(character:GetChildren()) do
+		if d:IsA("Accessory") then
+			local handle = d:FindFirstChild("Handle")
+			local kind = d.AccessoryType
+			if handle and (kind == Enum.AccessoryType.Hat or kind == Enum.AccessoryType.Hair or kind == Enum.AccessoryType.Unknown) then
+				store.Hidden[handle] = handle.Transparency
+				handle.Transparency = 1
+			end
+		end
+	end
+	local face = head:FindFirstChildOfClass("Decal")
+	if face then
+		store.Hidden[face] = face.Transparency
+		face.Transparency = 1
+	end
+	local outfit = Instance.new("Model")
+	outfit.Name = "PorkPieOutfit"
+	outfit.Parent = character
+	headPieces(head, outfit)
+	body(character, outfit)
+end
+
+function PorkPieOutfit.remove(character)
+	local outfit = character:FindFirstChild("PorkPieOutfit")
+	if outfit then
+		outfit:Destroy()
+	end
+	local store = saved[character]
+	if not store then
+		return
+	end
+	saved[character] = nil
+	for thing, transparency in pairs(store.Hidden) do
+		if thing.Parent then
+			thing.Transparency = transparency
+		end
+	end
+end
+
+local function watch(character)
+	local function update()
+		if character:GetAttribute("TuskAct") == PorkPieOutfit.Act then
+			task.delay(0.3, function()
+				if character.Parent and character:GetAttribute("TuskAct") == PorkPieOutfit.Act then
+					PorkPieOutfit.apply(character)
+				end
+			end)
+		else
+			PorkPieOutfit.remove(character)
+		end
+	end
+	character:GetAttributeChangedSignal("TuskAct"):Connect(update)
+	update()
+end
+
+function PorkPieOutfit.init()
+	local function onPlayer(player)
+		player.CharacterAppearanceLoaded:Connect(watch)
+		if player.Character then
+			watch(player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	for _, player in ipairs(Players:GetPlayers()) do
+		onPlayer(player)
+	end
+end
+
+return PorkPieOutfit
 ]=] },
 	{ Service = "ServerScriptService", Path = "SpinServer/ProjectileService", Class = "ModuleScript", Source = [=[
 --[[
@@ -4925,6 +5249,392 @@ function Gyro.Cleanup(S, player, state)
 end
 
 return Gyro
+]=] },
+	{ Service = "ServerScriptService", Path = "SpinServer/TuskActs/PorkPieHatKid", Class = "ModuleScript", Source = [=[
+--[[
+	PorkPieHatKid  (ServerScriptService.SpinServer.TuskActs.PorkPieHatKid)
+
+	Pork Pie Hat Kid: WIRED. Two fish hooks on steel cables that roll out of a
+	winch in the back of his mouth; the hooks come out of water to snag
+	whoever goes for the bait, and together they can lift a horse.
+	Registered as "Act" 7 so it reuses the Tusk ability system (cooldowns,
+	HUD, ultimate meter, input).
+	  M1        HOOK COMBO: slap, slap, a hook lash out of his mouth, flying kick
+	  Ability 1 WIRED HOOK: a hook shoots out of his mouth; a hit snags the
+	            enemy and the winch reels them in to him
+	  Ability 2 BAIT PAN: puts down a pan of water with a feather bait. The
+	            first enemies to come near get hooked out of the water,
+	            hoisted up and yanked back down
+	  Ability 3 DOUBLE HOOK LIFT: both hooks snag up to two enemies in front,
+	            hoist them high in the air, then slam them down
+	  Ultimate  WIRED WINCH: puddles of water all around him, hooks erupt from
+	            every one, the winch reels everyone in through the air, slam
+	Numbers: TuskConfig.PorkPie. All damage goes through S.hit (CombatAdapter).
+]]
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+local Moves = require(script.Parent.Parent.TuskMoves)
+
+local PorkPie = {}
+local cfg = TuskConfig.PorkPie
+local ACT = 7
+local MOUTH = CFrame.new(0, 1.3, -1.2) -- roughly where his mouth is (root space)
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function ready(S, player, state, name, slot)
+	return not S.isBusy(state) and not state.Charging and S.cooldownReady(player, state, name, slot)
+end
+
+function PorkPie.M1(S, player, state, aim)
+	Moves.m1(S, player, state, aim, cfg.M1, ACT)
+end
+
+-- The winch pulls `target` toward `point` (one tick; the knockback lasts ~0.18 s).
+local function pull(S, target, point, stopDistance)
+	local tr = target:FindFirstChild("HumanoidRootPart")
+	if not tr then
+		return true
+	end
+	local offset = point - tr.Position
+	local distance = offset.Magnitude
+	if distance <= (stopDistance or 4) then
+		return true
+	end
+	local strength = math.min(distance / 0.18 * 0.6, 90)
+	S.Adapter.applyKnockback(target, offset, strength, math.clamp(offset.Y * 3, 4, 40))
+	return false
+end
+
+-- Yank a hoisted enemy straight back down into the ground.
+local function slamDown(S, player, target, damage, source)
+	if not target.Parent then
+		return
+	end
+	S.Adapter.applyKnockback(target, Vector3.new(0, 0, 1), 1, -90)
+	task.delay(0.25, function()
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			S.hit(player, target, { Damage = damage, Stun = 0.5, Knockback = 0, Direction = Vector3.new(0, -1, 0), Position = tr.Position, Source = source })
+		end
+	end)
+end
+
+-- Up to `max` enemies in a cone in front, nearest first.
+local function targetsInCone(S, character, root, direction, range, cone, max)
+	local look = Moves.flat(direction)
+	local cosLimit = math.cos(math.rad(cone / 2))
+	local list = {}
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, range, 8)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and S.Adapter.canBeHit(nil, target) then
+			local offset = tr.Position - root.Position
+			local f = Vector3.new(offset.X, 0, offset.Z)
+			if (f.Magnitude < 1 or f.Unit:Dot(look) >= cosLimit) and S.Hitbox.lineOfSight(root.Position, tr.Position, { character, target }) then
+				table.insert(list, { Target = target, Distance = offset.Magnitude })
+			end
+		end
+	end
+	table.sort(list, function(a, b)
+		return a.Distance < b.Distance
+	end)
+	local out = {}
+	for i = 1, math.min(max, #list) do
+		out[i] = list[i].Target
+	end
+	return out
+end
+
+---------------------------------------------------------------------------
+-- WIRED HOOK
+---------------------------------------------------------------------------
+local function wiredHook(S, player, state, aim)
+	local c = cfg.WiredHook
+	if not ready(S, player, state, "WiredHook", 1) then
+		return
+	end
+	S.startCooldown(player, state, "WiredHook", c.Cooldown, 1)
+	S.lock(state, c.Startup + 0.3)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "WiredHook", Phase = "Startup", Startup = c.Startup, Direction = direction })
+	task.delay(c.Startup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local snagged = false
+		S.fireHook(player, state, {
+			Origin = S.origin(char, r, MOUTH),
+			Direction = direction,
+			Speed = c.Speed,
+			Radius = c.Radius,
+			Range = c.Range,
+			OnHit = function(target, position)
+				if snagged then
+					return
+				end
+				snagged = true
+				if not S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Direction = direction, Position = position, Source = "PorkPieHook" }) then
+					return
+				end
+				S.fx("Ability", { Character = char, Act = ACT, Move = "WiredHook", Phase = "Snag", Target = target, Duration = c.ReelTime })
+				-- The winch reels them in.
+				local ticks = math.max(1, math.floor(c.ReelTime / c.ReelTick))
+				local done = false
+				for i = 0, ticks - 1 do
+					task.delay(i * c.ReelTick, function()
+						local _, _, rr = alive(S, player)
+						if done or not rr or state.Life ~= life then
+							return
+						end
+						done = pull(S, target, rr.Position + rr.CFrame.LookVector * 2, c.ReelStopDistance)
+					end)
+				end
+			end,
+		})
+	end)
+end
+
+---------------------------------------------------------------------------
+-- BAIT PAN
+---------------------------------------------------------------------------
+local function clearPan(S, state, reason)
+	local pan = state.BaitPan
+	if not pan then
+		return
+	end
+	state.BaitPan = nil
+	if state.Character then
+		state.Character:SetAttribute("BaitPanUntil", nil)
+	end
+	S.fx("Ability", { Act = ACT, Move = "BaitPan", Phase = reason or "Expire", Id = pan.Id, Position = pan.Position })
+end
+
+local function baitPan(S, player, state, aim)
+	local c = cfg.BaitPan
+	if not ready(S, player, state, "BaitPan", 2) then
+		return
+	end
+	S.startCooldown(player, state, "BaitPan", c.Cooldown, 2)
+	S.lock(state, c.Startup + 0.2)
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "BaitPan", Phase = "Startup", Startup = c.Startup, Direction = direction })
+	task.delay(c.Startup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		clearPan(S, state, "Expire") -- one pan at a time
+		local spot = Moves.safeStep(char, r, direction, c.Distance) or (r.Position + direction * 3)
+		local ground = Moves.groundBelow(spot, { char })
+		local pan = { Id = tostring(os.clock()) .. player.UserId, Position = ground, Until = os.clock() + c.Duration }
+		state.BaitPan = pan
+		char:SetAttribute("BaitPanUntil", workspace:GetServerTimeNow() + c.Duration)
+		S.fx("Ability", { Character = char, Act = ACT, Move = "BaitPan", Phase = "Place", Id = pan.Id, Position = ground, From = r.Position, Duration = c.Duration, Radius = c.TriggerRadius })
+
+		local function check()
+			if state.BaitPan ~= pan or state.Life ~= life then
+				return
+			end
+			if os.clock() >= pan.Until then
+				clearPan(S, state, "Expire")
+				return
+			end
+			local center = pan.Position + Vector3.new(0, 2.5, 0)
+			local caught = {}
+			for _, target in ipairs(S.Hitbox.inRadius(player.Character, center, c.TriggerRadius, c.MaxTargets)) do
+				if S.Adapter.canBeHit(player, target) then
+					table.insert(caught, target)
+				end
+			end
+			if #caught == 0 then
+				task.delay(c.CheckEvery, check)
+				return
+			end
+			-- Hooks burst out of the water and hoist them.
+			S.fx("Ability", { Act = ACT, Move = "BaitPan", Phase = "Trigger", Id = pan.Id, Position = pan.Position, Targets = caught, SlamAfter = c.SlamAfter })
+			state.BaitPan = nil
+			if state.Character then
+				state.Character:SetAttribute("BaitPanUntil", nil)
+			end
+			for _, target in ipairs(caught) do
+				local tr = target:FindFirstChild("HumanoidRootPart")
+				if tr and S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Launch = c.Lift, Direction = tr.Position - pan.Position, Position = tr.Position, Source = "PorkPieBait" }) then
+					task.delay(c.SlamAfter, function()
+						slamDown(S, player, target, c.SlamDamage, "PorkPieBait")
+					end)
+				end
+			end
+		end
+		task.delay(c.CheckEvery, check)
+	end)
+end
+
+---------------------------------------------------------------------------
+-- DOUBLE HOOK LIFT
+---------------------------------------------------------------------------
+local function doubleHookLift(S, player, state, aim)
+	local c = cfg.DoubleHookLift
+	if not ready(S, player, state, "DoubleHookLift", 3) then
+		return
+	end
+	S.startCooldown(player, state, "DoubleHookLift", c.Cooldown, 3)
+	S.lock(state, c.Windup + 0.5)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "DoubleHookLift", Phase = "Startup", Windup = c.Windup, Direction = direction })
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local targets = targetsInCone(S, char, r, direction, c.Range, c.Cone, c.MaxTargets)
+		local hooked = {}
+		for _, target in ipairs(targets) do
+			local tr = target:FindFirstChild("HumanoidRootPart")
+			if tr and S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Launch = c.Lift, Direction = direction, Position = tr.Position, Source = "PorkPieLift" }) then
+				table.insert(hooked, target)
+			end
+		end
+		S.fx("Ability", { Character = char, Act = ACT, Move = "DoubleHookLift", Phase = "Hoist", Targets = hooked, Direction = direction, Range = c.Range, SlamAfter = c.SlamAfter })
+		if #hooked == 0 then
+			-- Missed: shorter cooldown.
+			S.startCooldown(player, state, "DoubleHookLift", c.MissCooldown, 3)
+			return
+		end
+		task.delay(c.SlamAfter, function()
+			for _, target in ipairs(hooked) do
+				slamDown(S, player, target, c.SlamDamage, "PorkPieLift")
+			end
+			task.delay(0.3, function()
+				for _, target in ipairs(hooked) do
+					local tr = target:FindFirstChild("HumanoidRootPart")
+					if tr then
+						S.fx("Ability", { Act = ACT, Move = "DoubleHookLift", Phase = "Slam", Position = tr.Position, Radius = c.SlamRadius })
+					end
+				end
+			end)
+		end)
+	end)
+end
+
+function PorkPie.Ability(S, player, state, slot, phase, aim)
+	if phase ~= "Press" then
+		return
+	end
+	if slot == 1 then
+		wiredHook(S, player, state, aim)
+	elseif slot == 2 then
+		baitPan(S, player, state, aim)
+	elseif slot == 3 then
+		doubleHookLift(S, player, state, aim)
+	end
+end
+
+---------------------------------------------------------------------------
+-- WIRED WINCH (ultimate)
+---------------------------------------------------------------------------
+function PorkPie.Ultimate(S, player, state, aim)
+	local u = cfg.Ultimate
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local life = state.Life
+	S.lock(state, u.Windup + u.ReelTime + 0.5)
+	character:SetAttribute("Armored", true)
+	-- Puddles of water in a ring around him.
+	local puddles = {}
+	for i = 1, u.Puddles do
+		local a = (i - 1) / u.Puddles * math.pi * 2
+		local spot = root.Position + Vector3.new(math.cos(a), 0, math.sin(a)) * u.PuddleRadius
+		puddles[i] = Moves.groundBelow(spot, { character })
+	end
+	S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Start", Windup = u.Windup, Puddles = puddles, Radius = u.Radius })
+	task.delay(u.Windup, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+		if state.Life ~= life or not alive(S, player) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		-- Hooks erupt from the puddles and snag everyone around.
+		local snagged, from = {}, {}
+		for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, u.Radius, 8)) do
+			local tr = target:FindFirstChild("HumanoidRootPart")
+			if tr and S.Hitbox.lineOfSight(r.Position + Vector3.new(0, 2, 0), tr.Position, { char, target }) then
+				if S.hit(player, target, { Damage = u.SnagDamage, Stun = u.SnagStun, Knockback = 0, Launch = u.SnagLift, Direction = r.Position - tr.Position, Position = tr.Position, Source = "PorkPieWinch" }) then
+					table.insert(snagged, target)
+					local best, bestD = 1, math.huge
+					for i, p in ipairs(puddles) do
+						local d = (p - tr.Position).Magnitude
+						if d < bestD then
+							best, bestD = i, d
+						end
+					end
+					table.insert(from, best)
+				end
+			end
+		end
+		S.fx("Ultimate", { Character = char, Act = ACT, Phase = "Snag", Targets = snagged, From = from, Puddles = puddles, ReelTime = u.ReelTime })
+		S.finishUltimate(player, state)
+		-- The winch reels them all in through the air.
+		local ticks = math.floor(u.ReelTime / u.ReelTick)
+		local nextDamage = u.TickEvery
+		for i = 1, ticks do
+			task.delay(i * u.ReelTick, function()
+				local _, _, rr = alive(S, player)
+				if not rr or state.Life ~= life then
+					return
+				end
+				local point = rr.Position + rr.CFrame.LookVector * 4 + Vector3.new(0, 4, 0)
+				local damageTick = i * u.ReelTick >= nextDamage
+				if damageTick then
+					nextDamage = nextDamage + u.TickEvery
+				end
+				for _, target in ipairs(snagged) do
+					if target.Parent then
+						pull(S, target, point, 3)
+						local tr = target:FindFirstChild("HumanoidRootPart")
+						if damageTick and tr then
+							S.hit(player, target, { Damage = u.TickDamage, Stun = 0.6, Knockback = 0, Direction = point - tr.Position, Position = tr.Position, Source = "PorkPieWinch" })
+						end
+					end
+				end
+			end)
+		end
+		task.delay(u.ReelTime + 0.05, function()
+			local _, _, rr = alive(S, player)
+			if not rr or state.Life ~= life then
+				return
+			end
+			local pos = rr.Position + rr.CFrame.LookVector * 4
+			Moves.aoe(S, player, pos, u.SlamRadius, { Damage = u.SlamDamage, Stun = u.SlamStun, Knockback = u.SlamKnockback, Launch = u.SlamLaunch, Source = "PorkPieWinch" }, 8)
+			S.fx("Ultimate", { Character = char, Act = ACT, Phase = "Slam", Position = pos, Radius = u.SlamRadius })
+		end)
+	end)
+end
+
+function PorkPie.Cleanup(S, player, state)
+	if state.Character then
+		state.Character:SetAttribute("Armored", nil)
+	end
+	clearPan(S, state, "Expire")
+end
+
+return PorkPie
 ]=] },
 	{ Service = "ServerScriptService", Path = "SpinServer/TuskActs/TuskAct1", Class = "ModuleScript", Source = [=[
 --[[
@@ -6547,6 +7257,21 @@ function TuskService.fireBall(player, state, spec)
 	})
 end
 
+-- Server projectile with a Wired fish-hook visual (Pork Pie Hat Kid).
+function TuskService.fireHook(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "WiredHook",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Hook" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
 -- Charge helpers (hold abilities): sets the replicated TuskCharge attribute.
 function TuskService.beginCharge(player, state, move, slot, multiplier)
 	local character, humanoid = Adapter.getAlive(player)
@@ -7376,13 +8101,15 @@ local function onHit(data)
 	end, function()
 		highlight:Destroy()
 	end)
-	-- Starburst coloured by who landed it: cyan for Johnny, green for Gyro, blue for Diego.
+	-- Starburst coloured by who landed it: cyan for Johnny, green for Gyro, blue for Diego, bamboo green for Pork Pie Hat Kid.
 	local source = tostring(data.Source or "")
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
 	elseif source:sub(1, 5) == "Diego" then
 		starColor = Color3.fromRGB(60, 120, 255)
+	elseif source:sub(1, 7) == "PorkPie" then
+		starColor = Color3.fromRGB(165, 215, 80)
 	end
 	if data.Perfect then
 		starColor = colors.Gold
@@ -7530,6 +8257,7 @@ Common.Palettes = {
 	[4] = { Main = colors.Gold, Second = colors.DeepBlue, Light = colors.GoldLight },
 	[5] = { Main = Color3.fromRGB(120, 225, 95), Second = Color3.fromRGB(40, 120, 50), Light = Color3.fromRGB(225, 255, 205) }, -- Gyro
 	[6] = { Main = Color3.fromRGB(80, 210, 220), Second = Color3.fromRGB(35, 60, 190), Light = Color3.fromRGB(215, 255, 250) }, -- Diego
+	[7] = { Main = Color3.fromRGB(165, 215, 80), Second = Color3.fromRGB(95, 105, 125), Light = Color3.fromRGB(225, 232, 245) }, -- Pork Pie Hat Kid (bamboo green + steel)
 }
 
 function Common.palette(act)
@@ -10195,7 +10923,7 @@ function vibrationHit(character, root, data)
 end
 
 
--- BALL BREAKER (the Stand, from the owner's picture): a green ribbed
+-- BALL BREAKER (the Stand, from the owner's picture, blocky): a green ribbed
 -- figure with long arms and legs, a flat round "lid" head, pink bulbs all
 -- over it and gold lightning crackling around it. Rises out of the vortex,
 -- sways, then shatters into sparks.
@@ -10207,17 +10935,31 @@ local BB_GOLD = Color3.fromRGB(255, 220, 70)
 local function breakerSpirit(position, duration)
 	local quality = VFXQuality.get()
 	local bits = {}
-	local function piece(size, offset, color, shape, material)
+	-- Blocky like every Stand: round pieces become stepped "voxel-round" boxes
+	-- (a core box plus crossing boxes), discs become stepped plates.
+	local function block(size, offset, color, material)
 		local p = VFXLib.part({ Material = material or Enum.Material.SmoothPlastic, Color = color, Size = size, Transparency = 0.1 })
-		if shape == "Ball" then
-			local mesh = Instance.new("SpecialMesh")
-			mesh.MeshType = Enum.MeshType.Sphere
-			mesh.Parent = p
-		elseif shape == "Cylinder" then
-			p.Shape = Enum.PartType.Cylinder
-		end
 		table.insert(bits, { Part = p, Offset = offset, Size = size })
 		return p
+	end
+	local function piece(size, offset, color, shape, material)
+		if shape == "Ball" then
+			if math.max(size.X, size.Y, size.Z) < 0.7 then
+				return block(size * 0.82, offset, color, material)
+			end
+			local core = block(size * 0.86, offset, color, material)
+			block(Vector3.new(size.X, size.Y * 0.62, size.Z * 0.62), offset, color, material)
+			block(Vector3.new(size.X * 0.62, size.Y, size.Z * 0.62), offset, color, material)
+			block(Vector3.new(size.X * 0.62, size.Y * 0.62, size.Z), offset, color, material)
+			return core
+		elseif shape == "Cylinder" then
+			-- Disc: thickness along X, round face in Y/Z.
+			local core = block(Vector3.new(size.X, size.Y * 0.86, size.Z * 0.86), offset, color, material)
+			block(Vector3.new(size.X, size.Y, size.Z * 0.62), offset, color, material)
+			block(Vector3.new(size.X, size.Y * 0.62, size.Z), offset, color, material)
+			return core
+		end
+		return block(size, offset, color, material)
 	end
 	local flat = CFrame.Angles(0, 0, math.pi / 2) -- cylinder axis -> up
 	-- Body: ribbed green torso and hips.
@@ -10310,8 +11052,8 @@ local function breakerSpirit(position, duration)
 	end, function()
 		-- Shatter: every piece bursts into sparks.
 		for i, b in ipairs(bits) do
-			if i % 2 == 1 then
-				VFXLib.burst(b.Part.Position, { Count = 5, Color = i % 4 == 1 and BB_GREEN or BB_PINK, Speed = 30, Lifetime = 0.5 })
+			if i % 6 == 1 then
+				VFXLib.burst(b.Part.Position, { Count = 5, Color = i % 12 == 1 and BB_GREEN or BB_PINK, Speed = 30, Lifetime = 0.5 })
 			end
 			b.Part:Destroy()
 		end
@@ -10694,6 +11436,660 @@ end)
 
 return Gyro
 ]=] },
+	{ Service = "StarterPlayerScripts", Path = "SpinClient/TuskActVFX/PorkPie", Class = "ModuleScript", Source = [=[
+--[[
+	TuskActVFX.PorkPie  (StarterPlayerScripts.SpinClient.TuskActVFX.PorkPie)
+
+	Client visuals for Pork Pie Hat Kid / WIRED (from the owner's pictures):
+	  * blocky fish hooks (barbed J hook, ring eye, feather bait) on steel
+	    cables that run out of his MOUTH
+	  * the winch: a cable drum that spins in front of his mouth while he reels
+	  * WIRED HOOK: the hook flies out, snags, the cable reels the enemy in
+	    (a miss whips the hook back into his mouth)
+	  * BAIT PAN: a frying pan of water with a feather bait bobbing over it;
+	    hooks burst out of the water at whoever comes near
+	  * DOUBLE HOOK LIFT: both hooks snag, hoist the enemies up, slam them down
+	  * WIRED WINCH: puddles all round him, hooks erupt from every puddle, the
+	    cables swing over to his mouth and the winch reels everyone in, slam
+	Everything is blocky to match the game's look.
+]]
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local Net = require(Shared.Net)
+local VFXLib = require(script.Parent.Parent.VFXLib)
+local CameraFX = require(script.Parent.Parent.CameraFX)
+local TuskVFX = require(script.Parent.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
+local Common = require(script.Parent.Parent.TuskActCommon)
+
+local PorkPie = {}
+local ACT = 7
+local pal = Common.palette(ACT)
+local sounds = TuskConfig.Sounds
+
+local STEEL = Color3.fromRGB(205, 210, 222)
+local CABLE = Color3.fromRGB(165, 170, 182)
+local WATER = Color3.fromRGB(70, 150, 230)
+local WATER_LIGHT = Color3.fromRGB(190, 230, 255)
+local PAN = Color3.fromRGB(60, 62, 68)
+local FEATHER = Color3.fromRGB(150, 110, 70)
+local FEATHER_LIGHT = Color3.fromRGB(225, 200, 150)
+
+local hooks = {} -- [projectile id] = flying hook
+local lines = {} -- list of cables held taut between two moving points
+local pans = {} -- [pan id] = bait pan
+local puddles = {} -- list of the ultimate's puddles
+local winches = {} -- [character] = spinning cable drum at the mouth
+local stanced = {}
+
+---------------------------------------------------------------------------
+-- Building blocks
+---------------------------------------------------------------------------
+local function box(model, size, cf, color, material, transparency)
+	local p = VFXLib.part({ Size = size, CFrame = cf, Color = color, Material = material or Enum.Material.SmoothPlastic, Transparency = transparency or 0 })
+	p.Parent = model
+	return p
+end
+
+-- Stepped (pixel-art) round plate lying in the XZ plane.
+local function roundPlate(model, diameter, thickness, cf, color, material, transparency)
+	local core = box(model, Vector3.new(diameter * 0.86, thickness, diameter * 0.86), cf, color, material, transparency)
+	box(model, Vector3.new(diameter, thickness, diameter * 0.62), cf, color, material, transparency)
+	box(model, Vector3.new(diameter * 0.62, thickness, diameter), cf, color, material, transparency)
+	return core
+end
+
+local function newModel(name)
+	local m = Instance.new("Model")
+	m.Name = name
+	m.Parent = VFXLib.Folder
+	return m
+end
+
+-- The fish hook from the pictures: shank, J bend with a barbed point, a ring
+-- eye at the back and a feather bait. Points along -Z (the bend leads).
+local function buildHook(scale)
+	scale = scale or 1
+	local m = newModel("WiredHook")
+	local s = scale
+	local metal = Enum.Material.Metal
+	local shank = box(m, Vector3.new(0.14, 0.14, 1.4) * s, CFrame.new(), STEEL, metal)
+	box(m, Vector3.new(0.14, 0.9, 0.14) * s, CFrame.new(0, -0.38 * s, -0.7 * s), STEEL, metal) -- bend down
+	box(m, Vector3.new(0.14, 0.14, 0.52) * s, CFrame.new(0, -0.8 * s, -0.5 * s), STEEL, metal) -- bottom of the J
+	box(m, Vector3.new(0.14, 0.5, 0.14) * s, CFrame.new(0, -0.57 * s, -0.27 * s) * CFrame.Angles(0.15, 0, 0), STEEL, metal) -- point
+	box(m, Vector3.new(0.1, 0.26, 0.1) * s, CFrame.new(0, -0.42 * s, -0.37 * s) * CFrame.Angles(-0.75, 0, 0), STEEL, metal) -- barb
+	-- Ring eye.
+	for _, o in ipairs({ { 0.14, 0, 0.1, 0.34 }, { -0.14, 0, 0.1, 0.34 }, { 0, 0.14, 0.34, 0.1 }, { 0, -0.14, 0.34, 0.1 } }) do
+		box(m, Vector3.new(o[3], o[4], 0.1) * s, CFrame.new(o[1] * s, o[2] * s, 0.8 * s), STEEL, metal)
+	end
+	-- Feather bait.
+	box(m, Vector3.new(0.06, 0.32, 0.8) * s, CFrame.new(0, 0.22 * s, 0.95 * s) * CFrame.Angles(0.35, 0, 0), FEATHER)
+	box(m, Vector3.new(0.07, 0.18, 0.6) * s, CFrame.new(0, 0.3 * s, 0.9 * s) * CFrame.Angles(0.35, 0, 0), FEATHER_LIGHT)
+	m.PrimaryPart = shank
+	return m
+end
+
+-- The winch from the picture: a cable drum with side wheels, axis along X.
+local function buildWinch(scale)
+	local m = newModel("WiredWinch")
+	local s = scale or 1
+	local metal = Enum.Material.Metal
+	local hub = box(m, Vector3.new(0.9, 0.5, 0.5) * s, CFrame.new(), CABLE, metal)
+	for _, side in ipairs({ -1, 1 }) do
+		local cf = CFrame.new(side * 0.5 * s, 0, 0)
+		box(m, Vector3.new(0.12, 1.0, 0.86) * s, cf, STEEL, metal)
+		box(m, Vector3.new(0.12, 0.62, 1.0) * s, cf, STEEL, metal)
+		box(m, Vector3.new(0.12, 1.0, 0.62) * s, cf, STEEL, metal)
+		box(m, Vector3.new(0.14, 0.2, 0.2) * s, cf, PAN, metal) -- axle cap
+	end
+	-- Cable wound round the drum (stripes so the spin reads).
+	for i = 0, 3 do
+		box(m, Vector3.new(0.86, 0.08, 0.62) * s, CFrame.Angles(i * math.pi / 4, 0, 0), Color3.fromRGB(120, 124, 135), metal)
+	end
+	m.PrimaryPart = hub
+	return m
+end
+
+local function mouthCF(character)
+	local head = character and character:FindFirstChild("Head")
+	if not head then
+		local root = Common.rootOf(character)
+		return root and root.CFrame * CFrame.new(0, 1.3, -0.8)
+	end
+	local s = head.Size.Y / 1.2
+	return head.CFrame * CFrame.new(0, -0.3 * s, -0.65 * s)
+end
+
+local function torsoPos(model)
+	local part = model and (model:FindFirstChild("UpperTorso") or model:FindFirstChild("Torso") or model:FindFirstChild("HumanoidRootPart"))
+	return part and part.Position
+end
+
+local function characterById(userId)
+	local player = userId and Players:GetPlayerByUserId(userId)
+	return player and player.Character
+end
+
+---------------------------------------------------------------------------
+-- Cables: a thin steel bar stretched between two points, updated every frame
+---------------------------------------------------------------------------
+local function newCable(width)
+	return VFXLib.part({ Size = Vector3.new(width or 0.09, width or 0.09, 1), Color = CABLE, Material = Enum.Material.Metal })
+end
+
+local function setCable(cable, a, b)
+	local d = (b - a).Magnitude
+	if d < 0.05 then
+		cable.Transparency = 1
+		return
+	end
+	cable.Transparency = 0
+	local w = cable.Size.X
+	cable.Size = Vector3.new(w, w, d)
+	cable.CFrame = CFrame.lookAt((a + b) / 2, b)
+end
+
+--[[ A cable from `getA()` to `getB()` with a hook at the B end, for `duration`
+     seconds. getA/getB return a Vector3 or nil (nil = that end is gone). ]]
+local function holdLine(getA, getB, duration, opts)
+	opts = opts or {}
+	local entry = {
+		GetA = getA,
+		GetB = getB,
+		Cable = newCable(opts.Width),
+		Hook = opts.NoHook and nil or buildHook(opts.HookScale or 1),
+		Expire = os.clock() + duration,
+		Shake = opts.Shake or 0,
+	}
+	table.insert(lines, entry)
+	return entry
+end
+
+local function dropLine(entry)
+	entry.Cable:Destroy()
+	if entry.Hook then
+		entry.Hook:Destroy()
+	end
+end
+
+local function stepLines()
+	local now = os.clock()
+	for i = #lines, 1, -1 do
+		local e = lines[i]
+		local a, b = e.GetA(), e.GetB()
+		if now > e.Expire or not a or not b then
+			table.remove(lines, i)
+			dropLine(e)
+		else
+			if e.Shake > 0 then
+				-- A taut cable thrums.
+				b = b + Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * e.Shake
+			end
+			setCable(e.Cable, a, b)
+			if e.Hook then
+				local dir = (b - a).Magnitude > 0.1 and (b - a).Unit or Vector3.new(0, 0, -1)
+				e.Hook:PivotTo(CFrame.lookAt(b, b + dir))
+			end
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Winch at the mouth
+---------------------------------------------------------------------------
+local function startWinch(character, duration)
+	local w = winches[character]
+	if w then
+		w.Expire = math.max(w.Expire, os.clock() + duration)
+		return
+	end
+	winches[character] = { Model = buildWinch(0.9), Angle = 0, Expire = os.clock() + duration }
+end
+
+local function stepWinches(dt)
+	local now = os.clock()
+	for character, w in pairs(winches) do
+		local cf = character.Parent and mouthCF(character)
+		if not cf or now > w.Expire then
+			w.Model:Destroy()
+			winches[character] = nil
+		else
+			w.Angle = w.Angle + dt * 25
+			w.Model:PivotTo(cf * CFrame.new(0, 0, -0.55) * CFrame.Angles(w.Angle, 0, 0))
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Water
+---------------------------------------------------------------------------
+local function splash(position, size)
+	size = size or 1
+	VFXLib.burst(position, { Count = math.floor(16 * size), Texture = VFXLib.Textures.Smoke, Color = WATER_LIGHT, LightEmission = 0.3, Speed = 22 * size, Lifetime = 0.55, Spread = 35, Direction = Vector3.new(0, 1, 0), Acceleration = Vector3.new(0, -60, 0) })
+	VFXLib.burst(position, { Count = math.floor(10 * size), Color = WATER, Speed = 16 * size, Lifetime = 0.4 })
+	TuskVFX.CreateRotationalShockwave(CFrame.new(position), { Radius = 3.5 * size, Layers = 1, Color = WATER_LIGHT, Color2 = WATER, Ground = true, Particles = 0.3, Width = 0.2, Duration = 0.4 })
+end
+
+local function buildPuddle(position, diameter)
+	local m = newModel("WiredPuddle")
+	local cf = CFrame.new(position + Vector3.new(0, 0.06, 0))
+	local water = roundPlate(m, diameter, 0.1, cf, WATER, Enum.Material.Glass, 0.25)
+	roundPlate(m, diameter * 0.55, 0.12, cf, WATER_LIGHT, Enum.Material.Neon, 0.6)
+	m.PrimaryPart = water
+	return m
+end
+
+-- A frying pan of water with a feather bait bobbing above it.
+local function buildPan(position)
+	local m = newModel("BaitPan")
+	local base = CFrame.new(position + Vector3.new(0, 0.15, 0))
+	local metal = Enum.Material.Metal
+	local core = roundPlate(m, 3.2, 0.25, base, PAN, metal)
+	for i = 0, 7 do
+		local a = i / 8 * math.pi * 2
+		box(m, Vector3.new(1.3, 0.45, 0.22), base * CFrame.Angles(0, a, 0) * CFrame.new(0, 0.25, -1.5), PAN, metal)
+	end
+	box(m, Vector3.new(0.35, 0.2, 2.2), base * CFrame.new(0, 0.3, 2.5), Color3.fromRGB(90, 60, 40)) -- handle
+	roundPlate(m, 2.8, 0.1, base * CFrame.new(0, 0.32, 0), WATER, Enum.Material.Glass, 0.2)
+	m.PrimaryPart = core
+	local bait = buildHook(0.8)
+	return m, bait
+end
+
+---------------------------------------------------------------------------
+-- Hook projectiles (server Kind "WiredHook")
+---------------------------------------------------------------------------
+local function spawnHook(data)
+	local owner = characterById(data.OwnerId)
+	local v = {
+		Model = buildHook(1.1),
+		Cable = newCable(0.1),
+		Owner = owner,
+		Origin = data.Origin,
+		Direction = data.Direction,
+		Speed = data.Speed,
+		Range = data.Range,
+		ServerTime = data.ServerTime,
+		Expire = os.clock() + data.Range / math.max(data.Speed, 1) + 1,
+	}
+	hooks[data.Id] = v
+	if owner then
+		startWinch(owner, data.Range / math.max(data.Speed, 1) + 0.2)
+	end
+end
+
+local function hookPos(v)
+	local distance = math.min(v.Speed * (workspace:GetServerTimeNow() - v.ServerTime), v.Range)
+	return v.Origin + v.Direction * math.max(distance, 0)
+end
+
+local function removeHook(v)
+	v.Model:Destroy()
+	v.Cable:Destroy()
+end
+
+-- A miss: the hook whips back into his mouth.
+local function retract(owner, from)
+	local model = buildHook(1.1)
+	local cable = newCable(0.1)
+	VFXLib.animate(0.25, function(a)
+		local m = owner and owner.Parent and mouthCF(owner)
+		if not m then
+			return
+		end
+		local p = from:Lerp(m.Position, VFXLib.easeInOut(a))
+		local dir = (p - m.Position).Magnitude > 0.1 and (p - m.Position).Unit or Vector3.new(0, 0, -1)
+		model:PivotTo(CFrame.lookAt(p, p + dir) * CFrame.Angles(0, 0, a * 6))
+		setCable(cable, m.Position, p)
+	end, function()
+		model:Destroy()
+		cable:Destroy()
+	end)
+end
+
+local function endHook(data)
+	local v = hooks[data.Id]
+	if not v then
+		return
+	end
+	hooks[data.Id] = nil
+	removeHook(v)
+	if not data.HitCharacter then
+		VFXLib.burst(data.Position, { Count = 8, Color = STEEL, Speed = 18, Lifetime = 0.25 })
+		VFXLib.sound(sounds.NailImpact, data.Position, 0.3, 1.5)
+		retract(v.Owner, data.Position)
+	end
+end
+
+local function stepHooks()
+	local now = os.clock()
+	for id, v in pairs(hooks) do
+		local pos = hookPos(v)
+		v.Model:PivotTo(CFrame.lookAt(pos, pos + v.Direction))
+		local m = v.Owner and v.Owner.Parent and mouthCF(v.Owner)
+		setCable(v.Cable, m and m.Position or v.Origin, pos)
+		if now > v.Expire then
+			hooks[id] = nil
+			removeHook(v)
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Moves
+---------------------------------------------------------------------------
+local function mouthGetter(character)
+	return function()
+		local m = character and character.Parent and mouthCF(character)
+		return m and m.Position
+	end
+end
+
+local function targetGetter(target)
+	return function()
+		return target and target.Parent and torsoPos(target)
+	end
+end
+
+local function onM1(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if not root then
+		return
+	end
+	local index = data.Index
+	TuskAnimation.play(character, "P_M1_" .. index)
+	VFXLib.sound(sounds.Swing, root, 0.5, 1.1 + index * 0.06)
+	if index <= 2 then
+		Common.swipe(root, index == 1 and 1 or -1, index == 1 and pal.Main or pal.Light)
+	elseif index == 3 then
+		-- A hook lashes out of his mouth and snaps back.
+		local model = buildHook(0.9)
+		local cable = newCable(0.08)
+		VFXLib.animate(0.28, function(a)
+			local m = character.Parent and mouthCF(character)
+			if not m then
+				return
+			end
+			local reach = math.sin(a * math.pi) * 6
+			local p = (m * CFrame.new(math.sin(a * math.pi * 2) * 0.8, 0, -reach)).Position
+			model:PivotTo(CFrame.lookAt(p, p + m.LookVector) * CFrame.Angles(0, 0, a * 8))
+			setCable(cable, m.Position, p)
+		end, function()
+			model:Destroy()
+			cable:Destroy()
+		end)
+		TuskVFX.CreateCrescent(root.CFrame * CFrame.new(0, 1.2, -2.4), { Radius = 3, Width = 0.2, Color = STEEL, Color2 = pal.Light, Sweep = 2, Duration = 0.2 })
+	end
+end
+
+local function onAbility(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	local move, phase = data.Move, data.Phase
+	if move == "WiredHook" then
+		if phase == "Startup" and root then
+			TuskAnimation.play(character, "PPHookSpit")
+			VFXLib.sound(sounds.Warning, root, 0.3, 1.6)
+		elseif phase == "Snag" and data.Target then
+			TuskAnimation.play(character, "PPReel")
+			startWinch(character, data.Duration + 0.2)
+			holdLine(mouthGetter(character), targetGetter(data.Target), data.Duration + 0.15, { Width = 0.1, HookScale = 1.1, Shake = 0.08 })
+			local tp = torsoPos(data.Target)
+			if tp then
+				VFXLib.burst(tp, { Count = 14, Color = STEEL, Speed = 24, Lifetime = 0.3 })
+				TuskVFX.CreateImpactStar(tp, { Size = 4, Rays = 7, Color = pal.Main, Color2 = STEEL, Duration = 0.2 })
+			end
+			VFXLib.sound(sounds.Hit, root or data.Target, 0.6, 1.2)
+			if Common.isLocal(character) or Common.isLocal(data.Target) then
+				CameraFX.shake(0.3, 0.25)
+			end
+		end
+	elseif move == "BaitPan" then
+		if phase == "Startup" and character then
+			TuskAnimation.play(character, "PPBaitToss")
+		elseif phase == "Place" then
+			local model, bait = buildPan(data.Position)
+			pans[data.Id] = { Model = model, Bait = bait, Position = data.Position, Expire = os.clock() + (data.Duration or 10) + 1, T = 0, NextRipple = 0 }
+			splash(data.Position + Vector3.new(0, 0.5, 0), 0.7)
+			VFXLib.sound(sounds.NailImpact, data.Position, 0.4, 0.7)
+		elseif phase == "Trigger" or phase == "Expire" then
+			local pan = pans[data.Id]
+			if pan then
+				pans[data.Id] = nil
+				pan.Model:Destroy()
+				pan.Bait:Destroy()
+			end
+			local water = data.Position + Vector3.new(0, 0.5, 0)
+			splash(water, phase == "Trigger" and 1.3 or 0.6)
+			if phase == "Trigger" then
+				-- Hooks burst out of the water and hoist whoever went for the bait.
+				for _, target in ipairs(data.Targets or {}) do
+					holdLine(function()
+						return water
+					end, targetGetter(target), (data.SlamAfter or 0.5) + 0.35, { Width = 0.1, HookScale = 1.1, Shake = 0.05 })
+					task.delay((data.SlamAfter or 0.5) + 0.25, function()
+						local tp = torsoPos(target)
+						if tp then
+							TuskVFX.CreateImpact(tp - Vector3.new(0, 2.5, 0), Vector3.new(0, 1, 0), { Size = 1.2, Radius = 5, Layers = 2, Color = pal.Main, Color2 = STEEL, Sound = sounds.NailImpact, Pitch = 0.7 })
+							TuskVFX.CreateGroundCracks(tp, { Radius = 4.5, Count = 5, Color = pal.Second, Duration = 1.2 })
+							CameraFX.shakeAt(tp, 0.45, 40)
+						end
+					end)
+				end
+				VFXLib.sound(sounds.Hit, data.Position, 0.7, 0.9)
+				CameraFX.shakeAt(data.Position, 0.35, 40)
+			end
+		end
+	elseif move == "DoubleHookLift" then
+		if phase == "Startup" and character then
+			TuskAnimation.play(character, "PPHoist")
+			VFXLib.sound(sounds.Warning, root or character, 0.35, 1.3)
+		elseif phase == "Hoist" and root then
+			local targets = data.Targets or {}
+			startWinch(character, (data.SlamAfter or 0.55) + 0.3)
+			if #targets == 0 then
+				-- Both hooks shoot out, catch nothing, and whip back.
+				for side = -1, 1, 2 do
+					local reach = data.Range or 20
+					local model = buildHook(1)
+					local cable = newCable(0.09)
+					VFXLib.animate(0.45, function(a)
+						local m = character.Parent and mouthCF(character)
+						if not m then
+							return
+						end
+						local out = math.sin(a * math.pi)
+						local p = (m * CFrame.new(side * out * 2.5, 0, -out * reach)).Position
+						model:PivotTo(CFrame.lookAt(p, p + m.LookVector))
+						setCable(cable, m.Position, p)
+					end, function()
+						model:Destroy()
+						cable:Destroy()
+					end)
+				end
+			else
+				for _, target in ipairs(targets) do
+					holdLine(mouthGetter(character), targetGetter(target), (data.SlamAfter or 0.55) + 0.3, { Width = 0.11, HookScale = 1.15, Shake = 0.1 })
+					local tp = torsoPos(target)
+					if tp then
+						VFXLib.burst(tp, { Count = 14, Color = STEEL, Speed = 24, Lifetime = 0.3 })
+					end
+				end
+				VFXLib.sound(sounds.Hit, root, 0.7, 0.9)
+				if Common.isLocal(character) then
+					CameraFX.shake(0.35, 0.3)
+				end
+			end
+		elseif phase == "Slam" then
+			TuskVFX.CreateImpact(data.Position - Vector3.new(0, 2.5, 0), Vector3.new(0, 1, 0), { Size = 1.4, Radius = data.Radius or 6, Layers = 2, Color = pal.Main, Color2 = STEEL, Sound = sounds.NailImpact, Pitch = 0.6 })
+			TuskVFX.CreateGroundCracks(data.Position, { Radius = data.Radius or 6, Count = 6, Color = pal.Second, Duration = 1.4 })
+			CameraFX.shakeAt(data.Position, 0.6, 50)
+		end
+	end
+end
+
+local function clearPuddles()
+	for _, p in ipairs(puddles) do
+		p.Model:Destroy()
+		if p.Bait then
+			p.Bait:Destroy()
+		end
+	end
+	puddles = {}
+end
+
+local function onUltimate(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Phase == "Start" then
+		TuskAnimation.play(character, "PPWinch")
+		clearPuddles()
+		for i, pos in ipairs(data.Puddles or {}) do
+			task.delay((i - 1) * 0.08, function()
+				local bait = buildHook(0.7)
+				table.insert(puddles, { Model = buildPuddle(pos, 4), Bait = bait, Position = pos, T = i, Expire = os.clock() + 4 })
+				splash(pos + Vector3.new(0, 0.3, 0), 0.6)
+			end)
+		end
+		if root then
+			VFXLib.flash(root.Position, WATER_LIGHT, 3, 30, 0.5)
+		end
+		if Common.isLocal(character) then
+			TuskVFX.ScreenTint(data.Windup or 1, { Tint = WATER_LIGHT })
+			CameraFX.fovPunch(-6, 0.5)
+		end
+	elseif data.Phase == "Snag" then
+		local reel = data.ReelTime or 1.3
+		startWinch(character, reel + 0.6)
+		for k, target in ipairs(data.Targets or {}) do
+			local puddle = data.Puddles and data.Puddles[data.From and data.From[k] or 1]
+			if puddle then
+				local water = puddle + Vector3.new(0, 0.3, 0)
+				splash(water, 1.2)
+				-- Out of the water first...
+				holdLine(function()
+					return water
+				end, targetGetter(target), 0.3, { Width = 0.11, HookScale = 1.1 })
+			end
+			-- ...then the cable swings over to his mouth and the winch reels.
+			task.delay(0.25, function()
+				holdLine(mouthGetter(character), targetGetter(target), reel + 0.1, { Width = 0.12, HookScale = 1.15, Shake = 0.12 })
+			end)
+		end
+		if root then
+			VFXLib.sound(sounds.Hit, root, 0.8, 0.8)
+		end
+		if Common.isLocal(character) then
+			CameraFX.shake(0.5, reel)
+		end
+	elseif data.Phase == "Slam" then
+		clearPuddles()
+		Common.finisher({ Character = character, Position = data.Position, Radius = data.Radius, Hit = true }, pal, { Size = 1.6, Layers = 3, Shake = 0.9 })
+		splash(data.Position, 1.6)
+		if Common.isLocal(character) then
+			CameraFX.impactFrame(WATER_LIGHT)
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Every frame
+---------------------------------------------------------------------------
+local function stepPans(dt)
+	local now = os.clock()
+	for id, pan in pairs(pans) do
+		if now > pan.Expire then
+			pans[id] = nil
+			pan.Model:Destroy()
+			pan.Bait:Destroy()
+		else
+			pan.T = pan.T + dt
+			local p = pan.Position + Vector3.new(0, 2.6 + math.sin(pan.T * 2.4) * 0.35, 0)
+			pan.Bait:PivotTo(CFrame.new(p) * CFrame.Angles(math.pi / 2, pan.T * 0.8, math.sin(pan.T * 3) * 0.3))
+			if now >= pan.NextRipple then
+				pan.NextRipple = now + 0.8
+				TuskVFX.CreateRotationalShockwave(CFrame.new(pan.Position + Vector3.new(0, 0.5, 0)), { Radius = 1.6, Layers = 1, Color = WATER_LIGHT, Color2 = WATER, Ground = true, Particles = 0, Width = 0.08, Duration = 0.7 })
+			end
+		end
+	end
+	for i = #puddles, 1, -1 do
+		local pd = puddles[i]
+		if now > pd.Expire then
+			pd.Model:Destroy()
+			pd.Bait:Destroy()
+			table.remove(puddles, i)
+		else
+			pd.T = pd.T + dt
+			pd.Bait:PivotTo(CFrame.new(pd.Position + Vector3.new(0, 2 + math.sin(pd.T * 3) * 0.3, 0)) * CFrame.Angles(math.pi / 2, pd.T, 0))
+		end
+	end
+end
+
+local function stepStance()
+	for _, player in ipairs(Players:GetPlayers()) do
+		local character = player.Character
+		if character then
+			local want = character:GetAttribute("TuskAct") == ACT
+			if want and not stanced[character] then
+				stanced[character] = true
+				TuskAnimation.hold(character, "PPStance")
+			elseif not want and stanced[character] then
+				stanced[character] = nil
+				TuskAnimation.stopHold(character, "PPStance")
+			end
+		end
+	end
+	for character in pairs(stanced) do
+		if not character.Parent then
+			stanced[character] = nil
+		end
+	end
+end
+
+function PorkPie.handle(name, data)
+	if name == "M1" then
+		onM1(data)
+	elseif name == "M1Finisher" then
+		Common.finisher(data, pal)
+	elseif name == "Ability" then
+		onAbility(data)
+	elseif name == "Ultimate" then
+		onUltimate(data)
+	end
+end
+
+local slowTimer = 0
+function PorkPie.step(dt)
+	dt = dt or 1 / 60
+	stepHooks()
+	stepLines()
+	stepWinches(dt)
+	stepPans(dt)
+	slowTimer = slowTimer + dt
+	if slowTimer > 0.2 then
+		slowTimer = 0
+		stepStance()
+	end
+end
+
+-- Hook projectiles come through the shared SpinFX channel.
+Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+	if typeof(data) ~= "table" or data.Kind ~= "WiredHook" then
+		return
+	end
+	if name == "ProjectileSpawn" then
+		spawnHook(data)
+	elseif name == "ProjectileEnd" then
+		endHook(data)
+	end
+end)
+
+return PorkPie
+]=] },
 	{ Service = "StarterPlayerScripts", Path = "SpinClient/TuskAnimation", Class = "ModuleScript", Source = [=[
 --[[
 	TuskAnimation  (StarterPlayerScripts.SpinClient.TuskAnimation)
@@ -10828,6 +12224,17 @@ TuskAnimation.Poses = {
 	PounceLand = { Root = { -18, 0, 0, -0.65, 0.3 }, Waist = { -28, 0, 0 }, Neck = { 22, 0, 0 }, RightArm = { 72, 0, 20 }, LeftArm = { 72, 0, -20 }, RightElbow = { 30, 0, 0 }, LeftElbow = { 30, 0, 0 }, RightHip = { 62, 0, 0 }, LeftHip = { 40, 0, 0 }, RightKnee = { -92, 0, 0 }, LeftKnee = { -60, 0, 0 } },
 	TransformHunch = { Root = { -10, 0, 0, -0.45 }, Waist = { -36, 0, 0 }, Neck = { -22, 0, 0 }, RightArm = { 20, 0, 42 }, LeftArm = { 20, 0, -42 }, RightElbow = { 92, 0, 0 }, LeftElbow = { 92, 0, 0 }, RightKnee = { -52, 0, 0 }, LeftKnee = { -52, 0, 0 }, RightHip = { 32, 0, 0 }, LeftHip = { 32, 0, 0 } },
 	Roar = { Root = { 10, 0, 0, 0.05 }, Waist = { 18, 0, 0 }, Neck = { 32, 0, 0 }, RightArm = { 100, 0, 72 }, LeftArm = { 100, 0, -72 }, RightElbow = { 40, 0, 0 }, LeftElbow = { 40, 0, 0 }, RightHip = { -10, 0, 0 }, LeftHip = { 10, 0, 0 }, LeftKnee = { -14, 0, 0 } },
+	-- PORK PIE HAT KID: a crouched, twitchy kid; the hooks come out of his mouth.
+	PPStance = { Root = { 0, 8, 0, -0.25 }, Waist = { -10, 6, 0 }, Neck = { 10, -6, 0 }, RightArm = { 20, 0, 30 }, RightElbow = { 30, 0, 0 }, LeftArm = { -10, 0, -35 }, LeftElbow = { 20, 0, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -45, 0, 0 }, LeftHip = { 12, 0, 0 }, LeftKnee = { -25, 0, 0 } },
+	SpitWind = { Root = { 10, 0, 0, -0.1 }, Waist = { 16, 0, 0 }, Neck = { 34, 0, 0 }, RightArm = { 30, 0, 40 }, LeftArm = { 30, 0, -40 }, RightElbow = { 50, 0, 0 }, LeftElbow = { 50, 0, 0 }, RightKnee = { -18, 0, 0 }, LeftKnee = { -18, 0, 0 } },
+	Spit = { Root = { -14, 0, 0, -0.2, 0.4 }, Waist = { -22, 0, 0 }, Neck = { -24, 0, 0 }, RightArm = { -20, 0, 30 }, LeftArm = { -20, 0, -30 }, RightHip = { 30, 0, 0 }, RightKnee = { -36, 0, 0 }, LeftHip = { -16, 0, 0 } },
+	ReelBack = { Root = { 12, 0, 0, -0.2, -0.3 }, Waist = { 20, 0, 0 }, Neck = { 12, 0, 0 }, RightArm = { 70, 0, 20 }, RightElbow = { 80, 0, 0 }, LeftArm = { 70, 0, -20 }, LeftElbow = { 80, 0, 0 }, RightHip = { -20, 0, 0 }, LeftHip = { 34, 0, 0 }, LeftKnee = { -40, 0, 0 } },
+	HoistUp = { Root = { 18, 0, 0, -0.1, -0.2 }, Waist = { 26, 0, 0 }, Neck = { 40, 0, 0 }, RightArm = { 150, 0, 30 }, LeftArm = { 150, 0, -30 }, RightElbow = { 20, 0, 0 }, LeftElbow = { 20, 0, 0 }, RightKnee = { -20, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	HoistSlam = { Root = { -20, 0, 0, -0.5, 0.3 }, Waist = { -32, 0, 0 }, Neck = { -30, 0, 0 }, RightArm = { 40, 0, 20 }, LeftArm = { 40, 0, -20 }, RightHip = { 50, 0, 0 }, RightKnee = { -60, 0, 0 }, LeftHip = { 40, 0, 0 }, LeftKnee = { -50, 0, 0 } },
+	SlapWind = { Root = { 0, 20, 0 }, Waist = { 0, 24, 0 }, RightArm = { 100, 0, 90 }, RightElbow = { 30, 0, 0 }, LeftArm = { 20, 0, -30 }, Neck = { 0, -10, 0 }, RightKnee = { -14, 0, 0 } },
+	Slap = { Root = { 0, -26, 0, -0.08, 0.3 }, Waist = { 0, -34, 0 }, RightArm = { 88, -40, -10 }, RightElbow = { 10, 0, 0 }, LeftArm = { 24, 0, -30 }, Neck = { 0, 20, 0 }, LeftHip = { 18, 0, 0 }, LeftKnee = { -18, 0, 0 } },
+	FlyKickWind = { Root = { -6, 0, 0, -0.3 }, RightHip = { 60, 0, 0 }, RightKnee = { -100, 0, 0 }, LeftHip = { 40, 0, 0 }, LeftKnee = { -80, 0, 0 }, Waist = { -10, 0, 0 }, RightArm = { 40, 0, 50 }, LeftArm = { 40, 0, -50 } },
+	FlyKick = { Root = { 24, 0, 0, 0.3, 0.6 }, RightHip = { 96, 0, 0 }, RightKnee = { 0, 0, 0 }, LeftHip = { -10, 0, 0 }, LeftKnee = { -70, 0, 0 }, Waist = { 16, 0, 0 }, Neck = { -10, 0, 0 }, RightArm = { 20, 0, 70 }, LeftArm = { 20, 0, -70 } },
 }
 
 -- Left-handed version of a pose: swap Right/Left joints and flip Y/Z.
@@ -10857,6 +12264,8 @@ do
 	P.SpinPoke = P.FlickR
 	P.ClawWindL = mirror(P.ClawWindR)
 	P.ClawL = mirror(P.ClawR)
+	P.SlapWindL = mirror(P.SlapWind)
+	P.SlapL = mirror(P.Slap)
 end
 
 --[[
@@ -10907,6 +12316,20 @@ TuskAnimation.Actions = {
 	DiegoBite = { { 0, "Rest" }, { 0.14, "BiteWind", "In" }, { 0.22, "Bite", "Snap", 6 }, { 0.5, "Bite", "Sine" } },
 	DiegoTransform = { { 0, "Rest" }, { 0.18, "TransformHunch", "In" }, { 0.35, "TransformHunch", "Linear", 4 }, { 0.5, "Roar", "Back", 6 } },
 	DiegoRoar = { { 0, "Rest" }, { 0.2, "BiteWind", "In" }, { 0.35, "Roar", "Back", 6 }, { 0.9, "Roar", "Linear", 4 }, { 1.2, "Roar", "Sine", 2 } },
+
+	-- PORK PIE HAT KID
+	P_M1_1 = { { 0, "Rest" }, { 0.05, "SlapWind", "In" }, { 0.11, "Slap", "Back", 3 }, { 0.26, "Slap", "Sine" } },
+	P_M1_2 = { { 0, "Rest" }, { 0.05, "SlapWindL", "In" }, { 0.11, "SlapL", "Back", 3 }, { 0.26, "SlapL", "Sine" } },
+	P_M1_3 = { { 0, "Rest" }, { 0.07, "SpitWind", "In" }, { 0.13, "Spit", "Snap", 4 }, { 0.3, "Spit", "Sine" } },
+	P_M1_4 = { { 0, "Rest" }, { 0.12, "FlyKickWind", "In" }, { 0.2, "FlyKick", "Snap", 6 }, { 0.42, "FlyKick", "Sine" }, { 0.55, "FlyKick" } },
+	PPHookSpit = { { 0, "Rest" }, { 0.18, "SpitWind", "In" }, { 0.26, "Spit", "Snap", 5 }, { 0.42, "Spit", "Sine" } },
+	PPReel = { { 0, "Spit" }, { 0.1, "ReelBack", "Snap", 3 }, { 0.3, "ReelBack", "Linear", 2 }, { 0.55, "ReelBack", "Sine" } },
+	PPBaitToss = { { 0, "Rest" }, { 0.14, "BowlWind", "In" }, { 0.26, "BowlRelease", "Snap", 3 }, { 0.42, "BowlFollow", "Sine" } },
+	PPHoist = { { 0, "Rest" }, { 0.2, "SpitWind", "In" }, { 0.3, "Spit", "Snap", 4 }, { 0.45, "HoistUp", "Back", 5 }, { 0.8, "HoistUp", "Linear", 2 }, { 0.92, "HoistSlam", "Snap", 7 }, { 1.2, "HoistSlam", "Sine" } },
+	PPWinch = {
+		{ 0, "Rest" }, { 0.3, "Spread", "Back", 3 }, { 0.9, "Spread", "Linear", 2 }, { 1.05, "Spit", "Snap", 5 },
+		{ 1.3, "ReelBack", "Snap", 3 }, { 1.7, "HoistUp", "Sine", 2 }, { 2.1, "ReelBack", "Sine", 2 }, { 2.35, "HoistSlam", "Snap", 8 }, { 2.7, "HoistSlam", "Sine" },
+	},
 	Awakening = {
 		{ 0, "Rest" }, { 0.35, "AwakenCrouch", "In" }, { 0.7, "AwakenCrouch", "Linear", 1 }, { 1.0, "AwakenCrouch", "Linear", 2 },
 		{ 1.2, "AwakenCrouch", "Linear", 3 }, { 1.45, "AwakenRise", "Back", 6 }, { 2.2, "AwakenRise", "Sine" },
@@ -14375,7 +15798,11 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("SCARY MONSTERS") then
+	if has("BAIT") then
+		return "bait"
+	elseif has("HOOK") or has("WIRED") then
+		return "hook"
+	elseif has("SCARY MONSTERS") then
 		return "dino"
 	elseif has("INFECTION") or has("BITE") then
 		return "fang"
@@ -14501,6 +15928,21 @@ local function drawIcon(icon, kind)
 			bar(icon, 0.2 + i * 0.1, 0.16 - (i == 1 and 0.04 or 0), 0.05, 0.2, -30 + i * 30)
 		end
 		frame(icon, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.42, 0.36), Size = UDim2.fromScale(0.08, 0.08), BackgroundColor3 = DARK, Rotation = 45 })
+	elseif kind == "hook" then
+		-- Fish hook on a cable: shank, J bend, barbed point.
+		bar(icon, 0.5, 0.08, 0.05, 0.16, 0) -- cable
+		ring(icon, 0.16, 2, UDim2.fromScale(0.5, 0.2))
+		bar(icon, 0.5, 0.48, 0.09, 0.5, 0)
+		bar(icon, 0.38, 0.75, 0.3, 0.09, 0)
+		bar(icon, 0.26, 0.64, 0.09, 0.26, 0)
+		bar(icon, 0.3, 0.55, 0.07, 0.14, -40) -- barb
+	elseif kind == "bait" then
+		-- Pan of water with a feather above it.
+		bar(icon, 0.45, 0.78, 0.7, 0.14, 0)
+		bar(icon, 0.88, 0.72, 0.26, 0.07, -15)
+		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
+		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
+		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
 	elseif kind == "slash" then
 		for i = -1, 1 do
 			bar(icon, 0.5 + i * 0.18, 0.5, 0.08, 0.8 - math.abs(i) * 0.2, 30)

@@ -228,6 +228,21 @@ function TuskService.fireBall(player, state, spec)
 	})
 end
 
+-- Server projectile with a Wired fish-hook visual (Pork Pie Hat Kid).
+function TuskService.fireHook(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "WiredHook",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Hook" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
 -- Charge helpers (hold abilities): sets the replicated TuskCharge attribute.
 function TuskService.beginCharge(player, state, move, slot, multiplier)
 	local character, humanoid = Adapter.getAlive(player)

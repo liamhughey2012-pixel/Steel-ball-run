@@ -42,3 +42,7 @@ Turn blocky off with `TuskConfig.BlockyModels = false`. Custom Stand models from
 
 ## Pink energy aura
 Every Act's Stand glows with a pink Spin aura: a pulsing pink glow and outline, soft pink energy rising off the whole model, pink sparks and a pink light. It hides while Tusk is burrowed and follows the VFX quality setting (`TuskStand`).
+
+## Mostly blocky (2026-11-23)
+Every Act (and Gyro's Ball Breaker) is now mostly blocky: every round piece becomes a box or a stepped voxel-round shape; only the eyes stay round.
+![[stands_mostly_blocky.png]]

@@ -1,10 +1,11 @@
 ---
 tags: [install]
-updated: 2026-11-22
+updated: 2026-11-23
 ---
-# Quick Install (4 files)
-Same format as Anime Fighters: `_Server` = Script, `_Client` = LocalScript, settings = ModuleScripts.
+# Quick Install (core + one script per character)
+Same format as Anime Fighters (`_Server` = Script, `_Client` = LocalScript, settings = ModuleScripts), but **every character is its own script** so pasting stays fast (owner's request, 2026-11-23).
 
+## Core (4 files)
 | File | Type | Put it in |
 |---|---|---|
 | `SpinConfig.lua` | **ModuleScript** named `SpinConfig` | **ReplicatedStorage** |
@@ -12,15 +13,27 @@ Same format as Anime Fighters: `_Server` = Script, `_Client` = LocalScript, sett
 | `Spin_Server.lua` | **Script** named `Spin_Server` | **ServerScriptService** |
 | `Spin_Client.lua` | **LocalScript** named `Spin_Client` | **StarterPlayer › StarterPlayerScripts** |
 
-1. Explorer › right-click the place › ➕ Insert Object › pick the type › rename it.
-2. Open it, Ctrl+A, paste the matching file.
-3. Press **Play**. The SBR map builds itself when the game starts (turn off with `BUILD_MAP_ON_START = false` at the top of Spin_Server).
-4. Watch the Output window for "[Spin] Server ready".
+## Characters (`characters/` folder)
+Make a **Folder** named `SpinCharacters` in **ServerScriptService** and another **Folder** named `SpinCharacters` in **ReplicatedStorage**. Each character is a pair of **ModuleScripts**:
 
-**Updates:** open the script, Ctrl+A, paste the new version. The names don't change.
+| Character | Server half → ServerScriptService › SpinCharacters | Client half → ReplicatedStorage › SpinCharacters |
+|---|---|---|
+| Johnny Joestar (Tusk) **required** | `Johnny_Server` | `Johnny_Client` |
+| Gyro Zeppeli (Ball Breaker) | `Gyro_Server` | `Gyro_Client` |
+| Diego Brando (Scary Monsters) | `Diego_Server` | `Diego_Client` |
+| Pork Pie Hat Kid (Wired) | `PorkPie_Server` | `PorkPie_Client` |
+| The SBR map (optional) | `Map_Server` | — |
+
+1. Explorer › right-click the place (or the folder) › ➕ Insert Object › pick the type › rename it exactly.
+2. Open it, Ctrl+A, paste the matching file.
+3. Press **Play**. Watch the Output window for "[Spin] Server ready".
+
+A character whose two scripts aren't installed just can't be picked; the rest of the game still works. Johnny is required (he is the default character and owns the Tusk Stands).
+
+**Updates:** only the files listed in an update change. Open the script, Ctrl+A, paste the new version.
 **Settings** (damage, cooldowns, keys, sound ids) live only in SpinConfig and TuskConfig.
 
-> If you installed the older 39-script version, delete the `SpinShared`, `SpinServer`, `SpinClient` and `SpinTools` objects first.
+> Upgrading from the single big Spin_Server / Spin_Client: replace both, then add the SpinCharacters folders and character scripts.
 
 ## Wrong script?
-`Spin_Server` code goes in the **Script**, `Spin_Client` code goes in the **LocalScript**. If they're swapped, the Output now shows a clear message saying which file goes where.
+`Spin_Server` code goes in the **Script**, `Spin_Client` code goes in the **LocalScript**. If they're swapped, or Johnny's scripts are missing, the Output shows a clear message saying which file goes where.

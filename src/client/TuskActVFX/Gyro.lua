@@ -614,7 +614,7 @@ function vibrationHit(character, root, data)
 end
 
 
--- BALL BREAKER (the Stand, from the owner's picture): a green ribbed
+-- BALL BREAKER (the Stand, from the owner's picture, blocky): a green ribbed
 -- figure with long arms and legs, a flat round "lid" head, pink bulbs all
 -- over it and gold lightning crackling around it. Rises out of the vortex,
 -- sways, then shatters into sparks.
@@ -626,17 +626,31 @@ local BB_GOLD = Color3.fromRGB(255, 220, 70)
 local function breakerSpirit(position, duration)
 	local quality = VFXQuality.get()
 	local bits = {}
-	local function piece(size, offset, color, shape, material)
+	-- Blocky like every Stand: round pieces become stepped "voxel-round" boxes
+	-- (a core box plus crossing boxes), discs become stepped plates.
+	local function block(size, offset, color, material)
 		local p = VFXLib.part({ Material = material or Enum.Material.SmoothPlastic, Color = color, Size = size, Transparency = 0.1 })
-		if shape == "Ball" then
-			local mesh = Instance.new("SpecialMesh")
-			mesh.MeshType = Enum.MeshType.Sphere
-			mesh.Parent = p
-		elseif shape == "Cylinder" then
-			p.Shape = Enum.PartType.Cylinder
-		end
 		table.insert(bits, { Part = p, Offset = offset, Size = size })
 		return p
+	end
+	local function piece(size, offset, color, shape, material)
+		if shape == "Ball" then
+			if math.max(size.X, size.Y, size.Z) < 0.7 then
+				return block(size * 0.82, offset, color, material)
+			end
+			local core = block(size * 0.86, offset, color, material)
+			block(Vector3.new(size.X, size.Y * 0.62, size.Z * 0.62), offset, color, material)
+			block(Vector3.new(size.X * 0.62, size.Y, size.Z * 0.62), offset, color, material)
+			block(Vector3.new(size.X * 0.62, size.Y * 0.62, size.Z), offset, color, material)
+			return core
+		elseif shape == "Cylinder" then
+			-- Disc: thickness along X, round face in Y/Z.
+			local core = block(Vector3.new(size.X, size.Y * 0.86, size.Z * 0.86), offset, color, material)
+			block(Vector3.new(size.X, size.Y, size.Z * 0.62), offset, color, material)
+			block(Vector3.new(size.X, size.Y * 0.62, size.Z), offset, color, material)
+			return core
+		end
+		return block(size, offset, color, material)
 	end
 	local flat = CFrame.Angles(0, 0, math.pi / 2) -- cylinder axis -> up
 	-- Body: ribbed green torso and hips.
@@ -729,8 +743,8 @@ local function breakerSpirit(position, duration)
 	end, function()
 		-- Shatter: every piece bursts into sparks.
 		for i, b in ipairs(bits) do
-			if i % 2 == 1 then
-				VFXLib.burst(b.Part.Position, { Count = 5, Color = i % 4 == 1 and BB_GREEN or BB_PINK, Speed = 30, Lifetime = 0.5 })
+			if i % 6 == 1 then
+				VFXLib.burst(b.Part.Position, { Count = 5, Color = i % 12 == 1 and BB_GREEN or BB_PINK, Speed = 30, Lifetime = 0.5 })
 			end
 			b.Part:Destroy()
 		end

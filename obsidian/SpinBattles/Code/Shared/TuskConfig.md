@@ -114,6 +114,7 @@ TuskConfig.Roster = {
 	{ Id = "Johnny", Name = "JOHNNY JOESTAR", Stand = "TUSK (ACT 1-4)", Available = true, Color = Color3.fromRGB(90, 230, 255) },
 	{ Id = "Gyro", Name = "GYRO ZEPPELI", Stand = "BALL BREAKER", Available = true, Color = Color3.fromRGB(110, 210, 90) },
 	{ Id = "Diego", Name = "DIEGO BRANDO", Stand = "SCARY MONSTERS", Available = true, Color = Color3.fromRGB(80, 210, 220) },
+	{ Id = "PorkPie", Name = "PORK PIE HAT KID", Stand = "WIRED", Available = true, Color = Color3.fromRGB(165, 215, 80) },
 }
 
 ---------------------------------------------------------------------------
@@ -353,6 +354,48 @@ TuskConfig.Diego = {
 		Speed = 48, Range = 75, Tick = 0.08, HitRadius = 5,
 		Damage = 12, Stun = 0.5, Knockback = 35, Launch = 14,
 		MaxHitsPerTarget = 2, -- one enemy can be bitten by at most this many raptors
+	},
+}
+
+---------------------------------------------------------------------------
+-- Pork Pie Hat Kid: WIRED (fish hooks on steel cables from his mouth)
+---------------------------------------------------------------------------
+TuskConfig.PorkPie = {
+	M1 = { -- HOOK COMBO: slap, slap, hook lash from the mouth, flying kick
+		Interval = 0.29, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.09,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 6 },
+			{ Damage = 7, Stun = 0.5, Knockback = 42, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	WiredHook = { -- a hook shoots out of his mouth; a hit snags the enemy and reels them in
+		Cooldown = 7, Startup = 0.25,
+		Speed = 120, Radius = 1.2, Range = 75,
+		Damage = 6, Stun = 1.0,
+		ReelTime = 0.6, ReelTick = 0.15, ReelStopDistance = 5, -- pulled in until this close
+	},
+	BaitPan = { -- a pan of water with a feather bait; hooks burst out at anyone who comes near
+		Cooldown = 12, Startup = 0.3,
+		Distance = 10, -- placed this far in front
+		Duration = 10, -- how long the trap waits
+		TriggerRadius = 7, CheckEvery = 0.15, MaxTargets = 2,
+		Damage = 8, Stun = 1.0, Lift = 70, -- hooks hoist the victim high
+		SlamAfter = 0.5, SlamDamage = 4, -- then yank them back down into the ground
+	},
+	DoubleHookLift = { -- both hooks: snag up to two enemies in front and hoist them like a horse
+		Cooldown = 10, MissCooldown = 3, Windup = 0.3,
+		Range = 22, Cone = 50, MaxTargets = 2,
+		Damage = 6, Stun = 1.0, Lift = 75,
+		SlamAfter = 0.55, SlamDamage = 7, SlamRadius = 6,
+	},
+	Ultimate = { -- WIRED WINCH: puddles all around, hooks erupt from every one, the winch reels everyone in, slam
+		Windup = 1.0, Radius = 24, Puddles = 6, PuddleRadius = 14,
+		SnagDamage = 6, SnagStun = 1.0, SnagLift = 55,
+		ReelTime = 1.35, ReelTick = 0.15, TickDamage = 1.5, TickEvery = 0.3,
+		SlamDamage = 14, SlamRadius = 10, SlamKnockback = 60, SlamLaunch = 30, SlamStun = 0.8,
 	},
 }
 

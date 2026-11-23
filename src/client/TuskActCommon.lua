@@ -35,6 +35,7 @@ Common.Palettes = {
 	[4] = { Main = colors.Gold, Second = colors.DeepBlue, Light = colors.GoldLight },
 	[5] = { Main = Color3.fromRGB(120, 225, 95), Second = Color3.fromRGB(40, 120, 50), Light = Color3.fromRGB(225, 255, 205) }, -- Gyro
 	[6] = { Main = Color3.fromRGB(80, 210, 220), Second = Color3.fromRGB(35, 60, 190), Light = Color3.fromRGB(215, 255, 250) }, -- Diego
+	[7] = { Main = Color3.fromRGB(165, 215, 80), Second = Color3.fromRGB(95, 105, 125), Light = Color3.fromRGB(225, 232, 245) }, -- Pork Pie Hat Kid (bamboo green + steel)
 }
 
 function Common.palette(act)

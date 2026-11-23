@@ -1,8 +1,12 @@
 """Packs the modular source into the owner's preferred format:
-  Spin_Server.lua  -> Script in ServerScriptService            (server + shared modules + map builder)
-  Spin_Client.lua  -> LocalScript in StarterPlayerScripts       (client + shared modules)
+  Spin_Server.lua  -> Script in ServerScriptService            (core: combat, projectiles, NPCs, dummies)
+  Spin_Client.lua  -> LocalScript in StarterPlayerScripts       (core: input, HUD, shared VFX)
   SpinConfig.lua, TuskConfig.lua -> ModuleScripts in ReplicatedStorage (settings, shared by both)
-Modules are inlined behind a tiny __require registry."""
+  characters/<Name>_Server.lua -> ModuleScript in ServerScriptService > SpinCharacters
+  characters/<Name>_Client.lua -> ModuleScript in ReplicatedStorage > SpinCharacters
+Each character (and the map) is its own small script so pasting stays fast
+(owner's request). Modules are inlined behind a tiny __require registry; a
+character script returns a function that adds its modules to that registry."""
 import os, re
 
 EXTERNAL = {"SpinConfig", "TuskConfig"}  # real ModuleScripts in ReplicatedStorage
@@ -77,26 +81,99 @@ local function __require(name)
 end
 '''
 
+# Which modules live in which separate script. Johnny is required (default
+# character, owns the Tusk Stands and Tusk Sneak); everyone else is optional.
+PACKS = [
+    ("Johnny", {"server": ["TuskAct1", "TuskAct2", "TuskAct3", "TuskAct4", "TuskSneakService"],
+                "client": ["Act1", "Act2", "Act3", "Act4", "TuskStand", "TuskStandModels", "TuskSneakController"]},
+     "Johnny Joestar: Tusk Acts 1-4, the Tusk Stands and Tusk Sneak. REQUIRED (the default character)."),
+    ("Gyro", {"server": ["GyroZeppeli", "GyroOutfit"], "client": ["Gyro", "SteelBallModel", "WreckingBallModel"]},
+     "Gyro Zeppeli: Steel Balls and Ball Breaker."),
+    ("Diego", {"server": ["DiegoBrando", "DiegoOutfit"], "client": ["Diego", "RaptorModel"]},
+     "Diego Brando: Scary Monsters."),
+    ("PorkPie", {"server": ["PorkPieHatKid", "PorkPieOutfit"], "client": ["PorkPie"]},
+     "Pork Pie Hat Kid: Wired."),
+    ("Map", {"server": ["SBRMapBuilder"], "client": []},
+     "The Steel Ball Run map (built when the server starts). Optional."),
+]
+
+def deps(code):
+    return set(re.findall(r'__require\("([A-Za-z0-9_]+)"\)', code))
+
+def closure(roots, mods):
+    """Every module reachable from roots (so each side only carries what it uses)."""
+    seen, todo = set(), list(roots)
+    while todo:
+        n = todo.pop()
+        if n in seen or n not in mods:
+            continue
+        seen.add(n)
+        todo.extend(deps(rewrite(n, mods[n])))
+    return seen
+
+def module_block(name, code):
+    body = rewrite(name, code).rstrip()
+    return f'\n-- ======================================================================\n-- MODULE: {name}\n-- ======================================================================\n__modules["{name}"] = function()\n{body}\nend\n'
+
 def bundle(title, header, mods, main):
     parts = [header, PRELUDE]
     for name in sorted(mods):
-        body = rewrite(name, mods[name]).rstrip()
-        parts.append(f'\n-- ======================================================================\n-- MODULE: {name}\n-- ======================================================================\n__modules["{name}"] = function()\n{body}\nend\n')
+        parts.append(module_block(name, mods[name]))
     parts.append("\n-- ======================================================================\n-- START\n-- ======================================================================\n" + main)
     return "".join(parts)
 
-shared = {k: v for k, v in modules_in("src/shared").items() if k not in EXTERNAL}
-server = {**shared, **modules_in("src/server", "src/tools")}
-client = {**shared, **modules_in("src/client")}
+LOAD_PACKS = '''
+-- Character scripts (each character is its own ModuleScript in a SpinCharacters folder).
+local function __loadPacks(folder, side)
+	if not folder then
+		warn("[Spin] No SpinCharacters folder found for the " .. side .. ". Only characters whose scripts are installed can be played.")
+		return
+	end
+	for _, pack in ipairs(folder:GetChildren()) do
+		if pack:IsA("ModuleScript") then
+			local ok, install = pcall(require, pack)
+			if ok and type(install) == "function" then
+				local ok2, err = pcall(install, __modules, __require, __hasModule)
+				if not ok2 then
+					warn("[Spin] Character script " .. pack:GetFullName() .. " failed: " .. tostring(err))
+				end
+			else
+				warn("[Spin] Couldn't load character script " .. pack:GetFullName() .. ": " .. tostring(install))
+			end
+		end
+	end
+end
+'''
+
+def pack_source(name, side, mods, about):
+    where = "ServerScriptService > SpinCharacters" if side == "server" else "ReplicatedStorage > SpinCharacters"
+    other = "ReplicatedStorage > SpinCharacters" if side == "server" else "ServerScriptService > SpinCharacters"
+    other_name = f"{name}_Client" if side == "server" else f"{name}_Server"
+    parts = [f'''--[[
+	{name}_{side.capitalize()}  (ModuleScript)
+	PUT IT IN: {where}   (make a Folder named SpinCharacters there if it doesn't exist)
+
+	{about}
+	Its other half is {other_name} in {other}.
+	Loaded by Spin_{side.capitalize()}: don't put any code in front of this.
+]]
+
+return function(__modules, __require, __hasModule)
+''']
+    for n in sorted(mods):
+        parts.append(module_block(n, mods[n]))
+    parts.append("end\n")
+    return "".join(parts)
 
 SERVER_HEADER = '''--[[
 	Spin_Server  (Script)
 	PUT IT IN: ServerScriptService
 
-	Spin Battlegrounds server: Johnny Joestar (Tusk Acts 1-4 + Tusk Sneak),
-	Gyro Zeppeli (Steel Balls), combat,
-	cooldowns, projectiles, NPCs, Studio practice dummies, and the SBR map
-	(built automatically when the server starts).
+	Spin Battlegrounds server CORE: combat, cooldowns, projectiles, NPCs and
+	Studio practice dummies. Each character is its own script (ModuleScripts
+	in ServerScriptService > SpinCharacters): Johnny_Server (required),
+	Gyro_Server, Diego_Server, PorkPie_Server, and Map_Server (the SBR map,
+	built automatically when the server starts).
 
 	Needs these ModuleScripts in ReplicatedStorage: SpinConfig, TuskConfig.
 	Works with the LocalScript Spin_Client in StarterPlayerScripts.
@@ -112,7 +189,12 @@ local BUILD_MAP_ON_START = true -- false = don't build the SBR map
 local MAP_ORIGIN = Vector3.new(0, 0, 0) -- move the map away from an existing one, e.g. Vector3.new(1500, 0, 0)
 
 '''
-SERVER_MAIN = '''local ProjectileService = __require("ProjectileService")
+SERVER_MAIN = LOAD_PACKS + '''
+__loadPacks(game:GetService("ServerScriptService"):FindFirstChild("SpinCharacters"), "server")
+if not __hasModule("TuskAct1") then
+	error("[Spin] Johnny_Server is missing: put it (a ModuleScript) in ServerScriptService > SpinCharacters. Johnny is required; the other characters are optional.")
+end
+local ProjectileService = __require("ProjectileService")
 local TuskService = __require("TuskService")
 local NPCService = __require("NPCService")
 local TestDummies = __require("TestDummies")
@@ -120,9 +202,12 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-__require("GyroOutfit").init()
-__require("DiegoOutfit").init()
-if BUILD_MAP_ON_START and not workspace:FindFirstChild("SBRMap") then
+for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit" }) do
+	if __hasModule(outfit) then
+		__require(outfit).init()
+	end
+end
+if BUILD_MAP_ON_START and __hasModule("SBRMapBuilder") and not workspace:FindFirstChild("SBRMap") then
 	local ok, err = pcall(function()
 		__require("SBRMapBuilder").Build({ Origin = MAP_ORIGIN })
 	end)
@@ -138,8 +223,10 @@ CLIENT_HEADER = '''--[[
 	Spin_Client  (LocalScript)
 	PUT IT IN: StarterPlayer > StarterPlayerScripts
 
-	Spin Battlegrounds client: controls (PC, controller, mobile), all VFX,
-	Tusk Stands, Gyro's Steel Balls, HUD, character card, NPC bubbles, dust.
+	Spin Battlegrounds client CORE: controls (PC, controller, mobile), HUD,
+	character card, shared VFX, NPC bubbles, dust. Each character's visuals
+	are their own script (ModuleScripts in ReplicatedStorage > SpinCharacters):
+	Johnny_Client (required), Gyro_Client, Diego_Client, PorkPie_Client.
 
 	Needs these ModuleScripts in ReplicatedStorage: SpinConfig, TuskConfig.
 	Works with the Script Spin_Server in ServerScriptService.
@@ -151,7 +238,12 @@ if game:GetService("RunService"):IsServer() then
 end
 
 '''
-CLIENT_MAIN = '''__require("SettingsUI").init()
+CLIENT_MAIN = LOAD_PACKS + '''
+__loadPacks(game:GetService("ReplicatedStorage"):WaitForChild("SpinCharacters", 10), "client")
+if not __hasModule("TuskStand") then
+	error("[Spin] Johnny_Client is missing: put it (a ModuleScript) in ReplicatedStorage > SpinCharacters. Johnny is required; the other characters are optional.")
+end
+__require("SettingsUI").init()
 __require("HitFX").init()
 __require("TuskStand").init()
 __require("TuskProjectiles").init()
@@ -161,14 +253,47 @@ __require("WorldClient").init()
 __require("CharacterCard").init()
 '''
 
+shared = {k: v for k, v in modules_in("src/shared").items() if k not in EXTERNAL}
+server = {**shared, **modules_in("src/server", "src/tools")}
+client = {**shared, **modules_in("src/client")}
+
 out = "roblox_scripts/format_like_anime_fighters"
-os.makedirs(out, exist_ok=True)
-open(f"{out}/Spin_Server.lua", "w").write(bundle("server", SERVER_HEADER, server, SERVER_MAIN))
-open(f"{out}/Spin_Client.lua", "w").write(bundle("client", CLIENT_HEADER, client, CLIENT_MAIN))
+os.makedirs(f"{out}/characters", exist_ok=True)
+for f in os.listdir(f"{out}/characters"):
+    os.remove(os.path.join(f"{out}/characters", f))
+packed = {"server": set(), "client": set()}
+for name, sides, about in PACKS:
+    for side in ("server", "client"):
+        packed[side].update(sides[side])
+
+def split(side, allmods, main):
+    core_roots = [n for n in allmods if n not in packed[side] and n not in shared] + list(deps(main))
+    core = closure(core_roots, allmods)
+    core -= packed[side]
+    for name, sides, about in PACKS:
+        names = sides[side]
+        if not names:
+            continue
+        # Shared helpers only this character uses travel with it; anything also
+        # needed by the core or another character stays in the core.
+        mods = {n: allmods[n] for n in names}
+        open(f"{out}/characters/{name}_{side.capitalize()}.lua", "w").write(pack_source(name, side, mods, about))
+    needed = set(core)
+    for name, sides, about in PACKS:
+        for n in sides[side]:
+            needed |= {d for d in closure([n], allmods) if d not in packed[side]}
+    return {n: allmods[n] for n in sorted(needed)}
+
+server_core = split("server", server, SERVER_MAIN)
+client_core = split("client", client, CLIENT_MAIN)
+open(f"{out}/Spin_Server.lua", "w").write(bundle("server", SERVER_HEADER, server_core, SERVER_MAIN))
+open(f"{out}/Spin_Client.lua", "w").write(bundle("client", CLIENT_HEADER, client_core, CLIENT_MAIN))
 for name, where in (("SpinConfig", "src/shared/SpinConfig.lua"), ("TuskConfig", "src/shared/TuskConfig.lua")):
     code = open(where).read()
     code = code.replace(f"({name}  (ReplicatedStorage.SpinShared.{name})", f"{name}  (ModuleScript in ReplicatedStorage)")
     code = code.replace(f"	{name}  (ReplicatedStorage.SpinShared.{name})", f"	{name}  (ModuleScript)\n	PUT IT IN: ReplicatedStorage")
     open(f"{out}/{name}.lua", "w").write(code)
-for f in sorted(os.listdir(out)):
-    print(f, os.path.getsize(os.path.join(out, f)) // 1024, "KB")
+for d in (out, f"{out}/characters"):
+    for f in sorted(os.listdir(d)):
+        if f.endswith(".lua"):
+            print(os.path.relpath(os.path.join(d, f), out), os.path.getsize(os.path.join(d, f)) // 1024, "KB")

@@ -17,7 +17,7 @@ A Steel Ball Run-inspired Roblox Battlegrounds game. This vault is the project's
 - [[Tusk]]: [[Tusk Act 1]] → [[Tusk Act 2]] → [[Tusk Act 3]] → [[Tusk Act 4]] (each ultimate awakens the next Act)
 - [[Johnny Joestar]] (character card)
 - [[Tusk Sneak]] (built)
-- [[Gyro Zeppeli]] · [[Diego Brando]] (Steel Balls) · [[Golden Spin]] (removed)
+- [[Gyro Zeppeli]] (Ball Breaker) · [[Diego Brando]] (Scary Monsters) · [[Pork Pie Hat Kid]] (Wired) · [[Golden Spin]] (removed)
 
 ## World
 - [[SBR Map]] · [[NPCs]]

@@ -55,3 +55,6 @@ updated: 2026-11-22
 | 2026-11-23 | Tusk Act 1 reshaped to match the drawing (leaf ears, fanned heart legs, frills); Act 1 stays round |
 | 2026-11-23 | Pink energy aura on every Tusk Stand |
 | 2026-11-23 | Gyro's Stand named Ball Breaker; the Ball Breaker figure rebuilt from the owner's picture |
+| 2026-11-23 | Pork Pie Hat Kid (Wired) added as a playable character, from the owner's pictures and description |
+| 2026-11-23 | All Stands mostly blocky: every Tusk Act and Ball Breaker use boxes / stepped voxel-round shapes; only eyes stay round |
+| 2026-11-23 | Each character is its own script (core Spin_Server/Spin_Client + a Server and Client ModuleScript per character in SpinCharacters folders); the map is its own script too |

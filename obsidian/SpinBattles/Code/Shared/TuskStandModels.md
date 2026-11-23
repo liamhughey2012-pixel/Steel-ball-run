@@ -991,16 +991,11 @@ local builders = {
 	[4] = buildAct4,
 }
 
--- Round pieces that make each Act recognisable as Tusk (kept smooth when blocky).
-local SIGNATURE_ROUND = {
-	-- Act 1 keeps every rounded shape so it reads as the drawing; only the thin legs become square rods.
-	[1] = setmetatable({ Leg1 = false, Leg2 = false, Leg3 = false, Leg4 = false, Leg5 = false }, { __index = function()
-		return true
-	end }),
-	[2] = { Body = true, Head = true, Cheek = true, EarDisc = true, Drum = true, DrumRim = true, DrumHole = true, Pod = true, PodHole = true, Visor = true },
-	[3] = { Body = true, BackShade = true, ShoulderBall = true, BellyLens = true, LensRim = true, Mask = true },
-	[4] = { Head = true, Visor = true, HelmetRidge = true, Emblem = true },
-}
+-- All Stands are mostly blocky (owner's request): every round piece becomes
+-- a box or a stepped "voxel-round" shape. Only the eyes stay smooth so each
+-- Act's face still reads.
+local EYES = { Eye = true, Pupil = true, EyeRim = true, Shine = true, Glint = true }
+local SIGNATURE_ROUND = { [1] = EYES, [2] = EYES, [3] = EYES, [4] = EYES }
 
 function TuskStandModels.build(act, scale)
 	scale = scale or 1
@@ -1014,8 +1009,7 @@ function TuskStandModels.build(act, scale)
 	end
 	local built, rig = builder(scale)
 	-- Blocky (classic Roblox) look for the procedural Stands; custom models are
-	-- left as they are. Each Act keeps its signature round shapes smooth so it
-	-- still reads as Tusk (egg body and face, ear discs, ball body, dome head...).
+	-- left as they are. Only the eyes stay round.
 	if built and Blockify.enabled(TuskConfig) then
 		Blockify.apply(built, { KeepRound = SIGNATURE_ROUND[act] })
 	end

@@ -95,6 +95,25 @@ TuskActRegistry.Acts = {
 			{ Slot = 2, Attribute = "ThrallUntil", Text = "COMMAND" },
 		},
 	},
+	-- Pork Pie Hat Kid: WIRED (fish hooks and steel cables from a winch in his mouth).
+	[7] = {
+		Name = "WIRED",
+		Character = "PorkPie",
+		Tagline = "Hooks from the water",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(165, 215, 80), Secondary = Color3.fromRGB(95, 105, 125) },
+		M1 = "HOOK COMBO",
+		Abilities = { "WIRED HOOK", "BAIT PAN", "DOUBLE HOOK LIFT" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "WIRED WINCH",
+		Next = nil,
+		Module = "PorkPieHatKid", -- server moves
+		ClientModule = "PorkPie", -- client visuals (TuskActVFX.PorkPie)
+		CardTitle = "STAND  ·  WIRED",
+		Buffs = {
+			{ Slot = 2, Attribute = "BaitPanUntil", Text = "BAITED" },
+		},
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -104,7 +123,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
