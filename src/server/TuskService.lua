@@ -538,6 +538,7 @@ function TuskService.init()
 	end
 	table.sort(installed)
 	game:GetService("ReplicatedStorage"):SetAttribute("SpinInstalledCharacters", table.concat(installed, ","))
+	print("[Spin] Characters installed: " .. table.concat(installed, ", "))
 
 	Request.OnServerEvent:Connect(onRequest)
 	Players.PlayerAdded:Connect(onPlayer)

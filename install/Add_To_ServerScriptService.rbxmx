@@ -4809,6 +4809,7 @@ function TuskService.init()
 	end
 	table.sort(installed)
 	game:GetService("ReplicatedStorage"):SetAttribute("SpinInstalledCharacters", table.concat(installed, ","))
+	print("[Spin] Characters installed: " .. table.concat(installed, ", "))
 
 	Request.OnServerEvent:Connect(onRequest)
 	Players.PlayerAdded:Connect(onPlayer)
@@ -5095,28 +5096,58 @@ end
 -- START
 -- ======================================================================
 
--- Character scripts (each character is its own ModuleScript in a SpinCharacters folder).
-local function __loadPacks(folder, side)
-	if not folder then
-		print("[Spin] No SpinCharacters folder in " .. (side == "server" and "ServerScriptService" or "ReplicatedStorage") .. ": playing with Johnny only. Add the other characters' scripts there to unlock them.")
-		return
-	end
-	for _, pack in ipairs(folder:GetChildren()) do
-		if pack:IsA("ModuleScript") then
-			local ok, install = pcall(require, pack)
-			if ok and type(install) == "function" then
-				local ok2, err = pcall(install, __modules, __require, __hasModule)
-				if not ok2 then
-					warn("[Spin] Character script " .. pack:GetFullName() .. " failed: " .. tostring(err))
+-- Character scripts: each character is its own ModuleScript named like
+-- "Gyro_Server" / "Gyro_Client". They're found by name anywhere in the usual
+-- places (a SpinCharacters folder is tidy but not required), and anything
+-- set up wrong is explained in the Output window.
+local __packsLoaded = {}
+local function __loadPacks(side)
+	local suffix = side == "server" and "_server" or "_client"
+	local roots = side == "server"
+		and { game:GetService("ServerScriptService"), game:GetService("ServerStorage"), game:GetService("ReplicatedStorage") }
+		or { game:GetService("ReplicatedStorage"), game:GetService("ReplicatedFirst") }
+	local found = 0
+	for _, root in ipairs(roots) do
+		for _, pack in ipairs(root:GetDescendants()) do
+			local name = string.lower(pack.Name):gsub("%.lua$", ""):gsub("%s", "")
+			local builtIn = name == "johnny" .. suffix or name == "map" .. suffix -- (now inside Spin_Server / Spin_Client)
+			if builtIn and pack:IsA("LuaSourceContainer") and not __packsLoaded[name] then
+				__packsLoaded[name] = true
+				print("[Spin] " .. pack:GetFullName() .. " isn't needed any more (it's built into Spin_" .. (side == "server" and "Server" or "Client") .. "). You can delete it.")
+			elseif string.sub(name, -#suffix) == suffix and name ~= "spin" .. suffix and not __packsLoaded[name] then
+				if pack:IsA("ModuleScript") then
+					local ok, install = pcall(require, pack)
+					if ok and type(install) == "function" then
+						local ok2, err = pcall(install, __modules, __require, __hasModule)
+						if ok2 then
+							__packsLoaded[name] = true
+							found = found + 1
+						else
+							warn("[Spin] Character script " .. pack:GetFullName() .. " failed: " .. tostring(err))
+						end
+					else
+						warn("[Spin] " .. pack:GetFullName() .. " isn't a character script (did the whole file get pasted in?): " .. tostring(install))
+					end
+				elseif pack:IsA("LuaSourceContainer") then
+					warn("[Spin] " .. pack:GetFullName() .. " is a " .. pack.ClassName .. ". It must be a ModuleScript: delete it, insert a ModuleScript with the same name, and paste the code into that.")
 				end
-			else
-				warn("[Spin] Couldn't load character script " .. pack:GetFullName() .. ": " .. tostring(install))
 			end
 		end
 	end
+	if side == "server" then
+		-- A _Client script the server can see but players can't.
+		for _, where in ipairs({ game:GetService("ServerScriptService"), game:GetService("ServerStorage") }) do
+			for _, pack in ipairs(where:GetDescendants()) do
+				if string.lower(pack.Name):find("_client") and pack:IsA("LuaSourceContainer") then
+					warn("[Spin] " .. pack:GetFullName() .. " is in " .. where.Name .. ", where players can't see it. Move it to ReplicatedStorage > SpinCharacters.")
+				end
+			end
+		end
+	end
+	return found
 end
 
-__loadPacks(game:GetService("ServerScriptService"):FindFirstChild("SpinCharacters"), "server")
+__loadPacks("server")
 local ProjectileService = __require("ProjectileService")
 local TuskService = __require("TuskService")
 local NPCService = __require("NPCService")
