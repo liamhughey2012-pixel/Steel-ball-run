@@ -13,4 +13,4 @@ updated: 2026-11-22
 8. Ask before building any weapon or Stand model.
 9. Every update says where each new file goes ([[Where Every File Goes]]).
 10. Never claim something works until it has been tested in Studio.
-11. Every character is its own separate script (a `_Server` and `_Client` ModuleScript in the SpinCharacters folders), so pasting stays fast. New characters always ship this way.
+11. Every character except Johnny (built into the core) is its own separate script (a `_Server` and `_Client` ModuleScript in the SpinCharacters folders), so pasting stays fast. New characters always ship this way.

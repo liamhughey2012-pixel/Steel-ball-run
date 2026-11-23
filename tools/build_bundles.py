@@ -81,12 +81,10 @@ local function __require(name)
 end
 '''
 
-# Which modules live in which separate script. Johnny is required (default
-# character, owns the Tusk Stands and Tusk Sneak); everyone else is optional.
+# Which modules live in which separate script. Johnny (the default character,
+# Tusk Stands, Tusk Sneak) is built into the core so the core always works on
+# its own; every other character and the map are optional extra scripts.
 PACKS = [
-    ("Johnny", {"server": ["TuskAct1", "TuskAct2", "TuskAct3", "TuskAct4", "TuskSneakService"],
-                "client": ["Act1", "Act2", "Act3", "Act4", "TuskStand", "TuskStandModels", "TuskSneakController"]},
-     "Johnny Joestar: Tusk Acts 1-4, the Tusk Stands and Tusk Sneak. REQUIRED (the default character)."),
     ("Gyro", {"server": ["GyroZeppeli", "GyroOutfit"], "client": ["Gyro", "SteelBallModel", "WreckingBallModel"]},
      "Gyro Zeppeli: Steel Balls and Ball Breaker."),
     ("Diego", {"server": ["DiegoBrando", "DiegoOutfit"], "client": ["Diego", "RaptorModel"]},
@@ -126,7 +124,7 @@ LOAD_PACKS = '''
 -- Character scripts (each character is its own ModuleScript in a SpinCharacters folder).
 local function __loadPacks(folder, side)
 	if not folder then
-		warn("[Spin] No SpinCharacters folder found for the " .. side .. ". Only characters whose scripts are installed can be played.")
+		print("[Spin] No SpinCharacters folder in " .. (side == "server" and "ServerScriptService" or "ReplicatedStorage") .. ": playing with Johnny only. Add the other characters' scripts there to unlock them.")
 		return
 	end
 	for _, pack in ipairs(folder:GetChildren()) do
@@ -171,9 +169,9 @@ SERVER_HEADER = '''--[[
 
 	Spin Battlegrounds server CORE: combat, cooldowns, projectiles, NPCs and
 	Studio practice dummies. Each character is its own script (ModuleScripts
-	in ServerScriptService > SpinCharacters): Johnny_Server (required),
-	Gyro_Server, Diego_Server, PorkPie_Server, and Map_Server (the SBR map,
-	built automatically when the server starts).
+	in ServerScriptService > SpinCharacters): Gyro_Server, Diego_Server,
+	PorkPie_Server, and Map_Server (the SBR map, built automatically when the
+	server starts). Johnny is built in, so this works on its own.
 
 	Needs these ModuleScripts in ReplicatedStorage: SpinConfig, TuskConfig.
 	Works with the LocalScript Spin_Client in StarterPlayerScripts.
@@ -191,9 +189,6 @@ local MAP_ORIGIN = Vector3.new(0, 0, 0) -- move the map away from an existing on
 '''
 SERVER_MAIN = LOAD_PACKS + '''
 __loadPacks(game:GetService("ServerScriptService"):FindFirstChild("SpinCharacters"), "server")
-if not __hasModule("TuskAct1") then
-	error("[Spin] Johnny_Server is missing: put it (a ModuleScript) in ServerScriptService > SpinCharacters. Johnny is required; the other characters are optional.")
-end
 local ProjectileService = __require("ProjectileService")
 local TuskService = __require("TuskService")
 local NPCService = __require("NPCService")
@@ -206,6 +201,9 @@ for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end
+end
+if BUILD_MAP_ON_START and not __hasModule("SBRMapBuilder") and not workspace:FindFirstChild("SBRMap") then
+	print("[Spin] Map_Server isn't installed, so the SBR map wasn't built. Add it to ServerScriptService > SpinCharacters to build the map.")
 end
 if BUILD_MAP_ON_START and __hasModule("SBRMapBuilder") and not workspace:FindFirstChild("SBRMap") then
 	local ok, err = pcall(function()
@@ -226,7 +224,7 @@ CLIENT_HEADER = '''--[[
 	Spin Battlegrounds client CORE: controls (PC, controller, mobile), HUD,
 	character card, shared VFX, NPC bubbles, dust. Each character's visuals
 	are their own script (ModuleScripts in ReplicatedStorage > SpinCharacters):
-	Johnny_Client (required), Gyro_Client, Diego_Client, PorkPie_Client.
+	Gyro_Client, Diego_Client, PorkPie_Client. Johnny is built in.
 
 	Needs these ModuleScripts in ReplicatedStorage: SpinConfig, TuskConfig.
 	Works with the Script Spin_Server in ServerScriptService.
@@ -240,9 +238,6 @@ end
 '''
 CLIENT_MAIN = LOAD_PACKS + '''
 __loadPacks(game:GetService("ReplicatedStorage"):WaitForChild("SpinCharacters", 10), "client")
-if not __hasModule("TuskStand") then
-	error("[Spin] Johnny_Client is missing: put it (a ModuleScript) in ReplicatedStorage > SpinCharacters. Johnny is required; the other characters are optional.")
-end
 __require("SettingsUI").init()
 __require("HitFX").init()
 __require("TuskStand").init()

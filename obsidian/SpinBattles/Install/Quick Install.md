@@ -18,7 +18,6 @@ Make a **Folder** named `SpinCharacters` in **ServerScriptService** and another 
 
 | Character | Server half → ServerScriptService › SpinCharacters | Client half → ReplicatedStorage › SpinCharacters |
 |---|---|---|
-| Johnny Joestar (Tusk) **required** | `Johnny_Server` | `Johnny_Client` |
 | Gyro Zeppeli (Ball Breaker) | `Gyro_Server` | `Gyro_Client` |
 | Diego Brando (Scary Monsters) | `Diego_Server` | `Diego_Client` |
 | Pork Pie Hat Kid (Wired) | `PorkPie_Server` | `PorkPie_Client` |
@@ -28,7 +27,7 @@ Make a **Folder** named `SpinCharacters` in **ServerScriptService** and another 
 2. Open it, Ctrl+A, paste the matching file.
 3. Press **Play**. Watch the Output window for "[Spin] Server ready".
 
-A character whose two scripts aren't installed just can't be picked; the rest of the game still works. Johnny is required (he is the default character and owns the Tusk Stands).
+**Johnny is built into Spin_Server / Spin_Client**, so the core 4 files work on their own. A character whose two scripts aren't installed just can't be picked; without `Map_Server` the map isn't built.
 
 **Updates:** only the files listed in an update change. Open the script, Ctrl+A, paste the new version.
 **Settings** (damage, cooldowns, keys, sound ids) live only in SpinConfig and TuskConfig.
@@ -36,4 +35,4 @@ A character whose two scripts aren't installed just can't be picked; the rest of
 > Upgrading from the single big Spin_Server / Spin_Client: replace both, then add the SpinCharacters folders and character scripts.
 
 ## Wrong script?
-`Spin_Server` code goes in the **Script**, `Spin_Client` code goes in the **LocalScript**. If they're swapped, or Johnny's scripts are missing, the Output shows a clear message saying which file goes where.
+`Spin_Server` code goes in the **Script**, `Spin_Client` code goes in the **LocalScript**. If they're swapped, the Output shows a clear message saying which file goes where.
