@@ -180,6 +180,13 @@ TuskAnimation.Poses = {
 	ClawRStrike = { Root = { -14, -24, 0, -0.2, 0.55 }, Waist = { -20, -28, 0 }, RightArm = { 36, 0, -36 }, RightElbow = { 14, 0, 0 }, LeftArm = { 52, 0, -26 }, LeftElbow = { 48, 0, 0 }, Neck = { 6, 18, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -36, 0, 0 }, LeftHip = { -14, 0, 0 } },
 	SlapCoil = { Root = { 0, 26, 0, -0.18 }, Waist = { 0, 30, 0 }, RightArm = { 110, 0, 100 }, RightElbow = { 40, 0, 0 }, LeftArm = { 20, 0, -34 }, Neck = { 0, -14, 0 }, RightKnee = { -22, 0, 0 }, LeftKnee = { -16, 0, 0 } },
 	SlapStrike = { Root = { 0, -32, 0, -0.12, 0.45 }, Waist = { 0, -40, 0 }, RightArm = { 86, -48, -14 }, RightElbow = { 6, 0, 0 }, LeftArm = { 24, 0, -34 }, Neck = { 0, 24, 0 }, LeftHip = { 22, 0, 0 }, LeftKnee = { -22, 0, 0 }, RightHip = { -10, 0, 0 } },
+	-- BLOCK AND DASH (every character)
+	BlockPose = { Root = { 0, 0, 0, -0.2 }, Waist = { -8, 0, 0 }, Neck = { -12, 0, 0 }, RightArm = { 95, 0, -38 }, RightElbow = { 105, 0, 0 }, LeftArm = { 95, 0, 38 }, LeftElbow = { 105, 0, 0 }, RightHip = { 18, 0, 0 }, RightKnee = { -24, 0, 0 }, LeftHip = { -6, 0, 0 }, LeftKnee = { -12, 0, 0 } },
+	DashFwd = { Root = { -24, 0, 0, -0.25, 0.2 }, Waist = { -18, 0, 0 }, Neck = { 18, 0, 0 }, RightArm = { -45, 0, 12 }, LeftArm = { -45, 0, -12 }, RightHip = { 55, 0, 0 }, RightKnee = { -70, 0, 0 }, LeftHip = { -25, 0, 0 }, LeftKnee = { -30, 0, 0 } },
+	DashBack = { Root = { 18, 0, 0, -0.2, -0.2 }, Waist = { 14, 0, 0 }, Neck = { -6, 0, 0 }, RightArm = { 50, 0, 30 }, LeftArm = { 50, 0, -30 }, RightHip = { -20, 0, 0 }, LeftHip = { 45, 0, 0 }, LeftKnee = { -60, 0, 0 } },
+	DashRight = { Root = { 0, 0, -22, -0.3 }, Waist = { 0, 0, -14 }, Neck = { 0, 0, 10 }, RightArm = { 20, 0, 70 }, LeftArm = { 40, 0, -20 }, LeftHip = { 0, 0, -30 }, RightKnee = { -40, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	ParryPose = { Root = { 6, 0, 0, -0.1, -0.15 }, Waist = { 12, 0, 0 }, RightArm = { 140, 0, -20 }, RightElbow = { 30, 0, 0 }, LeftArm = { 60, 0, 30 }, LeftElbow = { 50, 0, 0 }, Neck = { 6, 0, 0 } },
+	GuardBroken = { Root = { 14, 0, 0, -0.35, -0.3 }, Waist = { 22, 0, 0 }, Neck = { 28, 0, 0 }, RightArm = { 60, 0, 60 }, LeftArm = { 60, 0, -60 }, RightElbow = { 20, 0, 0 }, LeftElbow = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftKnee = { -30, 0, 0 } },
 	-- SANDMAN: a light-footed runner; knife-hand chops and spinning kicks.
 	SandStance = { Root = { 0, 10, 0, -0.18 }, Waist = { -8, 8, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, 18 }, RightElbow = { 70, 0, 0 }, LeftArm = { 55, 0, -22 }, LeftElbow = { 60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -8, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 	ChopCoil = { Root = { 0, 26, 0, -0.14 }, Waist = { 6, 30, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 60, 0, 0 }, LeftArm = { 60, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -14, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightKnee = { -12, 0, 0 } },
@@ -231,6 +238,7 @@ do
 	P.SlapStrikeL = mirror(P.SlapStrike)
 	P.ChopCoilL = mirror(P.ChopCoil)
 	P.ChopStrikeL = mirror(P.ChopStrike)
+	P.DashLeft = mirror(P.DashRight)
 end
 
 --[[
@@ -287,6 +295,14 @@ TuskAnimation.Actions = {
 	P_M1_2 = { { 0, "Slap" }, { 0.06, "SlapCoilL", "In" }, { 0.11, "SlapStrikeL", "Back", 4 }, { 0.16, "SlapStrikeL", "Linear" }, { 0.28, "SlapL", "Sine" } },
 	P_M1_3 = { { 0, "Rest" }, { 0.08, "SpitWind", "In" }, { 0.14, "Spit", "Snap", 5 }, { 0.19, "Spit", "Linear" }, { 0.32, "Spit", "Sine" } },
 	P_M1_4 = { { 0, "Rest" }, { 0.12, "FlyKickWind", "In" }, { 0.2, "FlyKick", "Snap", 7 }, { 0.26, "FlyKick", "Linear" }, { 0.45, "FlyKick", "Sine" }, { 0.58, "FlyKick" } },
+	-- BLOCK AND DASH
+	DashF = { { 0, "Rest" }, { 0.05, "DashFwd", "Snap", 2 }, { 0.22, "DashFwd", "Linear" }, { 0.32, "Rest", "Sine" } },
+	DashB = { { 0, "Rest" }, { 0.05, "DashBack", "Snap", 2 }, { 0.22, "DashBack", "Linear" }, { 0.32, "Rest", "Sine" } },
+	DashR = { { 0, "Rest" }, { 0.05, "DashRight", "Snap", 2 }, { 0.22, "DashRight", "Linear" }, { 0.32, "Rest", "Sine" } },
+	DashL = { { 0, "Rest" }, { 0.05, "DashLeft", "Snap", 2 }, { 0.22, "DashLeft", "Linear" }, { 0.32, "Rest", "Sine" } },
+	Parry = { { 0, "BlockPose" }, { 0.06, "ParryPose", "Snap", 4 }, { 0.3, "ParryPose", "Sine" } },
+	GuardBreak = { { 0, "BlockPose" }, { 0.08, "GuardBroken", "Snap", 6 }, { 0.8, "GuardBroken", "Linear" }, { 1.0, "Rest", "Sine" } },
+
 	-- SANDMAN
 	S_M1_1 = { { 0, "Rest" }, { 0.07, "ChopCoil", "In" }, { 0.12, "ChopStrike", "Back", 4 }, { 0.17, "ChopStrike", "Linear" }, { 0.3, "SandStance", "Sine" } },
 	S_M1_2 = { { 0, "ChopStrike" }, { 0.07, "ChopCoilL", "In" }, { 0.12, "ChopStrikeL", "Back", 4 }, { 0.17, "ChopStrikeL", "Linear" }, { 0.3, "SandStance", "Sine" } },
@@ -594,6 +610,11 @@ function TuskAnimation.hold(character, poseName)
 		blendTo(character, resolvePose(poseName), 0.25)
 	end
 	startIdle(character, s)
+end
+
+-- The pose currently held on a character (so a temporary hold can put it back).
+function TuskAnimation.currentHold(character)
+	return character and getState(character).Hold
 end
 
 function TuskAnimation.stopHold(character, poseName)

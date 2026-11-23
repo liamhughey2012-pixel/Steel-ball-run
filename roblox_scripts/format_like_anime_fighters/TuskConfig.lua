@@ -20,6 +20,29 @@ TuskConfig.Keys = {
 	Ultimate = { Keyboard = Enum.KeyCode.G, Gamepad = Enum.KeyCode.DPadUp },
 	Sneak = { Keyboard = Enum.KeyCode.C, Gamepad = Enum.KeyCode.ButtonL1 },
 	ActMenu = { Keyboard = Enum.KeyCode.T, Gamepad = Enum.KeyCode.DPadDown },
+	Block = { Keyboard = Enum.KeyCode.F, Gamepad = Enum.KeyCode.ButtonL2 }, -- hold
+	Dash = { Keyboard = Enum.KeyCode.Q, Gamepad = Enum.KeyCode.ButtonR2 },
+}
+
+---------------------------------------------------------------------------
+-- Block and Dash (every character)
+---------------------------------------------------------------------------
+TuskConfig.Defense = {
+	-- BLOCK (hold F): blocked hits do 35% damage, no stun, less knockback.
+	BlockWalkSpeed = 0.45, -- walk speed multiplier while blocking
+	FrontOnly = true, -- only hits from in front are blocked
+	MaxMeter = 100, -- the guard bar
+	MeterPerDamage = 4, -- guard lost per point of (unblocked) damage
+	MeterRegen = 30, RegenDelay = 1.2, -- guard per second, after this long without a blocked hit
+	GuardBreakStun = 1.0, GuardBreakLockout = 3, -- guard runs out: stunned, can't block for a bit
+	-- PERFECT BLOCK: start blocking just before a hit lands.
+	ParryWindow = 0.22, -- seconds
+	ParryStun = 1.0, -- the attacker is stunned
+	ParryRetry = 0.6, -- block spam doesn't count: needs this long since the last release
+	-- DASH (Q): a quick burst in the direction you're moving (forward if standing still).
+	DashCooldown = 2.2,
+	DashSpeed = 75, DashTime = 0.2, -- about 15 studs
+	DashIFrames = 0.2, -- can't be hit during the dash
 }
 
 ---------------------------------------------------------------------------
@@ -125,6 +148,7 @@ TuskConfig.StandBots = {
 	LeashRange = 120, -- and give up past this far from their camp
 	AttackRange = 6, -- M1 range
 	AbilityRange = 35, AbilityEvery = 2.5, -- seconds between abilities (roughly)
+	BlockChance = 0.05, DashChance = 0.06, -- per think tick (0.15 s)
 	RespawnTime = 10,
 	StartDelay = 3,
 	ThinkEvery = 0.15,

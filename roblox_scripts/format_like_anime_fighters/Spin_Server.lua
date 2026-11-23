@@ -202,6 +202,7 @@ local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 
 local Net = __require("Net")
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
 local FX = Net.get("SpinFX")
 
 local Adapter = {}
@@ -315,6 +316,26 @@ function Adapter.setMoveModifier(humanoid, key, multiplier)
 	humanoid.WalkSpeed = base * product
 end
 
+-- True when the hit comes from in front of the target (blocks only face forward).
+function Adapter.isFrontal(attackerPlayer, targetCharacter, info)
+	local d = TuskConfig.Defense or {}
+	if d.FrontOnly == false then
+		return true
+	end
+	local root = targetCharacter:FindFirstChild("HumanoidRootPart")
+	local attacker = attackerPlayer and attackerPlayer.Character
+	local from = attacker and attacker:FindFirstChild("HumanoidRootPart")
+	local source = from and from.Position or (info and info.Position)
+	if not root or not source then
+		return true
+	end
+	local offset = Vector3.new(source.X - root.Position.X, 0, source.Z - root.Position.Z)
+	if offset.Magnitude < 0.5 then
+		return true
+	end
+	return root.CFrame.LookVector:Dot(offset.Unit) >= -0.1
+end
+
 function Adapter.isBlocking(character)
 	if Adapter.Hooks.IsBlocking then
 		return Adapter.Hooks.IsBlocking(character) == true
@@ -391,8 +412,41 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 		return false
 	end
 	local humanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
-	local blocked = Adapter.isBlocking(targetCharacter)
+	local blocked = Adapter.isBlocking(targetCharacter) and Adapter.isFrontal(attackerPlayer, targetCharacter, info)
 	local s = Adapter.Settings
+	local d = TuskConfig.Defense or {}
+	local guardBreak = false
+	if blocked then
+		local now = workspace:GetServerTimeNow()
+		local start = targetCharacter:GetAttribute("BlockStart")
+		-- PERFECT BLOCK: no damage, the attacker is stunned.
+		if attackerPlayer and start and now - start <= (d.ParryWindow or 0.2) and targetCharacter:GetAttribute("BlockCanParry") then
+			targetCharacter:SetAttribute("BlockCanParry", nil)
+			local attacker = attackerPlayer.Character
+			local ah = attacker and attacker:FindFirstChildOfClass("Humanoid")
+			if ah then
+				Adapter.applyStun(ah, d.ParryStun or 1)
+				local ar = attacker:FindFirstChild("HumanoidRootPart")
+				local tr = targetCharacter:FindFirstChild("HumanoidRootPart")
+				if ar and tr then
+					Adapter.applyKnockback(attacker, ar.Position - tr.Position, 22, 6)
+				end
+			end
+			FX:FireAllClients("Parry", { Defender = targetCharacter, Attacker = attacker, Position = info.Position })
+			return false
+		end
+		-- The guard bar takes the hit; when it runs out the guard breaks.
+		local meter = (targetCharacter:GetAttribute("BlockMeter") or d.MaxMeter or 100) - info.Damage * (d.MeterPerDamage or 4)
+		targetCharacter:SetAttribute("BlockMeter", math.max(meter, 0))
+		targetCharacter:SetAttribute("LastBlockHit", now)
+		if meter <= 0 then
+			guardBreak = true
+			blocked = false
+			targetCharacter:SetAttribute(s.BlockAttribute, nil)
+			targetCharacter:SetAttribute("GuardBrokenUntil", now + (d.GuardBreakLockout or 3))
+			Adapter.setMoveModifier(humanoid, "Block", nil)
+		end
+	end
 
 	local damage = info.Damage * (blocked and s.BlockDamageMultiplier or 1)
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
@@ -402,7 +456,10 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	else
 		humanoid:TakeDamage(damage)
 	end
-	if not blocked then
+	if guardBreak then
+		Adapter.applyStun(humanoid, math.max(info.Stun or 0, d.GuardBreakStun or 1))
+		FX:FireAllClients("GuardBreak", { Victim = targetCharacter, Position = info.Position })
+	elseif not blocked then
 		Adapter.applyStun(humanoid, info.Stun or 0)
 	end
 	local launch = info.Launch and info.Launch * (blocked and s.BlockKnockbackMultiplier or 1) or nil
@@ -479,6 +536,169 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return CooldownService
+end
+
+-- ======================================================================
+-- MODULE: DefenseService
+-- ======================================================================
+__modules["DefenseService"] = function()
+--[[
+	DefenseService  (ServerScriptService.SpinServer.DefenseService)
+
+	BLOCK and DASH for every character (players and Stand-user NPCs).
+	  BLOCK (hold F): sets the "Blocking" attribute; CombatAdapter then cuts
+	    damage, skips the stun and drains the guard bar (BlockMeter). Hits from
+	    behind aren't blocked. Starting a block just before a hit lands is a
+	    PERFECT BLOCK (no damage, the attacker is stunned). An empty guard bar
+	    is a GUARD BREAK (stunned, can't block for a few seconds). Attacking or
+	    dashing drops the block. The bar refills while you aren't blocking.
+	  DASH (Q): a short burst in the direction you're moving, with a moment
+	    you can't be hit. The server checks the cooldown and grants it; the
+	    player's own client moves them (smooth, replicates to everyone).
+	    NPCs are moved by the server.
+	Numbers: TuskConfig.Defense.
+]]
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
+
+local Shared = nil -- (bundled: modules are inlined)
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+
+local DefenseService = {}
+local S -- TuskService
+local cfg = TuskConfig.Defense or {}
+local dashReady = setmetatable({}, { __mode = "k" }) -- [player] = os.clock() when the next dash is allowed
+local lastRelease = setmetatable({}, { __mode = "k" }) -- [character] = server time of the last block release
+
+local function now()
+	return workspace:GetServerTimeNow()
+end
+
+function DefenseService.isBlocking(character)
+	return character ~= nil and character:GetAttribute(S.Adapter.Settings.BlockAttribute) == true
+end
+
+function DefenseService.release(player, state)
+	local character = state and state.Character or (player and player.Character)
+	if not character or not DefenseService.isBlocking(character) then
+		return
+	end
+	character:SetAttribute(S.Adapter.Settings.BlockAttribute, nil)
+	character:SetAttribute("BlockCanParry", nil)
+	lastRelease[character] = now()
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		S.Adapter.setMoveModifier(humanoid, "Block", nil)
+	end
+end
+
+function DefenseService.block(player, state, on)
+	local character, humanoid = S.Adapter.getAlive(player)
+	if not character then
+		return
+	end
+	if not on then
+		DefenseService.release(player, state)
+		return
+	end
+	if DefenseService.isBlocking(character) then
+		return
+	end
+	if not S.Adapter.canAct(player) or state.Charging or S.isBusy(state) or state.Sneaking then
+		return
+	end
+	if (character:GetAttribute("GuardBrokenUntil") or 0) > now() then
+		S.tell(player, "Denied", { Reason = "GuardBroken" })
+		return
+	end
+	local t = now()
+	character:SetAttribute("BlockStart", t)
+	-- Perfect blocks only count if this isn't block spam.
+	character:SetAttribute("BlockCanParry", (t - (lastRelease[character] or -math.huge)) >= (cfg.ParryRetry or 0.6) or nil)
+	if character:GetAttribute("BlockMeter") == nil then
+		character:SetAttribute("BlockMeter", cfg.MaxMeter or 100)
+	end
+	character:SetAttribute(S.Adapter.Settings.BlockAttribute, true)
+	S.Adapter.setMoveModifier(humanoid, "Block", cfg.BlockWalkSpeed or 0.45)
+end
+
+function DefenseService.dash(player, state, direction)
+	local character, _, root = S.Adapter.getAlive(player)
+	if not character or typeof(direction) ~= "Vector3" or direction ~= direction then
+		return
+	end
+	if not S.Adapter.canAct(player) or state.Charging or S.isBusy(state) or state.Sneaking then
+		return
+	end
+	local clock = os.clock()
+	if (dashReady[player] or 0) > clock then
+		S.tell(player, "Denied", { Reason = "DashCooldown" })
+		return
+	end
+	local flat = Vector3.new(direction.X, 0, direction.Z)
+	if flat.Magnitude < 0.1 then
+		flat = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+	end
+	flat = flat.Unit
+	DefenseService.release(player, state)
+	local cooldown = cfg.DashCooldown or 2.2
+	dashReady[player] = clock + cooldown
+	character:SetAttribute("DashReadyAt", now() + cooldown)
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	character:SetAttribute(iframes, true)
+	task.delay(cfg.DashIFrames or 0.2, function()
+		character:SetAttribute(iframes, nil)
+	end)
+	local speed, time = cfg.DashSpeed or 75, cfg.DashTime or 0.2
+	S.fx("Dash", { Character = character, Direction = flat, Speed = speed, Time = time })
+	-- NPCs have no client to move them: the server does it.
+	if typeof(player) ~= "Instance" then
+		local attachment = Instance.new("Attachment")
+		attachment.Parent = root
+		local velocity = Instance.new("LinearVelocity")
+		velocity.Attachment0 = attachment
+		velocity.RelativeTo = Enum.ActuatorRelativeTo.World
+		velocity.MaxForce = math.huge
+		velocity.VectorVelocity = flat * speed
+		velocity.Parent = attachment
+		game:GetService("Debris"):AddItem(attachment, time)
+	end
+end
+
+-- Guard bars refill while not blocking.
+local function regen(dt)
+	local max = cfg.MaxMeter or 100
+	local t = now()
+	local function tick(character)
+		local meter = character and character:GetAttribute("BlockMeter")
+		if meter and meter < max and not DefenseService.isBlocking(character) and t - (character:GetAttribute("LastBlockHit") or 0) >= (cfg.RegenDelay or 1.2) then
+			local nextValue = math.min(max, meter + (cfg.MeterRegen or 30) * dt)
+			character:SetAttribute("BlockMeter", nextValue >= max and nil or nextValue)
+		end
+	end
+	for _, player in ipairs(Players:GetPlayers()) do
+		tick(player.Character)
+	end
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		tick(model)
+	end
+end
+
+function DefenseService.init(TuskService)
+	S = TuskService
+	local acc = 0
+	RunService.Heartbeat:Connect(function(dt)
+		acc = acc + dt
+		if acc >= 0.1 then
+			regen(acc)
+			acc = 0
+		end
+	end)
+end
+
+return DefenseService
 end
 
 -- ======================================================================
@@ -2635,6 +2855,7 @@ __modules["StandBots"] = function()
 	  * each respawn picks a new free spot, so they move around over time
 	  * M1 combo up close, abilities on cooldown, ultimate when their meter is full
 	  * hold abilities are charged and released automatically
+	  * they block now and then, dash in to close the gap, and dash away when hurt
 	  * they respawn RespawnTime seconds after dying, as a random character
 	Settings: TuskConfig.StandBots (Enabled = false turns them off).
 	Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
@@ -2870,8 +3091,33 @@ local function think(bot, now)
 	else
 		humanoid:MoveTo(root.Position)
 	end
+	local Defense = S.Defense
+	-- Holding a block: wait it out.
+	if Defense and model:GetAttribute("Blocking") then
+		if now >= (bot.BlockUntil or 0) then
+			Defense.block(bot.Player, state, false)
+		end
+		return
+	end
 	if not S.Adapter.canAct(bot.Player) or S.isBusy(state) or state.Charging then
 		return
+	end
+	if Defense then
+		local hurt = humanoid.Health < humanoid.MaxHealth * 0.35
+		-- Close in with a dash, or dash away when hurt.
+		if dist > 14 and dist < 30 and math.random() < (cfg.DashChance or 0.06) then
+			Defense.dash(bot.Player, state, tr.Position - root.Position)
+			return
+		elseif hurt and dist < 8 and math.random() < (cfg.DashChance or 0.06) then
+			Defense.dash(bot.Player, state, root.Position - tr.Position)
+			return
+		end
+		-- Block now and then when someone's right in front of them.
+		if dist < reach + 2 and math.random() < (cfg.BlockChance or 0.05) then
+			bot.BlockUntil = now + 0.4 + math.random() * 0.5
+			Defense.block(bot.Player, state, true)
+			return
+		end
 	end
 	-- Face the target and attack.
 	if (flatTarget - root.Position).Magnitude > 0.5 then
@@ -4745,6 +4991,7 @@ TuskService.Adapter = Adapter
 local states = {} -- [player] = state
 local rate = {}
 local actModules = {}
+local Defense -- DefenseService (block / dash), loaded in init
 local Sneak -- set in init (circular dependency)
 
 local RATE_LIMIT = 24 -- requests per second
@@ -4968,6 +5215,9 @@ end
 ---------------------------------------------------------------------------
 local function cleanupAct(player, state)
 	state.Life = state.Life + 1
+	if Defense then
+		Defense.release(player, state)
+	end
 	local module = state.Act and actModules[state.Act]
 	if module and module.Cleanup then
 		pcall(module.Cleanup, TuskService, player, state)
@@ -5128,6 +5378,18 @@ local function onRequest(player, action, a, b, c)
 	if state.Burrowed then
 		return
 	end
+	-- Block and Dash work for every character.
+	if action == "Block" then
+		Defense.block(player, state, a == true)
+		return
+	elseif action == "Dash" then
+		Defense.dash(player, state, a)
+		return
+	end
+	-- Attacking drops the block.
+	if action == "M1" or action == "Ultimate" or (action == "Ability" and b ~= "Release") then
+		Defense.release(player, state)
+	end
 
 	-- Releasing a held ability is allowed even mid-lock; everything else needs a free player.
 	if action == "Ability" and b == "Release" then
@@ -5195,6 +5457,9 @@ local function onCharacter(player, character)
 	character:GetAttributeChangedSignal(Adapter.Settings.StunAttribute):Connect(function()
 		if not Adapter.isStunned(character) or state.Character ~= character then
 			return
+		end
+		if Defense then
+			Defense.release(player, state) -- a stun knocks you out of your block
 		end
 		if state.Charging then
 			local module = state.Act and actModules[state.Act]
@@ -5294,6 +5559,9 @@ function TuskService.init()
 	end
 	Sneak = __require("TuskSneakService")
 	Sneak.init(TuskService)
+	Defense = __require("DefenseService")
+	Defense.init(TuskService)
+	TuskService.Defense = Defense
 	-- Tell every client which characters this server can actually play (each
 	-- non-Johnny character is an optional script), so the menu can say so.
 	local installed, seen = {}, {}

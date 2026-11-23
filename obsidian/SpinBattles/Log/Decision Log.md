@@ -68,3 +68,4 @@ updated: 2026-11-22
 | 2026-11-23 | Practice dummies restyled as burlap training dummies (stitched face, straw, chest target) |
 | 2026-11-23 | Combat UI: enemy health bar on hit, red damage edges; hit sparks, shock rings, camera kick, bigger damage numbers; layered M1 swipes |
 | 2026-11-23 | Stand-user NPCs scattered round the map (6, at landmark spots checked clear of buildings) |
+| 2026-11-23 | Block (F) and Dash (Q) for every character: guard bar, guard break, perfect block, dash i-frames; NPCs use them too |

@@ -7,6 +7,10 @@
 	    catches up a moment later so big hits read. Fades after a few seconds.
 	  * DAMAGE EDGES: the screen edges flash red when you get hit, and pulse
 	    while your health is low.
+	  * GUARD BAR: under your character while you block (or while it
+	    refills); it turns red as it runs out and shows BROKEN after a
+	    guard break.
+	  * DASH / BLOCK chips (bottom right): the dash cooldown sweeps back.
 	Driven by the shared "Hit" event (CombatAdapter).
 ]]
 
@@ -26,6 +30,9 @@ local target -- the model shown in the bar
 local shownUntil = 0
 local fillValue, chunkValue = 1, 1
 local hurtFlash = 0
+local TuskConfig = require(Shared.TuskConfig)
+local guardGui, guardFill, guardText, chips
+local stepDefense -- (defined further down)
 
 local function corner(p, r)
 	local c = Instance.new("UICorner")
@@ -186,10 +193,136 @@ function CombatUI.step(dt)
 	for _, f in ipairs(edges) do
 		f.BackgroundTransparency = 1 - strength * 0.7
 	end
+	stepDefense()
+end
+
+local function chip(name, key, order)
+	local f = Instance.new("Frame")
+	f.Name = name
+	f.AnchorPoint = Vector2.new(1, 1)
+	f.Position = UDim2.new(1, -16, 1, -16 - order * 38)
+	f.Size = UDim2.fromOffset(112, 32)
+	f.BackgroundColor3 = DARK
+	f.BackgroundTransparency = 0.15
+	f.ClipsDescendants = true
+	f.Parent = gui
+	corner(f, 8)
+	local sweep = Instance.new("Frame")
+	sweep.Name = "Sweep"
+	sweep.BorderSizePixel = 0
+	sweep.Size = UDim2.fromScale(0, 1)
+	sweep.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+	sweep.BackgroundTransparency = 0.3
+	sweep.Parent = f
+	local keyLabel = Instance.new("TextLabel")
+	keyLabel.BackgroundColor3 = GOLD
+	keyLabel.Position = UDim2.fromOffset(5, 5)
+	keyLabel.Size = UDim2.fromOffset(22, 22)
+	keyLabel.Font = Enum.Font.GothamBlack
+	keyLabel.TextSize = 13
+	keyLabel.TextColor3 = DARK
+	keyLabel.Text = key
+	keyLabel.Parent = f
+	corner(keyLabel, 5)
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Position = UDim2.fromOffset(34, 0)
+	label.Size = UDim2.new(1, -38, 1, 0)
+	label.Font = Enum.Font.GothamBlack
+	label.TextSize = 13
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.Text = name
+	label.Parent = f
+	return { Frame = f, Sweep = sweep, Label = label, Name = name }
+end
+
+local function buildDefense()
+	local keys = TuskConfig.Keys
+	local function keyText(k)
+		local names = { One = "1", Two = "2", Three = "3" }
+		return k and (names[k.Name] or k.Name) or "?"
+	end
+	chips = {
+		Dash = chip("DASH", keyText(keys.Dash and keys.Dash.Keyboard), 1),
+		Block = chip("BLOCK", keyText(keys.Block and keys.Block.Keyboard), 0),
+	}
+	guardGui = Instance.new("BillboardGui")
+	guardGui.Name = "GuardBar"
+	guardGui.Size = UDim2.fromOffset(90, 12)
+	guardGui.StudsOffset = Vector3.new(0, -3.4, 0)
+	guardGui.AlwaysOnTop = true
+	guardGui.LightInfluence = 0
+	guardGui.Enabled = false
+	guardGui.Parent = gui
+	local back = Instance.new("Frame")
+	back.Size = UDim2.fromScale(1, 1)
+	back.BackgroundColor3 = DARK
+	back.BackgroundTransparency = 0.2
+	back.Parent = guardGui
+	corner(back, 6)
+	guardFill = Instance.new("Frame")
+	guardFill.Position = UDim2.fromOffset(2, 2)
+	guardFill.Size = UDim2.new(1, -4, 1, -4)
+	guardFill.BackgroundColor3 = Color3.fromRGB(110, 180, 255)
+	guardFill.Parent = back
+	corner(guardFill, 5)
+	guardText = Instance.new("TextLabel")
+	guardText.BackgroundTransparency = 1
+	guardText.Size = UDim2.fromScale(1, 1)
+	guardText.Font = Enum.Font.GothamBlack
+	guardText.TextSize = 9
+	guardText.TextColor3 = Color3.new(1, 1, 1)
+	guardText.TextStrokeTransparency = 0.4
+	guardText.Text = ""
+	guardText.Parent = back
+end
+
+function stepDefense()
+	if not chips then
+		return
+	end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local d = TuskConfig.Defense or {}
+	local t = workspace:GetServerTimeNow()
+	-- Dash chip: grey sweep while on cooldown.
+	local readyAt = character and character:GetAttribute("DashReadyAt") or 0
+	local left = readyAt - t
+	local dashChip = chips.Dash
+	if left > 0 then
+		dashChip.Sweep.Size = UDim2.fromScale(math.clamp(left / (d.DashCooldown or 2.2), 0, 1), 1)
+		dashChip.Label.Text = string.format("DASH %.1f", left)
+		dashChip.Label.TextColor3 = Color3.fromRGB(170, 170, 185)
+	else
+		dashChip.Sweep.Size = UDim2.fromScale(0, 1)
+		dashChip.Label.Text = "DASH"
+		dashChip.Label.TextColor3 = Color3.new(1, 1, 1)
+	end
+	-- Block chip + guard bar.
+	local blockingNow = character and character:GetAttribute("Blocking") == true
+	local broken = character and (character:GetAttribute("GuardBrokenUntil") or 0) > t
+	local meter = character and character:GetAttribute("BlockMeter")
+	local max = d.MaxMeter or 100
+	local blockChip = chips.Block
+	blockChip.Label.Text = broken and "BROKEN" or (blockingNow and "BLOCKING" or "BLOCK")
+	blockChip.Label.TextColor3 = broken and RED or (blockingNow and Color3.fromRGB(150, 205, 255) or Color3.new(1, 1, 1))
+	blockChip.Frame.BackgroundColor3 = blockingNow and Color3.fromRGB(30, 50, 90) or DARK
+	if root and (blockingNow or broken or (meter and meter < max)) then
+		guardGui.Adornee = root
+		guardGui.Enabled = true
+		local k = broken and 0 or math.clamp((meter or max) / max, 0, 1)
+		guardFill.Size = UDim2.new(k, k > 0 and -4 or 0, 1, -4)
+		guardFill.BackgroundColor3 = Color3.fromRGB(110, 180, 255):Lerp(RED, 1 - k)
+		guardText.Text = broken and "GUARD BROKEN" or ""
+	else
+		guardGui.Enabled = false
+	end
 end
 
 function CombatUI.init()
 	build()
+	buildDefense()
 	Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
 		if name ~= "Hit" or typeof(data) ~= "table" or not data.Victim then
 			return

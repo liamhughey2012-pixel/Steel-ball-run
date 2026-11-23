@@ -1233,6 +1233,29 @@ TuskConfig.Keys = {
 	Ultimate = { Keyboard = Enum.KeyCode.G, Gamepad = Enum.KeyCode.DPadUp },
 	Sneak = { Keyboard = Enum.KeyCode.C, Gamepad = Enum.KeyCode.ButtonL1 },
 	ActMenu = { Keyboard = Enum.KeyCode.T, Gamepad = Enum.KeyCode.DPadDown },
+	Block = { Keyboard = Enum.KeyCode.F, Gamepad = Enum.KeyCode.ButtonL2 }, -- hold
+	Dash = { Keyboard = Enum.KeyCode.Q, Gamepad = Enum.KeyCode.ButtonR2 },
+}
+
+---------------------------------------------------------------------------
+-- Block and Dash (every character)
+---------------------------------------------------------------------------
+TuskConfig.Defense = {
+	-- BLOCK (hold F): blocked hits do 35% damage, no stun, less knockback.
+	BlockWalkSpeed = 0.45, -- walk speed multiplier while blocking
+	FrontOnly = true, -- only hits from in front are blocked
+	MaxMeter = 100, -- the guard bar
+	MeterPerDamage = 4, -- guard lost per point of (unblocked) damage
+	MeterRegen = 30, RegenDelay = 1.2, -- guard per second, after this long without a blocked hit
+	GuardBreakStun = 1.0, GuardBreakLockout = 3, -- guard runs out: stunned, can't block for a bit
+	-- PERFECT BLOCK: start blocking just before a hit lands.
+	ParryWindow = 0.22, -- seconds
+	ParryStun = 1.0, -- the attacker is stunned
+	ParryRetry = 0.6, -- block spam doesn't count: needs this long since the last release
+	-- DASH (Q): a quick burst in the direction you're moving (forward if standing still).
+	DashCooldown = 2.2,
+	DashSpeed = 75, DashTime = 0.2, -- about 15 studs
+	DashIFrames = 0.2, -- can't be hit during the dash
 }
 
 ---------------------------------------------------------------------------
@@ -1338,6 +1361,7 @@ TuskConfig.StandBots = {
 	LeashRange = 120, -- and give up past this far from their camp
 	AttackRange = 6, -- M1 range
 	AbilityRange = 35, AbilityEvery = 2.5, -- seconds between abilities (roughly)
+	BlockChance = 0.05, DashChance = 0.06, -- per think tick (0.15 s)
 	RespawnTime = 10,
 	StartDelay = 3,
 	ThinkEvery = 0.15,
@@ -3078,6 +3102,7 @@ local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 
 local Net = require(game:GetService("ReplicatedStorage").SpinShared.Net)
+local TuskConfig = require(game:GetService("ReplicatedStorage").SpinShared.TuskConfig)
 local FX = Net.get("SpinFX")
 
 local Adapter = {}
@@ -3191,6 +3216,26 @@ function Adapter.setMoveModifier(humanoid, key, multiplier)
 	humanoid.WalkSpeed = base * product
 end
 
+-- True when the hit comes from in front of the target (blocks only face forward).
+function Adapter.isFrontal(attackerPlayer, targetCharacter, info)
+	local d = TuskConfig.Defense or {}
+	if d.FrontOnly == false then
+		return true
+	end
+	local root = targetCharacter:FindFirstChild("HumanoidRootPart")
+	local attacker = attackerPlayer and attackerPlayer.Character
+	local from = attacker and attacker:FindFirstChild("HumanoidRootPart")
+	local source = from and from.Position or (info and info.Position)
+	if not root or not source then
+		return true
+	end
+	local offset = Vector3.new(source.X - root.Position.X, 0, source.Z - root.Position.Z)
+	if offset.Magnitude < 0.5 then
+		return true
+	end
+	return root.CFrame.LookVector:Dot(offset.Unit) >= -0.1
+end
+
 function Adapter.isBlocking(character)
 	if Adapter.Hooks.IsBlocking then
 		return Adapter.Hooks.IsBlocking(character) == true
@@ -3267,8 +3312,41 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 		return false
 	end
 	local humanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
-	local blocked = Adapter.isBlocking(targetCharacter)
+	local blocked = Adapter.isBlocking(targetCharacter) and Adapter.isFrontal(attackerPlayer, targetCharacter, info)
 	local s = Adapter.Settings
+	local d = TuskConfig.Defense or {}
+	local guardBreak = false
+	if blocked then
+		local now = workspace:GetServerTimeNow()
+		local start = targetCharacter:GetAttribute("BlockStart")
+		-- PERFECT BLOCK: no damage, the attacker is stunned.
+		if attackerPlayer and start and now - start <= (d.ParryWindow or 0.2) and targetCharacter:GetAttribute("BlockCanParry") then
+			targetCharacter:SetAttribute("BlockCanParry", nil)
+			local attacker = attackerPlayer.Character
+			local ah = attacker and attacker:FindFirstChildOfClass("Humanoid")
+			if ah then
+				Adapter.applyStun(ah, d.ParryStun or 1)
+				local ar = attacker:FindFirstChild("HumanoidRootPart")
+				local tr = targetCharacter:FindFirstChild("HumanoidRootPart")
+				if ar and tr then
+					Adapter.applyKnockback(attacker, ar.Position - tr.Position, 22, 6)
+				end
+			end
+			FX:FireAllClients("Parry", { Defender = targetCharacter, Attacker = attacker, Position = info.Position })
+			return false
+		end
+		-- The guard bar takes the hit; when it runs out the guard breaks.
+		local meter = (targetCharacter:GetAttribute("BlockMeter") or d.MaxMeter or 100) - info.Damage * (d.MeterPerDamage or 4)
+		targetCharacter:SetAttribute("BlockMeter", math.max(meter, 0))
+		targetCharacter:SetAttribute("LastBlockHit", now)
+		if meter <= 0 then
+			guardBreak = true
+			blocked = false
+			targetCharacter:SetAttribute(s.BlockAttribute, nil)
+			targetCharacter:SetAttribute("GuardBrokenUntil", now + (d.GuardBreakLockout or 3))
+			Adapter.setMoveModifier(humanoid, "Block", nil)
+		end
+	end
 
 	local damage = info.Damage * (blocked and s.BlockDamageMultiplier or 1)
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
@@ -3278,7 +3356,10 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	else
 		humanoid:TakeDamage(damage)
 	end
-	if not blocked then
+	if guardBreak then
+		Adapter.applyStun(humanoid, math.max(info.Stun or 0, d.GuardBreakStun or 1))
+		FX:FireAllClients("GuardBreak", { Victim = targetCharacter, Position = info.Position })
+	elseif not blocked then
 		Adapter.applyStun(humanoid, info.Stun or 0)
 	end
 	local launch = info.Launch and info.Launch * (blocked and s.BlockKnockbackMultiplier or 1) or nil
@@ -3351,6 +3432,165 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return CooldownService
+]=] },
+	{ Service = "ServerScriptService", Path = "SpinServer/DefenseService", Class = "ModuleScript", Source = [=[
+--[[
+	DefenseService  (ServerScriptService.SpinServer.DefenseService)
+
+	BLOCK and DASH for every character (players and Stand-user NPCs).
+	  BLOCK (hold F): sets the "Blocking" attribute; CombatAdapter then cuts
+	    damage, skips the stun and drains the guard bar (BlockMeter). Hits from
+	    behind aren't blocked. Starting a block just before a hit lands is a
+	    PERFECT BLOCK (no damage, the attacker is stunned). An empty guard bar
+	    is a GUARD BREAK (stunned, can't block for a few seconds). Attacking or
+	    dashing drops the block. The bar refills while you aren't blocking.
+	  DASH (Q): a short burst in the direction you're moving, with a moment
+	    you can't be hit. The server checks the cooldown and grants it; the
+	    player's own client moves them (smooth, replicates to everyone).
+	    NPCs are moved by the server.
+	Numbers: TuskConfig.Defense.
+]]
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+
+local DefenseService = {}
+local S -- TuskService
+local cfg = TuskConfig.Defense or {}
+local dashReady = setmetatable({}, { __mode = "k" }) -- [player] = os.clock() when the next dash is allowed
+local lastRelease = setmetatable({}, { __mode = "k" }) -- [character] = server time of the last block release
+
+local function now()
+	return workspace:GetServerTimeNow()
+end
+
+function DefenseService.isBlocking(character)
+	return character ~= nil and character:GetAttribute(S.Adapter.Settings.BlockAttribute) == true
+end
+
+function DefenseService.release(player, state)
+	local character = state and state.Character or (player and player.Character)
+	if not character or not DefenseService.isBlocking(character) then
+		return
+	end
+	character:SetAttribute(S.Adapter.Settings.BlockAttribute, nil)
+	character:SetAttribute("BlockCanParry", nil)
+	lastRelease[character] = now()
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		S.Adapter.setMoveModifier(humanoid, "Block", nil)
+	end
+end
+
+function DefenseService.block(player, state, on)
+	local character, humanoid = S.Adapter.getAlive(player)
+	if not character then
+		return
+	end
+	if not on then
+		DefenseService.release(player, state)
+		return
+	end
+	if DefenseService.isBlocking(character) then
+		return
+	end
+	if not S.Adapter.canAct(player) or state.Charging or S.isBusy(state) or state.Sneaking then
+		return
+	end
+	if (character:GetAttribute("GuardBrokenUntil") or 0) > now() then
+		S.tell(player, "Denied", { Reason = "GuardBroken" })
+		return
+	end
+	local t = now()
+	character:SetAttribute("BlockStart", t)
+	-- Perfect blocks only count if this isn't block spam.
+	character:SetAttribute("BlockCanParry", (t - (lastRelease[character] or -math.huge)) >= (cfg.ParryRetry or 0.6) or nil)
+	if character:GetAttribute("BlockMeter") == nil then
+		character:SetAttribute("BlockMeter", cfg.MaxMeter or 100)
+	end
+	character:SetAttribute(S.Adapter.Settings.BlockAttribute, true)
+	S.Adapter.setMoveModifier(humanoid, "Block", cfg.BlockWalkSpeed or 0.45)
+end
+
+function DefenseService.dash(player, state, direction)
+	local character, _, root = S.Adapter.getAlive(player)
+	if not character or typeof(direction) ~= "Vector3" or direction ~= direction then
+		return
+	end
+	if not S.Adapter.canAct(player) or state.Charging or S.isBusy(state) or state.Sneaking then
+		return
+	end
+	local clock = os.clock()
+	if (dashReady[player] or 0) > clock then
+		S.tell(player, "Denied", { Reason = "DashCooldown" })
+		return
+	end
+	local flat = Vector3.new(direction.X, 0, direction.Z)
+	if flat.Magnitude < 0.1 then
+		flat = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+	end
+	flat = flat.Unit
+	DefenseService.release(player, state)
+	local cooldown = cfg.DashCooldown or 2.2
+	dashReady[player] = clock + cooldown
+	character:SetAttribute("DashReadyAt", now() + cooldown)
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	character:SetAttribute(iframes, true)
+	task.delay(cfg.DashIFrames or 0.2, function()
+		character:SetAttribute(iframes, nil)
+	end)
+	local speed, time = cfg.DashSpeed or 75, cfg.DashTime or 0.2
+	S.fx("Dash", { Character = character, Direction = flat, Speed = speed, Time = time })
+	-- NPCs have no client to move them: the server does it.
+	if typeof(player) ~= "Instance" then
+		local attachment = Instance.new("Attachment")
+		attachment.Parent = root
+		local velocity = Instance.new("LinearVelocity")
+		velocity.Attachment0 = attachment
+		velocity.RelativeTo = Enum.ActuatorRelativeTo.World
+		velocity.MaxForce = math.huge
+		velocity.VectorVelocity = flat * speed
+		velocity.Parent = attachment
+		game:GetService("Debris"):AddItem(attachment, time)
+	end
+end
+
+-- Guard bars refill while not blocking.
+local function regen(dt)
+	local max = cfg.MaxMeter or 100
+	local t = now()
+	local function tick(character)
+		local meter = character and character:GetAttribute("BlockMeter")
+		if meter and meter < max and not DefenseService.isBlocking(character) and t - (character:GetAttribute("LastBlockHit") or 0) >= (cfg.RegenDelay or 1.2) then
+			local nextValue = math.min(max, meter + (cfg.MeterRegen or 30) * dt)
+			character:SetAttribute("BlockMeter", nextValue >= max and nil or nextValue)
+		end
+	end
+	for _, player in ipairs(Players:GetPlayers()) do
+		tick(player.Character)
+	end
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		tick(model)
+	end
+end
+
+function DefenseService.init(TuskService)
+	S = TuskService
+	local acc = 0
+	RunService.Heartbeat:Connect(function(dt)
+		acc = acc + dt
+		if acc >= 0.1 then
+			regen(acc)
+			acc = 0
+		end
+	end)
+end
+
+return DefenseService
 ]=] },
 	{ Service = "ServerScriptService", Path = "SpinServer/DiegoOutfit", Class = "ModuleScript", Source = [=[
 --[[
@@ -4773,6 +5013,7 @@ return StandAssetLoader
 	  * each respawn picks a new free spot, so they move around over time
 	  * M1 combo up close, abilities on cooldown, ultimate when their meter is full
 	  * hold abilities are charged and released automatically
+	  * they block now and then, dash in to close the gap, and dash away when hurt
 	  * they respawn RespawnTime seconds after dying, as a random character
 	Settings: TuskConfig.StandBots (Enabled = false turns them off).
 	Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
@@ -5008,8 +5249,33 @@ local function think(bot, now)
 	else
 		humanoid:MoveTo(root.Position)
 	end
+	local Defense = S.Defense
+	-- Holding a block: wait it out.
+	if Defense and model:GetAttribute("Blocking") then
+		if now >= (bot.BlockUntil or 0) then
+			Defense.block(bot.Player, state, false)
+		end
+		return
+	end
 	if not S.Adapter.canAct(bot.Player) or S.isBusy(state) or state.Charging then
 		return
+	end
+	if Defense then
+		local hurt = humanoid.Health < humanoid.MaxHealth * 0.35
+		-- Close in with a dash, or dash away when hurt.
+		if dist > 14 and dist < 30 and math.random() < (cfg.DashChance or 0.06) then
+			Defense.dash(bot.Player, state, tr.Position - root.Position)
+			return
+		elseif hurt and dist < 8 and math.random() < (cfg.DashChance or 0.06) then
+			Defense.dash(bot.Player, state, root.Position - tr.Position)
+			return
+		end
+		-- Block now and then when someone's right in front of them.
+		if dist < reach + 2 and math.random() < (cfg.BlockChance or 0.05) then
+			bot.BlockUntil = now + 0.4 + math.random() * 0.5
+			Defense.block(bot.Player, state, true)
+			return
+		end
 	end
 	-- Face the target and attack.
 	if (flatTarget - root.Position).Magnitude > 0.5 then
@@ -8121,6 +8387,7 @@ TuskService.Adapter = Adapter
 local states = {} -- [player] = state
 local rate = {}
 local actModules = {}
+local Defense -- DefenseService (block / dash), loaded in init
 local Sneak -- set in init (circular dependency)
 
 local RATE_LIMIT = 24 -- requests per second
@@ -8344,6 +8611,9 @@ end
 ---------------------------------------------------------------------------
 local function cleanupAct(player, state)
 	state.Life = state.Life + 1
+	if Defense then
+		Defense.release(player, state)
+	end
 	local module = state.Act and actModules[state.Act]
 	if module and module.Cleanup then
 		pcall(module.Cleanup, TuskService, player, state)
@@ -8504,6 +8774,18 @@ local function onRequest(player, action, a, b, c)
 	if state.Burrowed then
 		return
 	end
+	-- Block and Dash work for every character.
+	if action == "Block" then
+		Defense.block(player, state, a == true)
+		return
+	elseif action == "Dash" then
+		Defense.dash(player, state, a)
+		return
+	end
+	-- Attacking drops the block.
+	if action == "M1" or action == "Ultimate" or (action == "Ability" and b ~= "Release") then
+		Defense.release(player, state)
+	end
 
 	-- Releasing a held ability is allowed even mid-lock; everything else needs a free player.
 	if action == "Ability" and b == "Release" then
@@ -8571,6 +8853,9 @@ local function onCharacter(player, character)
 	character:GetAttributeChangedSignal(Adapter.Settings.StunAttribute):Connect(function()
 		if not Adapter.isStunned(character) or state.Character ~= character then
 			return
+		end
+		if Defense then
+			Defense.release(player, state) -- a stun knocks you out of your block
 		end
 		if state.Charging then
 			local module = state.Act and actModules[state.Act]
@@ -8671,6 +8956,9 @@ function TuskService.init()
 	end
 	Sneak = require(script.Parent.TuskSneakService)
 	Sneak.init(TuskService)
+	Defense = require(script.Parent.DefenseService)
+	Defense.init(TuskService)
+	TuskService.Defense = Defense
 	-- Tell every client which characters this server can actually play (each
 	-- non-Johnny character is an optional script), so the menu can say so.
 	local installed, seen = {}, {}
@@ -8977,6 +9265,7 @@ local TuskController = require(script.TuskController)
 local WorldClient = require(script.WorldClient)
 local CharacterCard = require(script.UI.CharacterCard)
 local CombatUI = require(script.UI.CombatUI)
+local DefenseClient = require(script.DefenseClient)
 
 SettingsUI.init()
 HitFX.init()
@@ -8987,6 +9276,7 @@ TuskController.init()
 WorldClient.init()
 CharacterCard.init()
 CombatUI.init()
+DefenseClient.init()
 ]=] },
 	{ Service = "StarterPlayerScripts", Path = "SpinClient/CameraFX", Class = "ModuleScript", Source = [=[
 --[[
@@ -9162,6 +9452,303 @@ function CameraFX.impactFrame(tint)
 end
 
 return CameraFX
+]=] },
+	{ Service = "StarterPlayerScripts", Path = "SpinClient/DefenseClient", Class = "ModuleScript", Source = [=[
+--[[
+	DefenseClient  (StarterPlayerScripts.SpinClient.DefenseClient)
+
+	Block and Dash on the client, for every character:
+	  * input: hold F (controller L2) to block, Q (controller R2) to dash,
+	    on-screen buttons on mobile. Intents only: the server decides.
+	  * DASH: when the server grants it, this client moves its own character
+	    (smooth, and it replicates). Everyone sees a dust burst, afterimages
+	    and a dash pose (forward / back / left / right).
+	  * BLOCK: anyone blocking holds a guard pose with a blue shield in front.
+	  * PERFECT BLOCK: gold flash and "PERFECT!" on the defender, the attacker
+	    reels. GUARD BREAK: the shield shatters, "GUARD BREAK" and a stagger.
+]]
+
+local ContextActionService = game:GetService("ContextActionService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local Net = require(Shared.Net)
+local VFXLib = require(script.Parent.VFXLib)
+local CameraFX = require(script.Parent.CameraFX)
+local TuskVFX = require(script.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.TuskAnimation)
+local Fighters = require(script.Parent.Fighters)
+
+local DefenseClient = {}
+local player = Players.LocalPlayer
+local sounds = TuskConfig.Sounds
+local SHIELD = Color3.fromRGB(110, 180, 255)
+local SHIELD_LIGHT = Color3.fromRGB(210, 235, 255)
+local GOLD = Color3.fromRGB(255, 210, 80)
+
+local Request
+local blocking = {} -- [character] = { Shield, Previous hold }
+local blockHeld = false
+
+---------------------------------------------------------------------------
+-- Input
+---------------------------------------------------------------------------
+local function moveDirection()
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if humanoid and humanoid.MoveDirection.Magnitude > 0.1 then
+		return humanoid.MoveDirection
+	end
+	return root and root.CFrame.LookVector or Vector3.new(0, 0, -1)
+end
+
+local function onBlock(_, state)
+	if state == Enum.UserInputState.Begin then
+		blockHeld = true
+		Request:FireServer("Block", true)
+	elseif state == Enum.UserInputState.End or state == Enum.UserInputState.Cancel then
+		if blockHeld then
+			blockHeld = false
+			Request:FireServer("Block", false)
+		end
+	end
+	return Enum.ContextActionResult.Sink
+end
+
+local function onDashInput(_, state)
+	if state == Enum.UserInputState.Begin then
+		Request:FireServer("Dash", moveDirection())
+	end
+	return Enum.ContextActionResult.Sink
+end
+
+---------------------------------------------------------------------------
+-- Dash
+---------------------------------------------------------------------------
+local function dashPose(root, direction)
+	local look, right = root.CFrame.LookVector, root.CFrame.RightVector
+	local f, r = direction:Dot(look), direction:Dot(right)
+	if math.abs(f) >= math.abs(r) then
+		return f >= 0 and "DashF" or "DashB"
+	end
+	return r >= 0 and "DashR" or "DashL"
+end
+
+local function onDashFX(data)
+	local character = data.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	local dir = data.Direction
+	TuskAnimation.play(character, dashPose(root, dir))
+	VFXLib.burst(root.Position - Vector3.new(0, 2.6, 0), { Count = 12, Texture = VFXLib.Textures.Smoke, Color = Color3.fromRGB(215, 190, 150), LightEmission = 0, Speed = 14, Lifetime = 0.6, Spread = 60, Direction = -dir })
+	VFXLib.sound(sounds.Swing, root, 0.5, 0.8)
+	local steps = 4
+	for i = 1, steps do
+		task.delay(i * (data.Time or 0.2) / steps, function()
+			if root.Parent then
+				VFXLib.afterimage(root.CFrame, 2.2, SHIELD_LIGHT)
+			end
+		end)
+	end
+	if character ~= player.Character then
+		return
+	end
+	-- Our own character: move it ourselves (we own its physics).
+	local speed, time = data.Speed or 75, data.Time or 0.2
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	VFXLib.animate(time, function()
+		if not root.Parent or (humanoid and humanoid.Health <= 0) then
+			return
+		end
+		local v = root.AssemblyLinearVelocity
+		root.AssemblyLinearVelocity = Vector3.new(dir.X * speed, math.min(v.Y, 0), dir.Z * speed)
+	end, function()
+		if root.Parent then
+			local v = root.AssemblyLinearVelocity
+			root.AssemblyLinearVelocity = Vector3.new(dir.X * 12, v.Y, dir.Z * 12)
+		end
+	end)
+	CameraFX.fovPunch(5, 0.2)
+end
+
+---------------------------------------------------------------------------
+-- Block visuals
+---------------------------------------------------------------------------
+local function makeShield()
+	local m = Instance.new("Model")
+	m.Name = "BlockShield"
+	m.Parent = VFXLib.Folder
+	-- A blocky shield of glowing panes in front of the body.
+	for _, pane in ipairs({ { 0, 0, 3.2, 3.6 }, { -1.9, 0, 0.9, 3 }, { 1.9, 0, 0.9, 3 } }) do
+		local p = VFXLib.part({ Material = Enum.Material.ForceField, Color = SHIELD, Size = Vector3.new(pane[3], pane[4], 0.2), Transparency = 0.15 })
+		p.Parent = m
+		p:SetAttribute("Offset", CFrame.new(pane[1], pane[2], -1.9) * CFrame.Angles(0, pane[1] * -0.35, 0))
+	end
+	return m
+end
+
+local function placeShield(entry, root, t)
+	local meter = entry.Character:GetAttribute("BlockMeter") or (TuskConfig.Defense and TuskConfig.Defense.MaxMeter) or 100
+	local k = math.clamp(meter / ((TuskConfig.Defense and TuskConfig.Defense.MaxMeter) or 100), 0, 1)
+	for _, p in ipairs(entry.Shield:GetChildren()) do
+		p.CFrame = root.CFrame * p:GetAttribute("Offset") * CFrame.new(0, math.sin(t * 6) * 0.05, 0)
+		-- The shield reddens as the guard bar runs out.
+		p.Color = SHIELD:Lerp(Color3.fromRGB(255, 80, 70), 1 - k)
+	end
+end
+
+local function startBlock(character)
+	local entry = { Character = character, Shield = makeShield(), Previous = TuskAnimation.currentHold(character) }
+	blocking[character] = entry
+	TuskAnimation.hold(character, "BlockPose")
+	return entry
+end
+
+local function stopBlock(character, entry)
+	blocking[character] = nil
+	entry.Shield:Destroy()
+	TuskAnimation.stopHold(character, "BlockPose")
+	if entry.Previous and entry.Previous ~= "BlockPose" and character.Parent then
+		TuskAnimation.hold(character, entry.Previous) -- back to the character's stance
+	end
+end
+
+local function stepBlocks()
+	local t = os.clock()
+	local seen = {}
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if root and character:GetAttribute("Blocking") then
+			seen[character] = true
+			local entry = blocking[character] or startBlock(character)
+			placeShield(entry, root, t)
+		end
+	end
+	for character, entry in pairs(blocking) do
+		if not seen[character] then
+			stopBlock(character, entry)
+		end
+	end
+end
+
+local function popText(position, text, color)
+	local carrier = VFXLib.anchor(CFrame.new(position + Vector3.new(0, 3, 0)), 1)
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(220, 60)
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.Parent = carrier
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.Bangers
+	label.TextScaled = true
+	label.Text = text
+	label.TextColor3 = color
+	label.TextStrokeTransparency = 0
+	label.Parent = gui
+	local start = carrier.Position
+	VFXLib.animate(0.9, function(a)
+		carrier.Position = start + Vector3.new(0, a * 2, 0)
+		label.TextTransparency = math.max(0, (a - 0.6) / 0.4)
+		label.TextStrokeTransparency = label.TextTransparency
+		local pop = a < 0.12 and 1 + (0.12 - a) * 5 or 1
+		gui.Size = UDim2.fromOffset(220 * pop, 60 * pop)
+	end)
+end
+
+local function onParry(data)
+	local defender = data.Defender
+	local root = defender and defender:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	TuskAnimation.play(defender, "Parry")
+	local pos = (root.CFrame * CFrame.new(0, 0.5, -1.8)).Position
+	TuskVFX.CreateImpactStar(pos, { Size = 7, Rays = 10, Color = GOLD, Color2 = Color3.new(1, 1, 1), Duration = 0.3 })
+	VFXLib.burst(pos, { Count = 24, Color = GOLD, Speed = 40, Lifetime = 0.4 })
+	VFXLib.flash(pos, GOLD, 5, 20, 0.25)
+	TuskVFX.CreateRotationalShockwave(CFrame.lookAt(pos, pos + root.CFrame.LookVector) * CFrame.Angles(math.pi / 2, 0, 0), { Radius = 4, Layers = 2, Color = GOLD, Color2 = Color3.new(1, 1, 1), Particles = 0.5, Width = 0.2, Duration = 0.3 })
+	popText(root.Position, "PERFECT!", GOLD)
+	VFXLib.sound(sounds.Finisher, pos, 0.6, 1.4)
+	if data.Attacker then
+		TuskAnimation.play(data.Attacker, "GuardBreak")
+	end
+	if defender == player.Character or data.Attacker == player.Character then
+		CameraFX.impactFrame(GOLD)
+		CameraFX.shake(0.4, 0.25)
+	end
+end
+
+local function onGuardBreak(data)
+	local victim = data.Victim
+	local root = victim and victim:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	TuskAnimation.play(victim, "GuardBreak")
+	local pos = (root.CFrame * CFrame.new(0, 0.5, -1.8)).Position
+	-- The shield shatters into blue shards.
+	VFXLib.burst(pos, { Count = 30, Color = SHIELD, Speed = 35, Lifetime = 0.6, Acceleration = Vector3.new(0, -40, 0) })
+	VFXLib.burst(pos, { Count = 10, Color = SHIELD_LIGHT, Speed = 12, Lifetime = 0.25, Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.4), NumberSequenceKeypoint.new(1, 0) }) })
+	popText(root.Position, "GUARD BREAK", Color3.fromRGB(255, 90, 80))
+	VFXLib.sound(sounds.NailImpact, pos, 0.6, 0.7)
+	if victim == player.Character then
+		CameraFX.shake(0.6, 0.4)
+	end
+end
+
+---------------------------------------------------------------------------
+function DefenseClient.init()
+	Request = Net.get("TuskRequest")
+	local keys = TuskConfig.Keys
+	ContextActionService:BindAction("SpinBlock", onBlock, true, keys.Block.Keyboard, keys.Block.Gamepad)
+	ContextActionService:SetTitle("SpinBlock", "BLOCK")
+	ContextActionService:SetPosition("SpinBlock", UDim2.new(1, -170, 1, -70))
+	ContextActionService:BindAction("SpinDash", onDashInput, true, keys.Dash.Keyboard, keys.Dash.Gamepad)
+	ContextActionService:SetTitle("SpinDash", "DASH")
+	ContextActionService:SetPosition("SpinDash", UDim2.new(1, -95, 1, -165))
+	player.CharacterAdded:Connect(function()
+		blockHeld = false
+	end)
+	Net.get("TuskFX").OnClientEvent:Connect(function(name, data)
+		if name == "Dash" and typeof(data) == "table" then
+			onDashFX(data)
+		end
+	end)
+	Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+		if typeof(data) ~= "table" then
+			return
+		end
+		if name == "Parry" then
+			onParry(data)
+		elseif name == "GuardBreak" then
+			onGuardBreak(data)
+		end
+	end)
+	local acc = 0
+	RunService.RenderStepped:Connect(function(dt)
+		acc = acc + dt
+		for character, entry in pairs(blocking) do
+			local root = character:FindFirstChild("HumanoidRootPart")
+			if root then
+				placeShield(entry, root, os.clock())
+			end
+		end
+		if acc >= 0.1 then
+			acc = 0
+			stepBlocks()
+		end
+	end)
+end
+
+return DefenseClient
 ]=] },
 	{ Service = "StarterPlayerScripts", Path = "SpinClient/Fighters", Class = "ModuleScript", Source = [=[
 --[[
@@ -13824,6 +14411,13 @@ TuskAnimation.Poses = {
 	ClawRStrike = { Root = { -14, -24, 0, -0.2, 0.55 }, Waist = { -20, -28, 0 }, RightArm = { 36, 0, -36 }, RightElbow = { 14, 0, 0 }, LeftArm = { 52, 0, -26 }, LeftElbow = { 48, 0, 0 }, Neck = { 6, 18, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -36, 0, 0 }, LeftHip = { -14, 0, 0 } },
 	SlapCoil = { Root = { 0, 26, 0, -0.18 }, Waist = { 0, 30, 0 }, RightArm = { 110, 0, 100 }, RightElbow = { 40, 0, 0 }, LeftArm = { 20, 0, -34 }, Neck = { 0, -14, 0 }, RightKnee = { -22, 0, 0 }, LeftKnee = { -16, 0, 0 } },
 	SlapStrike = { Root = { 0, -32, 0, -0.12, 0.45 }, Waist = { 0, -40, 0 }, RightArm = { 86, -48, -14 }, RightElbow = { 6, 0, 0 }, LeftArm = { 24, 0, -34 }, Neck = { 0, 24, 0 }, LeftHip = { 22, 0, 0 }, LeftKnee = { -22, 0, 0 }, RightHip = { -10, 0, 0 } },
+	-- BLOCK AND DASH (every character)
+	BlockPose = { Root = { 0, 0, 0, -0.2 }, Waist = { -8, 0, 0 }, Neck = { -12, 0, 0 }, RightArm = { 95, 0, -38 }, RightElbow = { 105, 0, 0 }, LeftArm = { 95, 0, 38 }, LeftElbow = { 105, 0, 0 }, RightHip = { 18, 0, 0 }, RightKnee = { -24, 0, 0 }, LeftHip = { -6, 0, 0 }, LeftKnee = { -12, 0, 0 } },
+	DashFwd = { Root = { -24, 0, 0, -0.25, 0.2 }, Waist = { -18, 0, 0 }, Neck = { 18, 0, 0 }, RightArm = { -45, 0, 12 }, LeftArm = { -45, 0, -12 }, RightHip = { 55, 0, 0 }, RightKnee = { -70, 0, 0 }, LeftHip = { -25, 0, 0 }, LeftKnee = { -30, 0, 0 } },
+	DashBack = { Root = { 18, 0, 0, -0.2, -0.2 }, Waist = { 14, 0, 0 }, Neck = { -6, 0, 0 }, RightArm = { 50, 0, 30 }, LeftArm = { 50, 0, -30 }, RightHip = { -20, 0, 0 }, LeftHip = { 45, 0, 0 }, LeftKnee = { -60, 0, 0 } },
+	DashRight = { Root = { 0, 0, -22, -0.3 }, Waist = { 0, 0, -14 }, Neck = { 0, 0, 10 }, RightArm = { 20, 0, 70 }, LeftArm = { 40, 0, -20 }, LeftHip = { 0, 0, -30 }, RightKnee = { -40, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	ParryPose = { Root = { 6, 0, 0, -0.1, -0.15 }, Waist = { 12, 0, 0 }, RightArm = { 140, 0, -20 }, RightElbow = { 30, 0, 0 }, LeftArm = { 60, 0, 30 }, LeftElbow = { 50, 0, 0 }, Neck = { 6, 0, 0 } },
+	GuardBroken = { Root = { 14, 0, 0, -0.35, -0.3 }, Waist = { 22, 0, 0 }, Neck = { 28, 0, 0 }, RightArm = { 60, 0, 60 }, LeftArm = { 60, 0, -60 }, RightElbow = { 20, 0, 0 }, LeftElbow = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftKnee = { -30, 0, 0 } },
 	-- SANDMAN: a light-footed runner; knife-hand chops and spinning kicks.
 	SandStance = { Root = { 0, 10, 0, -0.18 }, Waist = { -8, 8, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, 18 }, RightElbow = { 70, 0, 0 }, LeftArm = { 55, 0, -22 }, LeftElbow = { 60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -8, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 	ChopCoil = { Root = { 0, 26, 0, -0.14 }, Waist = { 6, 30, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 60, 0, 0 }, LeftArm = { 60, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -14, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightKnee = { -12, 0, 0 } },
@@ -13875,6 +14469,7 @@ do
 	P.SlapStrikeL = mirror(P.SlapStrike)
 	P.ChopCoilL = mirror(P.ChopCoil)
 	P.ChopStrikeL = mirror(P.ChopStrike)
+	P.DashLeft = mirror(P.DashRight)
 end
 
 --[[
@@ -13931,6 +14526,14 @@ TuskAnimation.Actions = {
 	P_M1_2 = { { 0, "Slap" }, { 0.06, "SlapCoilL", "In" }, { 0.11, "SlapStrikeL", "Back", 4 }, { 0.16, "SlapStrikeL", "Linear" }, { 0.28, "SlapL", "Sine" } },
 	P_M1_3 = { { 0, "Rest" }, { 0.08, "SpitWind", "In" }, { 0.14, "Spit", "Snap", 5 }, { 0.19, "Spit", "Linear" }, { 0.32, "Spit", "Sine" } },
 	P_M1_4 = { { 0, "Rest" }, { 0.12, "FlyKickWind", "In" }, { 0.2, "FlyKick", "Snap", 7 }, { 0.26, "FlyKick", "Linear" }, { 0.45, "FlyKick", "Sine" }, { 0.58, "FlyKick" } },
+	-- BLOCK AND DASH
+	DashF = { { 0, "Rest" }, { 0.05, "DashFwd", "Snap", 2 }, { 0.22, "DashFwd", "Linear" }, { 0.32, "Rest", "Sine" } },
+	DashB = { { 0, "Rest" }, { 0.05, "DashBack", "Snap", 2 }, { 0.22, "DashBack", "Linear" }, { 0.32, "Rest", "Sine" } },
+	DashR = { { 0, "Rest" }, { 0.05, "DashRight", "Snap", 2 }, { 0.22, "DashRight", "Linear" }, { 0.32, "Rest", "Sine" } },
+	DashL = { { 0, "Rest" }, { 0.05, "DashLeft", "Snap", 2 }, { 0.22, "DashLeft", "Linear" }, { 0.32, "Rest", "Sine" } },
+	Parry = { { 0, "BlockPose" }, { 0.06, "ParryPose", "Snap", 4 }, { 0.3, "ParryPose", "Sine" } },
+	GuardBreak = { { 0, "BlockPose" }, { 0.08, "GuardBroken", "Snap", 6 }, { 0.8, "GuardBroken", "Linear" }, { 1.0, "Rest", "Sine" } },
+
 	-- SANDMAN
 	S_M1_1 = { { 0, "Rest" }, { 0.07, "ChopCoil", "In" }, { 0.12, "ChopStrike", "Back", 4 }, { 0.17, "ChopStrike", "Linear" }, { 0.3, "SandStance", "Sine" } },
 	S_M1_2 = { { 0, "ChopStrike" }, { 0.07, "ChopCoilL", "In" }, { 0.12, "ChopStrikeL", "Back", 4 }, { 0.17, "ChopStrikeL", "Linear" }, { 0.3, "SandStance", "Sine" } },
@@ -14238,6 +14841,11 @@ function TuskAnimation.hold(character, poseName)
 		blendTo(character, resolvePose(poseName), 0.25)
 	end
 	startIdle(character, s)
+end
+
+-- The pose currently held on a character (so a temporary hold can put it back).
+function TuskAnimation.currentHold(character)
+	return character and getState(character).Hold
 end
 
 function TuskAnimation.stopHold(character, poseName)
@@ -17195,6 +17803,10 @@ return CharacterCard
 	    catches up a moment later so big hits read. Fades after a few seconds.
 	  * DAMAGE EDGES: the screen edges flash red when you get hit, and pulse
 	    while your health is low.
+	  * GUARD BAR: under your character while you block (or while it
+	    refills); it turns red as it runs out and shows BROKEN after a
+	    guard break.
+	  * DASH / BLOCK chips (bottom right): the dash cooldown sweeps back.
 	Driven by the shared "Hit" event (CombatAdapter).
 ]]
 
@@ -17214,6 +17826,9 @@ local target -- the model shown in the bar
 local shownUntil = 0
 local fillValue, chunkValue = 1, 1
 local hurtFlash = 0
+local TuskConfig = require(Shared.TuskConfig)
+local guardGui, guardFill, guardText, chips
+local stepDefense -- (defined further down)
 
 local function corner(p, r)
 	local c = Instance.new("UICorner")
@@ -17374,10 +17989,136 @@ function CombatUI.step(dt)
 	for _, f in ipairs(edges) do
 		f.BackgroundTransparency = 1 - strength * 0.7
 	end
+	stepDefense()
+end
+
+local function chip(name, key, order)
+	local f = Instance.new("Frame")
+	f.Name = name
+	f.AnchorPoint = Vector2.new(1, 1)
+	f.Position = UDim2.new(1, -16, 1, -16 - order * 38)
+	f.Size = UDim2.fromOffset(112, 32)
+	f.BackgroundColor3 = DARK
+	f.BackgroundTransparency = 0.15
+	f.ClipsDescendants = true
+	f.Parent = gui
+	corner(f, 8)
+	local sweep = Instance.new("Frame")
+	sweep.Name = "Sweep"
+	sweep.BorderSizePixel = 0
+	sweep.Size = UDim2.fromScale(0, 1)
+	sweep.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+	sweep.BackgroundTransparency = 0.3
+	sweep.Parent = f
+	local keyLabel = Instance.new("TextLabel")
+	keyLabel.BackgroundColor3 = GOLD
+	keyLabel.Position = UDim2.fromOffset(5, 5)
+	keyLabel.Size = UDim2.fromOffset(22, 22)
+	keyLabel.Font = Enum.Font.GothamBlack
+	keyLabel.TextSize = 13
+	keyLabel.TextColor3 = DARK
+	keyLabel.Text = key
+	keyLabel.Parent = f
+	corner(keyLabel, 5)
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Position = UDim2.fromOffset(34, 0)
+	label.Size = UDim2.new(1, -38, 1, 0)
+	label.Font = Enum.Font.GothamBlack
+	label.TextSize = 13
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.Text = name
+	label.Parent = f
+	return { Frame = f, Sweep = sweep, Label = label, Name = name }
+end
+
+local function buildDefense()
+	local keys = TuskConfig.Keys
+	local function keyText(k)
+		local names = { One = "1", Two = "2", Three = "3" }
+		return k and (names[k.Name] or k.Name) or "?"
+	end
+	chips = {
+		Dash = chip("DASH", keyText(keys.Dash and keys.Dash.Keyboard), 1),
+		Block = chip("BLOCK", keyText(keys.Block and keys.Block.Keyboard), 0),
+	}
+	guardGui = Instance.new("BillboardGui")
+	guardGui.Name = "GuardBar"
+	guardGui.Size = UDim2.fromOffset(90, 12)
+	guardGui.StudsOffset = Vector3.new(0, -3.4, 0)
+	guardGui.AlwaysOnTop = true
+	guardGui.LightInfluence = 0
+	guardGui.Enabled = false
+	guardGui.Parent = gui
+	local back = Instance.new("Frame")
+	back.Size = UDim2.fromScale(1, 1)
+	back.BackgroundColor3 = DARK
+	back.BackgroundTransparency = 0.2
+	back.Parent = guardGui
+	corner(back, 6)
+	guardFill = Instance.new("Frame")
+	guardFill.Position = UDim2.fromOffset(2, 2)
+	guardFill.Size = UDim2.new(1, -4, 1, -4)
+	guardFill.BackgroundColor3 = Color3.fromRGB(110, 180, 255)
+	guardFill.Parent = back
+	corner(guardFill, 5)
+	guardText = Instance.new("TextLabel")
+	guardText.BackgroundTransparency = 1
+	guardText.Size = UDim2.fromScale(1, 1)
+	guardText.Font = Enum.Font.GothamBlack
+	guardText.TextSize = 9
+	guardText.TextColor3 = Color3.new(1, 1, 1)
+	guardText.TextStrokeTransparency = 0.4
+	guardText.Text = ""
+	guardText.Parent = back
+end
+
+function stepDefense()
+	if not chips then
+		return
+	end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local d = TuskConfig.Defense or {}
+	local t = workspace:GetServerTimeNow()
+	-- Dash chip: grey sweep while on cooldown.
+	local readyAt = character and character:GetAttribute("DashReadyAt") or 0
+	local left = readyAt - t
+	local dashChip = chips.Dash
+	if left > 0 then
+		dashChip.Sweep.Size = UDim2.fromScale(math.clamp(left / (d.DashCooldown or 2.2), 0, 1), 1)
+		dashChip.Label.Text = string.format("DASH %.1f", left)
+		dashChip.Label.TextColor3 = Color3.fromRGB(170, 170, 185)
+	else
+		dashChip.Sweep.Size = UDim2.fromScale(0, 1)
+		dashChip.Label.Text = "DASH"
+		dashChip.Label.TextColor3 = Color3.new(1, 1, 1)
+	end
+	-- Block chip + guard bar.
+	local blockingNow = character and character:GetAttribute("Blocking") == true
+	local broken = character and (character:GetAttribute("GuardBrokenUntil") or 0) > t
+	local meter = character and character:GetAttribute("BlockMeter")
+	local max = d.MaxMeter or 100
+	local blockChip = chips.Block
+	blockChip.Label.Text = broken and "BROKEN" or (blockingNow and "BLOCKING" or "BLOCK")
+	blockChip.Label.TextColor3 = broken and RED or (blockingNow and Color3.fromRGB(150, 205, 255) or Color3.new(1, 1, 1))
+	blockChip.Frame.BackgroundColor3 = blockingNow and Color3.fromRGB(30, 50, 90) or DARK
+	if root and (blockingNow or broken or (meter and meter < max)) then
+		guardGui.Adornee = root
+		guardGui.Enabled = true
+		local k = broken and 0 or math.clamp((meter or max) / max, 0, 1)
+		guardFill.Size = UDim2.new(k, k > 0 and -4 or 0, 1, -4)
+		guardFill.BackgroundColor3 = Color3.fromRGB(110, 180, 255):Lerp(RED, 1 - k)
+		guardText.Text = broken and "GUARD BROKEN" or ""
+	else
+		guardGui.Enabled = false
+	end
 end
 
 function CombatUI.init()
 	build()
+	buildDefense()
 	Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
 		if name ~= "Hit" or typeof(data) ~= "table" or not data.Victim then
 			return
@@ -18499,6 +19240,8 @@ end
 local DENY_TEXT = {
 	Cooldown = "ON COOLDOWN",
 	UltNotReady = "ULTIMATE NOT READY",
+	GuardBroken = "GUARD BROKEN: CAN'T BLOCK YET",
+	DashCooldown = "DASH ON COOLDOWN",
 	NotAvailable = "THAT CHARACTER ISN'T INSTALLED",
 	Locked = "ACT LOCKED",
 	SwitchCooldown = "WAIT BEFORE SWITCHING ACTS",

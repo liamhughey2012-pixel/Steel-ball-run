@@ -42,6 +42,7 @@ TuskService.Adapter = Adapter
 local states = {} -- [player] = state
 local rate = {}
 local actModules = {}
+local Defense -- DefenseService (block / dash), loaded in init
 local Sneak -- set in init (circular dependency)
 
 local RATE_LIMIT = 24 -- requests per second
@@ -265,6 +266,9 @@ end
 ---------------------------------------------------------------------------
 local function cleanupAct(player, state)
 	state.Life = state.Life + 1
+	if Defense then
+		Defense.release(player, state)
+	end
 	local module = state.Act and actModules[state.Act]
 	if module and module.Cleanup then
 		pcall(module.Cleanup, TuskService, player, state)
@@ -425,6 +429,18 @@ local function onRequest(player, action, a, b, c)
 	if state.Burrowed then
 		return
 	end
+	-- Block and Dash work for every character.
+	if action == "Block" then
+		Defense.block(player, state, a == true)
+		return
+	elseif action == "Dash" then
+		Defense.dash(player, state, a)
+		return
+	end
+	-- Attacking drops the block.
+	if action == "M1" or action == "Ultimate" or (action == "Ability" and b ~= "Release") then
+		Defense.release(player, state)
+	end
 
 	-- Releasing a held ability is allowed even mid-lock; everything else needs a free player.
 	if action == "Ability" and b == "Release" then
@@ -492,6 +508,9 @@ local function onCharacter(player, character)
 	character:GetAttributeChangedSignal(Adapter.Settings.StunAttribute):Connect(function()
 		if not Adapter.isStunned(character) or state.Character ~= character then
 			return
+		end
+		if Defense then
+			Defense.release(player, state) -- a stun knocks you out of your block
 		end
 		if state.Charging then
 			local module = state.Act and actModules[state.Act]
@@ -592,6 +611,9 @@ function TuskService.init()
 	end
 	Sneak = require(script.Parent.TuskSneakService)
 	Sneak.init(TuskService)
+	Defense = require(script.Parent.DefenseService)
+	Defense.init(TuskService)
+	TuskService.Defense = Defense
 	-- Tell every client which characters this server can actually play (each
 	-- non-Johnny character is an optional script), so the menu can say so.
 	local installed, seen = {}, {}

@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `StandBots` (capitals matter) |
 
-**What it does:** Enemy NPCs that fight you with a Stand. Each one plays a real character (Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman: whichever are installed) through exactly the same move code as players, so their M1s, abilities and ultimates hit, stun and look the same. they're scattered round the map (TuskConfig.StandBots.Spots), chase any player who comes within AggroRange and walk back to their spot when the player gets away each respawn picks a new free spot, so they move around over time M1 combo up close, abilities on cooldown, ultimate when their meter is full hold abilities are charged and released automatically they respawn RespawnTime seconds after dying, as a random character Settings: TuskConfig.StandBots (Enabled = false turns them off). Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
+**What it does:** Enemy NPCs that fight you with a Stand. Each one plays a real character (Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman: whichever are installed) through exactly the same move code as players, so their M1s, abilities and ultimates hit, stun and look the same. they're scattered round the map (TuskConfig.StandBots.Spots), chase any player who comes within AggroRange and walk back to their spot when the player gets away each respawn picks a new free spot, so they move around over time M1 combo up close, abilities on cooldown, ultimate when their meter is full hold abilities are charged and released automatically they block now and then, dash in to close the gap, and dash away when hurt they respawn RespawnTime seconds after dying, as a random character Settings: TuskConfig.StandBots (Enabled = false turns them off). Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -37,6 +37,7 @@ Back to [[Where To Put Code]]
 	  * each respawn picks a new free spot, so they move around over time
 	  * M1 combo up close, abilities on cooldown, ultimate when their meter is full
 	  * hold abilities are charged and released automatically
+	  * they block now and then, dash in to close the gap, and dash away when hurt
 	  * they respawn RespawnTime seconds after dying, as a random character
 	Settings: TuskConfig.StandBots (Enabled = false turns them off).
 	Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
@@ -272,8 +273,33 @@ local function think(bot, now)
 	else
 		humanoid:MoveTo(root.Position)
 	end
+	local Defense = S.Defense
+	-- Holding a block: wait it out.
+	if Defense and model:GetAttribute("Blocking") then
+		if now >= (bot.BlockUntil or 0) then
+			Defense.block(bot.Player, state, false)
+		end
+		return
+	end
 	if not S.Adapter.canAct(bot.Player) or S.isBusy(state) or state.Charging then
 		return
+	end
+	if Defense then
+		local hurt = humanoid.Health < humanoid.MaxHealth * 0.35
+		-- Close in with a dash, or dash away when hurt.
+		if dist > 14 and dist < 30 and math.random() < (cfg.DashChance or 0.06) then
+			Defense.dash(bot.Player, state, tr.Position - root.Position)
+			return
+		elseif hurt and dist < 8 and math.random() < (cfg.DashChance or 0.06) then
+			Defense.dash(bot.Player, state, root.Position - tr.Position)
+			return
+		end
+		-- Block now and then when someone's right in front of them.
+		if dist < reach + 2 and math.random() < (cfg.BlockChance or 0.05) then
+			bot.BlockUntil = now + 0.4 + math.random() * 0.5
+			Defense.block(bot.Player, state, true)
+			return
+		end
 	end
 	-- Face the target and attack.
 	if (flatTarget - root.Position).Magnitude > 0.5 then

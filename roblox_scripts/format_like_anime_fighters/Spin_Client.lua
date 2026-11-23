@@ -1839,6 +1839,10 @@ __modules["CombatUI"] = function()
 	    catches up a moment later so big hits read. Fades after a few seconds.
 	  * DAMAGE EDGES: the screen edges flash red when you get hit, and pulse
 	    while your health is low.
+	  * GUARD BAR: under your character while you block (or while it
+	    refills); it turns red as it runs out and shows BROKEN after a
+	    guard break.
+	  * DASH / BLOCK chips (bottom right): the dash cooldown sweeps back.
 	Driven by the shared "Hit" event (CombatAdapter).
 ]]
 
@@ -1858,6 +1862,9 @@ local target -- the model shown in the bar
 local shownUntil = 0
 local fillValue, chunkValue = 1, 1
 local hurtFlash = 0
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local guardGui, guardFill, guardText, chips
+local stepDefense -- (defined further down)
 
 local function corner(p, r)
 	local c = Instance.new("UICorner")
@@ -2018,10 +2025,136 @@ function CombatUI.step(dt)
 	for _, f in ipairs(edges) do
 		f.BackgroundTransparency = 1 - strength * 0.7
 	end
+	stepDefense()
+end
+
+local function chip(name, key, order)
+	local f = Instance.new("Frame")
+	f.Name = name
+	f.AnchorPoint = Vector2.new(1, 1)
+	f.Position = UDim2.new(1, -16, 1, -16 - order * 38)
+	f.Size = UDim2.fromOffset(112, 32)
+	f.BackgroundColor3 = DARK
+	f.BackgroundTransparency = 0.15
+	f.ClipsDescendants = true
+	f.Parent = gui
+	corner(f, 8)
+	local sweep = Instance.new("Frame")
+	sweep.Name = "Sweep"
+	sweep.BorderSizePixel = 0
+	sweep.Size = UDim2.fromScale(0, 1)
+	sweep.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+	sweep.BackgroundTransparency = 0.3
+	sweep.Parent = f
+	local keyLabel = Instance.new("TextLabel")
+	keyLabel.BackgroundColor3 = GOLD
+	keyLabel.Position = UDim2.fromOffset(5, 5)
+	keyLabel.Size = UDim2.fromOffset(22, 22)
+	keyLabel.Font = Enum.Font.GothamBlack
+	keyLabel.TextSize = 13
+	keyLabel.TextColor3 = DARK
+	keyLabel.Text = key
+	keyLabel.Parent = f
+	corner(keyLabel, 5)
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Position = UDim2.fromOffset(34, 0)
+	label.Size = UDim2.new(1, -38, 1, 0)
+	label.Font = Enum.Font.GothamBlack
+	label.TextSize = 13
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.Text = name
+	label.Parent = f
+	return { Frame = f, Sweep = sweep, Label = label, Name = name }
+end
+
+local function buildDefense()
+	local keys = TuskConfig.Keys
+	local function keyText(k)
+		local names = { One = "1", Two = "2", Three = "3" }
+		return k and (names[k.Name] or k.Name) or "?"
+	end
+	chips = {
+		Dash = chip("DASH", keyText(keys.Dash and keys.Dash.Keyboard), 1),
+		Block = chip("BLOCK", keyText(keys.Block and keys.Block.Keyboard), 0),
+	}
+	guardGui = Instance.new("BillboardGui")
+	guardGui.Name = "GuardBar"
+	guardGui.Size = UDim2.fromOffset(90, 12)
+	guardGui.StudsOffset = Vector3.new(0, -3.4, 0)
+	guardGui.AlwaysOnTop = true
+	guardGui.LightInfluence = 0
+	guardGui.Enabled = false
+	guardGui.Parent = gui
+	local back = Instance.new("Frame")
+	back.Size = UDim2.fromScale(1, 1)
+	back.BackgroundColor3 = DARK
+	back.BackgroundTransparency = 0.2
+	back.Parent = guardGui
+	corner(back, 6)
+	guardFill = Instance.new("Frame")
+	guardFill.Position = UDim2.fromOffset(2, 2)
+	guardFill.Size = UDim2.new(1, -4, 1, -4)
+	guardFill.BackgroundColor3 = Color3.fromRGB(110, 180, 255)
+	guardFill.Parent = back
+	corner(guardFill, 5)
+	guardText = Instance.new("TextLabel")
+	guardText.BackgroundTransparency = 1
+	guardText.Size = UDim2.fromScale(1, 1)
+	guardText.Font = Enum.Font.GothamBlack
+	guardText.TextSize = 9
+	guardText.TextColor3 = Color3.new(1, 1, 1)
+	guardText.TextStrokeTransparency = 0.4
+	guardText.Text = ""
+	guardText.Parent = back
+end
+
+function stepDefense()
+	if not chips then
+		return
+	end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local d = TuskConfig.Defense or {}
+	local t = workspace:GetServerTimeNow()
+	-- Dash chip: grey sweep while on cooldown.
+	local readyAt = character and character:GetAttribute("DashReadyAt") or 0
+	local left = readyAt - t
+	local dashChip = chips.Dash
+	if left > 0 then
+		dashChip.Sweep.Size = UDim2.fromScale(math.clamp(left / (d.DashCooldown or 2.2), 0, 1), 1)
+		dashChip.Label.Text = string.format("DASH %.1f", left)
+		dashChip.Label.TextColor3 = Color3.fromRGB(170, 170, 185)
+	else
+		dashChip.Sweep.Size = UDim2.fromScale(0, 1)
+		dashChip.Label.Text = "DASH"
+		dashChip.Label.TextColor3 = Color3.new(1, 1, 1)
+	end
+	-- Block chip + guard bar.
+	local blockingNow = character and character:GetAttribute("Blocking") == true
+	local broken = character and (character:GetAttribute("GuardBrokenUntil") or 0) > t
+	local meter = character and character:GetAttribute("BlockMeter")
+	local max = d.MaxMeter or 100
+	local blockChip = chips.Block
+	blockChip.Label.Text = broken and "BROKEN" or (blockingNow and "BLOCKING" or "BLOCK")
+	blockChip.Label.TextColor3 = broken and RED or (blockingNow and Color3.fromRGB(150, 205, 255) or Color3.new(1, 1, 1))
+	blockChip.Frame.BackgroundColor3 = blockingNow and Color3.fromRGB(30, 50, 90) or DARK
+	if root and (blockingNow or broken or (meter and meter < max)) then
+		guardGui.Adornee = root
+		guardGui.Enabled = true
+		local k = broken and 0 or math.clamp((meter or max) / max, 0, 1)
+		guardFill.Size = UDim2.new(k, k > 0 and -4 or 0, 1, -4)
+		guardFill.BackgroundColor3 = Color3.fromRGB(110, 180, 255):Lerp(RED, 1 - k)
+		guardText.Text = broken and "GUARD BROKEN" or ""
+	else
+		guardGui.Enabled = false
+	end
 end
 
 function CombatUI.init()
 	build()
+	buildDefense()
 	Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
 		if name ~= "Hit" or typeof(data) ~= "table" or not data.Victim then
 			return
@@ -2037,6 +2170,307 @@ function CombatUI.init()
 end
 
 return CombatUI
+end
+
+-- ======================================================================
+-- MODULE: DefenseClient
+-- ======================================================================
+__modules["DefenseClient"] = function()
+--[[
+	DefenseClient  (StarterPlayerScripts.SpinClient.DefenseClient)
+
+	Block and Dash on the client, for every character:
+	  * input: hold F (controller L2) to block, Q (controller R2) to dash,
+	    on-screen buttons on mobile. Intents only: the server decides.
+	  * DASH: when the server grants it, this client moves its own character
+	    (smooth, and it replicates). Everyone sees a dust burst, afterimages
+	    and a dash pose (forward / back / left / right).
+	  * BLOCK: anyone blocking holds a guard pose with a blue shield in front.
+	  * PERFECT BLOCK: gold flash and "PERFECT!" on the defender, the attacker
+	    reels. GUARD BREAK: the shield shatters, "GUARD BREAK" and a stagger.
+]]
+
+local ContextActionService = game:GetService("ContextActionService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Shared = nil -- (bundled: modules are inlined)
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local Net = __require("Net")
+local VFXLib = __require("VFXLib")
+local CameraFX = __require("CameraFX")
+local TuskVFX = __require("TuskVFX")
+local TuskAnimation = __require("TuskAnimation")
+local Fighters = __require("Fighters")
+
+local DefenseClient = {}
+local player = Players.LocalPlayer
+local sounds = TuskConfig.Sounds
+local SHIELD = Color3.fromRGB(110, 180, 255)
+local SHIELD_LIGHT = Color3.fromRGB(210, 235, 255)
+local GOLD = Color3.fromRGB(255, 210, 80)
+
+local Request
+local blocking = {} -- [character] = { Shield, Previous hold }
+local blockHeld = false
+
+---------------------------------------------------------------------------
+-- Input
+---------------------------------------------------------------------------
+local function moveDirection()
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if humanoid and humanoid.MoveDirection.Magnitude > 0.1 then
+		return humanoid.MoveDirection
+	end
+	return root and root.CFrame.LookVector or Vector3.new(0, 0, -1)
+end
+
+local function onBlock(_, state)
+	if state == Enum.UserInputState.Begin then
+		blockHeld = true
+		Request:FireServer("Block", true)
+	elseif state == Enum.UserInputState.End or state == Enum.UserInputState.Cancel then
+		if blockHeld then
+			blockHeld = false
+			Request:FireServer("Block", false)
+		end
+	end
+	return Enum.ContextActionResult.Sink
+end
+
+local function onDashInput(_, state)
+	if state == Enum.UserInputState.Begin then
+		Request:FireServer("Dash", moveDirection())
+	end
+	return Enum.ContextActionResult.Sink
+end
+
+---------------------------------------------------------------------------
+-- Dash
+---------------------------------------------------------------------------
+local function dashPose(root, direction)
+	local look, right = root.CFrame.LookVector, root.CFrame.RightVector
+	local f, r = direction:Dot(look), direction:Dot(right)
+	if math.abs(f) >= math.abs(r) then
+		return f >= 0 and "DashF" or "DashB"
+	end
+	return r >= 0 and "DashR" or "DashL"
+end
+
+local function onDashFX(data)
+	local character = data.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	local dir = data.Direction
+	TuskAnimation.play(character, dashPose(root, dir))
+	VFXLib.burst(root.Position - Vector3.new(0, 2.6, 0), { Count = 12, Texture = VFXLib.Textures.Smoke, Color = Color3.fromRGB(215, 190, 150), LightEmission = 0, Speed = 14, Lifetime = 0.6, Spread = 60, Direction = -dir })
+	VFXLib.sound(sounds.Swing, root, 0.5, 0.8)
+	local steps = 4
+	for i = 1, steps do
+		task.delay(i * (data.Time or 0.2) / steps, function()
+			if root.Parent then
+				VFXLib.afterimage(root.CFrame, 2.2, SHIELD_LIGHT)
+			end
+		end)
+	end
+	if character ~= player.Character then
+		return
+	end
+	-- Our own character: move it ourselves (we own its physics).
+	local speed, time = data.Speed or 75, data.Time or 0.2
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	VFXLib.animate(time, function()
+		if not root.Parent or (humanoid and humanoid.Health <= 0) then
+			return
+		end
+		local v = root.AssemblyLinearVelocity
+		root.AssemblyLinearVelocity = Vector3.new(dir.X * speed, math.min(v.Y, 0), dir.Z * speed)
+	end, function()
+		if root.Parent then
+			local v = root.AssemblyLinearVelocity
+			root.AssemblyLinearVelocity = Vector3.new(dir.X * 12, v.Y, dir.Z * 12)
+		end
+	end)
+	CameraFX.fovPunch(5, 0.2)
+end
+
+---------------------------------------------------------------------------
+-- Block visuals
+---------------------------------------------------------------------------
+local function makeShield()
+	local m = Instance.new("Model")
+	m.Name = "BlockShield"
+	m.Parent = VFXLib.Folder
+	-- A blocky shield of glowing panes in front of the body.
+	for _, pane in ipairs({ { 0, 0, 3.2, 3.6 }, { -1.9, 0, 0.9, 3 }, { 1.9, 0, 0.9, 3 } }) do
+		local p = VFXLib.part({ Material = Enum.Material.ForceField, Color = SHIELD, Size = Vector3.new(pane[3], pane[4], 0.2), Transparency = 0.15 })
+		p.Parent = m
+		p:SetAttribute("Offset", CFrame.new(pane[1], pane[2], -1.9) * CFrame.Angles(0, pane[1] * -0.35, 0))
+	end
+	return m
+end
+
+local function placeShield(entry, root, t)
+	local meter = entry.Character:GetAttribute("BlockMeter") or (TuskConfig.Defense and TuskConfig.Defense.MaxMeter) or 100
+	local k = math.clamp(meter / ((TuskConfig.Defense and TuskConfig.Defense.MaxMeter) or 100), 0, 1)
+	for _, p in ipairs(entry.Shield:GetChildren()) do
+		p.CFrame = root.CFrame * p:GetAttribute("Offset") * CFrame.new(0, math.sin(t * 6) * 0.05, 0)
+		-- The shield reddens as the guard bar runs out.
+		p.Color = SHIELD:Lerp(Color3.fromRGB(255, 80, 70), 1 - k)
+	end
+end
+
+local function startBlock(character)
+	local entry = { Character = character, Shield = makeShield(), Previous = TuskAnimation.currentHold(character) }
+	blocking[character] = entry
+	TuskAnimation.hold(character, "BlockPose")
+	return entry
+end
+
+local function stopBlock(character, entry)
+	blocking[character] = nil
+	entry.Shield:Destroy()
+	TuskAnimation.stopHold(character, "BlockPose")
+	if entry.Previous and entry.Previous ~= "BlockPose" and character.Parent then
+		TuskAnimation.hold(character, entry.Previous) -- back to the character's stance
+	end
+end
+
+local function stepBlocks()
+	local t = os.clock()
+	local seen = {}
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if root and character:GetAttribute("Blocking") then
+			seen[character] = true
+			local entry = blocking[character] or startBlock(character)
+			placeShield(entry, root, t)
+		end
+	end
+	for character, entry in pairs(blocking) do
+		if not seen[character] then
+			stopBlock(character, entry)
+		end
+	end
+end
+
+local function popText(position, text, color)
+	local carrier = VFXLib.anchor(CFrame.new(position + Vector3.new(0, 3, 0)), 1)
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(220, 60)
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.Parent = carrier
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.Bangers
+	label.TextScaled = true
+	label.Text = text
+	label.TextColor3 = color
+	label.TextStrokeTransparency = 0
+	label.Parent = gui
+	local start = carrier.Position
+	VFXLib.animate(0.9, function(a)
+		carrier.Position = start + Vector3.new(0, a * 2, 0)
+		label.TextTransparency = math.max(0, (a - 0.6) / 0.4)
+		label.TextStrokeTransparency = label.TextTransparency
+		local pop = a < 0.12 and 1 + (0.12 - a) * 5 or 1
+		gui.Size = UDim2.fromOffset(220 * pop, 60 * pop)
+	end)
+end
+
+local function onParry(data)
+	local defender = data.Defender
+	local root = defender and defender:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	TuskAnimation.play(defender, "Parry")
+	local pos = (root.CFrame * CFrame.new(0, 0.5, -1.8)).Position
+	TuskVFX.CreateImpactStar(pos, { Size = 7, Rays = 10, Color = GOLD, Color2 = Color3.new(1, 1, 1), Duration = 0.3 })
+	VFXLib.burst(pos, { Count = 24, Color = GOLD, Speed = 40, Lifetime = 0.4 })
+	VFXLib.flash(pos, GOLD, 5, 20, 0.25)
+	TuskVFX.CreateRotationalShockwave(CFrame.lookAt(pos, pos + root.CFrame.LookVector) * CFrame.Angles(math.pi / 2, 0, 0), { Radius = 4, Layers = 2, Color = GOLD, Color2 = Color3.new(1, 1, 1), Particles = 0.5, Width = 0.2, Duration = 0.3 })
+	popText(root.Position, "PERFECT!", GOLD)
+	VFXLib.sound(sounds.Finisher, pos, 0.6, 1.4)
+	if data.Attacker then
+		TuskAnimation.play(data.Attacker, "GuardBreak")
+	end
+	if defender == player.Character or data.Attacker == player.Character then
+		CameraFX.impactFrame(GOLD)
+		CameraFX.shake(0.4, 0.25)
+	end
+end
+
+local function onGuardBreak(data)
+	local victim = data.Victim
+	local root = victim and victim:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	TuskAnimation.play(victim, "GuardBreak")
+	local pos = (root.CFrame * CFrame.new(0, 0.5, -1.8)).Position
+	-- The shield shatters into blue shards.
+	VFXLib.burst(pos, { Count = 30, Color = SHIELD, Speed = 35, Lifetime = 0.6, Acceleration = Vector3.new(0, -40, 0) })
+	VFXLib.burst(pos, { Count = 10, Color = SHIELD_LIGHT, Speed = 12, Lifetime = 0.25, Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.4), NumberSequenceKeypoint.new(1, 0) }) })
+	popText(root.Position, "GUARD BREAK", Color3.fromRGB(255, 90, 80))
+	VFXLib.sound(sounds.NailImpact, pos, 0.6, 0.7)
+	if victim == player.Character then
+		CameraFX.shake(0.6, 0.4)
+	end
+end
+
+---------------------------------------------------------------------------
+function DefenseClient.init()
+	Request = Net.get("TuskRequest")
+	local keys = TuskConfig.Keys
+	ContextActionService:BindAction("SpinBlock", onBlock, true, keys.Block.Keyboard, keys.Block.Gamepad)
+	ContextActionService:SetTitle("SpinBlock", "BLOCK")
+	ContextActionService:SetPosition("SpinBlock", UDim2.new(1, -170, 1, -70))
+	ContextActionService:BindAction("SpinDash", onDashInput, true, keys.Dash.Keyboard, keys.Dash.Gamepad)
+	ContextActionService:SetTitle("SpinDash", "DASH")
+	ContextActionService:SetPosition("SpinDash", UDim2.new(1, -95, 1, -165))
+	player.CharacterAdded:Connect(function()
+		blockHeld = false
+	end)
+	Net.get("TuskFX").OnClientEvent:Connect(function(name, data)
+		if name == "Dash" and typeof(data) == "table" then
+			onDashFX(data)
+		end
+	end)
+	Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+		if typeof(data) ~= "table" then
+			return
+		end
+		if name == "Parry" then
+			onParry(data)
+		elseif name == "GuardBreak" then
+			onGuardBreak(data)
+		end
+	end)
+	local acc = 0
+	RunService.RenderStepped:Connect(function(dt)
+		acc = acc + dt
+		for character, entry in pairs(blocking) do
+			local root = character:FindFirstChild("HumanoidRootPart")
+			if root then
+				placeShield(entry, root, os.clock())
+			end
+		end
+		if acc >= 0.1 then
+			acc = 0
+			stepBlocks()
+		end
+	end)
+end
+
+return DefenseClient
 end
 
 -- ======================================================================
@@ -3077,6 +3511,13 @@ TuskAnimation.Poses = {
 	ClawRStrike = { Root = { -14, -24, 0, -0.2, 0.55 }, Waist = { -20, -28, 0 }, RightArm = { 36, 0, -36 }, RightElbow = { 14, 0, 0 }, LeftArm = { 52, 0, -26 }, LeftElbow = { 48, 0, 0 }, Neck = { 6, 18, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -36, 0, 0 }, LeftHip = { -14, 0, 0 } },
 	SlapCoil = { Root = { 0, 26, 0, -0.18 }, Waist = { 0, 30, 0 }, RightArm = { 110, 0, 100 }, RightElbow = { 40, 0, 0 }, LeftArm = { 20, 0, -34 }, Neck = { 0, -14, 0 }, RightKnee = { -22, 0, 0 }, LeftKnee = { -16, 0, 0 } },
 	SlapStrike = { Root = { 0, -32, 0, -0.12, 0.45 }, Waist = { 0, -40, 0 }, RightArm = { 86, -48, -14 }, RightElbow = { 6, 0, 0 }, LeftArm = { 24, 0, -34 }, Neck = { 0, 24, 0 }, LeftHip = { 22, 0, 0 }, LeftKnee = { -22, 0, 0 }, RightHip = { -10, 0, 0 } },
+	-- BLOCK AND DASH (every character)
+	BlockPose = { Root = { 0, 0, 0, -0.2 }, Waist = { -8, 0, 0 }, Neck = { -12, 0, 0 }, RightArm = { 95, 0, -38 }, RightElbow = { 105, 0, 0 }, LeftArm = { 95, 0, 38 }, LeftElbow = { 105, 0, 0 }, RightHip = { 18, 0, 0 }, RightKnee = { -24, 0, 0 }, LeftHip = { -6, 0, 0 }, LeftKnee = { -12, 0, 0 } },
+	DashFwd = { Root = { -24, 0, 0, -0.25, 0.2 }, Waist = { -18, 0, 0 }, Neck = { 18, 0, 0 }, RightArm = { -45, 0, 12 }, LeftArm = { -45, 0, -12 }, RightHip = { 55, 0, 0 }, RightKnee = { -70, 0, 0 }, LeftHip = { -25, 0, 0 }, LeftKnee = { -30, 0, 0 } },
+	DashBack = { Root = { 18, 0, 0, -0.2, -0.2 }, Waist = { 14, 0, 0 }, Neck = { -6, 0, 0 }, RightArm = { 50, 0, 30 }, LeftArm = { 50, 0, -30 }, RightHip = { -20, 0, 0 }, LeftHip = { 45, 0, 0 }, LeftKnee = { -60, 0, 0 } },
+	DashRight = { Root = { 0, 0, -22, -0.3 }, Waist = { 0, 0, -14 }, Neck = { 0, 0, 10 }, RightArm = { 20, 0, 70 }, LeftArm = { 40, 0, -20 }, LeftHip = { 0, 0, -30 }, RightKnee = { -40, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	ParryPose = { Root = { 6, 0, 0, -0.1, -0.15 }, Waist = { 12, 0, 0 }, RightArm = { 140, 0, -20 }, RightElbow = { 30, 0, 0 }, LeftArm = { 60, 0, 30 }, LeftElbow = { 50, 0, 0 }, Neck = { 6, 0, 0 } },
+	GuardBroken = { Root = { 14, 0, 0, -0.35, -0.3 }, Waist = { 22, 0, 0 }, Neck = { 28, 0, 0 }, RightArm = { 60, 0, 60 }, LeftArm = { 60, 0, -60 }, RightElbow = { 20, 0, 0 }, LeftElbow = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftKnee = { -30, 0, 0 } },
 	-- SANDMAN: a light-footed runner; knife-hand chops and spinning kicks.
 	SandStance = { Root = { 0, 10, 0, -0.18 }, Waist = { -8, 8, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, 18 }, RightElbow = { 70, 0, 0 }, LeftArm = { 55, 0, -22 }, LeftElbow = { 60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -8, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 	ChopCoil = { Root = { 0, 26, 0, -0.14 }, Waist = { 6, 30, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 60, 0, 0 }, LeftArm = { 60, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -14, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightKnee = { -12, 0, 0 } },
@@ -3128,6 +3569,7 @@ do
 	P.SlapStrikeL = mirror(P.SlapStrike)
 	P.ChopCoilL = mirror(P.ChopCoil)
 	P.ChopStrikeL = mirror(P.ChopStrike)
+	P.DashLeft = mirror(P.DashRight)
 end
 
 --[[
@@ -3184,6 +3626,14 @@ TuskAnimation.Actions = {
 	P_M1_2 = { { 0, "Slap" }, { 0.06, "SlapCoilL", "In" }, { 0.11, "SlapStrikeL", "Back", 4 }, { 0.16, "SlapStrikeL", "Linear" }, { 0.28, "SlapL", "Sine" } },
 	P_M1_3 = { { 0, "Rest" }, { 0.08, "SpitWind", "In" }, { 0.14, "Spit", "Snap", 5 }, { 0.19, "Spit", "Linear" }, { 0.32, "Spit", "Sine" } },
 	P_M1_4 = { { 0, "Rest" }, { 0.12, "FlyKickWind", "In" }, { 0.2, "FlyKick", "Snap", 7 }, { 0.26, "FlyKick", "Linear" }, { 0.45, "FlyKick", "Sine" }, { 0.58, "FlyKick" } },
+	-- BLOCK AND DASH
+	DashF = { { 0, "Rest" }, { 0.05, "DashFwd", "Snap", 2 }, { 0.22, "DashFwd", "Linear" }, { 0.32, "Rest", "Sine" } },
+	DashB = { { 0, "Rest" }, { 0.05, "DashBack", "Snap", 2 }, { 0.22, "DashBack", "Linear" }, { 0.32, "Rest", "Sine" } },
+	DashR = { { 0, "Rest" }, { 0.05, "DashRight", "Snap", 2 }, { 0.22, "DashRight", "Linear" }, { 0.32, "Rest", "Sine" } },
+	DashL = { { 0, "Rest" }, { 0.05, "DashLeft", "Snap", 2 }, { 0.22, "DashLeft", "Linear" }, { 0.32, "Rest", "Sine" } },
+	Parry = { { 0, "BlockPose" }, { 0.06, "ParryPose", "Snap", 4 }, { 0.3, "ParryPose", "Sine" } },
+	GuardBreak = { { 0, "BlockPose" }, { 0.08, "GuardBroken", "Snap", 6 }, { 0.8, "GuardBroken", "Linear" }, { 1.0, "Rest", "Sine" } },
+
 	-- SANDMAN
 	S_M1_1 = { { 0, "Rest" }, { 0.07, "ChopCoil", "In" }, { 0.12, "ChopStrike", "Back", 4 }, { 0.17, "ChopStrike", "Linear" }, { 0.3, "SandStance", "Sine" } },
 	S_M1_2 = { { 0, "ChopStrike" }, { 0.07, "ChopCoilL", "In" }, { 0.12, "ChopStrikeL", "Back", 4 }, { 0.17, "ChopStrikeL", "Linear" }, { 0.3, "SandStance", "Sine" } },
@@ -3491,6 +3941,11 @@ function TuskAnimation.hold(character, poseName)
 		blendTo(character, resolvePose(poseName), 0.25)
 	end
 	startIdle(character, s)
+end
+
+-- The pose currently held on a character (so a temporary hold can put it back).
+function TuskAnimation.currentHold(character)
+	return character and getState(character).Hold
 end
 
 function TuskAnimation.stopHold(character, poseName)
@@ -6777,6 +7232,8 @@ end
 local DENY_TEXT = {
 	Cooldown = "ON COOLDOWN",
 	UltNotReady = "ULTIMATE NOT READY",
+	GuardBroken = "GUARD BROKEN: CAN'T BLOCK YET",
+	DashCooldown = "DASH ON COOLDOWN",
 	NotAvailable = "THAT CHARACTER ISN'T INSTALLED",
 	Locked = "ACT LOCKED",
 	SwitchCooldown = "WAIT BEFORE SWITCHING ACTS",
@@ -8836,3 +9293,4 @@ __require("TuskController").init()
 __require("WorldClient").init()
 __require("CharacterCard").init()
 __require("CombatUI").init()
+__require("DefenseClient").init()

@@ -1031,6 +1031,8 @@ end
 local DENY_TEXT = {
 	Cooldown = "ON COOLDOWN",
 	UltNotReady = "ULTIMATE NOT READY",
+	GuardBroken = "GUARD BROKEN: CAN'T BLOCK YET",
+	DashCooldown = "DASH ON COOLDOWN",
 	NotAvailable = "THAT CHARACTER ISN'T INSTALLED",
 	Locked = "ACT LOCKED",
 	SwitchCooldown = "WAIT BEFORE SWITCHING ACTS",

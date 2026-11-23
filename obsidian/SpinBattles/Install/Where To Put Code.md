@@ -68,59 +68,61 @@ Damage, cooldowns, projectiles, Tusk, Sneak, NPCs. Players can't see or change t
 |---|---|---|---|
 | 1 | [[CombatAdapter]] | ModuleScript | `ServerScriptService › SpinServer` |
 | 2 | [[CooldownService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 3 | [[DiegoOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 4 | [[GyroOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 5 | [[NPCService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 6 | [[PorkPieOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 7 | [[ProjectileService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 8 | [[SandmanOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 9 | [[StandAssetLoader]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 10 | [[StandBots]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 11 | [[TestDummies]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 12 | [[TuskHitbox]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 13 | [[TuskMoves]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 14 | [[TuskService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 15 | [[TuskSneakService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 16 | [[SpinServer]] | Script | `ServerScriptService` |
-| 17 | [[DiegoBrando]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 18 | [[GyroZeppeli]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 19 | [[PorkPieHatKid]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 20 | [[Sandman]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 21 | [[TuskAct1]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 22 | [[TuskAct2]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 23 | [[TuskAct3]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 24 | [[TuskAct4]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 3 | [[DefenseService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 4 | [[DiegoOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 5 | [[GyroOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 6 | [[NPCService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 7 | [[PorkPieOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 8 | [[ProjectileService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 9 | [[SandmanOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 10 | [[StandAssetLoader]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 11 | [[StandBots]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 12 | [[TestDummies]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 13 | [[TuskHitbox]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 14 | [[TuskMoves]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 15 | [[TuskService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 16 | [[TuskSneakService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 17 | [[SpinServer]] | Script | `ServerScriptService` |
+| 18 | [[DiegoBrando]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 19 | [[GyroZeppeli]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 20 | [[PorkPieHatKid]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 21 | [[Sandman]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 22 | [[TuskAct1]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 23 | [[TuskAct2]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 24 | [[TuskAct3]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 25 | [[TuskAct4]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
 
 ## Client: StarterPlayer › StarterPlayerScripts › SpinClient
 Controls, effects, the Tusk Stand, HUD, NPC speech bubbles.
 | # | Script | Type | Put it in |
 |---|---|---|---|
 | 1 | [[CameraFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 2 | [[Fighters]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 3 | [[HitFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 4 | [[JointCache]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 5 | [[TuskActCommon]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 6 | [[TuskAnimation]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 7 | [[TuskController]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 8 | [[TuskProjectiles]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 9 | [[TuskSneakController]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 10 | [[TuskStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 11 | [[TuskVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 12 | [[VFXLib]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 13 | [[WorldClient]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
-| 14 | [[SpinClient]] | LocalScript | `StarterPlayer › StarterPlayerScripts` |
-| 15 | [[Act1]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 16 | [[Act2]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 17 | [[Act3]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 18 | [[Act4]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 19 | [[Diego]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 20 | [[Gyro]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 21 | [[PorkPie]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 22 | [[SandmanVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 23 | [[CharacterCard]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
-| 24 | [[CombatUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
-| 25 | [[SettingsUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
-| 26 | [[TuskUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
+| 2 | [[DefenseClient]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 3 | [[Fighters]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 4 | [[HitFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 5 | [[JointCache]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 6 | [[TuskActCommon]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 7 | [[TuskAnimation]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 8 | [[TuskController]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 9 | [[TuskProjectiles]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 10 | [[TuskSneakController]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 11 | [[TuskStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 12 | [[TuskVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 13 | [[VFXLib]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 14 | [[WorldClient]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient` |
+| 15 | [[SpinClient]] | LocalScript | `StarterPlayer › StarterPlayerScripts` |
+| 16 | [[Act1]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 17 | [[Act2]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 18 | [[Act3]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 19 | [[Act4]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 20 | [[Diego]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 21 | [[Gyro]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 22 | [[PorkPie]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 23 | [[SandmanVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 24 | [[CharacterCard]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
+| 25 | [[CombatUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
+| 26 | [[SettingsUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
+| 27 | [[TuskUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
 
 ## Tools: ServerStorage › SpinTools
 Only used in Studio, to build the map once.

@@ -279,6 +279,7 @@ __require("TuskController").init()
 __require("WorldClient").init()
 __require("CharacterCard").init()
 __require("CombatUI").init()
+__require("DefenseClient").init()
 '''
 
 shared = {k: v for k, v in modules_in("src/shared").items() if k not in EXTERNAL}

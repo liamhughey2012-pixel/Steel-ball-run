@@ -46,6 +46,7 @@ local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 
 local Net = require(game:GetService("ReplicatedStorage").SpinShared.Net)
+local TuskConfig = require(game:GetService("ReplicatedStorage").SpinShared.TuskConfig)
 local FX = Net.get("SpinFX")
 
 local Adapter = {}
@@ -159,6 +160,26 @@ function Adapter.setMoveModifier(humanoid, key, multiplier)
 	humanoid.WalkSpeed = base * product
 end
 
+-- True when the hit comes from in front of the target (blocks only face forward).
+function Adapter.isFrontal(attackerPlayer, targetCharacter, info)
+	local d = TuskConfig.Defense or {}
+	if d.FrontOnly == false then
+		return true
+	end
+	local root = targetCharacter:FindFirstChild("HumanoidRootPart")
+	local attacker = attackerPlayer and attackerPlayer.Character
+	local from = attacker and attacker:FindFirstChild("HumanoidRootPart")
+	local source = from and from.Position or (info and info.Position)
+	if not root or not source then
+		return true
+	end
+	local offset = Vector3.new(source.X - root.Position.X, 0, source.Z - root.Position.Z)
+	if offset.Magnitude < 0.5 then
+		return true
+	end
+	return root.CFrame.LookVector:Dot(offset.Unit) >= -0.1
+end
+
 function Adapter.isBlocking(character)
 	if Adapter.Hooks.IsBlocking then
 		return Adapter.Hooks.IsBlocking(character) == true
@@ -235,8 +256,41 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 		return false
 	end
 	local humanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
-	local blocked = Adapter.isBlocking(targetCharacter)
+	local blocked = Adapter.isBlocking(targetCharacter) and Adapter.isFrontal(attackerPlayer, targetCharacter, info)
 	local s = Adapter.Settings
+	local d = TuskConfig.Defense or {}
+	local guardBreak = false
+	if blocked then
+		local now = workspace:GetServerTimeNow()
+		local start = targetCharacter:GetAttribute("BlockStart")
+		-- PERFECT BLOCK: no damage, the attacker is stunned.
+		if attackerPlayer and start and now - start <= (d.ParryWindow or 0.2) and targetCharacter:GetAttribute("BlockCanParry") then
+			targetCharacter:SetAttribute("BlockCanParry", nil)
+			local attacker = attackerPlayer.Character
+			local ah = attacker and attacker:FindFirstChildOfClass("Humanoid")
+			if ah then
+				Adapter.applyStun(ah, d.ParryStun or 1)
+				local ar = attacker:FindFirstChild("HumanoidRootPart")
+				local tr = targetCharacter:FindFirstChild("HumanoidRootPart")
+				if ar and tr then
+					Adapter.applyKnockback(attacker, ar.Position - tr.Position, 22, 6)
+				end
+			end
+			FX:FireAllClients("Parry", { Defender = targetCharacter, Attacker = attacker, Position = info.Position })
+			return false
+		end
+		-- The guard bar takes the hit; when it runs out the guard breaks.
+		local meter = (targetCharacter:GetAttribute("BlockMeter") or d.MaxMeter or 100) - info.Damage * (d.MeterPerDamage or 4)
+		targetCharacter:SetAttribute("BlockMeter", math.max(meter, 0))
+		targetCharacter:SetAttribute("LastBlockHit", now)
+		if meter <= 0 then
+			guardBreak = true
+			blocked = false
+			targetCharacter:SetAttribute(s.BlockAttribute, nil)
+			targetCharacter:SetAttribute("GuardBrokenUntil", now + (d.GuardBreakLockout or 3))
+			Adapter.setMoveModifier(humanoid, "Block", nil)
+		end
+	end
 
 	local damage = info.Damage * (blocked and s.BlockDamageMultiplier or 1)
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
@@ -246,7 +300,10 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	else
 		humanoid:TakeDamage(damage)
 	end
-	if not blocked then
+	if guardBreak then
+		Adapter.applyStun(humanoid, math.max(info.Stun or 0, d.GuardBreakStun or 1))
+		FX:FireAllClients("GuardBreak", { Victim = targetCharacter, Position = info.Position })
+	elseif not blocked then
 		Adapter.applyStun(humanoid, info.Stun or 0)
 	end
 	local launch = info.Launch and info.Launch * (blocked and s.BlockKnockbackMultiplier or 1) or nil
