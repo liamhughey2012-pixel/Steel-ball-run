@@ -78,3 +78,4 @@ updated: 2026-11-22
 | 2026-11-23 | Mountain Tim reworked: victim body-split, Split Dodge counter (CombatAdapter.DodgeHandlers), Split Barrage reel; braided rope, knotted lasso, real body-part pieces |
 | 2026-11-23 | Hot Pants (Cream Starter) added from the description: flesh spray/seal/mend, Flesh Storm cocoons; also an NPC and bounty target |
 | 2026-11-23 | Mountain Tim bug fixes: split body stays hidden (camera-proof) and restores faces exactly, hats ride the pieces, Split Dodge holds still + safe counter spot, gentler pulls, NPC lasso ropes |
+| 2026-11-23 | Hot Pants always holds Cream Starter in her hand (hip can removed); new animations (can shakes, spray sweeps, lunge seal, body-spray mend) |

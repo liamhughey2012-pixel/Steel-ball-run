@@ -11,9 +11,9 @@ Built from the character's description (no reference images yet). Send pictures 
 ![[hot_pants_preview.png]]
 *(stand-in render on a test avatar, and the Cream Starter can)*
 
-**Look** (blocky): a low pink cap with a short visor, short hair at the sides, a fitted purple top with long sleeves and a gold cross pendant, her namesake orange short shorts with a belt, bare legs, knee-high boots, and Cream Starter holstered at her right hip.
+**Look** (blocky): a low pink cap with a short visor, short hair at the sides, a fitted purple top with long sleeves and a gold cross pendant, her namesake orange short shorts with a belt, bare legs, knee-high boots, with Cream Starter in her right hand.
 
-**Cream Starter:** a pink spray can (gold label, white cap) that sprays flesh. It appears in her hand whenever she uses it.
+**Cream Starter:** a pink spray can (gold label, white cap) that sprays flesh. She **always holds it in her right hand** (players and NPCs), upright in her fist with the nozzle pointing down her arm; the spray comes out of the nozzle and follows her arm as she sweeps.
 
 | Input | Move | What it does |
 |---|---|---|
@@ -24,3 +24,12 @@ Built from the character's description (no reference images yet). Send pictures 
 | G | FLESH STORM | a flesh cloud swells in front of her, hardens into a **cocoon** round everyone caught (5, held 1.6 s, crushed for 2 every 0.4 s), then the cocoons burst (12, launches) |
 
 - Also a Stand-user NPC and a bounty-board target ("STAND: CREAM STARTER").
+
+## Animations (2026-11-23)
+- **Stance:** can held up by her shoulder, left hand on her hip.
+- **Combo:** left jab (the right hand has the can), high kick, a can thrust that sprays in their face, jumping spin kick.
+- **Flesh Spray:** shakes the can three times, then sweeps the spray left, right and back.
+- **Flesh Seal:** a shake, a dash-lunge with the can, and she presses it into their face.
+- **Flesh Mend:** sprays from her shoulder down her body and back up, then a relieved breath.
+- **Flesh Storm:** shakes the can hard, raises it overhead, sweeps the cloud left and right, then a final thrust.
+![[hot_pants_poses_preview.png]]

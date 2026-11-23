@@ -3677,46 +3677,85 @@ local function buildCan(scale)
 	m.Name = "CreamStarter"
 	m.Parent = VFXLib.Folder
 	-- Stepped round body (blocky), label band, white cap, nozzle.
+	-- The can's up is +Y; the nozzle points along -Z.
 	local body = box(m, Vector3.new(0.5, 1.0, 0.5) * s, CFrame.new(), CAN, Enum.Material.Metal)
 	box(m, Vector3.new(0.58, 0.92, 0.38) * s, CFrame.new(), CAN, Enum.Material.Metal)
 	box(m, Vector3.new(0.38, 0.92, 0.58) * s, CFrame.new(), CAN, Enum.Material.Metal)
 	box(m, Vector3.new(0.6, 0.3, 0.6) * s, CFrame.new(0, 0.05 * s, 0), LABEL)
 	box(m, Vector3.new(0.4, 0.26, 0.4) * s, CFrame.new(0, 0.62 * s, 0), CAP)
-	box(m, Vector3.new(0.14, 0.12, 0.22) * s, CFrame.new(0, 0.8 * s, -0.12 * s), Color3.fromRGB(60, 60, 66))
+	local nozzle = box(m, Vector3.new(0.14, 0.12, 0.22) * s, CFrame.new(0, 0.8 * s, -0.12 * s), Color3.fromRGB(60, 60, 66))
+	nozzle.Name = "Nozzle"
 	m.PrimaryPart = body
-	return m
+	return m, nozzle
 end
 
+local function handOf(character)
+	return character and (character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm"))
+end
+
+-- Where the can sits in her fist: upright against the hand, nozzle pointing
+-- down the arm (so when she aims her arm, she aims the spray).
+local function canCF(hand)
+	local down = hand.Name == "Right Arm" and -hand.Size.Y / 2 + 0.25 or -0.2
+	return hand.CFrame * CFrame.new(0, down, -0.18) * CFrame.Angles(-math.pi / 2, 0, 0)
+end
+
+-- The spray comes out of the real nozzle; aimed where she faces.
 local function nozzleCF(character)
-	local hand = character and (character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm"))
 	local root = Common.rootOf(character)
 	if not root then
 		return nil
 	end
-	local base = hand and hand.CFrame or root.CFrame * CFrame.new(1, 0.5, -1)
-	-- Held upright in the hand, nozzle pointing where she faces.
-	local pos = base.Position + root.CFrame.LookVector * 0.5
+	local entry = held[character]
+	local pos
+	if entry and entry.Nozzle and entry.Nozzle.Parent then
+		pos = entry.Nozzle.Position
+	else
+		local hand = handOf(character)
+		pos = hand and hand.Position or (root.CFrame * CFrame.new(1, 0.5, -1)).Position
+	end
 	return CFrame.lookAt(pos, pos + root.CFrame.LookVector)
 end
 
-local function holdCan(character, seconds)
+-- Spray direction: follows the nozzle as her arm sweeps, leaning toward
+-- where the move was aimed (so the mist matches the hitbox).
+local function sprayDir(character, aimed)
 	local entry = held[character]
-	if entry then
-		entry.Until = math.max(entry.Until, os.clock() + seconds)
-		return
+	local fallback = aimed or Vector3.new(0, 0, -1)
+	if not (entry and entry.Nozzle and entry.Nozzle.Parent) then
+		return fallback
 	end
-	held[character] = { Model = buildCan(1), Until = os.clock() + seconds }
+	local n = entry.Nozzle.CFrame.LookVector
+	n = Vector3.new(n.X, n.Y * 0.3, n.Z)
+	if n.Magnitude < 0.1 then
+		return fallback
+	end
+	return (fallback * 0.55 + n.Unit * 0.45).Unit
 end
 
+-- Every Hot Pants (players and NPCs) holds Cream Starter all the time.
 local function stepCans()
-	local now = os.clock()
+	local seen = {}
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		if character and character:GetAttribute("TuskAct") == ACT then
+			local hand = handOf(character)
+			if hand then
+				seen[character] = true
+				local entry = held[character]
+				if not entry then
+					local model, nozzle = buildCan(0.85)
+					entry = { Model = model, Nozzle = nozzle }
+					held[character] = entry
+				end
+				entry.Model:PivotTo(canCF(hand))
+			end
+		end
+	end
 	for character, entry in pairs(held) do
-		local cf = character.Parent and nozzleCF(character)
-		if not cf or now > entry.Until then
+		if not seen[character] then
 			entry.Model:Destroy()
 			held[character] = nil
-		else
-			entry.Model:PivotTo(cf * CFrame.new(0, -0.3, 0.2) * CFrame.Angles(-0.25, 0, 0))
 		end
 	end
 end
@@ -3942,12 +3981,12 @@ local function onM1(data)
 		Common.swipe(root, index == 1 and 1 or -1, index == 1 and pal.Main or pal.Light)
 	elseif index == 3 then
 		-- A quick spray burst in the face.
-		holdCan(character, 0.4)
 		task.delay(0.08, function()
 			local cf = character.Parent and nozzleCF(character)
 			if cf then
-				mist(cf.Position, cf.LookVector, 20, 10, 22)
-				blobs(cf.Position, cf.LookVector, 6, 4)
+				local dir = sprayDir(character, cf.LookVector)
+				mist(cf.Position, dir, 20, 10, 22)
+				blobs(cf.Position, dir, 6, 4)
 			end
 		end)
 	end
@@ -3960,7 +3999,6 @@ local function onAbility(data)
 	if move == "FleshSpray" and phase == "Spray" and root then
 		TuskAnimation.play(character, "HPSpray")
 		local total = (data.Startup or 0.12) + (data.Duration or 0.6)
-		holdCan(character, total + 0.2)
 		VFXLib.sound(sounds.ChargeLoop, root, 0.4, 1.4)
 		local nextPuff = 0
 		VFXLib.animate(total, function(a, dt)
@@ -3971,14 +4009,14 @@ local function onAbility(data)
 			nextPuff = 0.06
 			local cf = character.Parent and nozzleCF(character)
 			if cf then
-				mist(cf.Position, data.Direction or cf.LookVector, (data.Cone or 55) / 2, 9, (data.Range or 15) * 2)
-				blobs(cf.Position, data.Direction or cf.LookVector, data.Range or 15, 2)
+				local dir = sprayDir(character, data.Direction or cf.LookVector)
+				mist(cf.Position, dir, (data.Cone or 55) / 2, 9, (data.Range or 15) * 2)
+				blobs(cf.Position, dir, data.Range or 15, 2)
 			end
 		end)
 	elseif move == "FleshSeal" then
 		if phase == "Startup" and character then
 			TuskAnimation.play(character, "HPSeal")
-			holdCan(character, 0.7)
 		elseif phase == "Seal" and data.Target then
 			local head = data.Target:FindFirstChild("Head")
 			local cf = character and nozzleCF(character)
@@ -3995,7 +4033,6 @@ local function onAbility(data)
 		end
 	elseif move == "FleshMend" and phase == "Mend" and root then
 		TuskAnimation.play(character, "HPMend")
-		holdCan(character, (data.Duration or 1.2) + 0.1)
 		local ticks = 4
 		for i = 1, ticks do
 			task.delay(i * (data.Duration or 1.2) / ticks, function()
@@ -4008,6 +4045,10 @@ local function onAbility(data)
 		-- Pink mist swirling round her.
 		VFXLib.animate(data.Duration or 1.2, function(a)
 			local r = Common.rootOf(character)
+			local cf = nozzleCF(character)
+			if cf and r and math.random() < 0.6 then
+				mist(cf.Position, (r.Position + Vector3.new(0, 1 - a * 2.5, 0) - cf.Position).Unit, 15, 2, 8)
+			end
 			if r and math.random() < 0.5 then
 				local ang = a * 18
 				local p = r.Position + Vector3.new(math.cos(ang) * 2, (a * 4) % 4 - 2, math.sin(ang) * 2)
@@ -4023,7 +4064,6 @@ local function onUltimate(data)
 	local root = Common.rootOf(character)
 	if data.Phase == "Cloud" then
 		TuskAnimation.play(character, "HPStorm")
-		holdCan(character, (data.Windup or 0.7) + 0.4)
 		-- The flesh cloud swells in front of her.
 		local cloud = Instance.new("Model")
 		cloud.Parent = VFXLib.Folder
@@ -14176,7 +14216,7 @@ __modules["HotPantsOutfit"] = function()
 	  * a low pink cap with a short visor, short hair at the sides
 	  * a fitted purple top with a gold cross pendant
 	  * her namesake short shorts with a belt, knee-high boots
-	  * CREAM STARTER, her Stand: a pink spray can holstered at her hip
+	  * (CREAM STARTER, her Stand, is drawn in her hand by the client)
 	The player's own hats/hair are hidden while they play her and come back
 	when she switches. Built on the server so every player sees it.
 ]]
@@ -14259,12 +14299,7 @@ local function body(character, outfit)
 		local y = lower and 0 or -upper.Size.Y / 2 + 0.15
 		piece(waist, outfit, "Shorts", Vector3.new(waist.Size.X + 0.1, lower and waist.Size.Y + 0.04 or 0.5, waist.Size.Z + 0.1), C.Shorts, CFrame.new(0, lower and 0 or y - 0.1, 0))
 		piece(waist, outfit, "Belt", Vector3.new(waist.Size.X + 0.14, 0.18, waist.Size.Z + 0.14), C.Belt, CFrame.new(0, lower and waist.Size.Y / 2 - 0.05 or y + 0.12, 0))
-		-- CREAM STARTER holstered at the right hip: a pink spray can with a white cap.
-		local hip = CFrame.new(waist.Size.X / 2 + 0.28, y - 0.25, 0)
-		piece(waist, outfit, "SprayCan", Vector3.new(0.42, 0.85, 0.42), C.Can, hip)
-		piece(waist, outfit, "SprayCanBand", Vector3.new(0.44, 0.22, 0.44), C.Label, hip * CFrame.new(0, 0.05, 0))
-		piece(waist, outfit, "SprayCanCap", Vector3.new(0.3, 0.22, 0.3), C.CanCap, hip * CFrame.new(0, 0.52, 0))
-		piece(waist, outfit, "SprayNozzle", Vector3.new(0.12, 0.1, 0.16), C.Belt, hip * CFrame.new(0, 0.68, -0.08))
+		-- (Cream Starter is always in her right hand: drawn by the client.)
 	end
 	-- Bare legs under the shorts and boots, long purple sleeves.
 	local headPart = character:FindFirstChild("Head")
@@ -20358,11 +20393,26 @@ TuskAnimation.Poses = {
 	RopeWhipWind = { Root = { 0, 34, 0, -0.08 }, Waist = { 0, 34, 0 }, RightArm = { 120, 0, 70 }, RightElbow = { 20, 0, 0 }, LeftArm = { 30, 0, -30 }, Neck = { 0, -18, 0 } },
 	RopeWhip = { Root = { 0, -36, 0, -0.1, 0.35 }, Waist = { 0, -40, 0 }, RightArm = { 90, -40, -30 }, RightElbow = { 0, 0, 0 }, LeftArm = { 24, 0, -36 }, Neck = { 0, 26, 0 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -20, 0, 0 } },
 	SplitPose = { Root = { -16, 0, 0, -0.3, 0.3 }, Waist = { -18, 0, 0 }, Neck = { 12, 0, 0 }, RightArm = { 100, 0, 60 }, LeftArm = { 100, 0, -60 }, RightHip = { 30, 0, 0 }, RightKnee = { -40, 0, 0 }, LeftHip = { -20, 0, 0 } },
-	-- HOT PANTS: quick and sharp; Cream Starter held out like a weapon.
-	HPStance = { Root = { 0, 12, 0, -0.06 }, Waist = { -2, 10, 0 }, Neck = { 2, -8, 0 }, RightArm = { 30, 0, 14 }, RightElbow = { 70, 0, 0 }, LeftArm = { 6, 0, -24 }, LeftElbow = { 60, 0, 0 }, RightHip = { -4, 0, 0 }, LeftHip = { 10, 0, 0 }, LeftKnee = { -10, 0, 0 } },
-	SprayAim = { Root = { 0, -14, 0, -0.1, 0.15 }, Waist = { 0, -18, 0 }, Neck = { 0, 12, 0 }, RightArm = { 92, 0, 6 }, RightElbow = { 6, 0, 0 }, LeftArm = { 60, 0, -30 }, LeftElbow = { 70, 0, 0 }, RightHip = { 16, 0, 0 }, RightKnee = { -18, 0, 0 }, LeftHip = { -10, 0, 0 } },
-	SprayLunge = { Root = { -10, -16, 0, -0.18, 0.55 }, Waist = { -12, -20, 0 }, Neck = { 6, 12, 0 }, RightArm = { 96, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -40 }, RightHip = { 34, 0, 0 }, RightKnee = { -38, 0, 0 }, LeftHip = { -18, 0, 0 } },
-	SpraySelf = { Root = { 0, 8, 0, -0.1 }, Waist = { 6, 8, 0 }, Neck = { -14, 0, 0 }, RightArm = { 60, 0, -40 }, RightElbow = { 110, 0, 0 }, LeftArm = { 40, 0, -10 }, LeftElbow = { 40, 0, 0 } },
+	-- HOT PANTS: quick and sharp, Cream Starter always in her right hand,
+	-- left hand free for jabs (and on her hip at rest).
+	HPStance = { Root = { 0, 10, 0, -0.05 }, Waist = { -2, 8, 0 }, Neck = { 0, -6, 0 }, RightArm = { 70, 0, 25 }, RightElbow = { 95, 0, 0 }, LeftArm = { -5, 0, -35 }, LeftElbow = { 70, 0, 0 }, LeftHip = { 10, 0, 0 }, LeftKnee = { -12, 0, 0 }, RightHip = { -4, 0, 0 } },
+	CanShakeA = { Root = { 0, 6, 0, -0.06 }, Waist = { 0, 6, 0 }, Neck = { 6, -4, 0 }, RightArm = { 80, 0, 18 }, RightElbow = { 85, 0, 0 }, LeftArm = { -5, 0, -35 }, LeftElbow = { 70, 0, 0 }, LeftKnee = { -10, 0, 0 } },
+	CanShakeB = { Root = { 0, 6, 0, -0.08 }, Waist = { 0, 8, 0 }, Neck = { 4, -4, 0 }, RightArm = { 104, 0, 30 }, RightElbow = { 45, 0, 0 }, LeftArm = { -5, 0, -35 }, LeftElbow = { 70, 0, 0 }, LeftKnee = { -10, 0, 0 } },
+	SprayAimL = { Root = { 0, 12, 0, -0.1, 0.1 }, Waist = { 0, 22, 0 }, Neck = { 0, -14, 0 }, RightArm = { 92, -22, 10 }, RightElbow = { 4, 0, 0 }, LeftArm = { 50, 0, -30 }, LeftElbow = { 80, 0, 0 }, RightHip = { 16, 0, 0 }, RightKnee = { -18, 0, 0 }, LeftHip = { -8, 0, 0 } },
+	SprayAimR = { Root = { 0, -14, 0, -0.1, 0.15 }, Waist = { 0, -26, 0 }, Neck = { 0, 18, 0 }, RightArm = { 92, 20, 0 }, RightElbow = { 4, 0, 0 }, LeftArm = { 50, 0, -30 }, LeftElbow = { 80, 0, 0 }, RightHip = { 16, 0, 0 }, RightKnee = { -18, 0, 0 }, LeftHip = { -8, 0, 0 } },
+	SprayThrust = { Root = { -8, -18, 0, -0.12, 0.5 }, Waist = { -10, -22, 0 }, Neck = { 6, 14, 0 }, RightArm = { 100, 0, 0 }, RightElbow = { 0, 0, 0 }, LeftArm = { 20, 0, -40 }, LeftElbow = { 60, 0, 0 }, RightHip = { 28, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -14, 0, 0 } },
+	HighKickChamber = { Root = { 12, 0, 0, 0.05 }, RightHip = { 95, 0, 0 }, RightKnee = { -100, 0, 0 }, LeftKnee = { -15, 0, 0 }, Waist = { 14, 0, 0 }, RightArm = { 60, 0, 40 }, RightElbow = { 80, 0, 0 }, LeftArm = { 30, 0, -50 } },
+	HighKick = { Root = { 26, 0, 0, 0.05, 0.35 }, RightHip = { 125, 0, 0 }, RightKnee = { -4, 0, 0 }, LeftKnee = { -10, 0, 0 }, Waist = { 20, 0, 0 }, Neck = { -12, 0, 0 }, RightArm = { 70, 0, 50 }, RightElbow = { 80, 0, 0 }, LeftArm = { 20, 0, -60 } },
+	JumpSpinWind = { Root = { 0, 60, 0, -0.45 }, Waist = { 0, 40, 0 }, Neck = { 0, -30, 0 }, RightArm = { 50, 0, 60 }, RightElbow = { 70, 0, 0 }, LeftArm = { 50, 0, -60 }, LeftHip = { 40, 0, 0 }, LeftKnee = { -70, 0, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -50, 0, 0 } },
+	JumpSpinKick = { Root = { 0, -120, 0, 0.6, 0.3 }, Waist = { 0, -35, 0 }, Neck = { 0, 55, 0 }, RightHip = { 85, 0, 35 }, RightKnee = { -5, 0, 0 }, LeftHip = { 50, 0, 0 }, LeftKnee = { -90, 0, 0 }, RightArm = { 60, 0, 70 }, RightElbow = { 70, 0, 0 }, LeftArm = { 40, 0, -80 } },
+	SealDash = { Root = { -24, 0, 0, -0.2, 0.9 }, Waist = { -24, 0, 0 }, Neck = { 14, 0, 0 }, RightArm = { 100, 0, 0 }, RightElbow = { 0, 0, 0 }, LeftArm = { -30, 0, -20 }, RightHip = { 50, 0, 0 }, RightKnee = { -60, 0, 0 }, LeftHip = { -30, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	SealPress = { Root = { -10, -10, 0, -0.15, 0.6 }, Waist = { -14, -16, 0 }, Neck = { 4, 10, 0 }, RightArm = { 95, -10, -10 }, RightElbow = { 20, 0, 0 }, LeftArm = { 70, 0, -20 }, LeftElbow = { 60, 0, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -34, 0, 0 } },
+	SelfSprayHigh = { Root = { 0, 10, 0, -0.05 }, Waist = { 4, 14, 0 }, Neck = { -10, -20, 0 }, RightArm = { 120, 0, -50 }, RightElbow = { 100, 0, 0 }, LeftArm = { 80, 0, -10 }, LeftElbow = { 90, 0, 0 } },
+	SelfSprayLow = { Root = { 6, 6, 0, -0.3 }, Waist = { 26, 8, 0 }, Neck = { -26, 0, 0 }, RightArm = { 40, 0, -30 }, RightElbow = { 60, 0, 0 }, LeftArm = { 30, 0, -20 }, RightHip = { 40, 0, 0 }, RightKnee = { -60, 0, 0 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -50, 0, 0 } },
+	MendRelief = { Root = { 4, 0, 0, 0.02 }, Waist = { -8, 0, 0 }, Neck = { 16, 0, 0 }, RightArm = { 40, 0, 30 }, RightElbow = { 80, 0, 0 }, LeftArm = { 10, 0, -20 }, LeftElbow = { 30, 0, 0 } },
+	StormRaise = { Root = { 8, 0, 0, 0.25 }, Waist = { 16, 0, 0 }, Neck = { 30, 0, 0 }, RightArm = { 175, 0, 15 }, RightElbow = { 10, 0, 0 }, LeftArm = { 60, 0, -60 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -50, 0, 0 } },
+	StormSweepL = { Root = { 0, 30, 0, -0.1, 0.2 }, Waist = { -6, 30, 0 }, Neck = { 0, -20, 0 }, RightArm = { 110, -30, 10 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
+	StormSweepR = { Root = { 0, -30, 0, -0.1, 0.2 }, Waist = { -6, -30, 0 }, Neck = { 0, 24, 0 }, RightArm = { 110, 30, 0 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
 	-- SANDMAN: a light-footed runner; knife-hand chops and spinning kicks.
 	SandStance = { Root = { 0, 10, 0, -0.18 }, Waist = { -8, 8, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, 18 }, RightElbow = { 70, 0, 0 }, LeftArm = { 55, 0, -22 }, LeftElbow = { 60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -8, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 	ChopCoil = { Root = { 0, 26, 0, -0.14 }, Waist = { 6, 30, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 60, 0, 0 }, LeftArm = { 60, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -14, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightKnee = { -12, 0, 0 } },
@@ -20493,14 +20543,14 @@ TuskAnimation.Actions = {
 	TimRoundup = { { 0, "Rest" }, { 0.15, "LassoSpin", "Out" }, { 0.85, "LassoSpin", "Linear", 2 }, { 0.95, "Spread", "Snap", 5 }, { 1.6, "ReelBack", "Snap", 3 }, { 2.2, "ReelBack", "Linear", 2 }, { 2.35, "HoistSlam", "Snap", 8 }, { 2.7, "HoistSlam", "Sine" } },
 
 	-- HOT PANTS
-	H_M1_1 = { { 0, "Rest" }, { 0.06, "JabCoil", "In" }, { 0.11, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.28, "HPStance", "Sine" } },
-	H_M1_2 = { { 0, "Rest" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.3, "HPStance", "Sine" } },
-	H_M1_3 = { { 0, "Rest" }, { 0.06, "SprayAim", "Snap", 2 }, { 0.2, "SprayAim", "Linear", 2 }, { 0.32, "HPStance", "Sine" } },
-	H_M1_4 = { { 0, "Rest" }, { 0.08, "SpinKickWind", "In" }, { 0.16, "SpinKick", "Snap", 6 }, { 0.21, "SpinKick", "Linear" }, { 0.36, "HPStance", "Sine" } },
-	HPSpray = { { 0, "Rest" }, { 0.1, "SprayAim", "Snap", 2 }, { 0.4, "SprayAim", "Linear", 2 }, { 0.7, "SprayAim", "Linear", 2 }, { 0.85, "HPStance", "Sine" } },
-	HPSeal = { { 0, "Rest" }, { 0.14, "SprayAim", "In" }, { 0.24, "SprayLunge", "Snap", 5 }, { 0.45, "SprayLunge", "Sine" } },
-	HPMend = { { 0, "Rest" }, { 0.12, "SpraySelf", "Out" }, { 1.1, "SpraySelf", "Linear", 1 }, { 1.3, "HPStance", "Sine" } },
-	HPStorm = { { 0, "Rest" }, { 0.15, "ConductUp", "Back", 3 }, { 0.55, "SprayAim", "Snap", 4 }, { 1.2, "SprayAim", "Linear", 3 }, { 1.5, "HPStance", "Sine" } },
+	H_M1_1 = { { 0, "HPStance" }, { 0.06, "JabCoilL", "In" }, { 0.11, "JabStrikeL", "Back", 4 }, { 0.16, "JabStrikeL", "Linear" }, { 0.28, "HPStance", "Sine" } },
+	H_M1_2 = { { 0, "HPStance" }, { 0.07, "HighKickChamber", "In" }, { 0.13, "HighKick", "Back", 5 }, { 0.19, "HighKick", "Linear" }, { 0.32, "HPStance", "Sine" } },
+	H_M1_3 = { { 0, "HPStance" }, { 0.05, "CanShakeB", "In" }, { 0.11, "SprayThrust", "Snap", 4 }, { 0.17, "SprayThrust", "Linear" }, { 0.3, "HPStance", "Sine" } },
+	H_M1_4 = { { 0, "HPStance" }, { 0.1, "JumpSpinWind", "In" }, { 0.19, "JumpSpinKick", "Snap", 7 }, { 0.25, "JumpSpinKick", "Linear" }, { 0.42, "HPStance", "Sine" } },
+	HPSpray = { { 0, "HPStance" }, { 0.05, "CanShakeA", "Snap" }, { 0.09, "CanShakeB", "Snap", 1 }, { 0.13, "CanShakeA", "Snap", 1 }, { 0.2, "SprayAimL", "Snap", 2 }, { 0.47, "SprayAimR", "Sine", 2 }, { 0.72, "SprayAimL", "Sine", 2 }, { 0.88, "HPStance", "Sine" } },
+	HPSeal = { { 0, "HPStance" }, { 0.1, "CanShakeB", "In" }, { 0.18, "SealDash", "Snap", 4 }, { 0.28, "SealPress", "Snap", 5 }, { 0.5, "SealPress", "Linear", 2 }, { 0.66, "HPStance", "Sine" } },
+	HPMend = { { 0, "HPStance" }, { 0.12, "SelfSprayHigh", "Out" }, { 0.55, "SelfSprayLow", "Sine", 1 }, { 0.92, "SelfSprayHigh", "Sine", 1 }, { 1.12, "MendRelief", "Back" }, { 1.35, "HPStance", "Sine" } },
+	HPStorm = { { 0, "HPStance" }, { 0.05, "CanShakeA", "Snap" }, { 0.1, "CanShakeB", "Snap", 1 }, { 0.15, "CanShakeA", "Snap", 1 }, { 0.2, "CanShakeB", "Snap", 2 }, { 0.38, "StormRaise", "Back", 4 }, { 0.6, "StormSweepL", "Snap", 3 }, { 0.9, "StormSweepR", "Sine", 2 }, { 1.1, "SprayThrust", "Snap", 5 }, { 1.4, "SprayThrust", "Linear", 2 }, { 1.6, "HPStance", "Sine" } },
 
 	-- SANDMAN
 	S_M1_1 = { { 0, "Rest" }, { 0.07, "ChopCoil", "In" }, { 0.12, "ChopStrike", "Back", 4 }, { 0.17, "ChopStrike", "Linear" }, { 0.3, "SandStance", "Sine" } },

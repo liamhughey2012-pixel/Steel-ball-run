@@ -6,7 +6,7 @@
 	  * a low pink cap with a short visor, short hair at the sides
 	  * a fitted purple top with a gold cross pendant
 	  * her namesake short shorts with a belt, knee-high boots
-	  * CREAM STARTER, her Stand: a pink spray can holstered at her hip
+	  * (CREAM STARTER, her Stand, is drawn in her hand by the client)
 	The player's own hats/hair are hidden while they play her and come back
 	when she switches. Built on the server so every player sees it.
 ]]
@@ -89,12 +89,7 @@ local function body(character, outfit)
 		local y = lower and 0 or -upper.Size.Y / 2 + 0.15
 		piece(waist, outfit, "Shorts", Vector3.new(waist.Size.X + 0.1, lower and waist.Size.Y + 0.04 or 0.5, waist.Size.Z + 0.1), C.Shorts, CFrame.new(0, lower and 0 or y - 0.1, 0))
 		piece(waist, outfit, "Belt", Vector3.new(waist.Size.X + 0.14, 0.18, waist.Size.Z + 0.14), C.Belt, CFrame.new(0, lower and waist.Size.Y / 2 - 0.05 or y + 0.12, 0))
-		-- CREAM STARTER holstered at the right hip: a pink spray can with a white cap.
-		local hip = CFrame.new(waist.Size.X / 2 + 0.28, y - 0.25, 0)
-		piece(waist, outfit, "SprayCan", Vector3.new(0.42, 0.85, 0.42), C.Can, hip)
-		piece(waist, outfit, "SprayCanBand", Vector3.new(0.44, 0.22, 0.44), C.Label, hip * CFrame.new(0, 0.05, 0))
-		piece(waist, outfit, "SprayCanCap", Vector3.new(0.3, 0.22, 0.3), C.CanCap, hip * CFrame.new(0, 0.52, 0))
-		piece(waist, outfit, "SprayNozzle", Vector3.new(0.12, 0.1, 0.16), C.Belt, hip * CFrame.new(0, 0.68, -0.08))
+		-- (Cream Starter is always in her right hand: drawn by the client.)
 	end
 	-- Bare legs under the shorts and boots, long purple sleeves.
 	local headPart = character:FindFirstChild("Head")

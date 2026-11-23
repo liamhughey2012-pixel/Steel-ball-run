@@ -72,46 +72,85 @@ local function buildCan(scale)
 	m.Name = "CreamStarter"
 	m.Parent = VFXLib.Folder
 	-- Stepped round body (blocky), label band, white cap, nozzle.
+	-- The can's up is +Y; the nozzle points along -Z.
 	local body = box(m, Vector3.new(0.5, 1.0, 0.5) * s, CFrame.new(), CAN, Enum.Material.Metal)
 	box(m, Vector3.new(0.58, 0.92, 0.38) * s, CFrame.new(), CAN, Enum.Material.Metal)
 	box(m, Vector3.new(0.38, 0.92, 0.58) * s, CFrame.new(), CAN, Enum.Material.Metal)
 	box(m, Vector3.new(0.6, 0.3, 0.6) * s, CFrame.new(0, 0.05 * s, 0), LABEL)
 	box(m, Vector3.new(0.4, 0.26, 0.4) * s, CFrame.new(0, 0.62 * s, 0), CAP)
-	box(m, Vector3.new(0.14, 0.12, 0.22) * s, CFrame.new(0, 0.8 * s, -0.12 * s), Color3.fromRGB(60, 60, 66))
+	local nozzle = box(m, Vector3.new(0.14, 0.12, 0.22) * s, CFrame.new(0, 0.8 * s, -0.12 * s), Color3.fromRGB(60, 60, 66))
+	nozzle.Name = "Nozzle"
 	m.PrimaryPart = body
-	return m
+	return m, nozzle
 end
 
+local function handOf(character)
+	return character and (character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm"))
+end
+
+-- Where the can sits in her fist: upright against the hand, nozzle pointing
+-- down the arm (so when she aims her arm, she aims the spray).
+local function canCF(hand)
+	local down = hand.Name == "Right Arm" and -hand.Size.Y / 2 + 0.25 or -0.2
+	return hand.CFrame * CFrame.new(0, down, -0.18) * CFrame.Angles(-math.pi / 2, 0, 0)
+end
+
+-- The spray comes out of the real nozzle; aimed where she faces.
 local function nozzleCF(character)
-	local hand = character and (character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm"))
 	local root = Common.rootOf(character)
 	if not root then
 		return nil
 	end
-	local base = hand and hand.CFrame or root.CFrame * CFrame.new(1, 0.5, -1)
-	-- Held upright in the hand, nozzle pointing where she faces.
-	local pos = base.Position + root.CFrame.LookVector * 0.5
+	local entry = held[character]
+	local pos
+	if entry and entry.Nozzle and entry.Nozzle.Parent then
+		pos = entry.Nozzle.Position
+	else
+		local hand = handOf(character)
+		pos = hand and hand.Position or (root.CFrame * CFrame.new(1, 0.5, -1)).Position
+	end
 	return CFrame.lookAt(pos, pos + root.CFrame.LookVector)
 end
 
-local function holdCan(character, seconds)
+-- Spray direction: follows the nozzle as her arm sweeps, leaning toward
+-- where the move was aimed (so the mist matches the hitbox).
+local function sprayDir(character, aimed)
 	local entry = held[character]
-	if entry then
-		entry.Until = math.max(entry.Until, os.clock() + seconds)
-		return
+	local fallback = aimed or Vector3.new(0, 0, -1)
+	if not (entry and entry.Nozzle and entry.Nozzle.Parent) then
+		return fallback
 	end
-	held[character] = { Model = buildCan(1), Until = os.clock() + seconds }
+	local n = entry.Nozzle.CFrame.LookVector
+	n = Vector3.new(n.X, n.Y * 0.3, n.Z)
+	if n.Magnitude < 0.1 then
+		return fallback
+	end
+	return (fallback * 0.55 + n.Unit * 0.45).Unit
 end
 
+-- Every Hot Pants (players and NPCs) holds Cream Starter all the time.
 local function stepCans()
-	local now = os.clock()
+	local seen = {}
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		if character and character:GetAttribute("TuskAct") == ACT then
+			local hand = handOf(character)
+			if hand then
+				seen[character] = true
+				local entry = held[character]
+				if not entry then
+					local model, nozzle = buildCan(0.85)
+					entry = { Model = model, Nozzle = nozzle }
+					held[character] = entry
+				end
+				entry.Model:PivotTo(canCF(hand))
+			end
+		end
+	end
 	for character, entry in pairs(held) do
-		local cf = character.Parent and nozzleCF(character)
-		if not cf or now > entry.Until then
+		if not seen[character] then
 			entry.Model:Destroy()
 			held[character] = nil
-		else
-			entry.Model:PivotTo(cf * CFrame.new(0, -0.3, 0.2) * CFrame.Angles(-0.25, 0, 0))
 		end
 	end
 end
@@ -337,12 +376,12 @@ local function onM1(data)
 		Common.swipe(root, index == 1 and 1 or -1, index == 1 and pal.Main or pal.Light)
 	elseif index == 3 then
 		-- A quick spray burst in the face.
-		holdCan(character, 0.4)
 		task.delay(0.08, function()
 			local cf = character.Parent and nozzleCF(character)
 			if cf then
-				mist(cf.Position, cf.LookVector, 20, 10, 22)
-				blobs(cf.Position, cf.LookVector, 6, 4)
+				local dir = sprayDir(character, cf.LookVector)
+				mist(cf.Position, dir, 20, 10, 22)
+				blobs(cf.Position, dir, 6, 4)
 			end
 		end)
 	end
@@ -355,7 +394,6 @@ local function onAbility(data)
 	if move == "FleshSpray" and phase == "Spray" and root then
 		TuskAnimation.play(character, "HPSpray")
 		local total = (data.Startup or 0.12) + (data.Duration or 0.6)
-		holdCan(character, total + 0.2)
 		VFXLib.sound(sounds.ChargeLoop, root, 0.4, 1.4)
 		local nextPuff = 0
 		VFXLib.animate(total, function(a, dt)
@@ -366,14 +404,14 @@ local function onAbility(data)
 			nextPuff = 0.06
 			local cf = character.Parent and nozzleCF(character)
 			if cf then
-				mist(cf.Position, data.Direction or cf.LookVector, (data.Cone or 55) / 2, 9, (data.Range or 15) * 2)
-				blobs(cf.Position, data.Direction or cf.LookVector, data.Range or 15, 2)
+				local dir = sprayDir(character, data.Direction or cf.LookVector)
+				mist(cf.Position, dir, (data.Cone or 55) / 2, 9, (data.Range or 15) * 2)
+				blobs(cf.Position, dir, data.Range or 15, 2)
 			end
 		end)
 	elseif move == "FleshSeal" then
 		if phase == "Startup" and character then
 			TuskAnimation.play(character, "HPSeal")
-			holdCan(character, 0.7)
 		elseif phase == "Seal" and data.Target then
 			local head = data.Target:FindFirstChild("Head")
 			local cf = character and nozzleCF(character)
@@ -390,7 +428,6 @@ local function onAbility(data)
 		end
 	elseif move == "FleshMend" and phase == "Mend" and root then
 		TuskAnimation.play(character, "HPMend")
-		holdCan(character, (data.Duration or 1.2) + 0.1)
 		local ticks = 4
 		for i = 1, ticks do
 			task.delay(i * (data.Duration or 1.2) / ticks, function()
@@ -403,6 +440,10 @@ local function onAbility(data)
 		-- Pink mist swirling round her.
 		VFXLib.animate(data.Duration or 1.2, function(a)
 			local r = Common.rootOf(character)
+			local cf = nozzleCF(character)
+			if cf and r and math.random() < 0.6 then
+				mist(cf.Position, (r.Position + Vector3.new(0, 1 - a * 2.5, 0) - cf.Position).Unit, 15, 2, 8)
+			end
 			if r and math.random() < 0.5 then
 				local ang = a * 18
 				local p = r.Position + Vector3.new(math.cos(ang) * 2, (a * 4) % 4 - 2, math.sin(ang) * 2)
@@ -418,7 +459,6 @@ local function onUltimate(data)
 	local root = Common.rootOf(character)
 	if data.Phase == "Cloud" then
 		TuskAnimation.play(character, "HPStorm")
-		holdCan(character, (data.Windup or 0.7) + 0.4)
 		-- The flesh cloud swells in front of her.
 		local cloud = Instance.new("Model")
 		cloud.Parent = VFXLib.Folder
