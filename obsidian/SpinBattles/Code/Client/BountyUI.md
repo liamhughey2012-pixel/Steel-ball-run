@@ -61,7 +61,7 @@ local RED = Color3.fromRGB(190, 40, 35)
 local GREEN = Color3.fromRGB(60, 150, 70)
 local GOLD = Color3.fromRGB(255, 205, 90)
 
-local gui, dim, board, grid, confirm, tracker, banner, marker
+local gui, dim, board, grid, confirm, confirmLayer, tracker, banner, marker
 local current -- the active bounty
 local confirmEntry -- the poster the Accept/Decline card is asking about
 local FAST = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
@@ -88,15 +88,49 @@ local function label(parent, props)
 	return l
 end
 
+-- A live "photo" of a model's face: the character copied into a ViewportFrame.
+local function faceViewport(model, parent)
+	local head = model and model:FindFirstChild("Head")
+	if not head then
+		return false
+	end
+	local ok, copy = pcall(function()
+		local was = model.Archivable
+		model.Archivable = true
+		local c = model:Clone()
+		model.Archivable = was
+		return c
+	end)
+	if not ok or not copy then
+		return false
+	end
+	for _, d in ipairs(copy:GetDescendants()) do
+		if d:IsA("LuaSourceContainer") or d:IsA("Sound") or d:IsA("ParticleEmitter") or d:IsA("BillboardGui") then
+			d:Destroy()
+		end
+	end
+	local view = new("ViewportFrame", { Name = "Face", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Ambient = Color3.fromRGB(190, 175, 160), LightColor = Color3.fromRGB(255, 240, 220), LightDirection = Vector3.new(-0.4, -0.6, -1) }, parent)
+	local world = new("WorldModel", {}, view)
+	copy.Parent = world
+	local camera = new("Camera", { FieldOfView = 34 }, view)
+	local copyHead = copy:FindFirstChild("Head") or head
+	local look = copyHead.CFrame
+	camera.CFrame = CFrame.lookAt((look * CFrame.new(0, 0.25, -3.2)).Position, look.Position + Vector3.new(0, 0.1, 0))
+	view.CurrentCamera = camera
+	return true
+end
+
 local function photoFor(entry, parent)
-	local photo = new("ImageLabel", { Name = "Photo", BackgroundColor3 = PAPER_DARK, BorderSizePixel = 0, ImageColor3 = Color3.fromRGB(240, 220, 190) }, parent)
+	local photo = new("ImageLabel", { Name = "Photo", BackgroundColor3 = PAPER_DARK, BorderSizePixel = 0, ImageColor3 = Color3.fromRGB(240, 220, 190), ClipsDescendants = true }, parent)
 	if entry.Kind == "Player" and entry.UserId then
 		photo.Image = "rbxthumb://type=AvatarHeadShot&id=" .. entry.UserId .. "&w=150&h=150"
 	else
-		-- NPC: a silhouette in their Stand's colour with a question mark.
+		-- NPC: their actual face (copied into a viewport), on their Stand's colour.
 		local info = entry.Act and Registry.get(entry.Act)
-		photo.BackgroundColor3 = info and info.Theme.Primary:Lerp(PAPER_DARK, 0.45) or PAPER_DARK
-		label(photo, { Size = UDim2.fromScale(1, 1), Text = "?", Font = Enum.Font.Bangers, TextColor3 = INK, TextTransparency = 0.25 })
+		photo.BackgroundColor3 = info and info.Theme.Primary:Lerp(PAPER_DARK, 0.55) or PAPER_DARK
+		if not faceViewport(entry.Model, photo) then
+			label(photo, { Size = UDim2.fromScale(1, 1), Text = "?", Font = Enum.Font.Bangers, TextColor3 = INK, TextTransparency = 0.25 })
+		end
 	end
 	return photo
 end
@@ -108,12 +142,13 @@ local function closeBoard()
 	if dim then
 		dim.Visible = false
 	end
-	if confirm then
-		confirm.Visible = false
+	if confirmLayer then
+		confirmLayer.Visible = false
 	end
 end
 
 local function showConfirm(entry)
+	confirmLayer.Visible = true
 	confirm.Visible = true
 	local body = confirm:FindFirstChild("Body")
 	for _, c in ipairs(body:GetChildren()) do
@@ -188,7 +223,7 @@ end
 
 local function openBoard(data)
 	dim.Visible = true
-	confirm.Visible = false
+	confirmLayer.Visible = false
 	for _, c in ipairs(grid:GetChildren()) do
 		if c:IsA("Frame") then
 			c:Destroy()
@@ -229,7 +264,14 @@ local function buildBoard()
 	label(grid, { Name = "Empty", Position = UDim2.fromScale(0.1, 0.35), Size = UDim2.fromScale(0.8, 0.12), Text = "No bounties right now. Check back later!", TextColor3 = PAPER, Visible = false })
 
 	-- Accept / decline.
-	confirm = new("TextButton", { Text = "", AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(330, 300), BackgroundColor3 = PAPER, Visible = false, ZIndex = 10 }, dim)
+	-- The Accept / Decline card sits on its own layer above the board, so
+	-- nothing on the board can cover it or swallow its clicks.
+	local top = new("ScreenGui", { Name = "BountyConfirm", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 9 }, player:WaitForChild("PlayerGui"))
+	confirmLayer = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), Visible = false }, top)
+	confirmLayer.Activated:Connect(function()
+		confirmLayer.Visible = false
+	end)
+	confirm = new("TextButton", { Text = "", AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(330, 300), BackgroundColor3 = PAPER }, confirmLayer)
 	corner(confirm, 6)
 	new("UIScale", { Scale = 1 }, confirm)
 	new("UIStroke", { Color = INK, Thickness = 3 }, confirm)
@@ -257,7 +299,7 @@ local function buildBoard()
 		closeBoard()
 	end)
 	button("DECLINE", RED, 0.53).Activated:Connect(function()
-		confirm.Visible = false
+		confirmLayer.Visible = false
 	end)
 end
 

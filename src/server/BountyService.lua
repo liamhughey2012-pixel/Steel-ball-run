@@ -295,6 +295,47 @@ local function watchCharacter(model)
 	end
 end
 
+local shownOn = {} -- [poster index] = model whose face it shows
+
+-- An NPC's face on a poster: the model copied into a ViewportFrame.
+local function setFace(photo, model)
+	local old = photo:FindFirstChild("Face")
+	if old then
+		old:Destroy()
+	end
+	local head = model and model:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local was = model.Archivable
+	model.Archivable = true
+	local ok, copy = pcall(function()
+		return model:Clone()
+	end)
+	model.Archivable = was
+	if not ok or not copy then
+		return
+	end
+	for _, d in ipairs(copy:GetDescendants()) do
+		if d:IsA("LuaSourceContainer") or d:IsA("Sound") or d:IsA("BillboardGui") then
+			d:Destroy()
+		end
+	end
+	local view = Instance.new("ViewportFrame")
+	view.Name = "Face"
+	view.BackgroundTransparency = 1
+	view.Size = UDim2.fromScale(1, 1)
+	view.Ambient = Color3.fromRGB(190, 175, 160)
+	view.Parent = photo
+	copy.Parent = view
+	local camera = Instance.new("Camera")
+	camera.FieldOfView = 34
+	local copyHead = copy:FindFirstChild("Head") or head
+	camera.CFrame = CFrame.lookAt((copyHead.CFrame * CFrame.new(0, 0.25, -3.2)).Position, copyHead.Position + Vector3.new(0, 0.1, 0))
+	camera.Parent = view
+	view.CurrentCamera = camera
+end
+
 local function refreshPosters()
 	local list = listBounties(nil)
 	for i, gui in ipairs(posterGuis) do
@@ -303,6 +344,11 @@ local function refreshPosters()
 		gui.Reward.Text = e and ("$" .. e.Reward) or "NO BOUNTY"
 		gui.Photo.Image = (e and e.Kind == "Player") and ("rbxthumb://type=AvatarHeadShot&id=" .. e.UserId .. "&w=150&h=150") or ""
 		gui.Photo.BackgroundTransparency = e and 0 or 0.6
+		local model = e and e.Kind == "NPC" and e.Model or nil
+		if shownOn[i] ~= model then
+			shownOn[i] = model
+			setFace(gui.Photo, model)
+		end
 	end
 end
 

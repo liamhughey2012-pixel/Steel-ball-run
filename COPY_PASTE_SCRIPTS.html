@@ -3236,7 +3236,7 @@ NPCService.init()
 TestDummies.init()
 </pre></details></section><section class="card" id="s15">
 <div class="head"><span class="num">15</span><div><h2>BountyService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="15">Copy code</button><details><summary>Show code (398 lines)</summary><pre id="c15">--[[
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="15">Copy code</button><details><summary>Show code (444 lines)</summary><pre id="c15">--[[
 	BountyService  (ServerScriptService.SpinServer.BountyService)
 
 	The BOUNTY BOARD by the spawn (owner&#x27;s design):
@@ -3533,6 +3533,47 @@ local function watchCharacter(model)
 	end
 end
 
+local shownOn = {} -- [poster index] = model whose face it shows
+
+-- An NPC&#x27;s face on a poster: the model copied into a ViewportFrame.
+local function setFace(photo, model)
+	local old = photo:FindFirstChild(&quot;Face&quot;)
+	if old then
+		old:Destroy()
+	end
+	local head = model and model:FindFirstChild(&quot;Head&quot;)
+	if not head then
+		return
+	end
+	local was = model.Archivable
+	model.Archivable = true
+	local ok, copy = pcall(function()
+		return model:Clone()
+	end)
+	model.Archivable = was
+	if not ok or not copy then
+		return
+	end
+	for _, d in ipairs(copy:GetDescendants()) do
+		if d:IsA(&quot;LuaSourceContainer&quot;) or d:IsA(&quot;Sound&quot;) or d:IsA(&quot;BillboardGui&quot;) then
+			d:Destroy()
+		end
+	end
+	local view = Instance.new(&quot;ViewportFrame&quot;)
+	view.Name = &quot;Face&quot;
+	view.BackgroundTransparency = 1
+	view.Size = UDim2.fromScale(1, 1)
+	view.Ambient = Color3.fromRGB(190, 175, 160)
+	view.Parent = photo
+	copy.Parent = view
+	local camera = Instance.new(&quot;Camera&quot;)
+	camera.FieldOfView = 34
+	local copyHead = copy:FindFirstChild(&quot;Head&quot;) or head
+	camera.CFrame = CFrame.lookAt((copyHead.CFrame * CFrame.new(0, 0.25, -3.2)).Position, copyHead.Position + Vector3.new(0, 0.1, 0))
+	camera.Parent = view
+	view.CurrentCamera = camera
+end
+
 local function refreshPosters()
 	local list = listBounties(nil)
 	for i, gui in ipairs(posterGuis) do
@@ -3541,6 +3582,11 @@ local function refreshPosters()
 		gui.Reward.Text = e and (&quot;$&quot; .. e.Reward) or &quot;NO BOUNTY&quot;
 		gui.Photo.Image = (e and e.Kind == &quot;Player&quot;) and (&quot;rbxthumb://type=AvatarHeadShot&amp;id=&quot; .. e.UserId .. &quot;&amp;w=150&amp;h=150&quot;) or &quot;&quot;
 		gui.Photo.BackgroundTransparency = e and 0 or 0.6
+		local model = e and e.Kind == &quot;NPC&quot; and e.Model or nil
+		if shownOn[i] ~= model then
+			shownOn[i] = model
+			setFace(gui.Photo, model)
+		end
 	end
 end
 
@@ -17869,7 +17915,7 @@ return TuskVFX
 <div class="head"><span class="num">63</span><div><h2>UI <span class="badge folder">Folder</span></h2>
 <p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s64">
 <div class="head"><span class="num">64</span><div><h2>BountyUI <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="64">Copy code</button><details><summary>Show code (364 lines)</summary><pre id="c64">--[[
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="64">Copy code</button><details><summary>Show code (406 lines)</summary><pre id="c64">--[[
 	BountyUI  (StarterPlayerScripts.SpinClient.UI.BountyUI)
 
 	The bounty board screen (owner&#x27;s design):
@@ -17906,7 +17952,7 @@ local RED = Color3.fromRGB(190, 40, 35)
 local GREEN = Color3.fromRGB(60, 150, 70)
 local GOLD = Color3.fromRGB(255, 205, 90)
 
-local gui, dim, board, grid, confirm, tracker, banner, marker
+local gui, dim, board, grid, confirm, confirmLayer, tracker, banner, marker
 local current -- the active bounty
 local confirmEntry -- the poster the Accept/Decline card is asking about
 local FAST = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
@@ -17933,15 +17979,49 @@ local function label(parent, props)
 	return l
 end
 
+-- A live &quot;photo&quot; of a model&#x27;s face: the character copied into a ViewportFrame.
+local function faceViewport(model, parent)
+	local head = model and model:FindFirstChild(&quot;Head&quot;)
+	if not head then
+		return false
+	end
+	local ok, copy = pcall(function()
+		local was = model.Archivable
+		model.Archivable = true
+		local c = model:Clone()
+		model.Archivable = was
+		return c
+	end)
+	if not ok or not copy then
+		return false
+	end
+	for _, d in ipairs(copy:GetDescendants()) do
+		if d:IsA(&quot;LuaSourceContainer&quot;) or d:IsA(&quot;Sound&quot;) or d:IsA(&quot;ParticleEmitter&quot;) or d:IsA(&quot;BillboardGui&quot;) then
+			d:Destroy()
+		end
+	end
+	local view = new(&quot;ViewportFrame&quot;, { Name = &quot;Face&quot;, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Ambient = Color3.fromRGB(190, 175, 160), LightColor = Color3.fromRGB(255, 240, 220), LightDirection = Vector3.new(-0.4, -0.6, -1) }, parent)
+	local world = new(&quot;WorldModel&quot;, {}, view)
+	copy.Parent = world
+	local camera = new(&quot;Camera&quot;, { FieldOfView = 34 }, view)
+	local copyHead = copy:FindFirstChild(&quot;Head&quot;) or head
+	local look = copyHead.CFrame
+	camera.CFrame = CFrame.lookAt((look * CFrame.new(0, 0.25, -3.2)).Position, look.Position + Vector3.new(0, 0.1, 0))
+	view.CurrentCamera = camera
+	return true
+end
+
 local function photoFor(entry, parent)
-	local photo = new(&quot;ImageLabel&quot;, { Name = &quot;Photo&quot;, BackgroundColor3 = PAPER_DARK, BorderSizePixel = 0, ImageColor3 = Color3.fromRGB(240, 220, 190) }, parent)
+	local photo = new(&quot;ImageLabel&quot;, { Name = &quot;Photo&quot;, BackgroundColor3 = PAPER_DARK, BorderSizePixel = 0, ImageColor3 = Color3.fromRGB(240, 220, 190), ClipsDescendants = true }, parent)
 	if entry.Kind == &quot;Player&quot; and entry.UserId then
 		photo.Image = &quot;rbxthumb://type=AvatarHeadShot&amp;id=&quot; .. entry.UserId .. &quot;&amp;w=150&amp;h=150&quot;
 	else
-		-- NPC: a silhouette in their Stand&#x27;s colour with a question mark.
+		-- NPC: their actual face (copied into a viewport), on their Stand&#x27;s colour.
 		local info = entry.Act and Registry.get(entry.Act)
-		photo.BackgroundColor3 = info and info.Theme.Primary:Lerp(PAPER_DARK, 0.45) or PAPER_DARK
-		label(photo, { Size = UDim2.fromScale(1, 1), Text = &quot;?&quot;, Font = Enum.Font.Bangers, TextColor3 = INK, TextTransparency = 0.25 })
+		photo.BackgroundColor3 = info and info.Theme.Primary:Lerp(PAPER_DARK, 0.55) or PAPER_DARK
+		if not faceViewport(entry.Model, photo) then
+			label(photo, { Size = UDim2.fromScale(1, 1), Text = &quot;?&quot;, Font = Enum.Font.Bangers, TextColor3 = INK, TextTransparency = 0.25 })
+		end
 	end
 	return photo
 end
@@ -17953,12 +18033,13 @@ local function closeBoard()
 	if dim then
 		dim.Visible = false
 	end
-	if confirm then
-		confirm.Visible = false
+	if confirmLayer then
+		confirmLayer.Visible = false
 	end
 end
 
 local function showConfirm(entry)
+	confirmLayer.Visible = true
 	confirm.Visible = true
 	local body = confirm:FindFirstChild(&quot;Body&quot;)
 	for _, c in ipairs(body:GetChildren()) do
@@ -18033,7 +18114,7 @@ end
 
 local function openBoard(data)
 	dim.Visible = true
-	confirm.Visible = false
+	confirmLayer.Visible = false
 	for _, c in ipairs(grid:GetChildren()) do
 		if c:IsA(&quot;Frame&quot;) then
 			c:Destroy()
@@ -18074,7 +18155,14 @@ local function buildBoard()
 	label(grid, { Name = &quot;Empty&quot;, Position = UDim2.fromScale(0.1, 0.35), Size = UDim2.fromScale(0.8, 0.12), Text = &quot;No bounties right now. Check back later!&quot;, TextColor3 = PAPER, Visible = false })
 
 	-- Accept / decline.
-	confirm = new(&quot;TextButton&quot;, { Text = &quot;&quot;, AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(330, 300), BackgroundColor3 = PAPER, Visible = false, ZIndex = 10 }, dim)
+	-- The Accept / Decline card sits on its own layer above the board, so
+	-- nothing on the board can cover it or swallow its clicks.
+	local top = new(&quot;ScreenGui&quot;, { Name = &quot;BountyConfirm&quot;, ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 9 }, player:WaitForChild(&quot;PlayerGui&quot;))
+	confirmLayer = new(&quot;TextButton&quot;, { Text = &quot;&quot;, AutoButtonColor = false, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), Visible = false }, top)
+	confirmLayer.Activated:Connect(function()
+		confirmLayer.Visible = false
+	end)
+	confirm = new(&quot;TextButton&quot;, { Text = &quot;&quot;, AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(330, 300), BackgroundColor3 = PAPER }, confirmLayer)
 	corner(confirm, 6)
 	new(&quot;UIScale&quot;, { Scale = 1 }, confirm)
 	new(&quot;UIStroke&quot;, { Color = INK, Thickness = 3 }, confirm)
@@ -18102,7 +18190,7 @@ local function buildBoard()
 		closeBoard()
 	end)
 	button(&quot;DECLINE&quot;, RED, 0.53).Activated:Connect(function()
-		confirm.Visible = false
+		confirmLayer.Visible = false
 	end)
 end
 

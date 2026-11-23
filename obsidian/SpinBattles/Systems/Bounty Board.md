@@ -12,9 +12,11 @@ Server: `BountyService` (built into Spin_Server). Client: `UI/BountyUI` (built i
 
 **Using it:**
 1. Walk up and press **E** ("View Bounties").
-2. A wooden board screen opens with a WANTED poster for every other player (their avatar headshot) and every Stand-user NPC (a "?" in their Stand's colour), each with its reward.
+2. A wooden board screen opens with a WANTED poster for every other player (their avatar headshot) and every Stand-user NPC (their actual face, copied live into the poster), each with its reward.
 3. **Hover** a poster: it straightens, lifts, grows and casts a shadow. **Click** it: "ACCEPT BOUNTY?" with ACCEPT / DECLINE.
 4. **Accept:** a bounty tracker card slides in on the left (target, reward, distance, time left, X to abandon) and a red **TARGET** marker floats over them (only you see it).
 5. Land the killing blow (your hit within 6 s of their death): **"BOUNTY CLAIMED! +$..."** and the Cash goes to your leaderstats (Cash, Bounties).
 
 **Rewards:** players $100 + $50 per kill on their current streak; Stand-user NPCs $75. Bounties last 5 minutes. One at a time (a new one replaces the old). If someone else takes down your NPC target, or your target leaves, the bounty is lost.
+
+**Note:** the board only lists *other* players. Playing alone in Studio you'll only see the NPCs; use Test › Clients and Servers with 2+ players to see player posters.
