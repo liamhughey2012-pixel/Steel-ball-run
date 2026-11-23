@@ -30,3 +30,7 @@ Wind-up: three tight green rings and a charge gathering on the ball in his hand.
 
 ## Steel Ball Throw bounces
 The ball bounces off walls up to **3** times (`TuskConfig.Gyro.SteelBallThrow.MaxBounces`), keeping the range it has left and coming off each bounce 8% faster. Bank shots hit harder: +2 damage per bounce (`BounceBonusDamage`). Each enemy is hit once per throw. After the last bounce (or when it hits someone or runs out of range) it spins back to Gyro's hand. Bounce visuals: a ring flat on the wall, starburst, sparks along the new direction and a "BOUNCE x2" popup.
+
+## Stand: Ball Breaker
+Gyro's Stand is **Ball Breaker** (character card and dropdown say so; not "Steel Balls"). In his ultimate, Ball Breaker rises out of the vortex as in the owner's picture: a green ribbed figure with long arms and legs, a flat round lid head, pink bulbs all over and gold lightning crackling around it, then shatters into green, pink and gold sparks.
+![[ball_breaker_vs_picture.png]]

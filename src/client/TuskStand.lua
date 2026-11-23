@@ -19,6 +19,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
+local VFXQuality = require(Shared.VFXQuality)
 local TuskStandModels = require(Shared.TuskStandModels)
 local VFXLib = require(script.Parent.VFXLib)
 
@@ -36,6 +37,79 @@ local SNEAK_OFFSET = CFrame.new(1.5, -1.4, 1.2)
 
 local stands = {} -- [character] = stand
 
+-- Pink Spin energy aura around every Tusk Stand.
+local AURA = Color3.fromRGB(255, 105, 205)
+local AURA_LIGHT = Color3.fromRGB(255, 195, 238)
+
+local function addAura(model, rig)
+	local body = rig and rig.Body or model.PrimaryPart
+	if not body then
+		return nil
+	end
+	local quality = VFXQuality.get()
+	local boxCF, size = model:GetBoundingBox()
+	-- Invisible shell around the whole Stand that the aura particles come from.
+	local shell = Instance.new("Part")
+	shell.Name = "TuskAuraShell"
+	shell.Transparency = 1
+	shell.CanCollide = false
+	shell.CanQuery = false
+	shell.CanTouch = false
+	shell.Massless = true
+	shell.Anchored = false
+	shell.Size = size * 0.9
+	shell.CFrame = boxCF
+	local weld = Instance.new("Weld")
+	weld.Part0 = body
+	weld.Part1 = shell
+	weld.C0 = body.CFrame:ToObjectSpace(boxCF)
+	weld.Parent = shell
+	shell.Parent = model
+	local emitters = {}
+	-- Soft pink energy rising off the body.
+	local glow = Instance.new("ParticleEmitter")
+	glow.Texture = VFXLib.Textures.Smoke
+	glow.Color = ColorSequence.new(AURA, AURA_LIGHT)
+	glow.LightEmission = 1
+	glow.LightInfluence = 0
+	glow.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 1.6) })
+	glow.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.72), NumberSequenceKeypoint.new(1, 1) })
+	glow.Lifetime = NumberRange.new(0.6, 1)
+	glow.Speed = NumberRange.new(1, 2.5)
+	glow.Acceleration = Vector3.new(0, 3, 0)
+	glow.RotSpeed = NumberRange.new(-60, 60)
+	glow.Rate = 14 * quality.Particles
+	glow.Shape = Enum.ParticleEmitterShape.Box
+	glow.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+	glow.EmissionDirection = Enum.NormalId.Top
+	glow.Parent = shell
+	table.insert(emitters, glow)
+	-- Little pink sparks orbiting out of it.
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Texture = VFXLib.Textures.Sparkle
+	sparks.Color = ColorSequence.new(AURA_LIGHT, AURA)
+	sparks.LightEmission = 1
+	sparks.LightInfluence = 0
+	sparks.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.22), NumberSequenceKeypoint.new(1, 0) })
+	sparks.Lifetime = NumberRange.new(0.4, 0.8)
+	sparks.Speed = NumberRange.new(1.5, 3.5)
+	sparks.SpreadAngle = Vector2.new(180, 180)
+	sparks.Rate = 12 * quality.Particles
+	sparks.Shape = Enum.ParticleEmitterShape.Box
+	sparks.Parent = shell
+	table.insert(emitters, sparks)
+	local light
+	if quality.Lights then
+		light = Instance.new("PointLight")
+		light.Color = AURA
+		light.Range = 9
+		light.Brightness = 1.2
+		light.Shadows = false
+		light.Parent = body
+	end
+	return { Emitters = emitters, Light = light }
+end
+
 local function setVisible(stand, visible)
 	if stand.Visible == visible then
 		return
@@ -44,6 +118,15 @@ local function setVisible(stand, visible)
 	for part, original in pairs(stand.Transparency) do
 		part.Transparency = visible and original or 1
 	end
+	if stand.Aura then
+		for _, e in ipairs(stand.Aura.Emitters) do
+			e.Enabled = visible
+		end
+		if stand.Aura.Light then
+			stand.Aura.Light.Enabled = visible
+		end
+	end
+	stand.Highlight.Enabled = visible
 end
 
 local function build(character, act)
@@ -57,10 +140,13 @@ local function build(character, act)
 			transparency[d] = d.Transparency
 		end
 	end
+	local aura = addAura(model, rig)
+	-- Pink aura glow + outline (pulses in update); flashes brighter on Manifest.
 	local highlight = Instance.new("Highlight")
-	highlight.FillTransparency = 1
-	highlight.OutlineColor = TuskConfig.Colors.Cyan
-	highlight.OutlineTransparency = 1
+	highlight.FillColor = AURA
+	highlight.FillTransparency = 0.85
+	highlight.OutlineColor = AURA
+	highlight.OutlineTransparency = 0.4
 	highlight.DepthMode = Enum.HighlightDepthMode.Occluded
 	highlight.Adornee = model
 	highlight.Parent = model
@@ -74,6 +160,7 @@ local function build(character, act)
 		Model = model,
 		Rig = rig,
 		Highlight = highlight,
+		Aura = aura,
 		Transparency = transparency,
 		Visible = true,
 		CF = start,
@@ -121,7 +208,10 @@ local function update(stand, root, dt, now)
 	local awakened = character:GetAttribute("TuskAwakened") == true
 
 	setVisible(stand, not burrowed)
-	stand.Highlight.OutlineTransparency = awakened and 0.1 or (stand.Action and stand.Action.Kind == "Manifest" and stand.Highlight.OutlineTransparency or 1)
+	-- Pink aura: the glow and outline breathe; Awakened = strong outline; Manifest = flash.
+	local pulse = (math.sin(t * 3) + 1) / 2
+	stand.Highlight.FillTransparency = 0.88 - pulse * 0.06
+	stand.Highlight.OutlineTransparency = awakened and 0.05 or (stand.Action and stand.Action.Kind == "Manifest" and stand.Highlight.OutlineTransparency or (0.45 - pulse * 0.2))
 
 	local velocity = root.AssemblyLinearVelocity
 	local flat = Vector3.new(velocity.X, 0, velocity.Z)

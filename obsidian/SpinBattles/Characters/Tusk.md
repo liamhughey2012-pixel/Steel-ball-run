@@ -39,3 +39,6 @@ The Stands are blocky but keep the round shapes that make them Tusk (`SpinShared
 - small pieces become single boxes, rods become square rods
 Turn blocky off with `TuskConfig.BlockyModels = false`. Custom Stand models from SpinAssets are never changed.
 ![[blocky_models_preview.png]]
+
+## Pink energy aura
+Every Act's Stand glows with a pink Spin aura: a pulsing pink glow and outline, soft pink energy rising off the whole model, pink sparks and a pink light. It hides while Tusk is burrowed and follows the VFX quality setting (`TuskStand`).

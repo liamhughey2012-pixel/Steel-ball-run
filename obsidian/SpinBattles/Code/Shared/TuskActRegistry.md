@@ -98,7 +98,7 @@ TuskActRegistry.Acts = {
 		Next = nil,
 		Module = "GyroZeppeli", -- server moves
 		ClientModule = "Gyro", -- client visuals (TuskActVFX.Gyro)
-		CardTitle = "STEEL BALL USER",
+		CardTitle = "STAND  ·  BALL BREAKER",
 	},
 	-- Diego Brando: Scary Monsters (dinosaur Stand). Same ability system.
 	[6] = {

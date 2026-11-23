@@ -361,7 +361,7 @@ local function onRequest(player, action, a, b, c)
 		return
 	end
 	if action == "Character" then
-		-- Character dropdown: "Johnny" (Tusk, starts at Act 1) or "Gyro" (Steel Balls).
+		-- Character dropdown: "Johnny" (Tusk, starts at Act 1) or "Gyro" (Ball Breaker).
 		local st = states[player]
 		local start = typeof(a) == "string" and Registry.StartAct[a]
 		if not st or not start then

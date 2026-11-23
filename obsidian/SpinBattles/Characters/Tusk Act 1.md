@@ -25,3 +25,10 @@ The meter fills slower each Act (`GainByAct`), and the ultimate stays locked for
 
 ## Nail shots
 Cyan glowing nails with **blue Spin whirls** (3-armed spirals, cyan centre fading to blue) that keep spinning around the shot, plus the cyan/blue helix trail. Shot = 2 whirls, M1/Barrage = 1, Spinning Nail = 2–3 (golden at full charge). Act 4's golden shots get golden whirls.
+
+## Closer to the drawing (owner's picture)
+- Leaf-shaped ears with a darker inside: the big one sweeps out to the right and curls over at the tip, the other droops down the left side and curls.
+- Smaller, tucked-in chin so the egg narrows toward the legs; bigger frilly fins; a longer side arm.
+- Five legs fanned out under the body with bigger hearts.
+- Act 1 keeps all its round shapes (only the thin legs are square rods in the blocky look).
+![[act1_vs_picture.png]]

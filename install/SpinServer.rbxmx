@@ -1,6 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Script" referent="RBX33"><Properties><string name="Name">SpinServer</string><ProtectedString name="Source"><![CDATA[--[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
-	Boots every server system: characters (Johnny/Tusk, Gyro/Steel Balls,
+	Boots every server system: characters (Johnny/Tusk, Gyro/Ball Breaker,
 	Diego/Scary Monsters),
 	custom Stand models, NPCs and Studio test dummies.
 ]]
@@ -3813,7 +3813,7 @@ local function onRequest(player, action, a, b, c)
 		return
 	end
 	if action == "Character" then
-		-- Character dropdown: "Johnny" (Tusk, starts at Act 1) or "Gyro" (Steel Balls).
+		-- Character dropdown: "Johnny" (Tusk, starts at Act 1) or "Gyro" (Ball Breaker).
 		local st = states[player]
 		local start = typeof(a) == "string" and Registry.StartAct[a]
 		if not st or not start then

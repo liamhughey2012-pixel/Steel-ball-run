@@ -1,6 +1,6 @@
 --[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
-	Boots every server system: characters (Johnny/Tusk, Gyro/Steel Balls,
+	Boots every server system: characters (Johnny/Tusk, Gyro/Ball Breaker,
 	Diego/Scary Monsters),
 	custom Stand models, NPCs and Studio test dummies.
 ]]

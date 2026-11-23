@@ -1130,7 +1130,7 @@ TuskActRegistry.Acts = {
 		Next = nil,
 		Module = "GyroZeppeli", -- server moves
 		ClientModule = "Gyro", -- client visuals (TuskActVFX.Gyro)
-		CardTitle = "STEEL BALL USER",
+		CardTitle = "STAND  ·  BALL BREAKER",
 	},
 	-- Diego Brando: Scary Monsters (dinosaur Stand). Same ability system.
 	[6] = {
@@ -1264,7 +1264,7 @@ TuskConfig.StandModels = {
 ---------------------------------------------------------------------------
 TuskConfig.Roster = {
 	{ Id = "Johnny", Name = "JOHNNY JOESTAR", Stand = "TUSK (ACT 1-4)", Available = true, Color = Color3.fromRGB(90, 230, 255) },
-	{ Id = "Gyro", Name = "GYRO ZEPPELI", Stand = "STEEL BALLS", Available = true, Color = Color3.fromRGB(110, 210, 90) },
+	{ Id = "Gyro", Name = "GYRO ZEPPELI", Stand = "BALL BREAKER", Available = true, Color = Color3.fromRGB(110, 210, 90) },
 	{ Id = "Diego", Name = "DIEGO BRANDO", Stand = "SCARY MONSTERS", Available = true, Color = Color3.fromRGB(80, 210, 220) },
 }
 
@@ -1866,8 +1866,8 @@ local function buildAct1Classic(scale)
 	attach(body, tip, CFrame.new(-0.05 * s, -1.05 * s, 0.05 * s))
 
 	-- Long chin / snout below the face, with little gold spikes.
-	local chin = part(model, { Name = "Chin", Size = Vector3.new(0.95, 1.15, 0.95) * s, Color = pink, Ellipsoid = true })
-	attach(body, chin, CFrame.new(-0.22 * s, -0.78 * s, -0.28 * s) * CFrame.Angles(0.35, 0, -0.25))
+	local chin = part(model, { Name = "Chin", Size = Vector3.new(0.8, 0.95, 0.72) * s, Color = pink, Ellipsoid = true })
+	attach(body, chin, CFrame.new(-0.18 * s, -0.8 * s, -0.2 * s) * CFrame.Angles(0.3, 0, -0.2))
 	for i = 1, 3 do
 		cone(model, body, Vector3.new(-(0.22 + i * 0.12) * s, (-1.05 - i * 0.04) * s, (-0.55 + i * 0.05) * s), Vector3.new(-0.6, -0.5, -0.6), 0.22 * s, 0.05 * s, gold, Enum.Material.Metal)
 	end
@@ -1946,15 +1946,21 @@ local function buildAct1Classic(scale)
 	-- Ears: a huge floppy ear sweeping up (its left), a smaller one drooping (its right). Animated.
 	local ears = {
 		-- Right ear sweeps up and out; left ear droops down beside the face.
-		{ Name = "EarL", Base = CFrame.new(-0.5 * s, 0.9 * s, 0.1 * s) * CFrame.Angles(0.25, -0.3, 1.15), Size = Vector3.new(0.6, 1.8, 0.13) },
-		{ Name = "EarR", Base = CFrame.new(0.7 * s, 0.75 * s, 0.05 * s) * CFrame.Angles(-0.1, 0.25, -1.35), Size = Vector3.new(0.5, 1.4, 0.13) },
+		{ Name = "EarL", Base = CFrame.new(-0.4 * s, 1.0 * s, 0.1 * s) * CFrame.Angles(0.3, -0.25, 1.35), Size = Vector3.new(0.9, 1.9, 0.16), Tip = Vector3.new(0.7, 1.25, 0.14), Curl = 0.55 },
+		{ Name = "EarR", Base = CFrame.new(0.72 * s, 0.55 * s, 0.05 * s) * CFrame.Angles(-0.15, 0.3, -2.55), Size = Vector3.new(0.7, 1.55, 0.15), Tip = Vector3.new(0.5, 0.8, 0.13), Curl = -0.5 },
 	}
 	for _, e in ipairs(ears) do
+		-- Leaf-shaped ear: a wide base, a curled tip and a darker pink inside.
 		local ear = part(model, { Name = e.Name, Size = e.Size * s, Color = pink, Ellipsoid = true })
-		local inner = part(model, { Name = e.Name .. "Inner", Size = e.Size * s * Vector3.new(0.6, 0.8, 0.5), Color = pinkDark, Ellipsoid = true })
+		local inner = part(model, { Name = e.Name .. "Inner", Size = e.Size * s * Vector3.new(0.62, 0.82, 0.5), Color = pinkDark, Ellipsoid = true })
 		local offset = CFrame.new(0, e.Size.Y * s * 0.45, 0)
 		local w = attach(body, ear, e.Base * offset)
-		attach(ear, inner, CFrame.new(0, 0, -0.035 * s))
+		attach(ear, inner, CFrame.new(0, 0, -0.045 * s))
+		local tipCF = CFrame.new(0, e.Size.Y * s * 0.42, 0) * CFrame.Angles(0, 0, e.Curl) * CFrame.new(0, e.Tip.Y * s * 0.4, 0)
+		local tip = part(model, { Name = e.Name .. "Tip", Size = e.Tip * s, Color = pink, Ellipsoid = true })
+		attach(ear, tip, tipCF)
+		local tipInner = part(model, { Name = e.Name .. "Inner", Size = e.Tip * s * Vector3.new(0.55, 0.75, 0.5), Color = pinkDark, Ellipsoid = true })
+		attach(ear, tipInner, tipCF * CFrame.new(0, 0, -0.04 * s))
 		rig.Joints[e.Name] = { Weld = w, Base = e.Base, Offset = offset }
 	end
 	-- Small spike on top of the head.
@@ -1971,22 +1977,25 @@ local function buildAct1Classic(scale)
 	}
 	for _, cf in ipairs(fins) do
 		for k = 0, 1 do
-			local fin = part(model, { Name = "Fin", Size = Vector3.new(0.14, 0.42 - k * 0.12, 0.07) * s, Color = k == 0 and pink or pinkLight, Ellipsoid = true })
-			attach(body, fin, cf * CFrame.new(k * 0.07 * s, (0.18 + k * 0.1) * s, 0) * CFrame.Angles(0, 0, k * 0.4))
+			local fin = part(model, { Name = "Fin", Size = Vector3.new(0.24, 0.62 - k * 0.18, 0.08) * s, Color = k == 0 and pink or pinkLight, Ellipsoid = true })
+			attach(body, fin, cf * CFrame.new(k * 0.1 * s, (0.26 + k * 0.14) * s, 0) * CFrame.Angles(0, 0, k * 0.5))
 		end
 	end
 
 	-- Side appendage (its left) with a gold horn and a star.
-	local side = part(model, { Name = "SideHand", Size = Vector3.new(0.75, 0.5, 0.45) * s, Color = pink, Ellipsoid = true })
-	attach(body, side, CFrame.new(-1.0 * s, -0.2 * s, -0.1 * s) * CFrame.Angles(0, 0, 0.4))
+	local side = part(model, { Name = "SideHand", Size = Vector3.new(1.0, 0.55, 0.5) * s, Color = pink, Ellipsoid = true })
+	attach(body, side, CFrame.new(-1.05 * s, -0.15 * s, -0.1 * s) * CFrame.Angles(0, 0, 0.35))
+	local sideTip = part(model, { Name = "SideHand", Size = Vector3.new(0.5, 0.42, 0.4) * s, Color = pinkLight, Ellipsoid = true })
+	attach(body, sideTip, CFrame.new(-1.5 * s, 0.02 * s, -0.12 * s) * CFrame.Angles(0, 0, 0.5))
 	cone(model, body, Vector3.new(-1.32 * s, -0.08 * s, -0.1 * s), Vector3.new(-1, 0.5, -0.2), 0.3 * s, 0.07 * s, gold, Enum.Material.Metal)
 	star5(model, body, Vector3.new(-1.02 * s, -0.12 * s, -0.33 * s), Vector3.new(-0.2, 0.1, -1), 0.22 * s, starColor, 0.5)
 
 	-- Five thin legs ending in hearts (four animated).
-	local legX = { -0.34, -0.15, 0.04, 0.22, 0.4 }
+	-- Splayed out in a fan under the body, like the drawing.
+	local legX = { -0.4, -0.2, 0.02, 0.24, 0.44 }
 	for i = 1, 5 do
-		local base = CFrame.new(legX[i] * s, -1.4 * s, (i % 2 == 0 and 0.12 or -0.12) * s)
-		local legLength = (0.55 + ((i * 7) % 4) * 0.1) * s
+		local base = CFrame.new(legX[i] * s, -1.35 * s, (i % 2 == 0 and 0.14 or -0.14) * s) * CFrame.Angles((i % 2 == 0 and 0.15 or -0.1), 0, (i - 3) * 0.32)
+		local legLength = (0.7 + ((i * 7) % 4) * 0.1) * s
 		local leg = part(model, { Name = "Leg" .. i, Shape = Enum.PartType.Cylinder, Size = Vector3.new(legLength, 0.06 * s, 0.06 * s), Color = pinkDark })
 		local offset = CFrame.new(0, -legLength / 2, 0) * CFrame.Angles(0, 0, math.pi / 2)
 		local w = attach(body, leg, base * offset)
@@ -1996,11 +2005,11 @@ local function buildAct1Classic(scale)
 		-- Heart: two lobes and a point, facing forward.
 		local footCF = CFrame.new(-legLength / 2 - 0.16 * s, 0, 0) * CFrame.Angles(0, 0, -math.pi / 2)
 		for _, sx in ipairs({ -1, 1 }) do
-			local lobe = part(model, { Name = "HeartLobe", Size = Vector3.new(0.24, 0.24, 0.12) * s, Color = heart, Ellipsoid = true })
-			attach(leg, lobe, footCF * CFrame.new(sx * 0.09 * s, 0.05 * s, 0))
+			local lobe = part(model, { Name = "HeartLobe", Size = Vector3.new(0.32, 0.32, 0.14) * s, Color = heart, Ellipsoid = true })
+			attach(leg, lobe, footCF * CFrame.new(sx * 0.12 * s, 0.07 * s, 0))
 		end
-		local point = part(model, { Name = "HeartPoint", Size = Vector3.new(0.22, 0.22, 0.1) * s, Color = heart })
-		attach(leg, point, footCF * CFrame.new(0, -0.07 * s, 0) * CFrame.Angles(0, 0, math.pi / 4))
+		local point = part(model, { Name = "HeartPoint", Size = Vector3.new(0.3, 0.3, 0.12) * s, Color = heart })
+		attach(leg, point, footCF * CFrame.new(0, -0.09 * s, 0) * CFrame.Angles(0, 0, math.pi / 4))
 	end
 
 	local nailPoint = Instance.new("Attachment")
@@ -2559,7 +2568,10 @@ local builders = {
 
 -- Round pieces that make each Act recognisable as Tusk (kept smooth when blocky).
 local SIGNATURE_ROUND = {
-	[1] = { Body = true, Belly = true, Chin = true, Eye = true, Lid = true, Pupil = true, Highlight = true, Shine = true, HeartLobe = true, PinHead = true, Mouth = true, Head = true, Chest = true },
+	-- Act 1 keeps every rounded shape so it reads as the drawing; only the thin legs become square rods.
+	[1] = setmetatable({ Leg1 = false, Leg2 = false, Leg3 = false, Leg4 = false, Leg5 = false }, { __index = function()
+		return true
+	end }),
 	[2] = { Body = true, Head = true, Cheek = true, EarDisc = true, Drum = true, DrumRim = true, DrumHole = true, Pod = true, PodHole = true, Visor = true },
 	[3] = { Body = true, BackShade = true, ShoulderBall = true, BellyLens = true, LensRim = true, Mask = true },
 	[4] = { Head = true, Visor = true, HelmetRidge = true, Emblem = true },
@@ -2846,7 +2858,7 @@ return WreckingBallModel
 	{ Service = "ServerScriptService", Path = "SpinServer", Class = "Script", Source = [=[
 --[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
-	Boots every server system: characters (Johnny/Tusk, Gyro/Steel Balls,
+	Boots every server system: characters (Johnny/Tusk, Gyro/Ball Breaker,
 	Diego/Scary Monsters),
 	custom Stand models, NPCs and Studio test dummies.
 ]]
@@ -6694,7 +6706,7 @@ local function onRequest(player, action, a, b, c)
 		return
 	end
 	if action == "Character" then
-		-- Character dropdown: "Johnny" (Tusk, starts at Act 1) or "Gyro" (Steel Balls).
+		-- Character dropdown: "Johnny" (Tusk, starts at Act 1) or "Gyro" (Ball Breaker).
 		local st = states[player]
 		local start = typeof(a) == "string" and Registry.StartAct[a]
 		if not st or not start then
@@ -10183,55 +10195,128 @@ function vibrationHit(character, root, data)
 end
 
 
--- The Ball Breaker spirit: a glowing ghostly skeletal figure (ForceField
--- material shimmers) that rises out of the vortex, spins, then shatters.
+-- BALL BREAKER (the Stand, from the owner's picture): a green ribbed
+-- figure with long arms and legs, a flat round "lid" head, pink bulbs all
+-- over it and gold lightning crackling around it. Rises out of the vortex,
+-- sways, then shatters into sparks.
+local BB_GREEN = Color3.fromRGB(140, 215, 60)
+local BB_DARK = Color3.fromRGB(70, 140, 40)
+local BB_PINK = Color3.fromRGB(235, 150, 200)
+local BB_GOLD = Color3.fromRGB(255, 220, 70)
+
 local function breakerSpirit(position, duration)
 	local quality = VFXQuality.get()
 	local bits = {}
-	local function bone(size, offset, ellipsoid)
-		local p = VFXLib.part({ Material = Enum.Material.ForceField, Color = pal.Light, Size = size, Transparency = 0 })
-		if ellipsoid then
+	local function piece(size, offset, color, shape, material)
+		local p = VFXLib.part({ Material = material or Enum.Material.SmoothPlastic, Color = color, Size = size, Transparency = 0.1 })
+		if shape == "Ball" then
 			local mesh = Instance.new("SpecialMesh")
 			mesh.MeshType = Enum.MeshType.Sphere
 			mesh.Parent = p
+		elseif shape == "Cylinder" then
+			p.Shape = Enum.PartType.Cylinder
 		end
 		table.insert(bits, { Part = p, Offset = offset, Size = size })
+		return p
 	end
-	bone(Vector3.new(2.4, 2.8, 2.4), CFrame.new(0, 7.5, 0), true) -- skull
-	bone(Vector3.new(0.5, 0.6, 0.3), CFrame.new(-0.5, 7.4, -1.1), true) -- eye
-	bone(Vector3.new(0.5, 0.6, 0.3), CFrame.new(0.5, 7.4, -1.1), true) -- eye
-	bone(Vector3.new(0.5, 3.4, 0.5), CFrame.new(0, 4.5, 0.3), false) -- spine
-	for i = 0, (quality.RingSegments > 12 and 3 or 1) do -- ribs
-		bone(Vector3.new(3.4 - i * 0.35, 0.35, 1.8), CFrame.new(0, 5.6 - i * 0.7, 0), true)
+	local flat = CFrame.Angles(0, 0, math.pi / 2) -- cylinder axis -> up
+	-- Body: ribbed green torso and hips.
+	piece(Vector3.new(3.0, 3.6, 2.0), CFrame.new(0, 6.0, 0), BB_GREEN, "Ball")
+	piece(Vector3.new(2.4, 1.6, 1.8), CFrame.new(0, 3.9, 0), BB_GREEN, "Ball")
+	for i = 0, (quality.RingSegments > 12 and 4 or 2) do
+		piece(Vector3.new(3.05 - i * 0.12, 0.18, 2.05 - i * 0.08), CFrame.new(0, 7.2 - i * 0.6, 0), BB_DARK, "Ball")
 	end
-	for _, side in ipairs({ -1, 1 }) do -- arms reaching out
-		bone(Vector3.new(0.45, 3.2, 0.45), CFrame.new(side * 2.4, 5.2, -0.4) * CFrame.Angles(0, 0, side * 1.1), false)
-		bone(Vector3.new(0.9, 0.9, 0.9), CFrame.new(side * 3.8, 4.4, -0.8), true)
+	-- Head: short neck, wide flat lid with a raised cap and a second smaller lid.
+	piece(Vector3.new(0.5, 1.2, 1.2), CFrame.new(0, 7.85, -0.2) * flat, BB_DARK, "Cylinder")
+	piece(Vector3.new(0.35, 3.6, 3.6), CFrame.new(0, 8.25, -0.2) * CFrame.Angles(0.15, 0, 0) * flat, BB_GREEN, "Cylinder")
+	piece(Vector3.new(0.9, 1.9, 1.9), CFrame.new(-0.3, 8.75, -0.2) * flat, BB_GREEN, "Cylinder")
+	piece(Vector3.new(0.3, 2.2, 2.2), CFrame.new(1.7, 8.6, 0.4) * CFrame.Angles(0.1, 0, -0.2) * flat, BB_GREEN, "Cylinder")
+	-- Long arms and legs.
+	for _, side in ipairs({ -1, 1 }) do
+		piece(Vector3.new(0.9, 2.6, 0.9), CFrame.new(side * 1.9, 6.4, -0.3) * CFrame.Angles(0.3, 0, side * 0.35), BB_GREEN, "Ball")
+		piece(Vector3.new(0.75, 2.4, 0.75), CFrame.new(side * 2.6, 4.4, -0.9) * CFrame.Angles(0.6, 0, side * 0.15), BB_GREEN, "Ball")
+		piece(Vector3.new(0.6, 0.5, 0.7), CFrame.new(side * 2.8, 3.2, -1.5), BB_PINK, "Ball") -- pink fingertips
+		piece(Vector3.new(1.0, 2.6, 1.0), CFrame.new(side * 0.75, 2.4, 0.1) * CFrame.Angles(-0.1, 0, side * 0.1), BB_GREEN, "Ball")
+		piece(Vector3.new(0.85, 2.4, 0.85), CFrame.new(side * 0.9, 0.5, 0.3) * CFrame.Angles(0.2, 0, -side * 0.05), BB_GREEN, "Ball")
+		piece(Vector3.new(0.8, 0.5, 1.2), CFrame.new(side * 0.95, -0.7, -0.1), BB_PINK, "Ball") -- pink toes
+	end
+	-- Pink bulbs studded over the body.
+	local bulbs = quality.RingSegments > 12 and 14 or 7
+	for i = 1, bulbs do
+		local a = i * 2.4
+		local y = 4.4 + (i % 7) * 0.55
+		piece(Vector3.new(0.34, 0.34, 0.34), CFrame.new(math.cos(a) * 1.35, y, math.sin(a) * 0.9 - 0.1), BB_PINK, "Ball")
+		piece(Vector3.new(0.08, 0.35, 0.08), CFrame.new(math.cos(a) * 1.35, y - 0.25, math.sin(a) * 0.9 - 0.1), BB_DARK)
+	end
+	-- Gold lightning: zigzag beams crackling around the figure, re-drawn every frame.
+	local carrier = VFXLib.anchor(CFrame.new(position))
+	local bolts = {}
+	for b = 1, (quality.RingSegments > 12 and 4 or 2) do
+		local atts = {}
+		for k = 0, 6 do
+			local att = Instance.new("Attachment")
+			att.Parent = carrier
+			atts[k] = att
+			if k > 0 then
+				local beam = Instance.new("Beam")
+				beam.Attachment0 = atts[k - 1]
+				beam.Attachment1 = att
+				beam.FaceCamera = true
+				beam.LightEmission = 1
+				beam.LightInfluence = 0
+				beam.Segments = 1
+				beam.Width0 = 0.3
+				beam.Width1 = 0.3
+				beam.Color = ColorSequence.new(BB_GOLD, Color3.fromRGB(255, 250, 200))
+				beam.Parent = carrier
+			end
+		end
+		bolts[b] = { Atts = atts, Side = (b % 2 == 0) and 1 or -1, Height = 2 + b * 1.6 }
 	end
 	local light
 	if quality.Lights then
 		light = Instance.new("PointLight")
-		light.Color = pal.Main
+		light.Color = BB_GREEN
 		light.Range = 30
 		light.Brightness = 4
 		light.Parent = bits[1].Part
 	end
-	local spin = 0
+	local sway = 0
 	VFXLib.animate(duration, function(a, dt)
-		spin = spin + (dt or 0) * (1.5 + a * 4)
+		sway = sway + (dt or 0)
 		local rise = VFXLib.easeOut(math.min(a / 0.3, 1))
-		local base = CFrame.new(position + Vector3.new(0, -4 + rise * 4, 0)) * CFrame.Angles(0, spin, 0)
+		local base = CFrame.new(position + Vector3.new(0, -4 + rise * 4, 0)) * CFrame.Angles(0, math.sin(sway * 1.3) * 0.4 + a * 1.2, math.sin(sway * 2) * 0.05)
+		local fade = a > 0.85 and (a - 0.85) / 0.15 or 0
 		for _, b in ipairs(bits) do
 			b.Part.CFrame = base * b.Offset
 			b.Part.Size = b.Size * (0.4 + rise * 0.6)
-			b.Part.Transparency = 0.15 + math.sin(a * 30) * 0.08
+			b.Part.Transparency = 0.1 + fade * 0.9
+		end
+		carrier.CFrame = base
+		-- New lightning shape every frame: jagged lines arcing around the body.
+		for _, bolt in ipairs(bolts) do
+			for k = 0, 6 do
+				local t = k / 6
+				local angle = bolt.Side * (t * 2.4 - 1.2) + sway * 2
+				local r = 3.2 + (k % 2 == 0 and 0.6 or -0.4) + (math.random() - 0.5) * 0.8
+				bolt.Atts[k].Position = Vector3.new(math.cos(angle) * r, bolt.Height + t * 3 + (math.random() - 0.5) * 0.8, math.sin(angle) * r) * (0.4 + rise * 0.6)
+			end
+		end
+		for _, beam in ipairs(carrier:GetChildren()) do
+			if beam:IsA("Beam") then
+				beam.Transparency = NumberSequence.new(math.max(fade, math.random() < 0.15 and 0.8 or 0))
+			end
 		end
 	end, function()
-		-- Shatter: every bone bursts into sparks.
-		for _, b in ipairs(bits) do
-			VFXLib.burst(b.Part.Position, { Count = 6, Color = pal.Light, Speed = 30, Lifetime = 0.5 })
+		-- Shatter: every piece bursts into sparks.
+		for i, b in ipairs(bits) do
+			if i % 2 == 1 then
+				VFXLib.burst(b.Part.Position, { Count = 5, Color = i % 4 == 1 and BB_GREEN or BB_PINK, Speed = 30, Lifetime = 0.5 })
+			end
 			b.Part:Destroy()
 		end
+		VFXLib.burst(position + Vector3.new(0, 5, 0), { Count = 20, Color = BB_GOLD, Speed = 40, Lifetime = 0.4 })
+		carrier:Destroy()
 	end)
 end
 
@@ -11988,6 +12073,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
+local VFXQuality = require(Shared.VFXQuality)
 local TuskStandModels = require(Shared.TuskStandModels)
 local VFXLib = require(script.Parent.VFXLib)
 
@@ -12005,6 +12091,79 @@ local SNEAK_OFFSET = CFrame.new(1.5, -1.4, 1.2)
 
 local stands = {} -- [character] = stand
 
+-- Pink Spin energy aura around every Tusk Stand.
+local AURA = Color3.fromRGB(255, 105, 205)
+local AURA_LIGHT = Color3.fromRGB(255, 195, 238)
+
+local function addAura(model, rig)
+	local body = rig and rig.Body or model.PrimaryPart
+	if not body then
+		return nil
+	end
+	local quality = VFXQuality.get()
+	local boxCF, size = model:GetBoundingBox()
+	-- Invisible shell around the whole Stand that the aura particles come from.
+	local shell = Instance.new("Part")
+	shell.Name = "TuskAuraShell"
+	shell.Transparency = 1
+	shell.CanCollide = false
+	shell.CanQuery = false
+	shell.CanTouch = false
+	shell.Massless = true
+	shell.Anchored = false
+	shell.Size = size * 0.9
+	shell.CFrame = boxCF
+	local weld = Instance.new("Weld")
+	weld.Part0 = body
+	weld.Part1 = shell
+	weld.C0 = body.CFrame:ToObjectSpace(boxCF)
+	weld.Parent = shell
+	shell.Parent = model
+	local emitters = {}
+	-- Soft pink energy rising off the body.
+	local glow = Instance.new("ParticleEmitter")
+	glow.Texture = VFXLib.Textures.Smoke
+	glow.Color = ColorSequence.new(AURA, AURA_LIGHT)
+	glow.LightEmission = 1
+	glow.LightInfluence = 0
+	glow.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 1.6) })
+	glow.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.72), NumberSequenceKeypoint.new(1, 1) })
+	glow.Lifetime = NumberRange.new(0.6, 1)
+	glow.Speed = NumberRange.new(1, 2.5)
+	glow.Acceleration = Vector3.new(0, 3, 0)
+	glow.RotSpeed = NumberRange.new(-60, 60)
+	glow.Rate = 14 * quality.Particles
+	glow.Shape = Enum.ParticleEmitterShape.Box
+	glow.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+	glow.EmissionDirection = Enum.NormalId.Top
+	glow.Parent = shell
+	table.insert(emitters, glow)
+	-- Little pink sparks orbiting out of it.
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Texture = VFXLib.Textures.Sparkle
+	sparks.Color = ColorSequence.new(AURA_LIGHT, AURA)
+	sparks.LightEmission = 1
+	sparks.LightInfluence = 0
+	sparks.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.22), NumberSequenceKeypoint.new(1, 0) })
+	sparks.Lifetime = NumberRange.new(0.4, 0.8)
+	sparks.Speed = NumberRange.new(1.5, 3.5)
+	sparks.SpreadAngle = Vector2.new(180, 180)
+	sparks.Rate = 12 * quality.Particles
+	sparks.Shape = Enum.ParticleEmitterShape.Box
+	sparks.Parent = shell
+	table.insert(emitters, sparks)
+	local light
+	if quality.Lights then
+		light = Instance.new("PointLight")
+		light.Color = AURA
+		light.Range = 9
+		light.Brightness = 1.2
+		light.Shadows = false
+		light.Parent = body
+	end
+	return { Emitters = emitters, Light = light }
+end
+
 local function setVisible(stand, visible)
 	if stand.Visible == visible then
 		return
@@ -12013,6 +12172,15 @@ local function setVisible(stand, visible)
 	for part, original in pairs(stand.Transparency) do
 		part.Transparency = visible and original or 1
 	end
+	if stand.Aura then
+		for _, e in ipairs(stand.Aura.Emitters) do
+			e.Enabled = visible
+		end
+		if stand.Aura.Light then
+			stand.Aura.Light.Enabled = visible
+		end
+	end
+	stand.Highlight.Enabled = visible
 end
 
 local function build(character, act)
@@ -12026,10 +12194,13 @@ local function build(character, act)
 			transparency[d] = d.Transparency
 		end
 	end
+	local aura = addAura(model, rig)
+	-- Pink aura glow + outline (pulses in update); flashes brighter on Manifest.
 	local highlight = Instance.new("Highlight")
-	highlight.FillTransparency = 1
-	highlight.OutlineColor = TuskConfig.Colors.Cyan
-	highlight.OutlineTransparency = 1
+	highlight.FillColor = AURA
+	highlight.FillTransparency = 0.85
+	highlight.OutlineColor = AURA
+	highlight.OutlineTransparency = 0.4
 	highlight.DepthMode = Enum.HighlightDepthMode.Occluded
 	highlight.Adornee = model
 	highlight.Parent = model
@@ -12043,6 +12214,7 @@ local function build(character, act)
 		Model = model,
 		Rig = rig,
 		Highlight = highlight,
+		Aura = aura,
 		Transparency = transparency,
 		Visible = true,
 		CF = start,
@@ -12090,7 +12262,10 @@ local function update(stand, root, dt, now)
 	local awakened = character:GetAttribute("TuskAwakened") == true
 
 	setVisible(stand, not burrowed)
-	stand.Highlight.OutlineTransparency = awakened and 0.1 or (stand.Action and stand.Action.Kind == "Manifest" and stand.Highlight.OutlineTransparency or 1)
+	-- Pink aura: the glow and outline breathe; Awakened = strong outline; Manifest = flash.
+	local pulse = (math.sin(t * 3) + 1) / 2
+	stand.Highlight.FillTransparency = 0.88 - pulse * 0.06
+	stand.Highlight.OutlineTransparency = awakened and 0.05 or (stand.Action and stand.Action.Kind == "Manifest" and stand.Highlight.OutlineTransparency or (0.45 - pulse * 0.2))
 
 	local velocity = root.AssemblyLinearVelocity
 	local flat = Vector3.new(velocity.X, 0, velocity.Z)

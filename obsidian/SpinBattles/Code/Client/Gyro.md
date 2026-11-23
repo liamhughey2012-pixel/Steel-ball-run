@@ -640,55 +640,128 @@ function vibrationHit(character, root, data)
 end
 
 
--- The Ball Breaker spirit: a glowing ghostly skeletal figure (ForceField
--- material shimmers) that rises out of the vortex, spins, then shatters.
+-- BALL BREAKER (the Stand, from the owner's picture): a green ribbed
+-- figure with long arms and legs, a flat round "lid" head, pink bulbs all
+-- over it and gold lightning crackling around it. Rises out of the vortex,
+-- sways, then shatters into sparks.
+local BB_GREEN = Color3.fromRGB(140, 215, 60)
+local BB_DARK = Color3.fromRGB(70, 140, 40)
+local BB_PINK = Color3.fromRGB(235, 150, 200)
+local BB_GOLD = Color3.fromRGB(255, 220, 70)
+
 local function breakerSpirit(position, duration)
 	local quality = VFXQuality.get()
 	local bits = {}
-	local function bone(size, offset, ellipsoid)
-		local p = VFXLib.part({ Material = Enum.Material.ForceField, Color = pal.Light, Size = size, Transparency = 0 })
-		if ellipsoid then
+	local function piece(size, offset, color, shape, material)
+		local p = VFXLib.part({ Material = material or Enum.Material.SmoothPlastic, Color = color, Size = size, Transparency = 0.1 })
+		if shape == "Ball" then
 			local mesh = Instance.new("SpecialMesh")
 			mesh.MeshType = Enum.MeshType.Sphere
 			mesh.Parent = p
+		elseif shape == "Cylinder" then
+			p.Shape = Enum.PartType.Cylinder
 		end
 		table.insert(bits, { Part = p, Offset = offset, Size = size })
+		return p
 	end
-	bone(Vector3.new(2.4, 2.8, 2.4), CFrame.new(0, 7.5, 0), true) -- skull
-	bone(Vector3.new(0.5, 0.6, 0.3), CFrame.new(-0.5, 7.4, -1.1), true) -- eye
-	bone(Vector3.new(0.5, 0.6, 0.3), CFrame.new(0.5, 7.4, -1.1), true) -- eye
-	bone(Vector3.new(0.5, 3.4, 0.5), CFrame.new(0, 4.5, 0.3), false) -- spine
-	for i = 0, (quality.RingSegments > 12 and 3 or 1) do -- ribs
-		bone(Vector3.new(3.4 - i * 0.35, 0.35, 1.8), CFrame.new(0, 5.6 - i * 0.7, 0), true)
+	local flat = CFrame.Angles(0, 0, math.pi / 2) -- cylinder axis -> up
+	-- Body: ribbed green torso and hips.
+	piece(Vector3.new(3.0, 3.6, 2.0), CFrame.new(0, 6.0, 0), BB_GREEN, "Ball")
+	piece(Vector3.new(2.4, 1.6, 1.8), CFrame.new(0, 3.9, 0), BB_GREEN, "Ball")
+	for i = 0, (quality.RingSegments > 12 and 4 or 2) do
+		piece(Vector3.new(3.05 - i * 0.12, 0.18, 2.05 - i * 0.08), CFrame.new(0, 7.2 - i * 0.6, 0), BB_DARK, "Ball")
 	end
-	for _, side in ipairs({ -1, 1 }) do -- arms reaching out
-		bone(Vector3.new(0.45, 3.2, 0.45), CFrame.new(side * 2.4, 5.2, -0.4) * CFrame.Angles(0, 0, side * 1.1), false)
-		bone(Vector3.new(0.9, 0.9, 0.9), CFrame.new(side * 3.8, 4.4, -0.8), true)
+	-- Head: short neck, wide flat lid with a raised cap and a second smaller lid.
+	piece(Vector3.new(0.5, 1.2, 1.2), CFrame.new(0, 7.85, -0.2) * flat, BB_DARK, "Cylinder")
+	piece(Vector3.new(0.35, 3.6, 3.6), CFrame.new(0, 8.25, -0.2) * CFrame.Angles(0.15, 0, 0) * flat, BB_GREEN, "Cylinder")
+	piece(Vector3.new(0.9, 1.9, 1.9), CFrame.new(-0.3, 8.75, -0.2) * flat, BB_GREEN, "Cylinder")
+	piece(Vector3.new(0.3, 2.2, 2.2), CFrame.new(1.7, 8.6, 0.4) * CFrame.Angles(0.1, 0, -0.2) * flat, BB_GREEN, "Cylinder")
+	-- Long arms and legs.
+	for _, side in ipairs({ -1, 1 }) do
+		piece(Vector3.new(0.9, 2.6, 0.9), CFrame.new(side * 1.9, 6.4, -0.3) * CFrame.Angles(0.3, 0, side * 0.35), BB_GREEN, "Ball")
+		piece(Vector3.new(0.75, 2.4, 0.75), CFrame.new(side * 2.6, 4.4, -0.9) * CFrame.Angles(0.6, 0, side * 0.15), BB_GREEN, "Ball")
+		piece(Vector3.new(0.6, 0.5, 0.7), CFrame.new(side * 2.8, 3.2, -1.5), BB_PINK, "Ball") -- pink fingertips
+		piece(Vector3.new(1.0, 2.6, 1.0), CFrame.new(side * 0.75, 2.4, 0.1) * CFrame.Angles(-0.1, 0, side * 0.1), BB_GREEN, "Ball")
+		piece(Vector3.new(0.85, 2.4, 0.85), CFrame.new(side * 0.9, 0.5, 0.3) * CFrame.Angles(0.2, 0, -side * 0.05), BB_GREEN, "Ball")
+		piece(Vector3.new(0.8, 0.5, 1.2), CFrame.new(side * 0.95, -0.7, -0.1), BB_PINK, "Ball") -- pink toes
+	end
+	-- Pink bulbs studded over the body.
+	local bulbs = quality.RingSegments > 12 and 14 or 7
+	for i = 1, bulbs do
+		local a = i * 2.4
+		local y = 4.4 + (i % 7) * 0.55
+		piece(Vector3.new(0.34, 0.34, 0.34), CFrame.new(math.cos(a) * 1.35, y, math.sin(a) * 0.9 - 0.1), BB_PINK, "Ball")
+		piece(Vector3.new(0.08, 0.35, 0.08), CFrame.new(math.cos(a) * 1.35, y - 0.25, math.sin(a) * 0.9 - 0.1), BB_DARK)
+	end
+	-- Gold lightning: zigzag beams crackling around the figure, re-drawn every frame.
+	local carrier = VFXLib.anchor(CFrame.new(position))
+	local bolts = {}
+	for b = 1, (quality.RingSegments > 12 and 4 or 2) do
+		local atts = {}
+		for k = 0, 6 do
+			local att = Instance.new("Attachment")
+			att.Parent = carrier
+			atts[k] = att
+			if k > 0 then
+				local beam = Instance.new("Beam")
+				beam.Attachment0 = atts[k - 1]
+				beam.Attachment1 = att
+				beam.FaceCamera = true
+				beam.LightEmission = 1
+				beam.LightInfluence = 0
+				beam.Segments = 1
+				beam.Width0 = 0.3
+				beam.Width1 = 0.3
+				beam.Color = ColorSequence.new(BB_GOLD, Color3.fromRGB(255, 250, 200))
+				beam.Parent = carrier
+			end
+		end
+		bolts[b] = { Atts = atts, Side = (b % 2 == 0) and 1 or -1, Height = 2 + b * 1.6 }
 	end
 	local light
 	if quality.Lights then
 		light = Instance.new("PointLight")
-		light.Color = pal.Main
+		light.Color = BB_GREEN
 		light.Range = 30
 		light.Brightness = 4
 		light.Parent = bits[1].Part
 	end
-	local spin = 0
+	local sway = 0
 	VFXLib.animate(duration, function(a, dt)
-		spin = spin + (dt or 0) * (1.5 + a * 4)
+		sway = sway + (dt or 0)
 		local rise = VFXLib.easeOut(math.min(a / 0.3, 1))
-		local base = CFrame.new(position + Vector3.new(0, -4 + rise * 4, 0)) * CFrame.Angles(0, spin, 0)
+		local base = CFrame.new(position + Vector3.new(0, -4 + rise * 4, 0)) * CFrame.Angles(0, math.sin(sway * 1.3) * 0.4 + a * 1.2, math.sin(sway * 2) * 0.05)
+		local fade = a > 0.85 and (a - 0.85) / 0.15 or 0
 		for _, b in ipairs(bits) do
 			b.Part.CFrame = base * b.Offset
 			b.Part.Size = b.Size * (0.4 + rise * 0.6)
-			b.Part.Transparency = 0.15 + math.sin(a * 30) * 0.08
+			b.Part.Transparency = 0.1 + fade * 0.9
+		end
+		carrier.CFrame = base
+		-- New lightning shape every frame: jagged lines arcing around the body.
+		for _, bolt in ipairs(bolts) do
+			for k = 0, 6 do
+				local t = k / 6
+				local angle = bolt.Side * (t * 2.4 - 1.2) + sway * 2
+				local r = 3.2 + (k % 2 == 0 and 0.6 or -0.4) + (math.random() - 0.5) * 0.8
+				bolt.Atts[k].Position = Vector3.new(math.cos(angle) * r, bolt.Height + t * 3 + (math.random() - 0.5) * 0.8, math.sin(angle) * r) * (0.4 + rise * 0.6)
+			end
+		end
+		for _, beam in ipairs(carrier:GetChildren()) do
+			if beam:IsA("Beam") then
+				beam.Transparency = NumberSequence.new(math.max(fade, math.random() < 0.15 and 0.8 or 0))
+			end
 		end
 	end, function()
-		-- Shatter: every bone bursts into sparks.
-		for _, b in ipairs(bits) do
-			VFXLib.burst(b.Part.Position, { Count = 6, Color = pal.Light, Speed = 30, Lifetime = 0.5 })
+		-- Shatter: every piece bursts into sparks.
+		for i, b in ipairs(bits) do
+			if i % 2 == 1 then
+				VFXLib.burst(b.Part.Position, { Count = 5, Color = i % 4 == 1 and BB_GREEN or BB_PINK, Speed = 30, Lifetime = 0.5 })
+			end
 			b.Part:Destroy()
 		end
+		VFXLib.burst(position + Vector3.new(0, 5, 0), { Count = 20, Color = BB_GOLD, Speed = 40, Lifetime = 0.4 })
+		carrier:Destroy()
 	end)
 end
 

@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService` |
 | **Exact name** | `SpinServer` (capitals matter) |
 
-**What it does:** Boots every server system: characters (Johnny/Tusk, Gyro/Steel Balls, Diego/Scary Monsters), custom Stand models, NPCs and Studio test dummies.
+**What it does:** Boots every server system: characters (Johnny/Tusk, Gyro/Ball Breaker, Diego/Scary Monsters), custom Stand models, NPCs and Studio test dummies.
 
 ## How to add it
 1. In Studio's Explorer, find **ServerScriptService** (ServerScriptService).
@@ -26,7 +26,7 @@ Back to [[Where To Put Code]]
 ```lua
 --[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
-	Boots every server system: characters (Johnny/Tusk, Gyro/Steel Balls,
+	Boots every server system: characters (Johnny/Tusk, Gyro/Ball Breaker,
 	Diego/Scary Monsters),
 	custom Stand models, NPCs and Studio test dummies.
 ]]

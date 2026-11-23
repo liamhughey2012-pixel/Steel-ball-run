@@ -5770,7 +5770,7 @@ TuskActRegistry.Acts = {
 		Next = nil,
 		Module = "GyroZeppeli", -- server moves
 		ClientModule = "Gyro", -- client visuals (TuskActVFX.Gyro)
-		CardTitle = "STEEL BALL USER",
+		CardTitle = "STAND  ·  BALL BREAKER",
 	},
 	-- Diego Brando: Scary Monsters (dinosaur Stand). Same ability system.
 	[6] = {
@@ -6526,7 +6526,7 @@ local function onRequest(player, action, a, b, c)
 		return
 	end
 	if action == "Character" then
-		-- Character dropdown: "Johnny" (Tusk, starts at Act 1) or "Gyro" (Steel Balls).
+		-- Character dropdown: "Johnny" (Tusk, starts at Act 1) or "Gyro" (Ball Breaker).
 		local st = states[player]
 		local start = typeof(a) == "string" and Registry.StartAct[a]
 		if not st or not start then
@@ -7228,8 +7228,8 @@ local function buildAct1Classic(scale)
 	attach(body, tip, CFrame.new(-0.05 * s, -1.05 * s, 0.05 * s))
 
 	-- Long chin / snout below the face, with little gold spikes.
-	local chin = part(model, { Name = "Chin", Size = Vector3.new(0.95, 1.15, 0.95) * s, Color = pink, Ellipsoid = true })
-	attach(body, chin, CFrame.new(-0.22 * s, -0.78 * s, -0.28 * s) * CFrame.Angles(0.35, 0, -0.25))
+	local chin = part(model, { Name = "Chin", Size = Vector3.new(0.8, 0.95, 0.72) * s, Color = pink, Ellipsoid = true })
+	attach(body, chin, CFrame.new(-0.18 * s, -0.8 * s, -0.2 * s) * CFrame.Angles(0.3, 0, -0.2))
 	for i = 1, 3 do
 		cone(model, body, Vector3.new(-(0.22 + i * 0.12) * s, (-1.05 - i * 0.04) * s, (-0.55 + i * 0.05) * s), Vector3.new(-0.6, -0.5, -0.6), 0.22 * s, 0.05 * s, gold, Enum.Material.Metal)
 	end
@@ -7308,15 +7308,21 @@ local function buildAct1Classic(scale)
 	-- Ears: a huge floppy ear sweeping up (its left), a smaller one drooping (its right). Animated.
 	local ears = {
 		-- Right ear sweeps up and out; left ear droops down beside the face.
-		{ Name = "EarL", Base = CFrame.new(-0.5 * s, 0.9 * s, 0.1 * s) * CFrame.Angles(0.25, -0.3, 1.15), Size = Vector3.new(0.6, 1.8, 0.13) },
-		{ Name = "EarR", Base = CFrame.new(0.7 * s, 0.75 * s, 0.05 * s) * CFrame.Angles(-0.1, 0.25, -1.35), Size = Vector3.new(0.5, 1.4, 0.13) },
+		{ Name = "EarL", Base = CFrame.new(-0.4 * s, 1.0 * s, 0.1 * s) * CFrame.Angles(0.3, -0.25, 1.35), Size = Vector3.new(0.9, 1.9, 0.16), Tip = Vector3.new(0.7, 1.25, 0.14), Curl = 0.55 },
+		{ Name = "EarR", Base = CFrame.new(0.72 * s, 0.55 * s, 0.05 * s) * CFrame.Angles(-0.15, 0.3, -2.55), Size = Vector3.new(0.7, 1.55, 0.15), Tip = Vector3.new(0.5, 0.8, 0.13), Curl = -0.5 },
 	}
 	for _, e in ipairs(ears) do
+		-- Leaf-shaped ear: a wide base, a curled tip and a darker pink inside.
 		local ear = part(model, { Name = e.Name, Size = e.Size * s, Color = pink, Ellipsoid = true })
-		local inner = part(model, { Name = e.Name .. "Inner", Size = e.Size * s * Vector3.new(0.6, 0.8, 0.5), Color = pinkDark, Ellipsoid = true })
+		local inner = part(model, { Name = e.Name .. "Inner", Size = e.Size * s * Vector3.new(0.62, 0.82, 0.5), Color = pinkDark, Ellipsoid = true })
 		local offset = CFrame.new(0, e.Size.Y * s * 0.45, 0)
 		local w = attach(body, ear, e.Base * offset)
-		attach(ear, inner, CFrame.new(0, 0, -0.035 * s))
+		attach(ear, inner, CFrame.new(0, 0, -0.045 * s))
+		local tipCF = CFrame.new(0, e.Size.Y * s * 0.42, 0) * CFrame.Angles(0, 0, e.Curl) * CFrame.new(0, e.Tip.Y * s * 0.4, 0)
+		local tip = part(model, { Name = e.Name .. "Tip", Size = e.Tip * s, Color = pink, Ellipsoid = true })
+		attach(ear, tip, tipCF)
+		local tipInner = part(model, { Name = e.Name .. "Inner", Size = e.Tip * s * Vector3.new(0.55, 0.75, 0.5), Color = pinkDark, Ellipsoid = true })
+		attach(ear, tipInner, tipCF * CFrame.new(0, 0, -0.04 * s))
 		rig.Joints[e.Name] = { Weld = w, Base = e.Base, Offset = offset }
 	end
 	-- Small spike on top of the head.
@@ -7333,22 +7339,25 @@ local function buildAct1Classic(scale)
 	}
 	for _, cf in ipairs(fins) do
 		for k = 0, 1 do
-			local fin = part(model, { Name = "Fin", Size = Vector3.new(0.14, 0.42 - k * 0.12, 0.07) * s, Color = k == 0 and pink or pinkLight, Ellipsoid = true })
-			attach(body, fin, cf * CFrame.new(k * 0.07 * s, (0.18 + k * 0.1) * s, 0) * CFrame.Angles(0, 0, k * 0.4))
+			local fin = part(model, { Name = "Fin", Size = Vector3.new(0.24, 0.62 - k * 0.18, 0.08) * s, Color = k == 0 and pink or pinkLight, Ellipsoid = true })
+			attach(body, fin, cf * CFrame.new(k * 0.1 * s, (0.26 + k * 0.14) * s, 0) * CFrame.Angles(0, 0, k * 0.5))
 		end
 	end
 
 	-- Side appendage (its left) with a gold horn and a star.
-	local side = part(model, { Name = "SideHand", Size = Vector3.new(0.75, 0.5, 0.45) * s, Color = pink, Ellipsoid = true })
-	attach(body, side, CFrame.new(-1.0 * s, -0.2 * s, -0.1 * s) * CFrame.Angles(0, 0, 0.4))
+	local side = part(model, { Name = "SideHand", Size = Vector3.new(1.0, 0.55, 0.5) * s, Color = pink, Ellipsoid = true })
+	attach(body, side, CFrame.new(-1.05 * s, -0.15 * s, -0.1 * s) * CFrame.Angles(0, 0, 0.35))
+	local sideTip = part(model, { Name = "SideHand", Size = Vector3.new(0.5, 0.42, 0.4) * s, Color = pinkLight, Ellipsoid = true })
+	attach(body, sideTip, CFrame.new(-1.5 * s, 0.02 * s, -0.12 * s) * CFrame.Angles(0, 0, 0.5))
 	cone(model, body, Vector3.new(-1.32 * s, -0.08 * s, -0.1 * s), Vector3.new(-1, 0.5, -0.2), 0.3 * s, 0.07 * s, gold, Enum.Material.Metal)
 	star5(model, body, Vector3.new(-1.02 * s, -0.12 * s, -0.33 * s), Vector3.new(-0.2, 0.1, -1), 0.22 * s, starColor, 0.5)
 
 	-- Five thin legs ending in hearts (four animated).
-	local legX = { -0.34, -0.15, 0.04, 0.22, 0.4 }
+	-- Splayed out in a fan under the body, like the drawing.
+	local legX = { -0.4, -0.2, 0.02, 0.24, 0.44 }
 	for i = 1, 5 do
-		local base = CFrame.new(legX[i] * s, -1.4 * s, (i % 2 == 0 and 0.12 or -0.12) * s)
-		local legLength = (0.55 + ((i * 7) % 4) * 0.1) * s
+		local base = CFrame.new(legX[i] * s, -1.35 * s, (i % 2 == 0 and 0.14 or -0.14) * s) * CFrame.Angles((i % 2 == 0 and 0.15 or -0.1), 0, (i - 3) * 0.32)
+		local legLength = (0.7 + ((i * 7) % 4) * 0.1) * s
 		local leg = part(model, { Name = "Leg" .. i, Shape = Enum.PartType.Cylinder, Size = Vector3.new(legLength, 0.06 * s, 0.06 * s), Color = pinkDark })
 		local offset = CFrame.new(0, -legLength / 2, 0) * CFrame.Angles(0, 0, math.pi / 2)
 		local w = attach(body, leg, base * offset)
@@ -7358,11 +7367,11 @@ local function buildAct1Classic(scale)
 		-- Heart: two lobes and a point, facing forward.
 		local footCF = CFrame.new(-legLength / 2 - 0.16 * s, 0, 0) * CFrame.Angles(0, 0, -math.pi / 2)
 		for _, sx in ipairs({ -1, 1 }) do
-			local lobe = part(model, { Name = "HeartLobe", Size = Vector3.new(0.24, 0.24, 0.12) * s, Color = heart, Ellipsoid = true })
-			attach(leg, lobe, footCF * CFrame.new(sx * 0.09 * s, 0.05 * s, 0))
+			local lobe = part(model, { Name = "HeartLobe", Size = Vector3.new(0.32, 0.32, 0.14) * s, Color = heart, Ellipsoid = true })
+			attach(leg, lobe, footCF * CFrame.new(sx * 0.12 * s, 0.07 * s, 0))
 		end
-		local point = part(model, { Name = "HeartPoint", Size = Vector3.new(0.22, 0.22, 0.1) * s, Color = heart })
-		attach(leg, point, footCF * CFrame.new(0, -0.07 * s, 0) * CFrame.Angles(0, 0, math.pi / 4))
+		local point = part(model, { Name = "HeartPoint", Size = Vector3.new(0.3, 0.3, 0.12) * s, Color = heart })
+		attach(leg, point, footCF * CFrame.new(0, -0.09 * s, 0) * CFrame.Angles(0, 0, math.pi / 4))
 	end
 
 	local nailPoint = Instance.new("Attachment")
@@ -7921,7 +7930,10 @@ local builders = {
 
 -- Round pieces that make each Act recognisable as Tusk (kept smooth when blocky).
 local SIGNATURE_ROUND = {
-	[1] = { Body = true, Belly = true, Chin = true, Eye = true, Lid = true, Pupil = true, Highlight = true, Shine = true, HeartLobe = true, PinHead = true, Mouth = true, Head = true, Chest = true },
+	-- Act 1 keeps every rounded shape so it reads as the drawing; only the thin legs become square rods.
+	[1] = setmetatable({ Leg1 = false, Leg2 = false, Leg3 = false, Leg4 = false, Leg5 = false }, { __index = function()
+		return true
+	end }),
 	[2] = { Body = true, Head = true, Cheek = true, EarDisc = true, Drum = true, DrumRim = true, DrumHole = true, Pod = true, PodHole = true, Visor = true },
 	[3] = { Body = true, BackShade = true, ShoulderBall = true, BellyLens = true, LensRim = true, Mask = true },
 	[4] = { Head = true, Visor = true, HelmetRidge = true, Emblem = true },
