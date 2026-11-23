@@ -1212,7 +1212,7 @@ end
 return TuskActRegistry
 </pre></details></section><section class="card" id="s10">
 <div class="head"><span class="num">10</span><div><h2>TuskConfig <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="10">Copy code</button><details><summary>Show code (525 lines)</summary><pre id="c10">--[[
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="10">Copy code</button><details><summary>Show code (541 lines)</summary><pre id="c10">--[[
 	TuskConfig  (ReplicatedStorage.SpinShared.TuskConfig)
 
 	Every tunable number for Tusk. The server uses it for damage, timing,
@@ -1312,12 +1312,28 @@ TuskConfig.Roster = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 2, -- how many at once
+	Count = 6, -- how many at once (each takes a free spot below)
 	Characters = { &quot;Johnny&quot;, &quot;Gyro&quot;, &quot;Diego&quot;, &quot;PorkPie&quot;, &quot;Sandman&quot; }, -- picked at random (only installed ones)
 	Health = 200,
 	WalkSpeed = 15,
-	Distance = 70, -- studs from the spawn to their camp
-	Spacing = 14, -- studs between them at the camp
+	-- Where they hang out, scattered round the SBR map (offsets from the map&#x27;s
+	-- origin, near its landmarks and away from the player spawn). Each NPC
+	-- takes a random free spot, and a new one when it respawns. Without the
+	-- map they gather Distance studs from the spawn instead.
+	Spots = {
+		Vector3.new(-158, 0, -59), -- Dustwater ghost town (in the street)
+		Vector3.new(-285, 0, -300), -- the old mine
+		Vector3.new(-235, 0, 150), -- the oasis
+		Vector3.new(-165, 0, 275), -- gold-panning camp
+		Vector3.new(164, 0, 248), -- Lucky Horseshoe Ranch (beside the barn)
+		Vector3.new(305, 0, -10), -- edge of the western town
+		Vector3.new(150, 0, -150), -- open desert dunes
+		Vector3.new(45, 0, -250), -- by the mission church
+		Vector3.new(-40, 0, -420), -- outside Fort Dust
+		Vector3.new(-100, 0, -180), -- western desert
+	},
+	Distance = 70, -- (no map) studs from the spawn to their camp
+	Spacing = 14, -- (no map) studs between them at the camp
 	AggroRange = 60, -- they chase players this close
 	LeashRange = 120, -- and give up past this far from their camp
 	AttackRange = 6, -- M1 range
@@ -4744,15 +4760,17 @@ end
 return StandAssetLoader
 </pre></details></section><section class="card" id="s24">
 <div class="head"><span class="num">24</span><div><h2>StandBots <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="24">Copy code</button><details><summary>Show code (277 lines)</summary><pre id="c24">--[[
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="24">Copy code</button><details><summary>Show code (304 lines)</summary><pre id="c24">--[[
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
 	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman: whichever are
 	installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
-	  * they wait at their camp, chase any player who comes within AggroRange
-	    and walk back home when the player gets away
+	  * they&#x27;re scattered round the map (TuskConfig.StandBots.Spots), chase
+	    any player who comes within AggroRange and walk back to their spot
+	    when the player gets away
+	  * each respawn picks a new free spot, so they move around over time
 	  * M1 combo up close, abilities on cooldown, ultimate when their meter is full
 	  * hold abilities are charged and released automatically
 	  * they respawn RespawnTime seconds after dying, as a random character
@@ -4784,16 +4802,38 @@ local LOOKS = {
 	Sandman = { Skin = Color3.fromRGB(170, 115, 80), Torso = Color3.fromRGB(200, 160, 100), Legs = Color3.fromRGB(120, 85, 55) },
 }
 
-local function findHome(index, count)
-	local spawn = workspace:FindFirstChildWhichIsA(&quot;SpawnLocation&quot;, true)
-	local base = spawn and spawn.CFrame or CFrame.new(0, 5, 0)
-	local spread = (index - (count + 1) / 2) * (cfg.Spacing or 14)
-	local pos = (base * CFrame.new(spread, 0, cfg.Distance or 70)).Position
+local usedSpots = {} -- [spot index] = slot using it
+
+local function groundAt(pos)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { folder }
 	local hit = workspace:Raycast(pos + Vector3.new(0, 60, 0), Vector3.new(0, -200, 0), params)
 	return hit and hit.Position + Vector3.new(0, 3, 0) or pos
+end
+
+-- A free spot round the map (or, with no map, a camp near the spawn).
+local function findHome(slot, count)
+	local map = workspace:FindFirstChild(&quot;SBRMap&quot;)
+	local spots = cfg.Spots
+	if map and spots and #spots &gt; 0 then
+		local origin = map:GetAttribute(&quot;Origin&quot;) or Vector3.new()
+		local free = {}
+		for i in ipairs(spots) do
+			if not usedSpots[i] then
+				table.insert(free, i)
+			end
+		end
+		if #free &gt; 0 then
+			local i = free[math.random(1, #free)]
+			usedSpots[i] = slot
+			return groundAt(origin + spots[i]), i
+		end
+	end
+	local spawn = workspace:FindFirstChildWhichIsA(&quot;SpawnLocation&quot;, true)
+	local base = spawn and spawn.CFrame or CFrame.new(0, 5, 0)
+	local spread = (slot - (count + 1) / 2) * (cfg.Spacing or 14)
+	return groundAt((base * CFrame.new(spread, 0, cfg.Distance or 70)).Position), nil
 end
 
 -- Characters this server can actually play, as their start Acts.
@@ -4851,6 +4891,9 @@ local spawnBot -- (defined below; respawn calls it)
 
 local function removeBot(bot)
 	bots[bot.Slot] = nil
+	if bot.Spot and usedSpots[bot.Spot] == bot.Slot then
+		usedSpots[bot.Spot] = nil
+	end
 	S.removeBot(bot.Player)
 	if bot.Model then
 		bot.Model:Destroy()
@@ -4875,7 +4918,7 @@ function spawnBot(slot)
 	end
 	local name = &quot;Stand User: &quot; .. (roster and roster.Name or pick.Who)
 	model.Name = name
-	local home = findHome(slot, cfg.Count)
+	local home, spot = findHome(slot, cfg.Count)
 	model:PivotTo(CFrame.new(home))
 	local humanoid = model:FindFirstChildOfClass(&quot;Humanoid&quot;)
 	humanoid.DisplayName = name
@@ -4893,7 +4936,7 @@ function spawnBot(slot)
 		end)
 	end
 	local botPlayer = newBotPlayer(name, model)
-	local bot = { Slot = slot, Player = botPlayer, Model = model, Humanoid = humanoid, Home = home, Who = pick.Who, NextThink = 0, NextAbility = os.clock() + 2, NextUlt = 0 }
+	local bot = { Slot = slot, Spot = spot, Player = botPlayer, Model = model, Humanoid = humanoid, Home = home, Who = pick.Who, NextThink = 0, NextAbility = os.clock() + 2, NextUlt = 0 }
 	bots[slot] = bot
 	bot.State = S.addBot(botPlayer, pick.Act)
 	CollectionService:AddTag(model, &quot;SpinFighter&quot;)

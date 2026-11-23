@@ -1272,12 +1272,28 @@ TuskConfig.Roster = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 2, -- how many at once
+	Count = 6, -- how many at once (each takes a free spot below)
 	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman" }, -- picked at random (only installed ones)
 	Health = 200,
 	WalkSpeed = 15,
-	Distance = 70, -- studs from the spawn to their camp
-	Spacing = 14, -- studs between them at the camp
+	-- Where they hang out, scattered round the SBR map (offsets from the map's
+	-- origin, near its landmarks and away from the player spawn). Each NPC
+	-- takes a random free spot, and a new one when it respawns. Without the
+	-- map they gather Distance studs from the spawn instead.
+	Spots = {
+		Vector3.new(-158, 0, -59), -- Dustwater ghost town (in the street)
+		Vector3.new(-285, 0, -300), -- the old mine
+		Vector3.new(-235, 0, 150), -- the oasis
+		Vector3.new(-165, 0, 275), -- gold-panning camp
+		Vector3.new(164, 0, 248), -- Lucky Horseshoe Ranch (beside the barn)
+		Vector3.new(305, 0, -10), -- edge of the western town
+		Vector3.new(150, 0, -150), -- open desert dunes
+		Vector3.new(45, 0, -250), -- by the mission church
+		Vector3.new(-40, 0, -420), -- outside Fort Dust
+		Vector3.new(-100, 0, -180), -- western desert
+	},
+	Distance = 70, -- (no map) studs from the spawn to their camp
+	Spacing = 14, -- (no map) studs between them at the camp
 	AggroRange = 60, -- they chase players this close
 	LeashRange = 120, -- and give up past this far from their camp
 	AttackRange = 6, -- M1 range

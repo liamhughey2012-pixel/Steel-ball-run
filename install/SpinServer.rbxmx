@@ -1722,8 +1722,10 @@ return StandAssetLoader
 	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman: whichever are
 	installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
-	  * they wait at their camp, chase any player who comes within AggroRange
-	    and walk back home when the player gets away
+	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
+	    any player who comes within AggroRange and walk back to their spot
+	    when the player gets away
+	  * each respawn picks a new free spot, so they move around over time
 	  * M1 combo up close, abilities on cooldown, ultimate when their meter is full
 	  * hold abilities are charged and released automatically
 	  * they respawn RespawnTime seconds after dying, as a random character
@@ -1755,16 +1757,38 @@ local LOOKS = {
 	Sandman = { Skin = Color3.fromRGB(170, 115, 80), Torso = Color3.fromRGB(200, 160, 100), Legs = Color3.fromRGB(120, 85, 55) },
 }
 
-local function findHome(index, count)
-	local spawn = workspace:FindFirstChildWhichIsA("SpawnLocation", true)
-	local base = spawn and spawn.CFrame or CFrame.new(0, 5, 0)
-	local spread = (index - (count + 1) / 2) * (cfg.Spacing or 14)
-	local pos = (base * CFrame.new(spread, 0, cfg.Distance or 70)).Position
+local usedSpots = {} -- [spot index] = slot using it
+
+local function groundAt(pos)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { folder }
 	local hit = workspace:Raycast(pos + Vector3.new(0, 60, 0), Vector3.new(0, -200, 0), params)
 	return hit and hit.Position + Vector3.new(0, 3, 0) or pos
+end
+
+-- A free spot round the map (or, with no map, a camp near the spawn).
+local function findHome(slot, count)
+	local map = workspace:FindFirstChild("SBRMap")
+	local spots = cfg.Spots
+	if map and spots and #spots > 0 then
+		local origin = map:GetAttribute("Origin") or Vector3.new()
+		local free = {}
+		for i in ipairs(spots) do
+			if not usedSpots[i] then
+				table.insert(free, i)
+			end
+		end
+		if #free > 0 then
+			local i = free[math.random(1, #free)]
+			usedSpots[i] = slot
+			return groundAt(origin + spots[i]), i
+		end
+	end
+	local spawn = workspace:FindFirstChildWhichIsA("SpawnLocation", true)
+	local base = spawn and spawn.CFrame or CFrame.new(0, 5, 0)
+	local spread = (slot - (count + 1) / 2) * (cfg.Spacing or 14)
+	return groundAt((base * CFrame.new(spread, 0, cfg.Distance or 70)).Position), nil
 end
 
 -- Characters this server can actually play, as their start Acts.
@@ -1822,6 +1846,9 @@ local spawnBot -- (defined below; respawn calls it)
 
 local function removeBot(bot)
 	bots[bot.Slot] = nil
+	if bot.Spot and usedSpots[bot.Spot] == bot.Slot then
+		usedSpots[bot.Spot] = nil
+	end
 	S.removeBot(bot.Player)
 	if bot.Model then
 		bot.Model:Destroy()
@@ -1846,7 +1873,7 @@ function spawnBot(slot)
 	end
 	local name = "Stand User: " .. (roster and roster.Name or pick.Who)
 	model.Name = name
-	local home = findHome(slot, cfg.Count)
+	local home, spot = findHome(slot, cfg.Count)
 	model:PivotTo(CFrame.new(home))
 	local humanoid = model:FindFirstChildOfClass("Humanoid")
 	humanoid.DisplayName = name
@@ -1864,7 +1891,7 @@ function spawnBot(slot)
 		end)
 	end
 	local botPlayer = newBotPlayer(name, model)
-	local bot = { Slot = slot, Player = botPlayer, Model = model, Humanoid = humanoid, Home = home, Who = pick.Who, NextThink = 0, NextAbility = os.clock() + 2, NextUlt = 0 }
+	local bot = { Slot = slot, Spot = spot, Player = botPlayer, Model = model, Humanoid = humanoid, Home = home, Who = pick.Who, NextThink = 0, NextAbility = os.clock() + 2, NextUlt = 0 }
 	bots[slot] = bot
 	bot.State = S.addBot(botPlayer, pick.Act)
 	CollectionService:AddTag(model, "SpinFighter")

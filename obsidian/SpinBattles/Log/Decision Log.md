@@ -67,3 +67,4 @@ updated: 2026-11-22
 | 2026-11-23 | Tusk looks like Tusk again: each Act keeps its signature curved pieces smooth (egg body, ears, ear discs, round body, helmet); the rest stays blocky |
 | 2026-11-23 | Practice dummies restyled as burlap training dummies (stitched face, straw, chest target) |
 | 2026-11-23 | Combat UI: enemy health bar on hit, red damage edges; hit sparks, shock rings, camera kick, bigger damage numbers; layered M1 swipes |
+| 2026-11-23 | Stand-user NPCs scattered round the map (6, at landmark spots checked clear of buildings) |
