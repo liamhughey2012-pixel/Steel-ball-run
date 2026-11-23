@@ -57,6 +57,22 @@ local function onHit(data)
 	end
 	if data.Position and not data.Blocked then
 		TuskVFX.CreateImpactStar(data.Position, { Size = 2.2 + (data.Level or 1) * 0.9, Rays = 6 + (data.Level or 1), Color = starColor, Color2 = Color3.new(1, 1, 1), Duration = 0.18 + (data.Level or 1) * 0.03 })
+		-- Sparks thrown away from the attacker, a quick shock ring, a white pop.
+		local away
+		local attacker = data.AttackerId and Players:GetPlayerByUserId(data.AttackerId)
+		local ar = attacker and attacker.Character and attacker.Character:FindFirstChild("HumanoidRootPart")
+		if ar then
+			local d = data.Position - ar.Position
+			away = d.Magnitude > 0.1 and d.Unit or nil
+		end
+		VFXLib.burst(data.Position, { Count = 10, Color = starColor, Speed = 34, Lifetime = 0.28, Spread = away and 40 or 180, Direction = away, Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) }) })
+		VFXLib.burst(data.Position, { Count = 4, Color = Color3.new(1, 1, 1), Speed = 6, Lifetime = 0.12, Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.6), NumberSequenceKeypoint.new(1, 0) }) })
+		local look = workspace.CurrentCamera and workspace.CurrentCamera.CFrame.Position or data.Position + Vector3.new(0, 0, 1)
+		TuskVFX.CreateRotationalShockwave(CFrame.lookAt(data.Position, look) * CFrame.Angles(math.pi / 2, 0, 0), { Radius = 2.6, Layers = 1, Color = starColor, Color2 = Color3.new(1, 1, 1), Particles = 0, Width = 0.12, Duration = 0.18 })
+		-- Your own hits kick the camera a little.
+		if data.AttackerId == localPlayer.UserId then
+			CameraFX.shake(0.12 + (data.Level or 1) * 0.05, 0.12)
+		end
 	end
 	if data.Blocked then
 		VFXLib.burst(data.Position, { Count = 12, Color = Color3.fromRGB(150, 210, 255), Speed = 25, Lifetime = 0.3 })
@@ -80,20 +96,29 @@ local function onDamage(data)
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
 	label.Size = UDim2.fromScale(1, 1)
-	label.Font = Enum.Font.GothamBlack
+	label.Font = Enum.Font.Bangers
 	label.TextScaled = true
+	label.Rotation = (math.random() - 0.5) * 16
 	label.Text = data.Blocked and ("BLOCKED " .. data.Amount) or (tostring(data.Amount) .. (data.Perfect and "!" or ""))
 	label.TextColor3 = data.Blocked and Color3.fromRGB(170, 200, 230) or (data.Perfect and colors.Perfect or colors.Gold)
 	label.TextStrokeTransparency = 0
 	label.TextStrokeColor3 = Color3.fromRGB(60, 25, 0)
 	label.Parent = billboard
 	local start = carrier.Position
+	local drift = Vector3.new((math.random() - 0.5) * 2, 0, (math.random() - 0.5) * 2)
+	-- Bigger hits get bigger, redder numbers.
+	local amount = tonumber(data.Amount) or 0
+	local big = math.clamp((amount - 4) / 10, 0, 1)
+	if not data.Blocked and not data.Perfect then
+		label.TextColor3 = colors.Gold:Lerp(Color3.fromRGB(255, 80, 60), big)
+	end
+	local scale = 1 + big * 0.6
 	VFXLib.animate(1, function(a)
-		carrier.Position = start + Vector3.new(0, a * 3, 0)
+		carrier.Position = start + drift * a + Vector3.new(0, a * 3 - a * a * 1.2, 0)
 		label.TextTransparency = math.max(0, (a - 0.6) / 0.4)
 		label.TextStrokeTransparency = label.TextTransparency
 		local pop = a < 0.1 and (1 + (0.1 - a) * 4) or 1
-		billboard.Size = UDim2.fromOffset(160 * pop * (data.Perfect and 1.3 or 1), 60 * pop * (data.Perfect and 1.3 or 1))
+		billboard.Size = UDim2.fromOffset(160 * pop * scale * (data.Perfect and 1.3 or 1), 60 * pop * scale * (data.Perfect and 1.3 or 1))
 	end)
 end
 

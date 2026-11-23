@@ -38,6 +38,7 @@ local TuskSneakController = require(script.TuskSneakController)
 local TuskController = require(script.TuskController)
 local WorldClient = require(script.WorldClient)
 local CharacterCard = require(script.UI.CharacterCard)
+local CombatUI = require(script.UI.CombatUI)
 
 SettingsUI.init()
 HitFX.init()
@@ -47,4 +48,5 @@ TuskSneakController.init()
 TuskController.init()
 WorldClient.init()
 CharacterCard.init()
+CombatUI.init()
 ```

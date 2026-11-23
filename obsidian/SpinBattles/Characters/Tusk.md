@@ -46,3 +46,10 @@ Every Act's Stand glows with a pink Spin aura: a pulsing pink glow and outline, 
 ## Mostly blocky (2026-11-23)
 Every Act (and Gyro's Ball Breaker) is now mostly blocky: every round piece becomes a box or a stepped voxel-round shape; only the eyes stay round.
 ![[stands_mostly_blocky.png]]
+
+## Curves back (2026-11-23)
+Each Act keeps its signature curved pieces smooth again (Act 1's egg body, face and hearts; Act 2's ear discs and drum; Act 3's round body and shoulder ball; Act 4's helmet and chest); everything else stays blocky.
+![[tusk_acts_signature_round.png]]
+![[tusk_act1_vs_drawing_v2.png]]
+
+**Using a Toolbox model instead:** Studio › Toolbox › find a Tusk model › drag it into ReplicatedStorage › put it in a Folder named `SpinAssets` › rename it `TuskAct1` (or 2, 3, 4). The game uses it instead of the built-in Stand, strips any scripts inside it, and still adds the pink aura.

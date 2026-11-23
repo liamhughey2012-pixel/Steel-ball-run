@@ -81,7 +81,16 @@ end
 function Common.swipe(root, side, color, scale)
 	scale = scale or 1
 	local cf = root.CFrame * CFrame.new(side * 0.3, 0.3, -1.2) * CFrame.Angles(0, 0, side * 0.5)
-	TuskVFX.CreateCrescent(cf, { Radius = 2.2 * scale, Width = 0.5 * scale, Color = color, Color2 = Color3.new(1, 1, 1), Sweep = side * 1.8, Duration = 0.18 })
+	-- A thick coloured arc, a thin bright inner arc a beat later, and sparks
+	-- flung off the tip of the swing.
+	TuskVFX.CreateCrescent(cf, { Radius = 2.4 * scale, Width = 0.6 * scale, Color = color, Color2 = Color3.new(1, 1, 1), Sweep = side * 1.9, Duration = 0.2 })
+	task.delay(0.03, function()
+		if root.Parent then
+			TuskVFX.CreateCrescent(cf * CFrame.new(0, 0, -0.3), { Radius = 1.8 * scale, Width = 0.18 * scale, Color = Color3.new(1, 1, 1), Color2 = color, Sweep = side * 2.1, Duration = 0.14 })
+		end
+	end)
+	local tip = (root.CFrame * CFrame.new(-side * 1.6 * scale, 0.4, -2.2 * scale)).Position
+	VFXLib.burst(tip, { Count = 5, Color = color, Speed = 18, Lifetime = 0.22, Spread = 50, Direction = root.CFrame.RightVector * -side, Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0) }) })
 end
 
 ---------------------------------------------------------------------------

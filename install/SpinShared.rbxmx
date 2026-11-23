@@ -2663,11 +2663,29 @@ local builders = {
 	[4] = buildAct4,
 }
 
--- All Stands are mostly blocky (owner's request): every round piece becomes
--- a box or a stepped "voxel-round" shape. Only the eyes stay smooth so each
--- Act's face still reads.
+-- Mostly blocky, but each Act keeps the curved pieces that make it read as
+-- Tusk smooth (the egg body and ears, the ear discs and drum, the round
+-- body and shoulder ball, the helmet). Everything else is boxes and
+-- stepped voxel-round shapes.
 local EYES = { Eye = true, Pupil = true, EyeRim = true, Shine = true, Glint = true }
-local SIGNATURE_ROUND = { [1] = EYES, [2] = EYES, [3] = EYES, [4] = EYES }
+local function with(list)
+	local out = table.clone and table.clone(EYES) or {}
+	if not table.clone then
+		for k, v in pairs(EYES) do
+			out[k] = v
+		end
+	end
+	for _, name in ipairs(list) do
+		out[name] = true
+	end
+	return out
+end
+local SIGNATURE_ROUND = {
+	[1] = with({ "Body", "Face", "Head", "EarL", "EarR", "Chin", "Cheek", "HeartLobe", "Fin", "Highlight", "Belly", "Lid", "Fur", "Seam", "AntennaBall", "PinHead" }),
+	[2] = with({ "Body", "Head", "Cheek", "EarDisc", "Drum", "DrumRim", "DrumHole", "Pod", "PodHole", "Visor" }),
+	[3] = with({ "Body", "BackShade", "ShoulderBall", "BellyLens", "LensRim", "Mask" }),
+	[4] = with({ "Head", "Visor", "HelmetRidge", "Emblem", "Chest", "ShoulderPad" }),
+}
 
 function TuskStandModels.build(act, scale)
 	scale = scale or 1

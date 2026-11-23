@@ -1827,6 +1827,219 @@ return CharacterCard
 end
 
 -- ======================================================================
+-- MODULE: CombatUI
+-- ======================================================================
+__modules["CombatUI"] = function()
+--[[
+	CombatUI  (StarterPlayerScripts.SpinClient.UI.CombatUI)
+
+	Battlegrounds-style fight feedback:
+	  * TARGET BAR: hit someone and their name + health bar appears at the
+	    top of the screen. The bar drains smoothly, with a white "chunk" that
+	    catches up a moment later so big hits read. Fades after a few seconds.
+	  * DAMAGE EDGES: the screen edges flash red when you get hit, and pulse
+	    while your health is low.
+	Driven by the shared "Hit" event (CombatAdapter).
+]]
+
+local Players = game:GetService("Players")
+
+local Shared = nil -- (bundled: modules are inlined)
+local Net = __require("Net")
+
+local CombatUI = {}
+local player = Players.LocalPlayer
+local DARK = Color3.fromRGB(14, 12, 20)
+local GOLD = Color3.fromRGB(255, 205, 90)
+local RED = Color3.fromRGB(230, 50, 60)
+
+local gui, bar, nameLabel, fill, chunk, hpText, edges
+local target -- the model shown in the bar
+local shownUntil = 0
+local fillValue, chunkValue = 1, 1
+local hurtFlash = 0
+
+local function corner(p, r)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, r)
+	c.Parent = p
+end
+
+local function nameOf(model)
+	local p = Players:GetPlayerFromCharacter(model)
+	if p then
+		return p.DisplayName
+	end
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid.DisplayName ~= "" then
+		return humanoid.DisplayName
+	end
+	return model.Name
+end
+
+local function build()
+	gui = Instance.new("ScreenGui")
+	gui.Name = "CombatUI"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.DisplayOrder = 4
+	gui.Parent = player:WaitForChild("PlayerGui")
+
+	-- Target bar (top centre).
+	bar = Instance.new("Frame")
+	bar.AnchorPoint = Vector2.new(0.5, 0)
+	bar.Position = UDim2.new(0.5, 0, 0, 58)
+	bar.Size = UDim2.fromOffset(340, 46)
+	bar.BackgroundColor3 = DARK
+	bar.BackgroundTransparency = 0.15
+	bar.Visible = false
+	bar.Parent = gui
+	corner(bar, 10)
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = GOLD
+	stroke.Thickness = 1.5
+	stroke.Parent = bar
+	nameLabel = Instance.new("TextLabel")
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Position = UDim2.fromOffset(12, 3)
+	nameLabel.Size = UDim2.new(1, -90, 0, 20)
+	nameLabel.Font = Enum.Font.Bangers
+	nameLabel.TextSize = 20
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	nameLabel.TextColor3 = GOLD
+	nameLabel.TextStrokeTransparency = 0.5
+	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	nameLabel.Parent = bar
+	hpText = Instance.new("TextLabel")
+	hpText.BackgroundTransparency = 1
+	hpText.AnchorPoint = Vector2.new(1, 0)
+	hpText.Position = UDim2.new(1, -12, 0, 5)
+	hpText.Size = UDim2.fromOffset(80, 16)
+	hpText.Font = Enum.Font.GothamBlack
+	hpText.TextSize = 12
+	hpText.TextXAlignment = Enum.TextXAlignment.Right
+	hpText.TextColor3 = Color3.new(1, 1, 1)
+	hpText.Parent = bar
+	local back = Instance.new("Frame")
+	back.Position = UDim2.fromOffset(12, 26)
+	back.Size = UDim2.new(1, -24, 0, 12)
+	back.BackgroundColor3 = Color3.fromRGB(40, 36, 50)
+	back.Parent = bar
+	corner(back, 6)
+	chunk = Instance.new("Frame")
+	chunk.Size = UDim2.fromScale(1, 1)
+	chunk.BackgroundColor3 = Color3.new(1, 1, 1)
+	chunk.Parent = back
+	corner(chunk, 6)
+	fill = Instance.new("Frame")
+	fill.Size = UDim2.fromScale(1, 1)
+	fill.BackgroundColor3 = RED
+	fill.Parent = back
+	corner(fill, 6)
+	local shine = Instance.new("UIGradient")
+	shine.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 190))
+	shine.Rotation = 90
+	shine.Parent = fill
+
+	-- Red damage edges (four gradients round the screen).
+	edges = {}
+	local sides = {
+		{ UDim2.fromScale(0, 0), UDim2.new(1, 0, 0.18, 0), 90 },
+		{ UDim2.fromScale(0, 0.82), UDim2.new(1, 0, 0.18, 0), -90 },
+		{ UDim2.fromScale(0, 0), UDim2.new(0.12, 0, 1, 0), 0 },
+		{ UDim2.fromScale(0.88, 0), UDim2.new(0.12, 0, 1, 0), 180 },
+	}
+	for _, side in ipairs(sides) do
+		local f = Instance.new("Frame")
+		f.Position = side[1]
+		f.Size = side[2]
+		f.BackgroundColor3 = RED
+		f.BorderSizePixel = 0
+		f.BackgroundTransparency = 1
+		f.Parent = gui
+		local g = Instance.new("UIGradient")
+		g.Rotation = side[3]
+		g.Transparency = NumberSequence.new(0, 1)
+		g.Parent = f
+		table.insert(edges, f)
+	end
+end
+
+local function showTarget(model)
+	if not bar then
+		return
+	end
+	if target ~= model then
+		target = model
+		local humanoid = model:FindFirstChildOfClass("Humanoid")
+		local k = humanoid and humanoid.MaxHealth > 0 and humanoid.Health / humanoid.MaxHealth or 1
+		fillValue, chunkValue = k, k
+		nameLabel.Text = string.upper(nameOf(model))
+	end
+	shownUntil = os.clock() + 4
+	bar.Visible = true
+end
+
+function CombatUI.step(dt)
+	if not bar then
+		return
+	end
+	dt = dt or 1 / 60
+	local now = os.clock()
+	-- Target bar.
+	local humanoid = target and target.Parent and target:FindFirstChildOfClass("Humanoid")
+	if humanoid and now < shownUntil then
+		local k = humanoid.MaxHealth > 0 and math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1) or 0
+		fillValue = fillValue + (k - fillValue) * math.min(dt * 18, 1)
+		-- The white chunk waits a moment, then catches up.
+		if chunkValue > fillValue then
+			chunkValue = math.max(fillValue, chunkValue - dt * 0.6)
+		else
+			chunkValue = fillValue
+		end
+		fill.Size = UDim2.fromScale(fillValue, 1)
+		chunk.Size = UDim2.fromScale(chunkValue, 1)
+		fill.BackgroundColor3 = k > 0.5 and Color3.fromRGB(90, 220, 110):Lerp(GOLD, (1 - k) * 2) or GOLD:Lerp(RED, (0.5 - k) * 2)
+		hpText.Text = humanoid.Health <= 0 and "K.O." or (math.ceil(humanoid.Health) .. " / " .. math.floor(humanoid.MaxHealth))
+		local fade = math.clamp((shownUntil - now) / 0.4, 0, 1)
+		bar.BackgroundTransparency = 1 - 0.85 * fade
+		bar.Visible = fade > 0
+	else
+		bar.Visible = false
+	end
+	-- Damage edges: a flash when hit, a slow pulse while health is low.
+	hurtFlash = math.max(0, hurtFlash - dt * 2.5)
+	local mine = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	local low = 0
+	if mine and mine.Health > 0 and mine.MaxHealth > 0 and mine.Health / mine.MaxHealth < 0.3 then
+		low = (0.5 + 0.5 * math.sin(now * 5)) * (1 - mine.Health / mine.MaxHealth / 0.3) * 0.5
+	end
+	local strength = math.max(hurtFlash, low)
+	for _, f in ipairs(edges) do
+		f.BackgroundTransparency = 1 - strength * 0.7
+	end
+end
+
+function CombatUI.init()
+	build()
+	Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+		if name ~= "Hit" or typeof(data) ~= "table" or not data.Victim then
+			return
+		end
+		if data.AttackerId == player.UserId and data.Victim ~= player.Character then
+			showTarget(data.Victim)
+		end
+		if data.Victim == player.Character then
+			hurtFlash = data.Blocked and 0.25 or 0.8
+		end
+	end)
+	game:GetService("RunService").RenderStepped:Connect(CombatUI.step)
+end
+
+return CombatUI
+end
+
+-- ======================================================================
 -- MODULE: Fighters
 -- ======================================================================
 __modules["Fighters"] = function()
@@ -1924,6 +2137,22 @@ local function onHit(data)
 	end
 	if data.Position and not data.Blocked then
 		TuskVFX.CreateImpactStar(data.Position, { Size = 2.2 + (data.Level or 1) * 0.9, Rays = 6 + (data.Level or 1), Color = starColor, Color2 = Color3.new(1, 1, 1), Duration = 0.18 + (data.Level or 1) * 0.03 })
+		-- Sparks thrown away from the attacker, a quick shock ring, a white pop.
+		local away
+		local attacker = data.AttackerId and Players:GetPlayerByUserId(data.AttackerId)
+		local ar = attacker and attacker.Character and attacker.Character:FindFirstChild("HumanoidRootPart")
+		if ar then
+			local d = data.Position - ar.Position
+			away = d.Magnitude > 0.1 and d.Unit or nil
+		end
+		VFXLib.burst(data.Position, { Count = 10, Color = starColor, Speed = 34, Lifetime = 0.28, Spread = away and 40 or 180, Direction = away, Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) }) })
+		VFXLib.burst(data.Position, { Count = 4, Color = Color3.new(1, 1, 1), Speed = 6, Lifetime = 0.12, Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.6), NumberSequenceKeypoint.new(1, 0) }) })
+		local look = workspace.CurrentCamera and workspace.CurrentCamera.CFrame.Position or data.Position + Vector3.new(0, 0, 1)
+		TuskVFX.CreateRotationalShockwave(CFrame.lookAt(data.Position, look) * CFrame.Angles(math.pi / 2, 0, 0), { Radius = 2.6, Layers = 1, Color = starColor, Color2 = Color3.new(1, 1, 1), Particles = 0, Width = 0.12, Duration = 0.18 })
+		-- Your own hits kick the camera a little.
+		if data.AttackerId == localPlayer.UserId then
+			CameraFX.shake(0.12 + (data.Level or 1) * 0.05, 0.12)
+		end
 	end
 	if data.Blocked then
 		VFXLib.burst(data.Position, { Count = 12, Color = Color3.fromRGB(150, 210, 255), Speed = 25, Lifetime = 0.3 })
@@ -1947,20 +2176,29 @@ local function onDamage(data)
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
 	label.Size = UDim2.fromScale(1, 1)
-	label.Font = Enum.Font.GothamBlack
+	label.Font = Enum.Font.Bangers
 	label.TextScaled = true
+	label.Rotation = (math.random() - 0.5) * 16
 	label.Text = data.Blocked and ("BLOCKED " .. data.Amount) or (tostring(data.Amount) .. (data.Perfect and "!" or ""))
 	label.TextColor3 = data.Blocked and Color3.fromRGB(170, 200, 230) or (data.Perfect and colors.Perfect or colors.Gold)
 	label.TextStrokeTransparency = 0
 	label.TextStrokeColor3 = Color3.fromRGB(60, 25, 0)
 	label.Parent = billboard
 	local start = carrier.Position
+	local drift = Vector3.new((math.random() - 0.5) * 2, 0, (math.random() - 0.5) * 2)
+	-- Bigger hits get bigger, redder numbers.
+	local amount = tonumber(data.Amount) or 0
+	local big = math.clamp((amount - 4) / 10, 0, 1)
+	if not data.Blocked and not data.Perfect then
+		label.TextColor3 = colors.Gold:Lerp(Color3.fromRGB(255, 80, 60), big)
+	end
+	local scale = 1 + big * 0.6
 	VFXLib.animate(1, function(a)
-		carrier.Position = start + Vector3.new(0, a * 3, 0)
+		carrier.Position = start + drift * a + Vector3.new(0, a * 3 - a * a * 1.2, 0)
 		label.TextTransparency = math.max(0, (a - 0.6) / 0.4)
 		label.TextStrokeTransparency = label.TextTransparency
 		local pop = a < 0.1 and (1 + (0.1 - a) * 4) or 1
-		billboard.Size = UDim2.fromOffset(160 * pop * (data.Perfect and 1.3 or 1), 60 * pop * (data.Perfect and 1.3 or 1))
+		billboard.Size = UDim2.fromOffset(160 * pop * scale * (data.Perfect and 1.3 or 1), 60 * pop * scale * (data.Perfect and 1.3 or 1))
 	end)
 end
 
@@ -2330,7 +2568,16 @@ end
 function Common.swipe(root, side, color, scale)
 	scale = scale or 1
 	local cf = root.CFrame * CFrame.new(side * 0.3, 0.3, -1.2) * CFrame.Angles(0, 0, side * 0.5)
-	TuskVFX.CreateCrescent(cf, { Radius = 2.2 * scale, Width = 0.5 * scale, Color = color, Color2 = Color3.new(1, 1, 1), Sweep = side * 1.8, Duration = 0.18 })
+	-- A thick coloured arc, a thin bright inner arc a beat later, and sparks
+	-- flung off the tip of the swing.
+	TuskVFX.CreateCrescent(cf, { Radius = 2.4 * scale, Width = 0.6 * scale, Color = color, Color2 = Color3.new(1, 1, 1), Sweep = side * 1.9, Duration = 0.2 })
+	task.delay(0.03, function()
+		if root.Parent then
+			TuskVFX.CreateCrescent(cf * CFrame.new(0, 0, -0.3), { Radius = 1.8 * scale, Width = 0.18 * scale, Color = Color3.new(1, 1, 1), Color2 = color, Sweep = side * 2.1, Duration = 0.14 })
+		end
+	end)
+	local tip = (root.CFrame * CFrame.new(-side * 1.6 * scale, 0.4, -2.2 * scale)).Position
+	VFXLib.burst(tip, { Count = 5, Color = color, Speed = 18, Lifetime = 0.22, Spread = 50, Direction = root.CFrame.RightVector * -side, Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0) }) })
 end
 
 ---------------------------------------------------------------------------
@@ -5447,11 +5694,29 @@ local builders = {
 	[4] = buildAct4,
 }
 
--- All Stands are mostly blocky (owner's request): every round piece becomes
--- a box or a stepped "voxel-round" shape. Only the eyes stay smooth so each
--- Act's face still reads.
+-- Mostly blocky, but each Act keeps the curved pieces that make it read as
+-- Tusk smooth (the egg body and ears, the ear discs and drum, the round
+-- body and shoulder ball, the helmet). Everything else is boxes and
+-- stepped voxel-round shapes.
 local EYES = { Eye = true, Pupil = true, EyeRim = true, Shine = true, Glint = true }
-local SIGNATURE_ROUND = { [1] = EYES, [2] = EYES, [3] = EYES, [4] = EYES }
+local function with(list)
+	local out = table.clone and table.clone(EYES) or {}
+	if not table.clone then
+		for k, v in pairs(EYES) do
+			out[k] = v
+		end
+	end
+	for _, name in ipairs(list) do
+		out[name] = true
+	end
+	return out
+end
+local SIGNATURE_ROUND = {
+	[1] = with({ "Body", "Face", "Head", "EarL", "EarR", "Chin", "Cheek", "HeartLobe", "Fin", "Highlight", "Belly", "Lid", "Fur", "Seam", "AntennaBall", "PinHead" }),
+	[2] = with({ "Body", "Head", "Cheek", "EarDisc", "Drum", "DrumRim", "DrumHole", "Pod", "PodHole", "Visor" }),
+	[3] = with({ "Body", "BackShade", "ShoulderBall", "BellyLens", "LensRim", "Mask" }),
+	[4] = with({ "Head", "Visor", "HelmetRidge", "Emblem", "Chest", "ShoulderPad" }),
+}
 
 function TuskStandModels.build(act, scale)
 	scale = scale or 1
@@ -8570,3 +8835,4 @@ __require("TuskSneakController").init()
 __require("TuskController").init()
 __require("WorldClient").init()
 __require("CharacterCard").init()
+__require("CombatUI").init()
