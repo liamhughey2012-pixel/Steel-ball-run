@@ -97,6 +97,8 @@ PACKS = [
      "Sandman (Soundman): In a Silent Way."),
     ("MountainTim", {"server": ["MountainTim", "MountainTimOutfit"], "client": ["MountainTimVFX"]},
      "Mountain Tim: Oh! Lonesome Me."),
+    ("HotPants", {"server": ["HotPants", "HotPantsOutfit"], "client": ["HotPantsVFX"]},
+     "Hot Pants: Cream Starter."),
 ]
 
 def deps(code):
@@ -244,7 +246,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit" }) do
+for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

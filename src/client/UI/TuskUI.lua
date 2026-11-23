@@ -135,7 +135,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("LASSO") or has("ROUNDUP") then
+	if has("FLESH SPRAY") or has("FLESH STORM") then
+		return "spray"
+	elseif has("FLESH SEAL") then
+		return "seal"
+	elseif has("FLESH MEND") then
+		return "heal"
+	elseif has("LASSO") or has("ROUNDUP") then
 		return "lasso"
 	elseif has("SPLIT DODGE") then
 		return "dash"
@@ -292,6 +298,24 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "spray" then
+		-- Spray can with a mist puff.
+		bar(icon, 0.32, 0.6, 0.26, 0.5, 0)
+		bar(icon, 0.32, 0.3, 0.14, 0.1, 0)
+		for i = 0, 2 do
+			local dot = bar(icon, 0.6 + i * 0.12, 0.3 + (i - 1) * 0.1, 0.1, 0.1)
+			corner(dot, 999)
+		end
+	elseif kind == "seal" then
+		-- A face with its mouth covered.
+		ring(icon, 0.72, 3)
+		bar(icon, 0.38, 0.4, 0.08, 0.08)
+		bar(icon, 0.62, 0.4, 0.08, 0.08)
+		bar(icon, 0.5, 0.64, 0.46, 0.16, 0)
+	elseif kind == "heal" then
+		-- A plus.
+		bar(icon, 0.5, 0.5, 0.2, 0.7, 0)
+		bar(icon, 0.5, 0.5, 0.7, 0.2, 0)
 	elseif kind == "lasso" then
 		-- A lasso loop on a rope.
 		ring(icon, 0.56, 3, UDim2.fromScale(0.42, 0.4))

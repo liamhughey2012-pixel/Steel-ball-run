@@ -66,6 +66,7 @@ local LOOKS = {
 	PorkPie = { Skin = Color3.fromRGB(205, 150, 110), Torso = Color3.fromRGB(95, 115, 45), Legs = Color3.fromRGB(95, 115, 45) },
 	Sandman = { Skin = Color3.fromRGB(170, 115, 80), Torso = Color3.fromRGB(200, 160, 100), Legs = Color3.fromRGB(120, 85, 55) },
 	MountainTim = { Skin = Color3.fromRGB(226, 180, 140), Torso = Color3.fromRGB(70, 90, 130), Legs = Color3.fromRGB(60, 50, 70) },
+	HotPants = { Skin = Color3.fromRGB(238, 196, 164), Torso = Color3.fromRGB(96, 60, 120), Legs = Color3.fromRGB(238, 196, 164) },
 }
 
 local usedSpots = {} -- [spot index] = slot using it

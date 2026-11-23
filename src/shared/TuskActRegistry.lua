@@ -149,6 +149,26 @@ TuskActRegistry.Acts = {
 		ClientModule = "MountainTimVFX", -- client visuals (TuskActVFX.MountainTimVFX)
 		CardTitle = "STAND  ·  OH! LONESOME ME",
 	},
+	-- Hot Pants: CREAM STARTER (a spray can that sprays flesh: seals wounds,
+	-- coats and smothers enemies).
+	[10] = {
+		Name = "CREAM STARTER",
+		Character = "HotPants",
+		Tagline = "Flesh spray",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(242, 140, 172), Secondary = Color3.fromRGB(120, 60, 92) },
+		M1 = "SPRAY COMBO",
+		Abilities = { "FLESH SPRAY", "FLESH SEAL", "FLESH MEND" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "FLESH STORM",
+		Next = nil,
+		Module = "HotPants", -- server moves
+		ClientModule = "HotPantsVFX", -- client visuals (TuskActVFX.HotPantsVFX)
+		CardTitle = "STAND  ·  CREAM STARTER",
+		Buffs = {
+			{ Slot = 3, Attribute = "FleshMendUntil", Text = "HEALING" },
+		},
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -158,7 +178,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

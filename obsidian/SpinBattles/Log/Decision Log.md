@@ -76,3 +76,4 @@ updated: 2026-11-22
 | 2026-11-23 | Sandman walks 30% faster (Registry WalkSpeed); Mountain Tim (Oh! Lonesome Me) added, also as an NPC and bounty target |
 | 2026-11-23 | Character-script loader only loads real character scripts (Gyro_Server etc.), not other *_Server modules; print/warn captured at the top of the bundles |
 | 2026-11-23 | Mountain Tim reworked: victim body-split, Split Dodge counter (CombatAdapter.DodgeHandlers), Split Barrage reel; braided rope, knotted lasso, real body-part pieces |
+| 2026-11-23 | Hot Pants (Cream Starter) added from the description: flesh spray/seal/mend, Flesh Storm cocoons; also an NPC and bounty target |

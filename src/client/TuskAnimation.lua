@@ -167,6 +167,11 @@ TuskAnimation.Poses = {
 	RopeWhipWind = { Root = { 0, 34, 0, -0.08 }, Waist = { 0, 34, 0 }, RightArm = { 120, 0, 70 }, RightElbow = { 20, 0, 0 }, LeftArm = { 30, 0, -30 }, Neck = { 0, -18, 0 } },
 	RopeWhip = { Root = { 0, -36, 0, -0.1, 0.35 }, Waist = { 0, -40, 0 }, RightArm = { 90, -40, -30 }, RightElbow = { 0, 0, 0 }, LeftArm = { 24, 0, -36 }, Neck = { 0, 26, 0 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -20, 0, 0 } },
 	SplitPose = { Root = { -16, 0, 0, -0.3, 0.3 }, Waist = { -18, 0, 0 }, Neck = { 12, 0, 0 }, RightArm = { 100, 0, 60 }, LeftArm = { 100, 0, -60 }, RightHip = { 30, 0, 0 }, RightKnee = { -40, 0, 0 }, LeftHip = { -20, 0, 0 } },
+	-- HOT PANTS: quick and sharp; Cream Starter held out like a weapon.
+	HPStance = { Root = { 0, 12, 0, -0.06 }, Waist = { -2, 10, 0 }, Neck = { 2, -8, 0 }, RightArm = { 30, 0, 14 }, RightElbow = { 70, 0, 0 }, LeftArm = { 6, 0, -24 }, LeftElbow = { 60, 0, 0 }, RightHip = { -4, 0, 0 }, LeftHip = { 10, 0, 0 }, LeftKnee = { -10, 0, 0 } },
+	SprayAim = { Root = { 0, -14, 0, -0.1, 0.15 }, Waist = { 0, -18, 0 }, Neck = { 0, 12, 0 }, RightArm = { 92, 0, 6 }, RightElbow = { 6, 0, 0 }, LeftArm = { 60, 0, -30 }, LeftElbow = { 70, 0, 0 }, RightHip = { 16, 0, 0 }, RightKnee = { -18, 0, 0 }, LeftHip = { -10, 0, 0 } },
+	SprayLunge = { Root = { -10, -16, 0, -0.18, 0.55 }, Waist = { -12, -20, 0 }, Neck = { 6, 12, 0 }, RightArm = { 96, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -40 }, RightHip = { 34, 0, 0 }, RightKnee = { -38, 0, 0 }, LeftHip = { -18, 0, 0 } },
+	SpraySelf = { Root = { 0, 8, 0, -0.1 }, Waist = { 6, 8, 0 }, Neck = { -14, 0, 0 }, RightArm = { 60, 0, -40 }, RightElbow = { 110, 0, 0 }, LeftArm = { 40, 0, -10 }, LeftElbow = { 40, 0, 0 } },
 	-- SANDMAN: a light-footed runner; knife-hand chops and spinning kicks.
 	SandStance = { Root = { 0, 10, 0, -0.18 }, Waist = { -8, 8, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, 18 }, RightElbow = { 70, 0, 0 }, LeftArm = { 55, 0, -22 }, LeftElbow = { 60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -8, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 	ChopCoil = { Root = { 0, 26, 0, -0.14 }, Waist = { 6, 30, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 60, 0, 0 }, LeftArm = { 60, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -14, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightKnee = { -12, 0, 0 } },
@@ -295,6 +300,16 @@ TuskAnimation.Actions = {
 	TimSplit = { { 0, "Rest" }, { 0.1, "SplitPose", "Snap", 3 }, { 0.5, "SplitPose", "Linear" }, { 0.65, "TimStance", "Sine" } },
 	TimPunch = { { 0, "Rest" }, { 0.1, "JabCoil", "In" }, { 0.18, "JabStrike", "Snap", 4 }, { 0.6, "JabStrike", "Linear", 2 }, { 0.75, "TimStance", "Sine" } },
 	TimRoundup = { { 0, "Rest" }, { 0.15, "LassoSpin", "Out" }, { 0.85, "LassoSpin", "Linear", 2 }, { 0.95, "Spread", "Snap", 5 }, { 1.6, "ReelBack", "Snap", 3 }, { 2.2, "ReelBack", "Linear", 2 }, { 2.35, "HoistSlam", "Snap", 8 }, { 2.7, "HoistSlam", "Sine" } },
+
+	-- HOT PANTS
+	H_M1_1 = { { 0, "Rest" }, { 0.06, "JabCoil", "In" }, { 0.11, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.28, "HPStance", "Sine" } },
+	H_M1_2 = { { 0, "Rest" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.3, "HPStance", "Sine" } },
+	H_M1_3 = { { 0, "Rest" }, { 0.06, "SprayAim", "Snap", 2 }, { 0.2, "SprayAim", "Linear", 2 }, { 0.32, "HPStance", "Sine" } },
+	H_M1_4 = { { 0, "Rest" }, { 0.08, "SpinKickWind", "In" }, { 0.16, "SpinKick", "Snap", 6 }, { 0.21, "SpinKick", "Linear" }, { 0.36, "HPStance", "Sine" } },
+	HPSpray = { { 0, "Rest" }, { 0.1, "SprayAim", "Snap", 2 }, { 0.4, "SprayAim", "Linear", 2 }, { 0.7, "SprayAim", "Linear", 2 }, { 0.85, "HPStance", "Sine" } },
+	HPSeal = { { 0, "Rest" }, { 0.14, "SprayAim", "In" }, { 0.24, "SprayLunge", "Snap", 5 }, { 0.45, "SprayLunge", "Sine" } },
+	HPMend = { { 0, "Rest" }, { 0.12, "SpraySelf", "Out" }, { 1.1, "SpraySelf", "Linear", 1 }, { 1.3, "HPStance", "Sine" } },
+	HPStorm = { { 0, "Rest" }, { 0.15, "ConductUp", "Back", 3 }, { 0.55, "SprayAim", "Snap", 4 }, { 1.2, "SprayAim", "Linear", 3 }, { 1.5, "HPStance", "Sine" } },
 
 	-- SANDMAN
 	S_M1_1 = { { 0, "Rest" }, { 0.07, "ChopCoil", "In" }, { 0.12, "ChopStrike", "Back", 4 }, { 0.17, "ChopStrike", "Linear" }, { 0.3, "SandStance", "Sine" } },

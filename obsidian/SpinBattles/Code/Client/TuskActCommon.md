@@ -65,6 +65,7 @@ Common.Palettes = {
 	[7] = { Main = Color3.fromRGB(165, 215, 80), Second = Color3.fromRGB(95, 105, 125), Light = Color3.fromRGB(225, 232, 245) }, -- Pork Pie Hat Kid (bamboo green + steel)
 	[8] = { Main = Color3.fromRGB(245, 185, 80), Second = Color3.fromRGB(50, 140, 160), Light = Color3.fromRGB(255, 240, 205) }, -- Sandman (sand + turquoise)
 	[9] = { Main = Color3.fromRGB(214, 156, 84), Second = Color3.fromRGB(96, 62, 38), Light = Color3.fromRGB(255, 232, 196) }, -- Mountain Tim (leather + rope)
+	[10] = { Main = Color3.fromRGB(242, 140, 172), Second = Color3.fromRGB(120, 60, 92), Light = Color3.fromRGB(255, 220, 230) }, -- Hot Pants (Cream Starter pink)
 }
 
 function Common.palette(act)

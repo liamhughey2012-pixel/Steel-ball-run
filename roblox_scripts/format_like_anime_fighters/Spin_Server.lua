@@ -3355,6 +3355,7 @@ local LOOKS = {
 	PorkPie = { Skin = Color3.fromRGB(205, 150, 110), Torso = Color3.fromRGB(95, 115, 45), Legs = Color3.fromRGB(95, 115, 45) },
 	Sandman = { Skin = Color3.fromRGB(170, 115, 80), Torso = Color3.fromRGB(200, 160, 100), Legs = Color3.fromRGB(120, 85, 55) },
 	MountainTim = { Skin = Color3.fromRGB(226, 180, 140), Torso = Color3.fromRGB(70, 90, 130), Legs = Color3.fromRGB(60, 50, 70) },
+	HotPants = { Skin = Color3.fromRGB(238, 196, 164), Torso = Color3.fromRGB(96, 60, 120), Legs = Color3.fromRGB(238, 196, 164) },
 }
 
 local usedSpots = {} -- [spot index] = slot using it
@@ -5067,6 +5068,26 @@ TuskActRegistry.Acts = {
 		ClientModule = "MountainTimVFX", -- client visuals (TuskActVFX.MountainTimVFX)
 		CardTitle = "STAND  ·  OH! LONESOME ME",
 	},
+	-- Hot Pants: CREAM STARTER (a spray can that sprays flesh: seals wounds,
+	-- coats and smothers enemies).
+	[10] = {
+		Name = "CREAM STARTER",
+		Character = "HotPants",
+		Tagline = "Flesh spray",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(242, 140, 172), Secondary = Color3.fromRGB(120, 60, 92) },
+		M1 = "SPRAY COMBO",
+		Abilities = { "FLESH SPRAY", "FLESH SEAL", "FLESH MEND" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "FLESH STORM",
+		Next = nil,
+		Module = "HotPants", -- server moves
+		ClientModule = "HotPantsVFX", -- client visuals (TuskActVFX.HotPantsVFX)
+		CardTitle = "STAND  ·  CREAM STARTER",
+		Buffs = {
+			{ Slot = 3, Attribute = "FleshMendUntil", Text = "HEALING" },
+		},
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -5076,7 +5097,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -6454,7 +6475,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit" }) do
+for _, outfit in ipairs({ "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

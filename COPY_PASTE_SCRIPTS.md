@@ -1227,6 +1227,26 @@ TuskActRegistry.Acts = {
 		ClientModule = "MountainTimVFX", -- client visuals (TuskActVFX.MountainTimVFX)
 		CardTitle = "STAND  ·  OH! LONESOME ME",
 	},
+	-- Hot Pants: CREAM STARTER (a spray can that sprays flesh: seals wounds,
+	-- coats and smothers enemies).
+	[10] = {
+		Name = "CREAM STARTER",
+		Character = "HotPants",
+		Tagline = "Flesh spray",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(242, 140, 172), Secondary = Color3.fromRGB(120, 60, 92) },
+		M1 = "SPRAY COMBO",
+		Abilities = { "FLESH SPRAY", "FLESH SEAL", "FLESH MEND" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "FLESH STORM",
+		Next = nil,
+		Module = "HotPants", -- server moves
+		ClientModule = "HotPantsVFX", -- client visuals (TuskActVFX.HotPantsVFX)
+		CardTitle = "STAND  ·  CREAM STARTER",
+		Buffs = {
+			{ Slot = 3, Attribute = "FleshMendUntil", Text = "HEALING" },
+		},
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -1236,7 +1256,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -1370,6 +1390,7 @@ TuskConfig.Roster = {
 	{ Id = "PorkPie", Name = "PORK PIE HAT KID", Stand = "WIRED", Available = true, Color = Color3.fromRGB(165, 215, 80) },
 	{ Id = "Sandman", Name = "SANDMAN", Stand = "IN A SILENT WAY", Available = true, Color = Color3.fromRGB(245, 185, 80) },
 	{ Id = "MountainTim", Name = "MOUNTAIN TIM", Stand = "OH! LONESOME ME", Available = true, Color = Color3.fromRGB(214, 156, 84) },
+	{ Id = "HotPants", Name = "HOT PANTS", Stand = "CREAM STARTER", Available = true, Color = Color3.fromRGB(242, 140, 172) },
 }
 
 ---------------------------------------------------------------------------
@@ -1396,7 +1417,7 @@ TuskConfig.Bounty = {
 TuskConfig.StandBots = {
 	Enabled = true,
 	Count = 6, -- how many at once (each takes a free spot below)
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim" }, -- picked at random (only installed ones)
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants" }, -- picked at random (only installed ones)
 	Health = 200,
 	WalkSpeed = 15,
 	-- Where they hang out, scattered round the SBR map (offsets from the map's
@@ -1786,6 +1807,42 @@ TuskConfig.MountainTim = {
 		ReelTime = 0.8, ReelTick = 0.15,
 		SplitTime = 1.4, -- everyone roped is split apart along their rope while his pieces ride in
 		SlamDamage = 12, SlamRadius = 9, SlamKnockback = 55, SlamLaunch = 28, SlamStun = 0.8,
+	},
+}
+
+---------------------------------------------------------------------------
+-- Hot Pants: CREAM STARTER (flesh spray)
+---------------------------------------------------------------------------
+TuskConfig.HotPants = {
+	M1 = { -- SPRAY COMBO: jab, kick, a spray burst, roundhouse
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.8, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 4 },
+			{ Damage = 4, Stun = 0.45, Knockback = 4 },
+			{ Damage = 7, Stun = 0.5, Knockback = 42, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	FleshSpray = { -- a cone of flesh: everyone in it is coated (slowed) and takes ticks of damage
+		Cooldown = 7, Startup = 0.12, Duration = 0.6, Tick = 0.15,
+		Range = 15, Cone = 55, MaxTargets = 5,
+		Damage = 2, Stun = 0.35,
+		CoatTime = 2.5, CoatSlow = 0.6,
+	},
+	FleshSeal = { -- flesh over their mouth and nose: they suffocate for a few seconds
+		Cooldown = 12, MissCooldown = 3, Windup = 0.25,
+		Range = 11, Cone = 50,
+		Damage = 4, Stun = 0.6,
+		SealTime = 3, SealTick = 0.5, SealDamage = 2, SealSlow = 0.75,
+	},
+	FleshMend = { -- spray her own wounds shut
+		Cooldown = 14, Duration = 1.2, Ticks = 4, Heal = 22,
+	},
+	Ultimate = { -- FLESH STORM: a flesh cloud hardens into cocoons round everyone caught, crushes them, bursts
+		Windup = 0.7, Distance = 12, Radius = 13,
+		EncaseDamage = 5, EncaseStun = 1.0, EncaseTime = 1.6, CrushEvery = 0.4, CrushDamage = 2,
+		BurstDamage = 12, BurstKnockback = 50, BurstLaunch = 25, BurstStun = 0.7,
 	},
 }
 
@@ -3319,6 +3376,7 @@ local DiegoOutfit = require(script.DiegoOutfit)
 local PorkPieOutfit = require(script.PorkPieOutfit)
 local SandmanOutfit = require(script.SandmanOutfit)
 local MountainTimOutfit = require(script.MountainTimOutfit)
+local HotPantsOutfit = require(script.HotPantsOutfit)
 local StandBots = require(script.StandBots)
 local BountyService = require(script.BountyService)
 
@@ -3332,6 +3390,7 @@ DiegoOutfit.init()
 PorkPieOutfit.init()
 SandmanOutfit.init()
 MountainTimOutfit.init()
+HotPantsOutfit.init()
 StandBots.init(TuskService)
 BountyService.init()
 NPCService.init()
@@ -4764,7 +4823,234 @@ end
 return GyroOutfit
 ```
 
-## 21. MountainTimOutfit  (ModuleScript)
+## 21. HotPantsOutfit  (ModuleScript)
+**Put it in:** `ServerScriptService › SpinServer`
+
+```lua
+--[[
+	HotPantsOutfit  (ServerScriptService.SpinServer.HotPantsOutfit)
+
+	Gives a character Hot Pants' look while they play her (TuskAct 10),
+	built from blocky parts (no catalog asset ids):
+	  * a low pink cap with a short visor, short hair at the sides
+	  * a fitted purple top with a gold cross pendant
+	  * her namesake short shorts with a belt, knee-high boots
+	  * CREAM STARTER, her Stand: a pink spray can holstered at her hip
+	The player's own hats/hair are hidden while they play her and come back
+	when she switches. Built on the server so every player sees it.
+]]
+
+local Players = game:GetService("Players")
+
+local HotPantsOutfit = {}
+HotPantsOutfit.Act = 10
+
+local C = {
+	Cap = Color3.fromRGB(232, 120, 160),
+	CapDark = Color3.fromRGB(180, 80, 120),
+	Hair = Color3.fromRGB(70, 48, 40),
+	Top = Color3.fromRGB(96, 60, 120),
+	TopTrim = Color3.fromRGB(70, 40, 92),
+	Cross = Color3.fromRGB(236, 196, 80),
+	Shorts = Color3.fromRGB(236, 120, 70),
+	Belt = Color3.fromRGB(60, 40, 30),
+	Boot = Color3.fromRGB(60, 44, 52),
+	Can = Color3.fromRGB(242, 140, 172),
+	CanCap = Color3.fromRGB(245, 245, 245),
+	Label = Color3.fromRGB(255, 225, 120),
+}
+
+local saved = setmetatable({}, { __mode = "k" })
+
+local function piece(parent, outfit, name, size, color, offset)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.SmoothPlastic
+	p.Size = size
+	p.Color = color
+	p.CFrame = parent.CFrame * offset
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = parent
+	weld.Part1 = p
+	weld.Parent = p
+	p.Parent = outfit
+	return p
+end
+
+local function headPieces(head, outfit)
+	local s = head.Size.Y / 1.2
+	local h, d = head.Size.Y / 2, head.Size.Z / 2
+	-- Low cap pulled over the brow, with a short visor.
+	piece(head, outfit, "Cap", Vector3.new(head.Size.X + 0.14 * s, 0.55 * s, head.Size.Z + 0.14 * s), C.Cap, CFrame.new(0, h - 0.15 * s, 0.02 * s))
+	piece(head, outfit, "CapTop", Vector3.new(head.Size.X * 0.8, 0.14 * s, head.Size.Z * 0.8), C.CapDark, CFrame.new(0, h + 0.18 * s, 0.02 * s))
+	piece(head, outfit, "Visor", Vector3.new(head.Size.X * 0.9, 0.1 * s, 0.5 * s), C.CapDark, CFrame.new(0, h - 0.32 * s, -d - 0.2 * s) * CFrame.Angles(-0.12, 0, 0))
+	-- Short hair at the sides and back.
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, "Hair", Vector3.new(0.16 * s, 0.6 * s, head.Size.Z * 0.75), C.Hair, CFrame.new(side * (head.Size.X / 2 + 0.06 * s), -0.05 * s, 0.05 * s))
+	end
+	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.1 * s, 0.55 * s, 0.16 * s), C.Hair, CFrame.new(0, -0.05 * s, d + 0.06 * s))
+end
+
+local function body(character, outfit)
+	local upper = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	local lower = character:FindFirstChild("LowerTorso")
+	if upper then
+		local s = upper.Size
+		piece(upper, outfit, "Top", s + Vector3.new(0.08, 0.02, 0.08), C.Top, CFrame.new())
+		piece(upper, outfit, "Collar", Vector3.new(s.X * 0.6, 0.22, s.Z + 0.14), C.TopTrim, CFrame.new(0, s.Y / 2 + 0.02, 0))
+		-- Gold cross pendant.
+		piece(upper, outfit, "Cross", Vector3.new(0.12, 0.5, 0.06), C.Cross, CFrame.new(0, s.Y * 0.1, -s.Z / 2 - 0.08))
+		piece(upper, outfit, "Cross", Vector3.new(0.34, 0.12, 0.06), C.Cross, CFrame.new(0, s.Y * 0.18, -s.Z / 2 - 0.08))
+		for _, side in ipairs({ -1, 1 }) do
+			piece(upper, outfit, "Chain", Vector3.new(0.05, s.Y * 0.4, 0.05), C.Cross, CFrame.new(side * 0.22, s.Y * 0.3, -s.Z / 2 - 0.06) * CFrame.Angles(0, 0, side * 0.5))
+		end
+	end
+	local waist = lower or upper
+	if waist then
+		local y = lower and 0 or -upper.Size.Y / 2 + 0.15
+		piece(waist, outfit, "Shorts", Vector3.new(waist.Size.X + 0.1, lower and waist.Size.Y + 0.04 or 0.5, waist.Size.Z + 0.1), C.Shorts, CFrame.new(0, lower and 0 or y - 0.1, 0))
+		piece(waist, outfit, "Belt", Vector3.new(waist.Size.X + 0.14, 0.18, waist.Size.Z + 0.14), C.Belt, CFrame.new(0, lower and waist.Size.Y / 2 - 0.05 or y + 0.12, 0))
+		-- CREAM STARTER holstered at the right hip: a pink spray can with a white cap.
+		local hip = CFrame.new(waist.Size.X / 2 + 0.28, y - 0.25, 0)
+		piece(waist, outfit, "SprayCan", Vector3.new(0.42, 0.85, 0.42), C.Can, hip)
+		piece(waist, outfit, "SprayCanBand", Vector3.new(0.44, 0.22, 0.44), C.Label, hip * CFrame.new(0, 0.05, 0))
+		piece(waist, outfit, "SprayCanCap", Vector3.new(0.3, 0.22, 0.3), C.CanCap, hip * CFrame.new(0, 0.52, 0))
+		piece(waist, outfit, "SprayNozzle", Vector3.new(0.12, 0.1, 0.16), C.Belt, hip * CFrame.new(0, 0.68, -0.08))
+	end
+	-- Bare legs under the shorts and boots, long purple sleeves.
+	local headPart = character:FindFirstChild("Head")
+	local skin = headPart and headPart.Color or Color3.fromRGB(238, 196, 164)
+	for _, name in ipairs({ "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
+		local leg = character:FindFirstChild(name)
+		if leg then
+			piece(leg, outfit, "Skin", leg.Size + Vector3.new(0.04, 0.02, 0.04), skin, CFrame.new())
+		end
+	end
+	for _, name in ipairs({ "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm", "Left Arm", "Right Arm" }) do
+		local arm = character:FindFirstChild(name)
+		if arm then
+			local tall = arm.Size.Y > 1.8
+			local h = tall and arm.Size.Y - 0.35 or arm.Size.Y
+			piece(arm, outfit, "Sleeve", Vector3.new(arm.Size.X + 0.06, h + 0.02, arm.Size.Z + 0.06), C.Top, CFrame.new(0, arm.Size.Y / 2 - h / 2, 0))
+		end
+	end
+	-- Short shorts: only the very top of the legs is covered.
+	for _, name in ipairs({ "LeftUpperLeg", "RightUpperLeg", "Left Leg", "Right Leg" }) do
+		local leg = character:FindFirstChild(name)
+		if leg then
+			local tall = leg.Size.Y > 1.8
+			local h = tall and 0.5 or leg.Size.Y * 0.45
+			piece(leg, outfit, "ShortsLeg", Vector3.new(leg.Size.X + 0.14, h, leg.Size.Z + 0.14), C.Shorts, CFrame.new(0, leg.Size.Y / 2 - h / 2, 0))
+		end
+	end
+	-- Knee-high boots.
+	for _, name in ipairs({ "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
+		local leg = character:FindFirstChild(name)
+		if leg then
+			local tall = leg.Size.Y > 1.8
+			local h = tall and 1.0 or leg.Size.Y * 0.85
+			piece(leg, outfit, "Boot", Vector3.new(leg.Size.X + 0.16, h, leg.Size.Z + 0.18), C.Boot, CFrame.new(0, -leg.Size.Y / 2 + h / 2, 0))
+		end
+	end
+	for _, name in ipairs({ "LeftFoot", "RightFoot" }) do
+		local foot = character:FindFirstChild(name)
+		if foot then
+			piece(foot, outfit, "Boot", foot.Size + Vector3.new(0.1, 0.06, 0.12), C.Boot, CFrame.new())
+		end
+	end
+end
+
+function HotPantsOutfit.apply(character)
+	if character:FindFirstChild("HotPantsOutfit") then
+		return
+	end
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local store = { Hidden = {} }
+	saved[character] = store
+	for _, d in ipairs(character:GetChildren()) do
+		if d:IsA("Accessory") then
+			local handle = d:FindFirstChild("Handle")
+			local kind = d.AccessoryType
+			if handle and (kind == Enum.AccessoryType.Hat or kind == Enum.AccessoryType.Hair or kind == Enum.AccessoryType.Unknown) then
+				store.Hidden[handle] = handle.Transparency
+				handle.Transparency = 1
+			end
+		end
+	end
+	local outfit = Instance.new("Model")
+	outfit.Name = "HotPantsOutfit"
+	outfit.Parent = character
+	headPieces(head, outfit)
+	body(character, outfit)
+end
+
+function HotPantsOutfit.remove(character)
+	local outfit = character:FindFirstChild("HotPantsOutfit")
+	if outfit then
+		outfit:Destroy()
+	end
+	local store = saved[character]
+	if not store then
+		return
+	end
+	saved[character] = nil
+	for thing, transparency in pairs(store.Hidden) do
+		if thing.Parent then
+			thing.Transparency = transparency
+		end
+	end
+end
+
+local function watch(character)
+	local function update()
+		if character:GetAttribute("TuskAct") == HotPantsOutfit.Act then
+			task.delay(0.3, function()
+				if character.Parent and character:GetAttribute("TuskAct") == HotPantsOutfit.Act then
+					HotPantsOutfit.apply(character)
+				end
+			end)
+		else
+			HotPantsOutfit.remove(character)
+		end
+	end
+	character:GetAttributeChangedSignal("TuskAct"):Connect(update)
+	update()
+end
+
+function HotPantsOutfit.init()
+	local function onPlayer(player)
+		player.CharacterAppearanceLoaded:Connect(watch)
+		if player.Character then
+			watch(player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	-- Stand-user NPCs (StandBots) wear the outfit too.
+	local CollectionService = game:GetService("CollectionService")
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		watch(model)
+	end
+	CollectionService:GetInstanceAddedSignal("SpinFighter"):Connect(watch)
+	for _, player in ipairs(Players:GetPlayers()) do
+		onPlayer(player)
+	end
+end
+
+return HotPantsOutfit
+```
+
+## 22. MountainTimOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -4964,7 +5250,7 @@ end
 return MountainTimOutfit
 ```
 
-## 22. NPCService  (ModuleScript)
+## 23. NPCService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5184,7 +5470,7 @@ end
 return NPCService
 ```
 
-## 23. PorkPieOutfit  (ModuleScript)
+## 24. PorkPieOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5460,7 +5746,7 @@ end
 return PorkPieOutfit
 ```
 
-## 24. ProjectileService  (ModuleScript)
+## 25. ProjectileService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5661,7 +5947,7 @@ end)
 return ProjectileService
 ```
 
-## 25. SandmanOutfit  (ModuleScript)
+## 26. SandmanOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5876,7 +6162,7 @@ end
 return SandmanOutfit
 ```
 
-## 26. StandAssetLoader  (ModuleScript)
+## 27. StandAssetLoader  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -5966,7 +6252,7 @@ end
 return StandAssetLoader
 ```
 
-## 27. StandBots  (ModuleScript)
+## 28. StandBots  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6012,6 +6298,7 @@ local LOOKS = {
 	PorkPie = { Skin = Color3.fromRGB(205, 150, 110), Torso = Color3.fromRGB(95, 115, 45), Legs = Color3.fromRGB(95, 115, 45) },
 	Sandman = { Skin = Color3.fromRGB(170, 115, 80), Torso = Color3.fromRGB(200, 160, 100), Legs = Color3.fromRGB(120, 85, 55) },
 	MountainTim = { Skin = Color3.fromRGB(226, 180, 140), Torso = Color3.fromRGB(70, 90, 130), Legs = Color3.fromRGB(60, 50, 70) },
+	HotPants = { Skin = Color3.fromRGB(238, 196, 164), Torso = Color3.fromRGB(96, 60, 120), Legs = Color3.fromRGB(238, 196, 164) },
 }
 
 local usedSpots = {} -- [spot index] = slot using it
@@ -6302,7 +6589,7 @@ end
 return StandBots
 ```
 
-## 28. TestDummies  (ModuleScript)
+## 29. TestDummies  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6472,12 +6759,12 @@ end
 return TestDummies
 ```
 
-## 29. TuskActs  (Folder)
+## 30. TuskActs  (Folder)
 **Put it in:** `ServerScriptService › SpinServer`
 
 _Empty folder: nothing to paste._
 
-## 30. DiegoBrando  (ModuleScript)
+## 31. DiegoBrando  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -6935,7 +7222,7 @@ end
 return Diego
 ```
 
-## 31. GyroZeppeli  (ModuleScript)
+## 32. GyroZeppeli  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -7259,7 +7546,290 @@ end
 return Gyro
 ```
 
-## 32. MountainTim  (ModuleScript)
+## 33. HotPants  (ModuleScript)
+**Put it in:** `ServerScriptService › SpinServer › TuskActs`
+
+```lua
+--[[
+	HotPants  (ServerScriptService.SpinServer.TuskActs.HotPants)
+
+	Hot Pants: CREAM STARTER, a spray can that sprays flesh. It can seal
+	wounds, coat things in flesh and smother people by sealing their mouth
+	and nose. Registered as "Act" 10 so it reuses the Tusk ability system.
+	  M1        SPRAY COMBO: jab, kick, a short spray burst, roundhouse
+	  Ability 1 FLESH SPRAY: a cone of flesh for a moment; everyone in it is
+	            coated (slowed) and takes ticks of damage
+	  Ability 2 FLESH SEAL: flesh over the nearest enemy's mouth and nose:
+	            they suffocate (damage over time) and are slowed
+	  Ability 3 FLESH MEND: she sprays her own wounds shut (heals, clears
+	            seals / coatings on herself)
+	  Ultimate  FLESH STORM: a cloud of flesh in front hardens into cocoons
+	            round everyone caught, crushes them, then bursts apart
+	Numbers: TuskConfig.HotPants. All damage goes through S.hit (CombatAdapter).
+]]
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+local Moves = require(script.Parent.Parent.TuskMoves)
+
+local HotPants = {}
+local cfg = TuskConfig.HotPants
+local ACT = 10
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function ready(S, player, state, name, slot)
+	return not S.isBusy(state) and not state.Charging and S.cooldownReady(player, state, name, slot)
+end
+
+function HotPants.M1(S, player, state, aim)
+	Moves.m1(S, player, state, aim, cfg.M1, ACT)
+end
+
+local function now()
+	return workspace:GetServerTimeNow()
+end
+
+-- A slow that's always removed (stackable by key, refreshed by a token).
+local function slow(S, target, key, multiplier, seconds)
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	S.Adapter.setMoveModifier(humanoid, key, multiplier)
+	local token = tostring({})
+	target:SetAttribute(key .. "Token", token)
+	task.delay(seconds, function()
+		if humanoid.Parent and target:GetAttribute(key .. "Token") == token then
+			S.Adapter.setMoveModifier(humanoid, key, nil)
+			target:SetAttribute(key .. "Token", nil)
+		end
+	end)
+end
+
+-- Up to `max` enemies in a cone in front, nearest first.
+local function targetsInCone(S, character, root, direction, range, cone, max)
+	local look = Moves.flat(direction)
+	local cosLimit = math.cos(math.rad(cone / 2))
+	local list = {}
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, range, 8)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and S.Adapter.canBeHit(nil, target) then
+			local offset = tr.Position - root.Position
+			local f = Vector3.new(offset.X, 0, offset.Z)
+			if (f.Magnitude < 1 or f.Unit:Dot(look) >= cosLimit) and S.Hitbox.lineOfSight(root.Position, tr.Position, { character, target }) then
+				table.insert(list, { Target = target, Distance = offset.Magnitude })
+			end
+		end
+	end
+	table.sort(list, function(a, b)
+		return a.Distance < b.Distance
+	end)
+	local out = {}
+	for i = 1, math.min(max, #list) do
+		out[i] = list[i].Target
+	end
+	return out
+end
+
+---------------------------------------------------------------------------
+-- FLESH SPRAY
+---------------------------------------------------------------------------
+local function fleshSpray(S, player, state, aim)
+	local c = cfg.FleshSpray
+	if not ready(S, player, state, "FleshSpray", 1) then
+		return
+	end
+	S.startCooldown(player, state, "FleshSpray", c.Cooldown, 1)
+	S.lock(state, c.Startup + c.Duration + 0.15)
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "FleshSpray", Phase = "Spray", Startup = c.Startup, Duration = c.Duration, Direction = direction, Range = c.Range, Cone = c.Cone })
+	local ticks = math.floor(c.Duration / c.Tick)
+	for i = 1, ticks do
+		task.delay(c.Startup + (i - 1) * c.Tick, function()
+			if not S.stillValid(player, state, life) then
+				return
+			end
+			local char, _, r = alive(S, player)
+			for _, target in ipairs(targetsInCone(S, char, r, direction, c.Range, c.Cone, c.MaxTargets)) do
+				local tr = target:FindFirstChild("HumanoidRootPart")
+				if tr and S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Direction = direction, Position = tr.Position, Source = "HotPantsSpray" }) then
+					target:SetAttribute("FleshCoatedUntil", now() + c.CoatTime)
+					slow(S, target, "FleshCoat", c.CoatSlow, c.CoatTime)
+				end
+			end
+		end)
+	end
+end
+
+---------------------------------------------------------------------------
+-- FLESH SEAL
+---------------------------------------------------------------------------
+local function fleshSeal(S, player, state, aim)
+	local c = cfg.FleshSeal
+	if not ready(S, player, state, "FleshSeal", 2) then
+		return
+	end
+	S.startCooldown(player, state, "FleshSeal", c.Cooldown, 2)
+	S.lock(state, c.Windup + 0.3)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "FleshSeal", Phase = "Startup", Windup = c.Windup })
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local target = targetsInCone(S, char, r, direction, c.Range, c.Cone, 1)[1]
+		local tr = target and target:FindFirstChild("HumanoidRootPart")
+		if not tr or not S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Direction = direction, Position = tr.Position, Source = "HotPantsSeal" }) then
+			S.startCooldown(player, state, "FleshSeal", c.MissCooldown, 2)
+			S.fx("Ability", { Character = char, Act = ACT, Move = "FleshSeal", Phase = "Miss", Direction = direction, Range = c.Range })
+			return
+		end
+		-- Mouth and nose sealed: they suffocate.
+		local untilT = now() + c.SealTime
+		target:SetAttribute("FleshSealedUntil", untilT)
+		slow(S, target, "FleshSeal", c.SealSlow, c.SealTime)
+		S.fx("Ability", { Character = char, Act = ACT, Move = "FleshSeal", Phase = "Seal", Target = target, Duration = c.SealTime })
+		for i = 1, math.floor(c.SealTime / c.SealTick) do
+			task.delay(i * c.SealTick, function()
+				local t = target:FindFirstChild("HumanoidRootPart")
+				-- (Flesh Mend or a new life clears it early.)
+				if t and (target:GetAttribute("FleshSealedUntil") or 0) >= untilT - 0.01 then
+					S.hit(player, target, { Damage = c.SealDamage, Stun = 0, Knockback = 0, Direction = direction, Position = t.Position, Source = "HotPantsSeal" })
+				end
+			end)
+		end
+	end)
+end
+
+---------------------------------------------------------------------------
+-- FLESH MEND
+---------------------------------------------------------------------------
+local function fleshMend(S, player, state)
+	local c = cfg.FleshMend
+	if not ready(S, player, state, "FleshMend", 3) then
+		return
+	end
+	S.startCooldown(player, state, "FleshMend", c.Cooldown, 3)
+	S.lock(state, 0.35)
+	local character, humanoid = alive(S, player)
+	local life = state.Life
+	-- Clears flesh tricks used on her.
+	character:SetAttribute("FleshSealedUntil", nil)
+	character:SetAttribute("FleshCoatedUntil", nil)
+	character:SetAttribute("FleshMendUntil", now() + c.Duration)
+	S.fx("Ability", { Character = character, Act = ACT, Move = "FleshMend", Phase = "Mend", Duration = c.Duration, Heal = c.Heal })
+	for i = 1, c.Ticks do
+		task.delay(i * c.Duration / c.Ticks, function()
+			if state.Life ~= life or not humanoid.Parent or humanoid.Health <= 0 then
+				return
+			end
+			humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + c.Heal / c.Ticks)
+		end)
+	end
+	task.delay(c.Duration, function()
+		if character.Parent then
+			character:SetAttribute("FleshMendUntil", nil)
+		end
+	end)
+end
+
+function HotPants.Ability(S, player, state, slot, phase, aim)
+	if phase ~= "Press" then
+		return
+	end
+	if slot == 1 then
+		fleshSpray(S, player, state, aim)
+	elseif slot == 2 then
+		fleshSeal(S, player, state, aim)
+	elseif slot == 3 then
+		fleshMend(S, player, state)
+	end
+end
+
+---------------------------------------------------------------------------
+-- FLESH STORM (ultimate)
+---------------------------------------------------------------------------
+function HotPants.Ultimate(S, player, state, aim)
+	local u = cfg.Ultimate
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	local life = state.Life
+	local center = Moves.groundBelow(root.Position + direction * u.Distance, { character })
+	S.lock(state, u.Windup + u.EncaseTime + 0.4)
+	character:SetAttribute("Armored", true)
+	S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Cloud", Windup = u.Windup, Position = center, Radius = u.Radius, Direction = direction })
+	task.delay(u.Windup, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+		if state.Life ~= life or not alive(S, player) then
+			return
+		end
+		S.finishUltimate(player, state)
+		local up = center + Vector3.new(0, 2.5, 0)
+		local caught = {}
+		for _, target in ipairs(S.Hitbox.inRadius(character, up, u.Radius, 8)) do
+			local tr = target:FindFirstChild("HumanoidRootPart")
+			if tr and S.hit(player, target, { Damage = u.EncaseDamage, Stun = u.EncaseStun, Knockback = 0, Direction = tr.Position - center, Position = tr.Position, Source = "HotPantsStorm" }) then
+				target:SetAttribute("FleshEncasedUntil", now() + u.EncaseTime)
+				slow(S, target, "FleshEncase", 0.05, u.EncaseTime)
+				table.insert(caught, target)
+			end
+		end
+		S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Encase", Targets = caught, Duration = u.EncaseTime, Position = center, Radius = u.Radius })
+		-- The cocoons crush...
+		for i = 1, math.floor(u.EncaseTime / u.CrushEvery) do
+			task.delay(i * u.CrushEvery, function()
+				if state.Life ~= life then
+					return
+				end
+				for _, target in ipairs(caught) do
+					local tr = target:FindFirstChild("HumanoidRootPart")
+					if tr then
+						S.hit(player, target, { Damage = u.CrushDamage, Stun = 0.6, Knockback = 0, Direction = Vector3.new(0, -1, 0), Position = tr.Position, Source = "HotPantsStorm" })
+					end
+				end
+			end)
+		end
+		-- ...then burst.
+		task.delay(u.EncaseTime, function()
+			for _, target in ipairs(caught) do
+				target:SetAttribute("FleshEncasedUntil", nil)
+			end
+			if state.Life ~= life then
+				return
+			end
+			Moves.aoe(S, player, up, u.Radius + 1, { Damage = u.BurstDamage, Stun = u.BurstStun, Knockback = u.BurstKnockback, Launch = u.BurstLaunch, Source = "HotPantsStorm" }, 8)
+			S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Burst", Position = center, Radius = u.Radius + 1, Targets = caught })
+		end)
+	end)
+end
+
+function HotPants.Cleanup(S, player, state)
+	if state.Character then
+		state.Character:SetAttribute("Armored", nil)
+		state.Character:SetAttribute("FleshMendUntil", nil)
+	end
+end
+
+return HotPants
+```
+
+## 34. MountainTim  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -7640,7 +8210,7 @@ end
 return Tim
 ```
 
-## 33. PorkPieHatKid  (ModuleScript)
+## 35. PorkPieHatKid  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -8030,7 +8600,7 @@ end
 return PorkPie
 ```
 
-## 34. Sandman  (ModuleScript)
+## 36. Sandman  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -8303,7 +8873,7 @@ end
 return Sandman
 ```
 
-## 35. TuskAct1  (ModuleScript)
+## 37. TuskAct1  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -8663,7 +9233,7 @@ end
 return Act1
 ```
 
-## 36. TuskAct2  (ModuleScript)
+## 38. TuskAct2  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -8936,7 +9506,7 @@ end
 return Act2
 ```
 
-## 37. TuskAct3  (ModuleScript)
+## 39. TuskAct3  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -9127,7 +9697,7 @@ end
 return Act3
 ```
 
-## 38. TuskAct4  (ModuleScript)
+## 40. TuskAct4  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -9400,7 +9970,7 @@ end
 return Act4
 ```
 
-## 39. TuskHitbox  (ModuleScript)
+## 41. TuskHitbox  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -9481,7 +10051,7 @@ end
 return TuskHitbox
 ```
 
-## 40. TuskMoves  (ModuleScript)
+## 42. TuskMoves  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -9743,7 +10313,7 @@ TuskMoves.Config = TuskConfig
 return TuskMoves
 ```
 
-## 41. TuskService  (ModuleScript)
+## 43. TuskService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -10425,7 +10995,7 @@ end
 return TuskService
 ```
 
-## 42. TuskSneakService  (ModuleScript)
+## 44. TuskSneakService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -10688,7 +11258,7 @@ end
 return TuskSneakService
 ```
 
-## 43. SpinClient  (LocalScript)
+## 45. SpinClient  (LocalScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts`
 
 ```lua
@@ -10723,7 +11293,7 @@ DefenseClient.init()
 BountyUI.init()
 ```
 
-## 44. CameraFX  (ModuleScript)
+## 46. CameraFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -10902,7 +11472,7 @@ end
 return CameraFX
 ```
 
-## 45. DefenseClient  (ModuleScript)
+## 47. DefenseClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -11203,7 +11773,7 @@ end
 return DefenseClient
 ```
 
-## 46. Fighters  (ModuleScript)
+## 48. Fighters  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -11238,7 +11808,7 @@ end
 return Fighters
 ```
 
-## 47. HitFX  (ModuleScript)
+## 49. HitFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -11297,6 +11867,8 @@ local function onHit(data)
 		starColor = Color3.fromRGB(245, 185, 80)
 	elseif source:sub(1, 11) == "MountainTim" then
 		starColor = Color3.fromRGB(214, 156, 84)
+	elseif source:sub(1, 8) == "HotPants" then
+		starColor = Color3.fromRGB(242, 140, 172)
 	end
 	if data.Perfect then
 		starColor = colors.Gold
@@ -11381,7 +11953,7 @@ end
 return HitFX
 ```
 
-## 48. JointCache  (ModuleScript)
+## 50. JointCache  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -11436,7 +12008,7 @@ end
 return JointCache
 ```
 
-## 49. TuskActCommon  (ModuleScript)
+## 51. TuskActCommon  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -11481,6 +12053,7 @@ Common.Palettes = {
 	[7] = { Main = Color3.fromRGB(165, 215, 80), Second = Color3.fromRGB(95, 105, 125), Light = Color3.fromRGB(225, 232, 245) }, -- Pork Pie Hat Kid (bamboo green + steel)
 	[8] = { Main = Color3.fromRGB(245, 185, 80), Second = Color3.fromRGB(50, 140, 160), Light = Color3.fromRGB(255, 240, 205) }, -- Sandman (sand + turquoise)
 	[9] = { Main = Color3.fromRGB(214, 156, 84), Second = Color3.fromRGB(96, 62, 38), Light = Color3.fromRGB(255, 232, 196) }, -- Mountain Tim (leather + rope)
+	[10] = { Main = Color3.fromRGB(242, 140, 172), Second = Color3.fromRGB(120, 60, 92), Light = Color3.fromRGB(255, 220, 230) }, -- Hot Pants (Cream Starter pink)
 }
 
 function Common.palette(act)
@@ -11687,12 +12260,12 @@ end
 return Common
 ```
 
-## 50. TuskActVFX  (Folder)
+## 52. TuskActVFX  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 51. Act1  (ModuleScript)
+## 53. Act1  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -12074,7 +12647,7 @@ end
 return Act1
 ```
 
-## 52. Act2  (ModuleScript)
+## 54. Act2  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -12186,7 +12759,7 @@ end
 return Act2
 ```
 
-## 53. Act3  (ModuleScript)
+## 55. Act3  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -12364,7 +12937,7 @@ end
 return Act3
 ```
 
-## 54. Act4  (ModuleScript)
+## 56. Act4  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -12674,7 +13247,7 @@ end
 return Act4
 ```
 
-## 55. Diego  (ModuleScript)
+## 57. Diego  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -13566,7 +14139,7 @@ end
 return Diego
 ```
 
-## 56. Gyro  (ModuleScript)
+## 58. Gyro  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -14701,7 +15274,527 @@ end)
 return Gyro
 ```
 
-## 57. MountainTimVFX  (ModuleScript)
+## 59. HotPantsVFX  (ModuleScript)
+**Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
+
+```lua
+--[[
+	TuskActVFX.HotPantsVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.HotPantsVFX)
+
+	Client visuals for Hot Pants / CREAM STARTER, a spray can that sprays
+	flesh. Blocky like the rest of the game.
+	  * the CREAM STARTER can appears in her hand whenever she uses it
+	  * FLESH SPRAY: a pink mist stream with flesh blobs; coated enemies have
+	    lumps of flesh stuck all over them while it lasts
+	  * FLESH SEAL: a flesh mask over the victim's mouth and nose, "MMPH!",
+	    and a pink haze for the victim while they suffocate
+	  * FLESH MEND: she sprays herself; mist swirls round her and "+5" heals pop up
+	  * FLESH STORM: a flesh cloud swells in front of her, hardens into a
+	    cocoon round everyone caught, then bursts into chunks
+]]
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local VFXLib = require(script.Parent.Parent.VFXLib)
+local CameraFX = require(script.Parent.Parent.CameraFX)
+local TuskVFX = require(script.Parent.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
+local Common = require(script.Parent.Parent.TuskActCommon)
+local Fighters = require(script.Parent.Parent.Fighters)
+
+local HotPantsVFX = {}
+local ACT = 10
+local pal = Common.palette(ACT)
+local sounds = TuskConfig.Sounds
+local localPlayer = Players.LocalPlayer
+
+local FLESH = Color3.fromRGB(236, 160, 150)
+local FLESH_DARK = Color3.fromRGB(196, 110, 110)
+local CAN = Color3.fromRGB(242, 140, 172)
+local CAP = Color3.fromRGB(245, 245, 245)
+local LABEL = Color3.fromRGB(255, 225, 120)
+
+local held = {} -- [character] = { Model, Until }
+local coats = {} -- [model] = flesh lumps stuck on a coated enemy
+local masks = {} -- [model] = flesh mask over a sealed face
+local cocoons = {} -- [model] = Flesh Storm cocoon
+local stanced = {}
+
+---------------------------------------------------------------------------
+-- CREAM STARTER: the spray can
+---------------------------------------------------------------------------
+local function box(model, size, cf, color, material, transparency)
+	local p = VFXLib.part({ Size = size, CFrame = cf, Color = color, Material = material or Enum.Material.SmoothPlastic, Transparency = transparency or 0 })
+	p.Parent = model
+	return p
+end
+
+local function buildCan(scale)
+	local s = scale or 1
+	local m = Instance.new("Model")
+	m.Name = "CreamStarter"
+	m.Parent = VFXLib.Folder
+	-- Stepped round body (blocky), label band, white cap, nozzle.
+	local body = box(m, Vector3.new(0.5, 1.0, 0.5) * s, CFrame.new(), CAN, Enum.Material.Metal)
+	box(m, Vector3.new(0.58, 0.92, 0.38) * s, CFrame.new(), CAN, Enum.Material.Metal)
+	box(m, Vector3.new(0.38, 0.92, 0.58) * s, CFrame.new(), CAN, Enum.Material.Metal)
+	box(m, Vector3.new(0.6, 0.3, 0.6) * s, CFrame.new(0, 0.05 * s, 0), LABEL)
+	box(m, Vector3.new(0.4, 0.26, 0.4) * s, CFrame.new(0, 0.62 * s, 0), CAP)
+	box(m, Vector3.new(0.14, 0.12, 0.22) * s, CFrame.new(0, 0.8 * s, -0.12 * s), Color3.fromRGB(60, 60, 66))
+	m.PrimaryPart = body
+	return m
+end
+
+local function nozzleCF(character)
+	local hand = character and (character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm"))
+	local root = Common.rootOf(character)
+	if not root then
+		return nil
+	end
+	local base = hand and hand.CFrame or root.CFrame * CFrame.new(1, 0.5, -1)
+	-- Held upright in the hand, nozzle pointing where she faces.
+	local pos = base.Position + root.CFrame.LookVector * 0.5
+	return CFrame.lookAt(pos, pos + root.CFrame.LookVector)
+end
+
+local function holdCan(character, seconds)
+	local entry = held[character]
+	if entry then
+		entry.Until = math.max(entry.Until, os.clock() + seconds)
+		return
+	end
+	held[character] = { Model = buildCan(1), Until = os.clock() + seconds }
+end
+
+local function stepCans()
+	local now = os.clock()
+	for character, entry in pairs(held) do
+		local cf = character.Parent and nozzleCF(character)
+		if not cf or now > entry.Until then
+			entry.Model:Destroy()
+			held[character] = nil
+		else
+			entry.Model:PivotTo(cf * CFrame.new(0, -0.3, 0.2) * CFrame.Angles(-0.25, 0, 0))
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Spray
+---------------------------------------------------------------------------
+local function mist(position, direction, cone, count, speed)
+	VFXLib.burst(position, { Count = count or 8, Texture = VFXLib.Textures.Smoke, Color = FLESH, LightEmission = 0.1, Speed = speed or 26, Lifetime = 0.45, Spread = cone or 25, Direction = direction, Drag = 3 })
+	VFXLib.burst(position, { Count = math.max(2, math.floor((count or 8) / 3)), Color = Color3.fromRGB(255, 210, 220), Speed = (speed or 26) * 0.8, Lifetime = 0.3, Spread = cone or 25, Direction = direction })
+end
+
+-- Lumps of flesh flying out of the can.
+local function blobs(origin, direction, range, count)
+	for i = 1, count do
+		local spreadDir = (CFrame.lookAt(origin, origin + direction) * CFrame.Angles((math.random() - 0.5) * 0.6, (math.random() - 0.5) * 0.8, 0)).LookVector
+		local size = 0.2 + math.random() * 0.25
+		local p = VFXLib.part({ Size = Vector3.new(size, size, size), Color = i % 2 == 0 and FLESH or FLESH_DARK, Material = Enum.Material.SmoothPlastic })
+		local dist = range * (0.5 + math.random() * 0.5)
+		VFXLib.animate(0.3 + math.random() * 0.15, function(a)
+			p.CFrame = CFrame.new(origin + spreadDir * dist * a - Vector3.new(0, 2 * a * a, 0)) * CFrame.Angles(a * 6, a * 4, 0)
+			p.Transparency = a > 0.8 and (a - 0.8) / 0.2 or 0
+		end, function()
+			p:Destroy()
+		end)
+	end
+end
+
+---------------------------------------------------------------------------
+-- Status visuals driven by attributes (coated / sealed / encased)
+---------------------------------------------------------------------------
+local function candidates()
+	local list = {}
+	for _, f in ipairs(Fighters.list()) do
+		if f.Character then
+			table.insert(list, f.Character)
+		end
+	end
+	local dummies = workspace:FindFirstChild("SpinTestDummies")
+	if dummies then
+		for _, d in ipairs(dummies:GetChildren()) do
+			table.insert(list, d)
+		end
+	end
+	return list
+end
+
+local LUMP_PARTS = { "UpperTorso", "Torso", "LowerTorso", "LeftUpperArm", "RightUpperArm", "Left Arm", "Right Arm", "LeftUpperLeg", "RightUpperLeg", "Left Leg", "Right Leg", "Head" }
+
+local function makeCoat(model)
+	local lumps = {}
+	for i, name in ipairs(LUMP_PARTS) do
+		local part = model:FindFirstChild(name)
+		if part and part:IsA("BasePart") then
+			local size = 0.35 + (i % 3) * 0.12
+			local lump = VFXLib.part({ Size = Vector3.new(size, size * 0.8, size), Color = i % 2 == 0 and FLESH or FLESH_DARK, Material = Enum.Material.SmoothPlastic })
+			local offset = CFrame.new((i % 2 == 0 and 1 or -1) * part.Size.X * 0.4, ((i * 37) % 10 / 10 - 0.5) * part.Size.Y * 0.6, -part.Size.Z * 0.45)
+			table.insert(lumps, { Part = lump, On = part, Offset = offset })
+		end
+	end
+	return lumps
+end
+
+local function makeMask(model)
+	local head = model:FindFirstChild("Head")
+	if not head then
+		return nil
+	end
+	local s = head.Size.Y / 1.2
+	local m = Instance.new("Model")
+	m.Parent = VFXLib.Folder
+	local main = box(m, Vector3.new(head.Size.X * 0.9, 0.55 * s, 0.3 * s), CFrame.new(), FLESH)
+	box(m, Vector3.new(head.Size.X * 0.7, 0.35 * s, 0.38 * s), CFrame.new(0, 0.05 * s, 0), FLESH_DARK)
+	m.PrimaryPart = main
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(110, 34)
+	gui.StudsOffset = Vector3.new(0, 1.2, 0)
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.Parent = main
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.Bangers
+	label.TextScaled = true
+	label.Text = "MMPH!"
+	label.TextColor3 = FLESH_DARK
+	label.TextStrokeTransparency = 0
+	label.Parent = gui
+	return { Model = m, Head = head, Label = label, S = s }
+end
+
+local function makeCocoon(model)
+	local root = Common.rootOf(model)
+	if not root then
+		return nil
+	end
+	local m = Instance.new("Model")
+	m.Parent = VFXLib.Folder
+	local main = box(m, Vector3.new(4.2, 6.2, 4.2), CFrame.new(), FLESH, Enum.Material.SmoothPlastic, 0.12)
+	box(m, Vector3.new(4.8, 5.4, 3.4), CFrame.new(), FLESH, Enum.Material.SmoothPlastic, 0.12)
+	box(m, Vector3.new(3.4, 5.4, 4.8), CFrame.new(), FLESH, Enum.Material.SmoothPlastic, 0.12)
+	-- Darker veins wrapping it.
+	for i = 0, 3 do
+		box(m, Vector3.new(4.9, 0.25, 4.9), CFrame.new(0, -2 + i * 1.3, 0) * CFrame.Angles(0, i * 0.4, 0.15 * (i % 2 == 0 and 1 or -1)), FLESH_DARK, Enum.Material.SmoothPlastic, 0.05)
+	end
+	m.PrimaryPart = main
+	m:ScaleTo(0.2)
+	return { Model = m, Born = os.clock() }
+end
+
+local function stepStatus()
+	local t = workspace:GetServerTimeNow()
+	local seenCoat, seenMask, seenCocoon = {}, {}, {}
+	for _, model in ipairs(candidates()) do
+		if (model:GetAttribute("FleshCoatedUntil") or 0) > t then
+			seenCoat[model] = true
+			coats[model] = coats[model] or makeCoat(model)
+		end
+		if (model:GetAttribute("FleshSealedUntil") or 0) > t then
+			seenMask[model] = true
+			if not masks[model] then
+				masks[model] = makeMask(model)
+				if model == localPlayer.Character then
+					TuskVFX.ScreenTint((model:GetAttribute("FleshSealedUntil") or t) - t, { Tint = Color3.fromRGB(255, 190, 190), Saturation = -0.4, Brightness = -0.15 })
+				end
+			end
+		end
+		if (model:GetAttribute("FleshEncasedUntil") or 0) > t then
+			seenCocoon[model] = true
+			cocoons[model] = cocoons[model] or makeCocoon(model)
+		end
+	end
+	for model, lumps in pairs(coats) do
+		if not seenCoat[model] then
+			coats[model] = nil
+			for _, l in ipairs(lumps) do
+				VFXLib.burst(l.Part.Position, { Count = 2, Color = FLESH, Speed = 6, Lifetime = 0.25 })
+				l.Part:Destroy()
+			end
+		end
+	end
+	for model, mask in pairs(masks) do
+		if not seenMask[model] then
+			masks[model] = nil
+			if mask then
+				mask.Model:Destroy()
+			end
+		end
+	end
+	for model, c in pairs(cocoons) do
+		if not seenCocoon[model] then
+			cocoons[model] = nil
+			if c then
+				c.Model:Destroy()
+			end
+		end
+	end
+end
+
+local function stepAttached()
+	local now = os.clock()
+	for _, lumps in pairs(coats) do
+		for _, l in ipairs(lumps) do
+			if l.On.Parent then
+				l.Part.CFrame = l.On.CFrame * l.Offset
+			end
+		end
+	end
+	for _, mask in pairs(masks) do
+		if mask and mask.Head.Parent then
+			mask.Model:PivotTo(mask.Head.CFrame * CFrame.new(0, -0.22 * mask.S, -mask.Head.Size.Z / 2 - 0.08 * mask.S))
+			mask.Label.Rotation = math.sin(now * 18) * 6
+		end
+	end
+	for model, c in pairs(cocoons) do
+		local root = c and Common.rootOf(model)
+		if root then
+			local grow = math.min((now - c.Born) / 0.25, 1)
+			c.Model:ScaleTo(0.2 + 0.8 * grow + math.sin(now * 14) * 0.02)
+			c.Model:PivotTo(CFrame.new(root.Position) * CFrame.Angles(0, now * 0.5, 0))
+		end
+	end
+end
+
+local function popHeal(position, amount)
+	local carrier = VFXLib.anchor(CFrame.new(position + Vector3.new((math.random() - 0.5) * 1.5, 2, 0)), 1)
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(90, 36)
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.Parent = carrier
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.Bangers
+	label.TextScaled = true
+	label.Text = "+" .. amount
+	label.TextColor3 = Color3.fromRGB(150, 240, 150)
+	label.TextStrokeTransparency = 0
+	label.Parent = gui
+	local start = carrier.Position
+	VFXLib.animate(0.9, function(a)
+		carrier.Position = start + Vector3.new(0, a * 2.5, 0)
+		label.TextTransparency = math.max(0, (a - 0.6) / 0.4)
+		label.TextStrokeTransparency = label.TextTransparency
+	end)
+end
+
+---------------------------------------------------------------------------
+-- Moves
+---------------------------------------------------------------------------
+local function onM1(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if not root then
+		return
+	end
+	local index = data.Index
+	TuskAnimation.play(character, "H_M1_" .. index)
+	VFXLib.sound(sounds.Swing, root, 0.5, 1.1 + index * 0.06)
+	if index <= 2 then
+		Common.swipe(root, index == 1 and 1 or -1, index == 1 and pal.Main or pal.Light)
+	elseif index == 3 then
+		-- A quick spray burst in the face.
+		holdCan(character, 0.4)
+		task.delay(0.08, function()
+			local cf = character.Parent and nozzleCF(character)
+			if cf then
+				mist(cf.Position, cf.LookVector, 20, 10, 22)
+				blobs(cf.Position, cf.LookVector, 6, 4)
+			end
+		end)
+	end
+end
+
+local function onAbility(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	local move, phase = data.Move, data.Phase
+	if move == "FleshSpray" and phase == "Spray" and root then
+		TuskAnimation.play(character, "HPSpray")
+		local total = (data.Startup or 0.12) + (data.Duration or 0.6)
+		holdCan(character, total + 0.2)
+		VFXLib.sound(sounds.ChargeLoop, root, 0.4, 1.4)
+		local nextPuff = 0
+		VFXLib.animate(total, function(a, dt)
+			nextPuff = nextPuff - (dt or 1 / 60)
+			if a * total < (data.Startup or 0.12) or nextPuff > 0 then
+				return
+			end
+			nextPuff = 0.06
+			local cf = character.Parent and nozzleCF(character)
+			if cf then
+				mist(cf.Position, data.Direction or cf.LookVector, (data.Cone or 55) / 2, 9, (data.Range or 15) * 2)
+				blobs(cf.Position, data.Direction or cf.LookVector, data.Range or 15, 2)
+			end
+		end)
+	elseif move == "FleshSeal" then
+		if phase == "Startup" and character then
+			TuskAnimation.play(character, "HPSeal")
+			holdCan(character, 0.7)
+		elseif phase == "Seal" and data.Target then
+			local head = data.Target:FindFirstChild("Head")
+			local cf = character and nozzleCF(character)
+			if head and cf then
+				blobs(cf.Position, (head.Position - cf.Position).Unit, (head.Position - cf.Position).Magnitude, 6)
+				VFXLib.burst(head.Position, { Count = 14, Texture = VFXLib.Textures.Smoke, Color = FLESH, LightEmission = 0, Speed = 8, Lifetime = 0.5 })
+			end
+			VFXLib.sound(sounds.Hit, head or root, 0.5, 0.8)
+		elseif phase == "Miss" and root then
+			local cf = nozzleCF(character)
+			if cf then
+				mist(cf.Position, data.Direction or cf.LookVector, 15, 8, 20)
+			end
+		end
+	elseif move == "FleshMend" and phase == "Mend" and root then
+		TuskAnimation.play(character, "HPMend")
+		holdCan(character, (data.Duration or 1.2) + 0.1)
+		local ticks = 4
+		for i = 1, ticks do
+			task.delay(i * (data.Duration or 1.2) / ticks, function()
+				local r = Common.rootOf(character)
+				if r then
+					popHeal(r.Position, math.floor((data.Heal or 22) / ticks * 10 + 0.5) / 10)
+				end
+			end)
+		end
+		-- Pink mist swirling round her.
+		VFXLib.animate(data.Duration or 1.2, function(a)
+			local r = Common.rootOf(character)
+			if r and math.random() < 0.5 then
+				local ang = a * 18
+				local p = r.Position + Vector3.new(math.cos(ang) * 2, (a * 4) % 4 - 2, math.sin(ang) * 2)
+				VFXLib.burst(p, { Count = 2, Texture = VFXLib.Textures.Smoke, Color = FLESH, LightEmission = 0.2, Speed = 2, Lifetime = 0.5 })
+			end
+		end)
+		VFXLib.flash(root.Position, pal.Light, 2, 14, 0.4)
+	end
+end
+
+local function onUltimate(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Phase == "Cloud" then
+		TuskAnimation.play(character, "HPStorm")
+		holdCan(character, (data.Windup or 0.7) + 0.4)
+		-- The flesh cloud swells in front of her.
+		local cloud = Instance.new("Model")
+		cloud.Parent = VFXLib.Folder
+		local center = data.Position + Vector3.new(0, 2.5, 0)
+		local puffs = {}
+		for i = 1, 7 do
+			local a = i / 7 * math.pi * 2
+			local p = box(cloud, Vector3.new(5, 4, 5), CFrame.new(center + Vector3.new(math.cos(a) * 5, (i % 3) * 1.2, math.sin(a) * 5)), i % 2 == 0 and FLESH or FLESH_DARK, Enum.Material.SmoothPlastic, 0.35)
+			puffs[i] = { Part = p, Base = p.CFrame }
+		end
+		local windup = data.Windup or 0.7
+		VFXLib.animate(windup + 1.8, function(a)
+			local t = a * (windup + 1.8)
+			local grow = math.min(t / windup, 1)
+			for i, puff in ipairs(puffs) do
+				local w = 1 + math.sin(t * 6 + i) * 0.08
+				puff.Part.Size = Vector3.new(5, 4, 5) * (0.3 + grow) * w
+				puff.Part.Transparency = t > windup + 1.2 and 0.35 + (t - windup - 1.2) / 0.6 * 0.65 or 0.35
+			end
+			if root and root.Parent and t < windup then
+				local cf = nozzleCF(character)
+				if cf and math.random() < 0.6 then
+					mist(cf.Position, (center - cf.Position).Unit, 15, 6, 30)
+				end
+			end
+		end, function()
+			cloud:Destroy()
+		end)
+		if Common.isLocal(character) then
+			CameraFX.fovPunch(-5, 0.4)
+		end
+	elseif data.Phase == "Encase" then
+		VFXLib.sound(sounds.Hit, data.Position, 0.8, 0.7)
+		CameraFX.shakeAt(data.Position, 0.5, 50)
+	elseif data.Phase == "Burst" then
+		-- Every cocoon bursts into chunks.
+		for _, target in ipairs(data.Targets or {}) do
+			local r = Common.rootOf(target)
+			if r then
+				for i = 1, 8 do
+					local dir = Vector3.new(math.cos(i), 0.6 + (i % 3) * 0.3, math.sin(i)).Unit
+					local chunk = VFXLib.part({ Size = Vector3.new(0.9, 0.7, 0.9), Color = i % 2 == 0 and FLESH or FLESH_DARK, Material = Enum.Material.SmoothPlastic })
+					local from = r.Position
+					VFXLib.animate(0.6, function(a)
+						chunk.CFrame = CFrame.new(from + dir * 14 * a - Vector3.new(0, 18 * a * a, 0)) * CFrame.Angles(a * 8, a * 5, 0)
+						chunk.Transparency = a > 0.7 and (a - 0.7) / 0.3 or 0
+					end, function()
+						chunk:Destroy()
+					end)
+				end
+				VFXLib.burst(r.Position, { Count = 20, Texture = VFXLib.Textures.Smoke, Color = FLESH, LightEmission = 0, Speed = 24, Lifetime = 0.6 })
+			end
+		end
+		Common.finisher({ Character = character, Position = data.Position + Vector3.new(0, 2.5, 0), Radius = data.Radius, Hit = true }, pal, { Size = 1.6, Layers = 3, Shake = 0.9 })
+		if Common.isLocal(character) then
+			CameraFX.impactFrame(pal.Light)
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+local function stepStance()
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		if character then
+			local want = character:GetAttribute("TuskAct") == ACT
+			if want and not stanced[character] then
+				stanced[character] = true
+				TuskAnimation.hold(character, "HPStance")
+			elseif not want and stanced[character] then
+				stanced[character] = nil
+				TuskAnimation.stopHold(character, "HPStance")
+			end
+		end
+	end
+	for character in pairs(stanced) do
+		if not character.Parent then
+			stanced[character] = nil
+		end
+	end
+end
+
+function HotPantsVFX.handle(name, data)
+	if name == "M1" then
+		onM1(data)
+	elseif name == "M1Finisher" then
+		Common.finisher(data, pal)
+	elseif name == "Ability" then
+		onAbility(data)
+	elseif name == "Ultimate" then
+		onUltimate(data)
+	end
+end
+
+local slowTimer = 0
+function HotPantsVFX.step(dt)
+	dt = dt or 1 / 60
+	stepCans()
+	stepAttached()
+	slowTimer = slowTimer + dt
+	if slowTimer > 0.15 then
+		slowTimer = 0
+		stepStatus()
+		stepStance()
+	end
+end
+
+return HotPantsVFX
+```
+
+## 60. MountainTimVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -15535,7 +16628,7 @@ end)
 return TimVFX
 ```
 
-## 58. PorkPie  (ModuleScript)
+## 61. PorkPie  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -16194,7 +17287,7 @@ end)
 return PorkPie
 ```
 
-## 59. SandmanVFX  (ModuleScript)
+## 62. SandmanVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -16596,7 +17689,7 @@ end)
 return SandmanVFX
 ```
 
-## 60. TuskAnimation  (ModuleScript)
+## 63. TuskAnimation  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -16769,6 +17862,11 @@ TuskAnimation.Poses = {
 	RopeWhipWind = { Root = { 0, 34, 0, -0.08 }, Waist = { 0, 34, 0 }, RightArm = { 120, 0, 70 }, RightElbow = { 20, 0, 0 }, LeftArm = { 30, 0, -30 }, Neck = { 0, -18, 0 } },
 	RopeWhip = { Root = { 0, -36, 0, -0.1, 0.35 }, Waist = { 0, -40, 0 }, RightArm = { 90, -40, -30 }, RightElbow = { 0, 0, 0 }, LeftArm = { 24, 0, -36 }, Neck = { 0, 26, 0 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -20, 0, 0 } },
 	SplitPose = { Root = { -16, 0, 0, -0.3, 0.3 }, Waist = { -18, 0, 0 }, Neck = { 12, 0, 0 }, RightArm = { 100, 0, 60 }, LeftArm = { 100, 0, -60 }, RightHip = { 30, 0, 0 }, RightKnee = { -40, 0, 0 }, LeftHip = { -20, 0, 0 } },
+	-- HOT PANTS: quick and sharp; Cream Starter held out like a weapon.
+	HPStance = { Root = { 0, 12, 0, -0.06 }, Waist = { -2, 10, 0 }, Neck = { 2, -8, 0 }, RightArm = { 30, 0, 14 }, RightElbow = { 70, 0, 0 }, LeftArm = { 6, 0, -24 }, LeftElbow = { 60, 0, 0 }, RightHip = { -4, 0, 0 }, LeftHip = { 10, 0, 0 }, LeftKnee = { -10, 0, 0 } },
+	SprayAim = { Root = { 0, -14, 0, -0.1, 0.15 }, Waist = { 0, -18, 0 }, Neck = { 0, 12, 0 }, RightArm = { 92, 0, 6 }, RightElbow = { 6, 0, 0 }, LeftArm = { 60, 0, -30 }, LeftElbow = { 70, 0, 0 }, RightHip = { 16, 0, 0 }, RightKnee = { -18, 0, 0 }, LeftHip = { -10, 0, 0 } },
+	SprayLunge = { Root = { -10, -16, 0, -0.18, 0.55 }, Waist = { -12, -20, 0 }, Neck = { 6, 12, 0 }, RightArm = { 96, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -40 }, RightHip = { 34, 0, 0 }, RightKnee = { -38, 0, 0 }, LeftHip = { -18, 0, 0 } },
+	SpraySelf = { Root = { 0, 8, 0, -0.1 }, Waist = { 6, 8, 0 }, Neck = { -14, 0, 0 }, RightArm = { 60, 0, -40 }, RightElbow = { 110, 0, 0 }, LeftArm = { 40, 0, -10 }, LeftElbow = { 40, 0, 0 } },
 	-- SANDMAN: a light-footed runner; knife-hand chops and spinning kicks.
 	SandStance = { Root = { 0, 10, 0, -0.18 }, Waist = { -8, 8, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, 18 }, RightElbow = { 70, 0, 0 }, LeftArm = { 55, 0, -22 }, LeftElbow = { 60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -8, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 	ChopCoil = { Root = { 0, 26, 0, -0.14 }, Waist = { 6, 30, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 60, 0, 0 }, LeftArm = { 60, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -14, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightKnee = { -12, 0, 0 } },
@@ -16897,6 +17995,16 @@ TuskAnimation.Actions = {
 	TimSplit = { { 0, "Rest" }, { 0.1, "SplitPose", "Snap", 3 }, { 0.5, "SplitPose", "Linear" }, { 0.65, "TimStance", "Sine" } },
 	TimPunch = { { 0, "Rest" }, { 0.1, "JabCoil", "In" }, { 0.18, "JabStrike", "Snap", 4 }, { 0.6, "JabStrike", "Linear", 2 }, { 0.75, "TimStance", "Sine" } },
 	TimRoundup = { { 0, "Rest" }, { 0.15, "LassoSpin", "Out" }, { 0.85, "LassoSpin", "Linear", 2 }, { 0.95, "Spread", "Snap", 5 }, { 1.6, "ReelBack", "Snap", 3 }, { 2.2, "ReelBack", "Linear", 2 }, { 2.35, "HoistSlam", "Snap", 8 }, { 2.7, "HoistSlam", "Sine" } },
+
+	-- HOT PANTS
+	H_M1_1 = { { 0, "Rest" }, { 0.06, "JabCoil", "In" }, { 0.11, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.28, "HPStance", "Sine" } },
+	H_M1_2 = { { 0, "Rest" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.3, "HPStance", "Sine" } },
+	H_M1_3 = { { 0, "Rest" }, { 0.06, "SprayAim", "Snap", 2 }, { 0.2, "SprayAim", "Linear", 2 }, { 0.32, "HPStance", "Sine" } },
+	H_M1_4 = { { 0, "Rest" }, { 0.08, "SpinKickWind", "In" }, { 0.16, "SpinKick", "Snap", 6 }, { 0.21, "SpinKick", "Linear" }, { 0.36, "HPStance", "Sine" } },
+	HPSpray = { { 0, "Rest" }, { 0.1, "SprayAim", "Snap", 2 }, { 0.4, "SprayAim", "Linear", 2 }, { 0.7, "SprayAim", "Linear", 2 }, { 0.85, "HPStance", "Sine" } },
+	HPSeal = { { 0, "Rest" }, { 0.14, "SprayAim", "In" }, { 0.24, "SprayLunge", "Snap", 5 }, { 0.45, "SprayLunge", "Sine" } },
+	HPMend = { { 0, "Rest" }, { 0.12, "SpraySelf", "Out" }, { 1.1, "SpraySelf", "Linear", 1 }, { 1.3, "HPStance", "Sine" } },
+	HPStorm = { { 0, "Rest" }, { 0.15, "ConductUp", "Back", 3 }, { 0.55, "SprayAim", "Snap", 4 }, { 1.2, "SprayAim", "Linear", 3 }, { 1.5, "HPStance", "Sine" } },
 
 	-- SANDMAN
 	S_M1_1 = { { 0, "Rest" }, { 0.07, "ChopCoil", "In" }, { 0.12, "ChopStrike", "Back", 4 }, { 0.17, "ChopStrike", "Linear" }, { 0.3, "SandStance", "Sine" } },
@@ -17269,7 +18377,7 @@ end)
 return TuskAnimation
 ```
 
-## 61. TuskController  (ModuleScript)
+## 64. TuskController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -17517,7 +18625,7 @@ end
 return TuskController
 ```
 
-## 62. TuskProjectiles  (ModuleScript)
+## 65. TuskProjectiles  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -17793,7 +18901,7 @@ end
 return TuskProjectiles
 ```
 
-## 63. TuskSneakController  (ModuleScript)
+## 66. TuskSneakController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -18078,7 +19186,7 @@ end
 return TuskSneakController
 ```
 
-## 64. TuskStand  (ModuleScript)
+## 67. TuskStand  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -18443,7 +19551,7 @@ end
 return TuskStand
 ```
 
-## 65. TuskVFX  (ModuleScript)
+## 68. TuskVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -19687,12 +20795,12 @@ end
 return TuskVFX
 ```
 
-## 66. UI  (Folder)
+## 69. UI  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 67. BountyUI  (ModuleScript)
+## 70. BountyUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -20294,7 +21402,7 @@ end
 return BountyUI
 ```
 
-## 68. CharacterCard  (ModuleScript)
+## 71. CharacterCard  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -20788,7 +21896,7 @@ end
 return CharacterCard
 ```
 
-## 69. CombatUI  (ModuleScript)
+## 72. CombatUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -21134,7 +22242,7 @@ end
 return CombatUI
 ```
 
-## 70. SettingsUI  (ModuleScript)
+## 73. SettingsUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -21209,7 +22317,7 @@ end
 return SettingsUI
 ```
 
-## 71. TuskUI  (ModuleScript)
+## 74. TuskUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -21350,7 +22458,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("LASSO") or has("ROUNDUP") then
+	if has("FLESH SPRAY") or has("FLESH STORM") then
+		return "spray"
+	elseif has("FLESH SEAL") then
+		return "seal"
+	elseif has("FLESH MEND") then
+		return "heal"
+	elseif has("LASSO") or has("ROUNDUP") then
 		return "lasso"
 	elseif has("SPLIT DODGE") then
 		return "dash"
@@ -21507,6 +22621,24 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "spray" then
+		-- Spray can with a mist puff.
+		bar(icon, 0.32, 0.6, 0.26, 0.5, 0)
+		bar(icon, 0.32, 0.3, 0.14, 0.1, 0)
+		for i = 0, 2 do
+			local dot = bar(icon, 0.6 + i * 0.12, 0.3 + (i - 1) * 0.1, 0.1, 0.1)
+			corner(dot, 999)
+		end
+	elseif kind == "seal" then
+		-- A face with its mouth covered.
+		ring(icon, 0.72, 3)
+		bar(icon, 0.38, 0.4, 0.08, 0.08)
+		bar(icon, 0.62, 0.4, 0.08, 0.08)
+		bar(icon, 0.5, 0.64, 0.46, 0.16, 0)
+	elseif kind == "heal" then
+		-- A plus.
+		bar(icon, 0.5, 0.5, 0.2, 0.7, 0)
+		bar(icon, 0.5, 0.5, 0.7, 0.2, 0)
 	elseif kind == "lasso" then
 		-- A lasso loop on a rope.
 		ring(icon, 0.56, 3, UDim2.fromScale(0.42, 0.4))
@@ -22323,7 +23455,7 @@ end
 return TuskUI
 ```
 
-## 72. VFXLib  (ModuleScript)
+## 75. VFXLib  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -22689,7 +23821,7 @@ end
 return VFXLib
 ```
 
-## 73. WorldClient  (ModuleScript)
+## 76. WorldClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -22926,12 +24058,12 @@ end
 return WorldClient
 ```
 
-## 74. SpinTools  (Folder)
+## 77. SpinTools  (Folder)
 **Put it in:** `ServerStorage`
 
 _Empty folder: nothing to paste._
 
-## 75. SBRMapBuilder  (ModuleScript)
+## 78. SBRMapBuilder  (ModuleScript)
 **Put it in:** `ServerStorage › SpinTools`
 
 ```lua

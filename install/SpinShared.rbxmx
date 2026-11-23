@@ -1170,6 +1170,26 @@ TuskActRegistry.Acts = {
 		ClientModule = "MountainTimVFX", -- client visuals (TuskActVFX.MountainTimVFX)
 		CardTitle = "STAND  ·  OH! LONESOME ME",
 	},
+	-- Hot Pants: CREAM STARTER (a spray can that sprays flesh: seals wounds,
+	-- coats and smothers enemies).
+	[10] = {
+		Name = "CREAM STARTER",
+		Character = "HotPants",
+		Tagline = "Flesh spray",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(242, 140, 172), Secondary = Color3.fromRGB(120, 60, 92) },
+		M1 = "SPRAY COMBO",
+		Abilities = { "FLESH SPRAY", "FLESH SEAL", "FLESH MEND" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "FLESH STORM",
+		Next = nil,
+		Module = "HotPants", -- server moves
+		ClientModule = "HotPantsVFX", -- client visuals (TuskActVFX.HotPantsVFX)
+		CardTitle = "STAND  ·  CREAM STARTER",
+		Buffs = {
+			{ Slot = 3, Attribute = "FleshMendUntil", Text = "HEALING" },
+		},
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -1179,7 +1199,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -1307,6 +1327,7 @@ TuskConfig.Roster = {
 	{ Id = "PorkPie", Name = "PORK PIE HAT KID", Stand = "WIRED", Available = true, Color = Color3.fromRGB(165, 215, 80) },
 	{ Id = "Sandman", Name = "SANDMAN", Stand = "IN A SILENT WAY", Available = true, Color = Color3.fromRGB(245, 185, 80) },
 	{ Id = "MountainTim", Name = "MOUNTAIN TIM", Stand = "OH! LONESOME ME", Available = true, Color = Color3.fromRGB(214, 156, 84) },
+	{ Id = "HotPants", Name = "HOT PANTS", Stand = "CREAM STARTER", Available = true, Color = Color3.fromRGB(242, 140, 172) },
 }
 
 ---------------------------------------------------------------------------
@@ -1333,7 +1354,7 @@ TuskConfig.Bounty = {
 TuskConfig.StandBots = {
 	Enabled = true,
 	Count = 6, -- how many at once (each takes a free spot below)
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim" }, -- picked at random (only installed ones)
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants" }, -- picked at random (only installed ones)
 	Health = 200,
 	WalkSpeed = 15,
 	-- Where they hang out, scattered round the SBR map (offsets from the map's
@@ -1723,6 +1744,42 @@ TuskConfig.MountainTim = {
 		ReelTime = 0.8, ReelTick = 0.15,
 		SplitTime = 1.4, -- everyone roped is split apart along their rope while his pieces ride in
 		SlamDamage = 12, SlamRadius = 9, SlamKnockback = 55, SlamLaunch = 28, SlamStun = 0.8,
+	},
+}
+
+---------------------------------------------------------------------------
+-- Hot Pants: CREAM STARTER (flesh spray)
+---------------------------------------------------------------------------
+TuskConfig.HotPants = {
+	M1 = { -- SPRAY COMBO: jab, kick, a spray burst, roundhouse
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.8, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 4 },
+			{ Damage = 4, Stun = 0.45, Knockback = 4 },
+			{ Damage = 7, Stun = 0.5, Knockback = 42, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	FleshSpray = { -- a cone of flesh: everyone in it is coated (slowed) and takes ticks of damage
+		Cooldown = 7, Startup = 0.12, Duration = 0.6, Tick = 0.15,
+		Range = 15, Cone = 55, MaxTargets = 5,
+		Damage = 2, Stun = 0.35,
+		CoatTime = 2.5, CoatSlow = 0.6,
+	},
+	FleshSeal = { -- flesh over their mouth and nose: they suffocate for a few seconds
+		Cooldown = 12, MissCooldown = 3, Windup = 0.25,
+		Range = 11, Cone = 50,
+		Damage = 4, Stun = 0.6,
+		SealTime = 3, SealTick = 0.5, SealDamage = 2, SealSlow = 0.75,
+	},
+	FleshMend = { -- spray her own wounds shut
+		Cooldown = 14, Duration = 1.2, Ticks = 4, Heal = 22,
+	},
+	Ultimate = { -- FLESH STORM: a flesh cloud hardens into cocoons round everyone caught, crushes them, bursts
+		Windup = 0.7, Distance = 12, Radius = 13,
+		EncaseDamage = 5, EncaseStun = 1.0, EncaseTime = 1.6, CrushEvery = 0.4, CrushDamage = 2,
+		BurstDamage = 12, BurstKnockback = 50, BurstLaunch = 25, BurstStun = 0.7,
 	},
 }
 

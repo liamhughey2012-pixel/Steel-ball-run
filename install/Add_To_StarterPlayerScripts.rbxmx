@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="LocalScript" referent="RBX37"><Properties><string name="Name">Spin_Client</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="LocalScript" referent="RBX41"><Properties><string name="Name">Spin_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	Spin_Client  (LocalScript)
 	PUT IT IN: StarterPlayer > StarterPlayerScripts
 
@@ -3171,6 +3171,8 @@ local function onHit(data)
 		starColor = Color3.fromRGB(245, 185, 80)
 	elseif source:sub(1, 11) == "MountainTim" then
 		starColor = Color3.fromRGB(214, 156, 84)
+	elseif source:sub(1, 8) == "HotPants" then
+		starColor = Color3.fromRGB(242, 140, 172)
 	end
 	if data.Perfect then
 		starColor = colors.Gold
@@ -3593,6 +3595,7 @@ Common.Palettes = {
 	[7] = { Main = Color3.fromRGB(165, 215, 80), Second = Color3.fromRGB(95, 105, 125), Light = Color3.fromRGB(225, 232, 245) }, -- Pork Pie Hat Kid (bamboo green + steel)
 	[8] = { Main = Color3.fromRGB(245, 185, 80), Second = Color3.fromRGB(50, 140, 160), Light = Color3.fromRGB(255, 240, 205) }, -- Sandman (sand + turquoise)
 	[9] = { Main = Color3.fromRGB(214, 156, 84), Second = Color3.fromRGB(96, 62, 38), Light = Color3.fromRGB(255, 232, 196) }, -- Mountain Tim (leather + rope)
+	[10] = { Main = Color3.fromRGB(242, 140, 172), Second = Color3.fromRGB(120, 60, 92), Light = Color3.fromRGB(255, 220, 230) }, -- Hot Pants (Cream Starter pink)
 }
 
 function Common.palette(act)
@@ -3954,6 +3957,26 @@ TuskActRegistry.Acts = {
 		ClientModule = "MountainTimVFX", -- client visuals (TuskActVFX.MountainTimVFX)
 		CardTitle = "STAND  ·  OH! LONESOME ME",
 	},
+	-- Hot Pants: CREAM STARTER (a spray can that sprays flesh: seals wounds,
+	-- coats and smothers enemies).
+	[10] = {
+		Name = "CREAM STARTER",
+		Character = "HotPants",
+		Tagline = "Flesh spray",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(242, 140, 172), Secondary = Color3.fromRGB(120, 60, 92) },
+		M1 = "SPRAY COMBO",
+		Abilities = { "FLESH SPRAY", "FLESH SEAL", "FLESH MEND" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "FLESH STORM",
+		Next = nil,
+		Module = "HotPants", -- server moves
+		ClientModule = "HotPantsVFX", -- client visuals (TuskActVFX.HotPantsVFX)
+		CardTitle = "STAND  ·  CREAM STARTER",
+		Buffs = {
+			{ Slot = 3, Attribute = "FleshMendUntil", Text = "HEALING" },
+		},
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -3963,7 +3986,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -4150,6 +4173,11 @@ TuskAnimation.Poses = {
 	RopeWhipWind = { Root = { 0, 34, 0, -0.08 }, Waist = { 0, 34, 0 }, RightArm = { 120, 0, 70 }, RightElbow = { 20, 0, 0 }, LeftArm = { 30, 0, -30 }, Neck = { 0, -18, 0 } },
 	RopeWhip = { Root = { 0, -36, 0, -0.1, 0.35 }, Waist = { 0, -40, 0 }, RightArm = { 90, -40, -30 }, RightElbow = { 0, 0, 0 }, LeftArm = { 24, 0, -36 }, Neck = { 0, 26, 0 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -20, 0, 0 } },
 	SplitPose = { Root = { -16, 0, 0, -0.3, 0.3 }, Waist = { -18, 0, 0 }, Neck = { 12, 0, 0 }, RightArm = { 100, 0, 60 }, LeftArm = { 100, 0, -60 }, RightHip = { 30, 0, 0 }, RightKnee = { -40, 0, 0 }, LeftHip = { -20, 0, 0 } },
+	-- HOT PANTS: quick and sharp; Cream Starter held out like a weapon.
+	HPStance = { Root = { 0, 12, 0, -0.06 }, Waist = { -2, 10, 0 }, Neck = { 2, -8, 0 }, RightArm = { 30, 0, 14 }, RightElbow = { 70, 0, 0 }, LeftArm = { 6, 0, -24 }, LeftElbow = { 60, 0, 0 }, RightHip = { -4, 0, 0 }, LeftHip = { 10, 0, 0 }, LeftKnee = { -10, 0, 0 } },
+	SprayAim = { Root = { 0, -14, 0, -0.1, 0.15 }, Waist = { 0, -18, 0 }, Neck = { 0, 12, 0 }, RightArm = { 92, 0, 6 }, RightElbow = { 6, 0, 0 }, LeftArm = { 60, 0, -30 }, LeftElbow = { 70, 0, 0 }, RightHip = { 16, 0, 0 }, RightKnee = { -18, 0, 0 }, LeftHip = { -10, 0, 0 } },
+	SprayLunge = { Root = { -10, -16, 0, -0.18, 0.55 }, Waist = { -12, -20, 0 }, Neck = { 6, 12, 0 }, RightArm = { 96, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -40 }, RightHip = { 34, 0, 0 }, RightKnee = { -38, 0, 0 }, LeftHip = { -18, 0, 0 } },
+	SpraySelf = { Root = { 0, 8, 0, -0.1 }, Waist = { 6, 8, 0 }, Neck = { -14, 0, 0 }, RightArm = { 60, 0, -40 }, RightElbow = { 110, 0, 0 }, LeftArm = { 40, 0, -10 }, LeftElbow = { 40, 0, 0 } },
 	-- SANDMAN: a light-footed runner; knife-hand chops and spinning kicks.
 	SandStance = { Root = { 0, 10, 0, -0.18 }, Waist = { -8, 8, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, 18 }, RightElbow = { 70, 0, 0 }, LeftArm = { 55, 0, -22 }, LeftElbow = { 60, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -8, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 	ChopCoil = { Root = { 0, 26, 0, -0.14 }, Waist = { 6, 30, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 60, 0, 0 }, LeftArm = { 60, 0, -20 }, LeftElbow = { 50, 0, 0 }, Neck = { 0, -14, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightKnee = { -12, 0, 0 } },
@@ -4278,6 +4306,16 @@ TuskAnimation.Actions = {
 	TimSplit = { { 0, "Rest" }, { 0.1, "SplitPose", "Snap", 3 }, { 0.5, "SplitPose", "Linear" }, { 0.65, "TimStance", "Sine" } },
 	TimPunch = { { 0, "Rest" }, { 0.1, "JabCoil", "In" }, { 0.18, "JabStrike", "Snap", 4 }, { 0.6, "JabStrike", "Linear", 2 }, { 0.75, "TimStance", "Sine" } },
 	TimRoundup = { { 0, "Rest" }, { 0.15, "LassoSpin", "Out" }, { 0.85, "LassoSpin", "Linear", 2 }, { 0.95, "Spread", "Snap", 5 }, { 1.6, "ReelBack", "Snap", 3 }, { 2.2, "ReelBack", "Linear", 2 }, { 2.35, "HoistSlam", "Snap", 8 }, { 2.7, "HoistSlam", "Sine" } },
+
+	-- HOT PANTS
+	H_M1_1 = { { 0, "Rest" }, { 0.06, "JabCoil", "In" }, { 0.11, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.28, "HPStance", "Sine" } },
+	H_M1_2 = { { 0, "Rest" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.3, "HPStance", "Sine" } },
+	H_M1_3 = { { 0, "Rest" }, { 0.06, "SprayAim", "Snap", 2 }, { 0.2, "SprayAim", "Linear", 2 }, { 0.32, "HPStance", "Sine" } },
+	H_M1_4 = { { 0, "Rest" }, { 0.08, "SpinKickWind", "In" }, { 0.16, "SpinKick", "Snap", 6 }, { 0.21, "SpinKick", "Linear" }, { 0.36, "HPStance", "Sine" } },
+	HPSpray = { { 0, "Rest" }, { 0.1, "SprayAim", "Snap", 2 }, { 0.4, "SprayAim", "Linear", 2 }, { 0.7, "SprayAim", "Linear", 2 }, { 0.85, "HPStance", "Sine" } },
+	HPSeal = { { 0, "Rest" }, { 0.14, "SprayAim", "In" }, { 0.24, "SprayLunge", "Snap", 5 }, { 0.45, "SprayLunge", "Sine" } },
+	HPMend = { { 0, "Rest" }, { 0.12, "SpraySelf", "Out" }, { 1.1, "SpraySelf", "Linear", 1 }, { 1.3, "HPStance", "Sine" } },
+	HPStorm = { { 0, "Rest" }, { 0.15, "ConductUp", "Back", 3 }, { 0.55, "SprayAim", "Snap", 4 }, { 1.2, "SprayAim", "Linear", 3 }, { 1.5, "HPStance", "Sine" } },
 
 	-- SANDMAN
 	S_M1_1 = { { 0, "Rest" }, { 0.07, "ChopCoil", "In" }, { 0.12, "ChopStrike", "Back", 4 }, { 0.17, "ChopStrike", "Linear" }, { 0.3, "SandStance", "Sine" } },
@@ -7117,7 +7155,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("LASSO") or has("ROUNDUP") then
+	if has("FLESH SPRAY") or has("FLESH STORM") then
+		return "spray"
+	elseif has("FLESH SEAL") then
+		return "seal"
+	elseif has("FLESH MEND") then
+		return "heal"
+	elseif has("LASSO") or has("ROUNDUP") then
 		return "lasso"
 	elseif has("SPLIT DODGE") then
 		return "dash"
@@ -7274,6 +7318,24 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "spray" then
+		-- Spray can with a mist puff.
+		bar(icon, 0.32, 0.6, 0.26, 0.5, 0)
+		bar(icon, 0.32, 0.3, 0.14, 0.1, 0)
+		for i = 0, 2 do
+			local dot = bar(icon, 0.6 + i * 0.12, 0.3 + (i - 1) * 0.1, 0.1, 0.1)
+			corner(dot, 999)
+		end
+	elseif kind == "seal" then
+		-- A face with its mouth covered.
+		ring(icon, 0.72, 3)
+		bar(icon, 0.38, 0.4, 0.08, 0.08)
+		bar(icon, 0.62, 0.4, 0.08, 0.08)
+		bar(icon, 0.5, 0.64, 0.46, 0.16, 0)
+	elseif kind == "heal" then
+		-- A plus.
+		bar(icon, 0.5, 0.5, 0.2, 0.7, 0)
+		bar(icon, 0.5, 0.5, 0.7, 0.2, 0)
 	elseif kind == "lasso" then
 		-- A lasso loop on a rope.
 		ring(icon, 0.56, 3, UDim2.fromScale(0.42, 0.4))
