@@ -12,7 +12,7 @@ Matched to the reference art the user sent (2026-11-24).
 **Look:** a big round black hat with a blue spiral on each side of the front, dark slate hair, green lipstick, a purple jacket with dark plaid sleeves, black front panels either side of a purple zip, a grey hood round his neck, the yellow sun-spiral "S" with orange rays on his chest, a teddy bear clinging to each shoulder, a yellow belt, gold patterned trousers and blue shoes. He stands loose, head tilted.
 
 ![[wonder_of_u_preview.png]]
-**Wonder of U:** a tall old man in a long maroon suit and a dark red bowler hat. His face is a ribbed mask (maroon and purple bands) with yellow slats and one glowing red eye. A long yellow knit scarf, two red sunflower brooches with gold petals, maroon gloves, brown shoes, and a cane in his right hand. He floats behind Tooru with a dark red aura.
+**Wonder of U** (remodelled from the user's second set of art): a tall old man in a fitted maroon suit. A bowler hat with a pale band and a curled brim; a round ribbed dark-red head with little pegs out of each side; two long gold plates down the face, each with a round pink eye in a gold sunburst at the top. A yellow dotted knit scarf knotted at the throat, one end down his chest and the other over his right shoulder. Red sunflower brooches either side of the waist, purple hands with red nails, ribbed red bracelets, and a thin red cane with a crook handle. He floats behind Tooru with a dark red aura.
 
 **The idea: calamity.** Whoever pursues him is struck by misfortune: things fall out of the sky on them (a steel girder, a flowerpot, a road sign, a tree branch). A shadow always shows first and the thing takes 0.3 s to land, so you can dodge it.
 
