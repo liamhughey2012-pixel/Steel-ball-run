@@ -1001,7 +1001,7 @@ TuskConfig.Race = {
 -- anywhere; press again to get off. Customise it in the STABLE (bounty
 -- board > SHOP): coat, mane & tail, saddle blanket, saddle leather, face
 -- marking, socks, extras (saddlebags, plume, bells...) and its name. You
--- race on it too. (What you own lasts for the session.)
+-- race on it too. (Saved with your Cash: TuskConfig.Save.)
 ---------------------------------------------------------------------------
 TuskConfig.Horses = {
 	Enabled = true,
@@ -1079,6 +1079,18 @@ TuskConfig.Horses = {
 		{ Id = "WarPaint", Name = "WAR PAINT", Price = 150 },
 	},
 	NameMaxLength = 20, -- name your horse (filtered); it's shown above it
+}
+
+---------------------------------------------------------------------------
+-- SAVING (DataStore): Cash, Bounties and everything in the horse stable are
+-- saved and come back next time you play. In Studio, turn on Game Settings >
+-- Security > "Enable Studio Access to API Services" (place must be published).
+---------------------------------------------------------------------------
+TuskConfig.Save = {
+	Enabled = true,
+	StoreName = "SpinPlayerData_v1", -- change the name to start everyone fresh
+	AutosaveEvery = 120, -- seconds
+	Retries = 3,
 }
 
 ---------------------------------------------------------------------------

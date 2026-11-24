@@ -27,6 +27,7 @@ local BountyService = require(script.BountyService)
 local WeatherService = require(script.WeatherService)
 local CorpseService = require(script.CorpseService)
 local RaceService = require(script.RaceService)
+local DataService = require(script.DataService)
 
 -- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
@@ -46,6 +47,7 @@ ValentineOutfit.init()
 DiegoAUOutfit.init()
 StandBots.init(TuskService)
 BountyService.init()
+DataService.init()
 WeatherService.init()
 CorpseService.init(TuskService)
 RaceService.init()

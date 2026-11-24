@@ -305,6 +305,7 @@ local function __start(name, ...)
 end
 __start("StandBots", TuskService)
 __start("BountyService")
+__start("DataService")
 __start("WeatherService")
 __start("CorpseService", TuskService)
 __start("RaceService")
