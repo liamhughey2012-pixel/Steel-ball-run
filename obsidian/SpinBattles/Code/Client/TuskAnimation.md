@@ -240,6 +240,11 @@ TuskAnimation.Poses = {
 	JGoPoint = { Root = { 6, -12, 0, -0.04 }, Waist = { 8, -14, 0 }, Neck = { 6, 14, -6 }, RightArm = { 88, 0, 6 }, RightElbow = { 4, 0, 0 }, LeftArm = { -6, 0, -10 }, LeftElbow = { 18, 0, 0 }, RightHip = { -6, 0, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 	JGoJab = { Root = { 10, -14, 0, -0.08, 0.3 }, Waist = { 12, -16, 0 }, Neck = { 8, 16, -6 }, RightArm = { 94, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { -10, 0, -12 }, LeftElbow = { 18, 0, 0 }, RightHip = { -10, 0, 0 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -18, 0, 0 } },
 	JCharge = { Root = { 6, -20, 0, -0.1 }, Waist = { 10, -20, 0 }, Neck = { 14, 20, 0 }, RightArm = { 70, 0, -10 }, RightElbow = { 100, 0, 0 }, LeftArm = { 60, 0, 10 }, LeftElbow = { 100, 0, 0 }, RightKnee = { -16, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightHip = { 12, 0, 0 }, LeftHip = { 12, 0, 0 } },
+	-- TOORU: loose and unbothered, head tilted; Wonder of U does the fighting.
+	TStance = { Root = { -2, 8, 0, 0 }, Waist = { -4, 6, 2 }, Neck = { -6, -10, 10 }, RightArm = { -8, 0, 12 }, RightElbow = { 34, 0, 0 }, LeftArm = { -8, 0, -12 }, LeftElbow = { 34, 0, 0 }, RightHip = { 4, 0, 0 }, LeftKnee = { -6, 0, 0 } },
+	TFlick = { Root = { 0, -10, 0, 0 }, Waist = { 0, -12, 0 }, Neck = { -4, 12, 6 }, RightArm = { 50, 0, 64 }, RightElbow = { 40, 0, 0 }, LeftArm = { -6, 0, -12 }, LeftElbow = { 30, 0, 0 } },
+	TPoint = { Root = { 0, -16, 0, -0.02 }, Waist = { 0, -16, 0 }, Neck = { 4, 16, 4 }, RightArm = { 90, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { -8, 0, -12 }, LeftElbow = { 30, 0, 0 } },
+	TOpen = { Root = { -4, 0, 0, 0.04 }, Waist = { -10, 0, 0 }, Neck = { -26, 0, 8 }, RightArm = { 30, 0, 72 }, RightElbow = { 30, 0, 0 }, LeftArm = { 30, 0, -72 }, LeftElbow = { 30, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -419,6 +424,13 @@ TuskAnimation.Actions = {
 	JBubble = { { 0, "JStance" }, { 0.12, "JBlow", "Out" }, { 0.2, "JFlick", "Snap", 4 }, { 0.4, "JFlick", "Linear" }, { 0.6, "JStance", "Sine" } },
 	JMines = { { 0, "JStance" }, { 0.15, "JSpread", "Back", 3 }, { 0.5, "JSpread", "Linear" }, { 0.75, "JStance", "Sine" } },
 	JGoBeyond = { { 0, "JStance" }, { 0.22, "JGoPoint", "Back", 3 }, { 0.95, "JGoPoint", "Linear", 1 }, { 1.03, "JGoJab", "Snap", 6 }, { 1.5, "JGoJab", "Linear" }, { 1.8, "JStance", "Sine" } },
+	T_M1_1 = { { 0, "TStance" }, { 0.08, "TFlick", "Back", 3 }, { 0.3, "TStance", "Sine" } },
+	T_M1_2 = { { 0, "TStance" }, { 0.08, "TPoint", "Back", 3 }, { 0.3, "TStance", "Sine" } },
+	T_M1_3 = { { 0, "TStance" }, { 0.08, "TFlick", "Back", 3 }, { 0.3, "TStance", "Sine" } },
+	T_M1_4 = { { 0, "TStance" }, { 0.1, "TPoint", "Snap", 6 }, { 0.3, "TPoint", "Linear" }, { 0.46, "TStance", "Sine" } },
+	TCast = { { 0, "TStance" }, { 0.12, "TFlick", "Back", 3 }, { 0.5, "TFlick", "Linear" }, { 0.75, "TStance", "Sine" } },
+	TCurse = { { 0, "TStance" }, { 0.15, "TPoint", "Back", 3 }, { 0.6, "TPoint", "Linear" }, { 0.85, "TStance", "Sine" } },
+	TUlt = { { 0, "TStance" }, { 0.3, "TOpen", "Out" }, { 1.2, "TOpen", "Linear", 1 }, { 1.6, "TStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },

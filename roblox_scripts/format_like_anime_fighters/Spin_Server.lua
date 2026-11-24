@@ -1561,6 +1561,7 @@ __modules["CorpseMoves"] = function()
 	  Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse
 	  Diego (AU)   REVOLVER: draws a six-shooter, fans six shots where he aims
 	  Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while
+	  Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -1866,6 +1867,35 @@ USE.Josuke = function(S, player, state, character, root)
 			end
 		end
 	end)
+end
+
+-- UNAVOIDABLE CALAMITY: Wonder of U's misfortune falls on everyone round
+-- him at once (a shadow under each, then the debris: step out of it!).
+USE.Tooru = function(S, player, state, character, root)
+	local c = TuskConfig.Tooru and TuskConfig.Tooru.CorpseCalamity or { Radius = 24, Delay = 0.6, Damage = 8, Stun = 0.7, Knockback = 12 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Tooru", Phase = "Calamity", Position = root.Position, Radius = c.Radius })
+	local kinds = { "Girder", "Pot", "Sign", "Branch" }
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 8)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local spot = tr.Position
+			local kind = kinds[math.random(1, #kinds)]
+			-- A shadow under each of them (Tooru's visuals), then it lands.
+			S.fx("Ability", { Act = 16, Move = "Debris", Phase = "Lock", Position = spot, Lock = c.Delay })
+			task.delay(math.max(0, c.Delay - 0.3), function()
+				S.fx("Ability", { Act = 16, Move = "Calamity", Phase = "Fall", Position = spot, Kind = kind, Radius = 5, FallTime = 0.3 })
+			end)
+			task.delay(c.Delay, function()
+				local char = player.Character
+				if char and target.Parent and (tr.Position - spot).Magnitude <= 5.5 then
+					local away = Vector3.new(tr.Position.X - root.Position.X, 0, tr.Position.Z - root.Position.Z)
+					S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = spot, Source = "TooruCorpse" })
+				end
+				S.fx("Ability", { Act = 16, Move = "Calamity", Phase = "Land", Position = spot, Kind = kind, Radius = 5 })
+			end)
+		end
+	end
 end
 
 -- THE SAINT'S MIRACLE: only with the complete corpse (all 8 parts).
@@ -7086,7 +7116,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8):
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -7143,6 +7173,7 @@ local LOOKS = {
 	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 	DiegoAU = { Skin = Color3.fromRGB(240, 205, 170), Torso = Color3.fromRGB(110, 200, 185), Legs = Color3.fromRGB(196, 170, 110) },
 	Josuke = { Skin = Color3.fromRGB(214, 168, 130), Torso = Color3.fromRGB(240, 240, 236), Legs = Color3.fromRGB(236, 236, 232) },
+	Tooru = { Skin = Color3.fromRGB(232, 196, 166), Torso = Color3.fromRGB(120, 60, 170), Legs = Color3.fromRGB(222, 190, 70) },
 }
 
 local usedSpots = {} -- [spot index] = slot using it
@@ -9139,6 +9170,23 @@ TuskActRegistry.Acts = {
 		ClientModule = "JosukeVFX", -- client visuals (TuskActVFX.JosukeVFX)
 		CardTitle = "STAND  ·  SOFT & WET",
 	},
+	-- Tooru (JoJolion): WONDER OF U. The "calamity": whoever pursues him is
+	-- struck by misfortune (falling debris, trips, accidents).
+	[16] = {
+		Name = "WONDER OF U",
+		Character = "Tooru",
+		Tagline = "The flow of calamity",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(150, 40, 50), Secondary = Color3.fromRGB(240, 196, 60) },
+		M1 = "WONDER OF U COMBO",
+		Abilities = { "CALAMITY: DEBRIS", "THE PURSUER'S CURSE", "WONDER OF U" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "THE FLOW OF CALAMITY",
+		Next = nil,
+		Module = "Tooru", -- server moves
+		ClientModule = "TooruVFX", -- client visuals (TuskActVFX.TooruVFX)
+		CardTitle = "STAND  ·  WONDER OF U",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -9148,7 +9196,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -10823,7 +10871,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

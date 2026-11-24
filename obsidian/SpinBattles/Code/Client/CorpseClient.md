@@ -689,6 +689,10 @@ local function onMove(data)
 				b:Destroy()
 			end)
 		end
+	elseif who == "Tooru" and data.Phase == "Calamity" and data.Position then
+		-- A dark maroon ring sweeps out: misfortune finds everyone in it.
+		ring(data.Position, data.Radius or 24, Color3.fromRGB(150, 40, 50), 0.6)
+		VFXLib.burst(data.Position + Vector3.new(0, 2, 0), { Count = 18, Color = Color3.fromRGB(120, 90, 60), Speed = 14, Lifetime = 0.8 })
 	elseif who == "Valentine" then
 		if data.Phase == "Bless" then
 			shell(character, Color3.fromRGB(255, 250, 225), Enum.Material.ForceField, data.Time or 2.5)

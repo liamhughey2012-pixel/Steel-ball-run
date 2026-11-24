@@ -163,6 +163,12 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("CALAMITY") then
+		return "calamity"
+	elseif has("PURSUER") then
+		return "spiral"
+	elseif has("WONDER OF U") then
+		return "ghost"
 	elseif has("KNIFE") then
 		return "knife"
 	elseif has("TIME STOP") then
@@ -417,6 +423,18 @@ local function drawIcon(icon, kind)
 		for i = -1, 1 do
 			bar(icon, 0.5 + i * 0.24, 0.5 + (i == 0 and -0.04 or 0.04), 0.18, 0.34, i * 8)
 		end
+	elseif kind == "calamity" then
+		-- Something heavy falling: a tilted block, speed lines above, a shadow below.
+		bar(icon, 0.5, 0.48, 0.5, 0.2, -12)
+		for i = -1, 1 do
+			bar(icon, 0.5 + i * 0.16, 0.2, 0.05, 0.22, 0)
+		end
+		bar(icon, 0.5, 0.84, 0.56, 0.07, 0)
+	elseif kind == "spiral" then
+		-- A curse spiral: rings inside rings.
+		ring(icon, 0.72, 3, UDim2.fromScale(0.5, 0.5))
+		ring(icon, 0.46, 3, UDim2.fromScale(0.54, 0.5))
+		ring(icon, 0.2, 3, UDim2.fromScale(0.57, 0.5))
 	elseif kind == "bubble" then
 		-- Bubbles: a big one and two small, with shine spots.
 		ring(icon, 0.6, 3, UDim2.fromScale(0.42, 0.55))

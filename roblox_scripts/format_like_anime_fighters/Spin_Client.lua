@@ -4052,6 +4052,10 @@ local function onMove(data)
 				b:Destroy()
 			end)
 		end
+	elseif who == "Tooru" and data.Phase == "Calamity" and data.Position then
+		-- A dark maroon ring sweeps out: misfortune finds everyone in it.
+		ring(data.Position, data.Radius or 24, Color3.fromRGB(150, 40, 50), 0.6)
+		VFXLib.burst(data.Position + Vector3.new(0, 2, 0), { Count = 18, Color = Color3.fromRGB(120, 90, 60), Speed = 14, Lifetime = 0.8 })
 	elseif who == "Valentine" then
 		if data.Phase == "Bless" then
 			shell(character, Color3.fromRGB(255, 250, 225), Enum.Material.ForceField, data.Time or 2.5)
@@ -4880,6 +4884,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 5) == "Tooru" then
+		starColor = Color3.fromRGB(240, 196, 60)
 	elseif source:sub(1, 6) == "Josuke" then
 		starColor = Color3.fromRGB(120, 190, 240)
 	elseif source:sub(1, 7) == "DiegoAU" then
@@ -6110,6 +6116,7 @@ Common.Palettes = {
 	[13] = { Main = Color3.fromRGB(120, 170, 255), Second = Color3.fromRGB(236, 120, 170), Light = Color3.fromRGB(240, 246, 255) }, -- Funny Valentine (D4C blue + pink)
 	[14] = { Main = Color3.fromRGB(236, 196, 70), Second = Color3.fromRGB(70, 170, 160), Light = Color3.fromRGB(255, 244, 200) }, -- Diego from another world (The World gold + teal)
 	[15] = { Main = Color3.fromRGB(120, 190, 240), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(235, 248, 255) }, -- Josuke (Soft & Wet bubble blue + gold)
+	[16] = { Main = Color3.fromRGB(150, 40, 50), Second = Color3.fromRGB(240, 196, 60), Light = Color3.fromRGB(255, 236, 200) }, -- Tooru (Wonder of U maroon + scarf gold)
 }
 
 function Common.palette(act)
@@ -6584,6 +6591,23 @@ TuskActRegistry.Acts = {
 		ClientModule = "JosukeVFX", -- client visuals (TuskActVFX.JosukeVFX)
 		CardTitle = "STAND  ·  SOFT & WET",
 	},
+	-- Tooru (JoJolion): WONDER OF U. The "calamity": whoever pursues him is
+	-- struck by misfortune (falling debris, trips, accidents).
+	[16] = {
+		Name = "WONDER OF U",
+		Character = "Tooru",
+		Tagline = "The flow of calamity",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(150, 40, 50), Secondary = Color3.fromRGB(240, 196, 60) },
+		M1 = "WONDER OF U COMBO",
+		Abilities = { "CALAMITY: DEBRIS", "THE PURSUER'S CURSE", "WONDER OF U" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "THE FLOW OF CALAMITY",
+		Next = nil,
+		Module = "Tooru", -- server moves
+		ClientModule = "TooruVFX", -- client visuals (TuskActVFX.TooruVFX)
+		CardTitle = "STAND  ·  WONDER OF U",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -6593,7 +6617,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -6827,6 +6851,11 @@ TuskAnimation.Poses = {
 	JGoPoint = { Root = { 6, -12, 0, -0.04 }, Waist = { 8, -14, 0 }, Neck = { 6, 14, -6 }, RightArm = { 88, 0, 6 }, RightElbow = { 4, 0, 0 }, LeftArm = { -6, 0, -10 }, LeftElbow = { 18, 0, 0 }, RightHip = { -6, 0, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -14, 0, 0 } },
 	JGoJab = { Root = { 10, -14, 0, -0.08, 0.3 }, Waist = { 12, -16, 0 }, Neck = { 8, 16, -6 }, RightArm = { 94, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { -10, 0, -12 }, LeftElbow = { 18, 0, 0 }, RightHip = { -10, 0, 0 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -18, 0, 0 } },
 	JCharge = { Root = { 6, -20, 0, -0.1 }, Waist = { 10, -20, 0 }, Neck = { 14, 20, 0 }, RightArm = { 70, 0, -10 }, RightElbow = { 100, 0, 0 }, LeftArm = { 60, 0, 10 }, LeftElbow = { 100, 0, 0 }, RightKnee = { -16, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightHip = { 12, 0, 0 }, LeftHip = { 12, 0, 0 } },
+	-- TOORU: loose and unbothered, head tilted; Wonder of U does the fighting.
+	TStance = { Root = { -2, 8, 0, 0 }, Waist = { -4, 6, 2 }, Neck = { -6, -10, 10 }, RightArm = { -8, 0, 12 }, RightElbow = { 34, 0, 0 }, LeftArm = { -8, 0, -12 }, LeftElbow = { 34, 0, 0 }, RightHip = { 4, 0, 0 }, LeftKnee = { -6, 0, 0 } },
+	TFlick = { Root = { 0, -10, 0, 0 }, Waist = { 0, -12, 0 }, Neck = { -4, 12, 6 }, RightArm = { 50, 0, 64 }, RightElbow = { 40, 0, 0 }, LeftArm = { -6, 0, -12 }, LeftElbow = { 30, 0, 0 } },
+	TPoint = { Root = { 0, -16, 0, -0.02 }, Waist = { 0, -16, 0 }, Neck = { 4, 16, 4 }, RightArm = { 90, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { -8, 0, -12 }, LeftElbow = { 30, 0, 0 } },
+	TOpen = { Root = { -4, 0, 0, 0.04 }, Waist = { -10, 0, 0 }, Neck = { -26, 0, 8 }, RightArm = { 30, 0, 72 }, RightElbow = { 30, 0, 0 }, LeftArm = { 30, 0, -72 }, LeftElbow = { 30, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -7006,6 +7035,13 @@ TuskAnimation.Actions = {
 	JBubble = { { 0, "JStance" }, { 0.12, "JBlow", "Out" }, { 0.2, "JFlick", "Snap", 4 }, { 0.4, "JFlick", "Linear" }, { 0.6, "JStance", "Sine" } },
 	JMines = { { 0, "JStance" }, { 0.15, "JSpread", "Back", 3 }, { 0.5, "JSpread", "Linear" }, { 0.75, "JStance", "Sine" } },
 	JGoBeyond = { { 0, "JStance" }, { 0.22, "JGoPoint", "Back", 3 }, { 0.95, "JGoPoint", "Linear", 1 }, { 1.03, "JGoJab", "Snap", 6 }, { 1.5, "JGoJab", "Linear" }, { 1.8, "JStance", "Sine" } },
+	T_M1_1 = { { 0, "TStance" }, { 0.08, "TFlick", "Back", 3 }, { 0.3, "TStance", "Sine" } },
+	T_M1_2 = { { 0, "TStance" }, { 0.08, "TPoint", "Back", 3 }, { 0.3, "TStance", "Sine" } },
+	T_M1_3 = { { 0, "TStance" }, { 0.08, "TFlick", "Back", 3 }, { 0.3, "TStance", "Sine" } },
+	T_M1_4 = { { 0, "TStance" }, { 0.1, "TPoint", "Snap", 6 }, { 0.3, "TPoint", "Linear" }, { 0.46, "TStance", "Sine" } },
+	TCast = { { 0, "TStance" }, { 0.12, "TFlick", "Back", 3 }, { 0.5, "TFlick", "Linear" }, { 0.75, "TStance", "Sine" } },
+	TCurse = { { 0, "TStance" }, { 0.15, "TPoint", "Back", 3 }, { 0.6, "TPoint", "Linear" }, { 0.85, "TStance", "Sine" } },
+	TUlt = { { 0, "TStance" }, { 0.3, "TOpen", "Out" }, { 1.2, "TOpen", "Linear", 1 }, { 1.6, "TStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },
@@ -10002,6 +10038,12 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("CALAMITY") then
+		return "calamity"
+	elseif has("PURSUER") then
+		return "spiral"
+	elseif has("WONDER OF U") then
+		return "ghost"
 	elseif has("KNIFE") then
 		return "knife"
 	elseif has("TIME STOP") then
@@ -10256,6 +10298,18 @@ local function drawIcon(icon, kind)
 		for i = -1, 1 do
 			bar(icon, 0.5 + i * 0.24, 0.5 + (i == 0 and -0.04 or 0.04), 0.18, 0.34, i * 8)
 		end
+	elseif kind == "calamity" then
+		-- Something heavy falling: a tilted block, speed lines above, a shadow below.
+		bar(icon, 0.5, 0.48, 0.5, 0.2, -12)
+		for i = -1, 1 do
+			bar(icon, 0.5 + i * 0.16, 0.2, 0.05, 0.22, 0)
+		end
+		bar(icon, 0.5, 0.84, 0.56, 0.07, 0)
+	elseif kind == "spiral" then
+		-- A curse spiral: rings inside rings.
+		ring(icon, 0.72, 3, UDim2.fromScale(0.5, 0.5))
+		ring(icon, 0.46, 3, UDim2.fromScale(0.54, 0.5))
+		ring(icon, 0.2, 3, UDim2.fromScale(0.57, 0.5))
 	elseif kind == "bubble" then
 		-- Bubbles: a big one and two small, with shine spots.
 		ring(icon, 0.6, 3, UDim2.fromScale(0.42, 0.55))

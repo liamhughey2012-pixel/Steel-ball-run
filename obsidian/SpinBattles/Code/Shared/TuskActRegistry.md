@@ -288,6 +288,23 @@ TuskActRegistry.Acts = {
 		ClientModule = "JosukeVFX", -- client visuals (TuskActVFX.JosukeVFX)
 		CardTitle = "STAND  ·  SOFT & WET",
 	},
+	-- Tooru (JoJolion): WONDER OF U. The "calamity": whoever pursues him is
+	-- struck by misfortune (falling debris, trips, accidents).
+	[16] = {
+		Name = "WONDER OF U",
+		Character = "Tooru",
+		Tagline = "The flow of calamity",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(150, 40, 50), Secondary = Color3.fromRGB(240, 196, 60) },
+		M1 = "WONDER OF U COMBO",
+		Abilities = { "CALAMITY: DEBRIS", "THE PURSUER'S CURSE", "WONDER OF U" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "THE FLOW OF CALAMITY",
+		Next = nil,
+		Module = "Tooru", -- server moves
+		ClientModule = "TooruVFX", -- client visuals (TuskActVFX.TooruVFX)
+		CardTitle = "STAND  ·  WONDER OF U",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -297,7 +314,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

@@ -17,6 +17,7 @@
 	  Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse
 	  Diego (AU)   REVOLVER: draws a six-shooter, fans six shots where he aims
 	  Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while
+	  Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -322,6 +323,35 @@ USE.Josuke = function(S, player, state, character, root)
 			end
 		end
 	end)
+end
+
+-- UNAVOIDABLE CALAMITY: Wonder of U's misfortune falls on everyone round
+-- him at once (a shadow under each, then the debris: step out of it!).
+USE.Tooru = function(S, player, state, character, root)
+	local c = TuskConfig.Tooru and TuskConfig.Tooru.CorpseCalamity or { Radius = 24, Delay = 0.6, Damage = 8, Stun = 0.7, Knockback = 12 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Tooru", Phase = "Calamity", Position = root.Position, Radius = c.Radius })
+	local kinds = { "Girder", "Pot", "Sign", "Branch" }
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 8)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local spot = tr.Position
+			local kind = kinds[math.random(1, #kinds)]
+			-- A shadow under each of them (Tooru's visuals), then it lands.
+			S.fx("Ability", { Act = 16, Move = "Debris", Phase = "Lock", Position = spot, Lock = c.Delay })
+			task.delay(math.max(0, c.Delay - 0.3), function()
+				S.fx("Ability", { Act = 16, Move = "Calamity", Phase = "Fall", Position = spot, Kind = kind, Radius = 5, FallTime = 0.3 })
+			end)
+			task.delay(c.Delay, function()
+				local char = player.Character
+				if char and target.Parent and (tr.Position - spot).Magnitude <= 5.5 then
+					local away = Vector3.new(tr.Position.X - root.Position.X, 0, tr.Position.Z - root.Position.Z)
+					S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = spot, Source = "TooruCorpse" })
+				end
+				S.fx("Ability", { Act = 16, Move = "Calamity", Phase = "Land", Position = spot, Kind = kind, Radius = 5 })
+			end)
+		end
+	end
 end
 
 -- THE SAINT'S MIRACLE: only with the complete corpse (all 8 parts).

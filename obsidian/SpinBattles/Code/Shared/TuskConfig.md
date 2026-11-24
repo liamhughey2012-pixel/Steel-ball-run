@@ -172,6 +172,7 @@ TuskConfig.Roster = {
 	{ Id = "Valentine", Name = "FUNNY VALENTINE", Stand = "D4C", Available = true, Color = Color3.fromRGB(120, 170, 255) },
 	{ Id = "DiegoAU", Name = "DIEGO BRANDO (AU)", Stand = "THE WORLD", Available = true, Color = Color3.fromRGB(236, 196, 70) },
 	{ Id = "Josuke", Name = "JOSUKE HIGASHIKATA (8)", Stand = "SOFT & WET", Available = true, Color = Color3.fromRGB(120, 190, 240) },
+	{ Id = "Tooru", Name = "TOORU", Stand = "WONDER OF U", Available = true, Color = Color3.fromRGB(150, 70, 190) },
 }
 
 ---------------------------------------------------------------------------
@@ -223,10 +224,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 12, -- how many at once (each takes a free spot below)
+	Count = 13, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine", "DiegoAU", "Josuke" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine", "DiegoAU", "Josuke", "Tooru" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -257,6 +258,7 @@ TuskConfig.StandBots = {
 		Vector3.new(380, 0, -230), -- east edge
 		Vector3.new(-300, 0, 380), -- north-west corner
 		Vector3.new(-380, 0, 220), -- west edge
+		Vector3.new(-190, 0, -380), -- far south-west
 	},
 	Distance = 70, -- (no map) studs from the spawn to their camp
 	Spacing = 14, -- (no map) studs between them at the camp
@@ -921,6 +923,50 @@ TuskConfig.Josuke = {
 	CorpseSilence = { Radius = 20, Time = 3.5, Damage = 5 }, -- corpse move PLUNDER: SOUND: no abilities for a while
 }
 
+---------------------------------------------------------------------------
+-- Tooru (JoJolion): WONDER OF U. Whoever pursues him meets calamity.
+---------------------------------------------------------------------------
+TuskConfig.Tooru = {
+	M1 = { -- WONDER OF U COMBO: the old man's cane
+		Interval = 0.28, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.09,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.55, Knockback = 38, Launch = 10, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	Debris = { -- 1: a shadow follows the nearest enemy, locks, and something falls on it
+		Cooldown = 7, Windup = 0.15,
+		Range = 70, Cone = 100, -- who it picks (else a spot ahead of him)
+		Follow = 0.55, -- seconds the shadow follows them
+		Lock = 0.4, -- then it stops where they are: get out!
+		Radius = 6.5, Damage = 10, Stun = 0.8, Knockback = 12,
+	},
+	Curse = { -- 2: enemies in front are cursed: moving TOWARD him brings calamity
+		Cooldown = 13, Windup = 0.25,
+		Range = 45, Cone = 140, MaxTargets = 4,
+		Time = 6, -- seconds the curse lasts
+		ApproachSpeed = 5, -- studs/s toward him that counts as pursuing
+		Every = 0.9, -- seconds between calamities on one target
+		Damage = 4, Stun = 0.5, Knockback = 14,
+	},
+	Appear = { -- 3: Wonder of U appears beside them and sweeps their legs with its cane
+		Cooldown = 10, Windup = 0.2,
+		Range = 50, -- (line of sight)
+		Delay = 0.45, -- from appearing to the swing
+		Radius = 6, Damage = 8, Stun = 1.0, Knockback = 8, Launch = 6,
+	},
+	Ultimate = { -- THE FLOW OF CALAMITY: attacking or chasing him is calamity
+		Windup = 0.7, Duration = 7,
+		ReflectDamage = 6, ReflectStun = 0.8, ReflectEvery = 0.8, -- anyone whose attack would hit him is struck instead
+		Range = 45, ApproachSpeed = 4, -- anyone this close moving toward him...
+		Damage = 7, Stun = 0.6, Knockback = 16, Every = 1.2, -- ...gets debris dropped on them
+	},
+	CorpseCalamity = { Radius = 24, Delay = 0.6, Damage = 8, Stun = 0.7, Knockback = 12 }, -- corpse move: debris on everyone round him
+}
+
 TuskConfig.Gyro = {
 	M1 = {
 		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,
@@ -1005,7 +1051,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }
