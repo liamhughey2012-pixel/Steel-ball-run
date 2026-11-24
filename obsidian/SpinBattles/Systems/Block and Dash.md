@@ -16,3 +16,18 @@ Every character (and the Stand-user NPCs). Server: `DefenseService` + `CombatAda
 - **Hits from behind** aren't blocked.
 - The HUD shows DASH (with its cooldown) and BLOCK chips at the bottom right.
 - NPCs block now and then when you're close, dash in to close the gap, and dash away when they're hurt.
+
+## Block upgrade (2026-11-24)
+![[block_shield_preview.png]]
+- **Animations:**
+  - **BlockRaise:** a snap brace into the guard;
+  - **BlockHit:** a recoil every time a hit is blocked (arms knocked back, body leaning away);
+  - **BlockWeak:** a sagging, shaky low guard while the guard bar is under 35% (with its own **BlockHitWeak** recoil);
+  - it stands back up when the guard refills.
+- **The shield:** a curved barrier of 5×4 glowing tiles with bright rims, in the **character's own colour** (their palette).
+  - It builds in from the middle and shimmers.
+  - As the guard drains, tiles fail from the edges in: they turn red, jitter and flicker out.
+  - **On release** the tiles scatter and fade.
+- **Blocked hit:** the tile it struck lights up white, a ripple runs across the tiles, sparks fly off forward, a small ring and a "tink" sound play, and the blocker's camera nudges.
+- **Perfect block:** the whole barrier flashes gold (on top of the PERFECT! effects).
+- **Guard break:** the tiles shatter, turn red-hot and fly off with gravity.

@@ -26754,7 +26754,12 @@ __modules["DefenseClient"] = function()
 	  * DASH: when the server grants it, this client moves its own character
 	    (smooth, and it replicates). Everyone sees a dust burst, afterimages
 	    and a dash pose (forward / back / left / right).
-	  * BLOCK: anyone blocking holds a guard pose with a blue shield in front.
+	  * BLOCK: anyone blocking braces into a guard pose (and sags into a weak
+	    guard when the guard bar is low). A curved barrier of glowing tiles in
+	    their character's colour builds in front of them; it shimmers, its
+	    tiles darken, flicker and crack red as the guard bar drains, and it
+	    scatters away on release. A blocked hit makes them recoil, lights the
+	    tile it struck, sends a ripple across the barrier and throws sparks.
 	  * PERFECT BLOCK: gold flash and "PERFECT!" on the defender, the attacker
 	    reels. GUARD BREAK: the shield shatters, "GUARD BREAK" and a stagger.
 ]]
@@ -26771,6 +26776,7 @@ local CameraFX = __require("CameraFX")
 local TuskVFX = __require("TuskVFX")
 local TuskAnimation = __require("TuskAnimation")
 local Fighters = __require("Fighters")
+local Common = __require("TuskActCommon")
 
 local DefenseClient = {}
 local player = Players.LocalPlayer
@@ -26870,45 +26876,189 @@ end
 ---------------------------------------------------------------------------
 -- Block visuals
 ---------------------------------------------------------------------------
-local function makeShield()
+-- A curved barrier of glowing tiles (5 across, 4 high) in front of the body,
+-- in the character's colour. Each tile: { Part, Offset, Col, Row }.
+local COLS, ROWS = 5, 4
+local TILE_W, TILE_H, GAP = 0.78, 0.9, 0.08
+local CRACK = Color3.fromRGB(255, 80, 70)
+
+local function colourOf(character)
+	local act = character:GetAttribute("TuskAct")
+	local pal = act and Common.palette(act)
+	return pal and pal.Main or SHIELD
+end
+
+local function makeShield(character)
 	local m = Instance.new("Model")
 	m.Name = "BlockShield"
 	m.Parent = VFXLib.Folder
-	-- A blocky shield of glowing panes in front of the body.
-	for _, pane in ipairs({ { 0, 0, 3.2, 3.6 }, { -1.9, 0, 0.9, 3 }, { 1.9, 0, 0.9, 3 } }) do
-		local p = VFXLib.part({ Material = Enum.Material.ForceField, Color = SHIELD, Size = Vector3.new(pane[3], pane[4], 0.2), Transparency = 0.15 })
-		p.Parent = m
-		p:SetAttribute("Offset", CFrame.new(pane[1], pane[2], -1.9) * CFrame.Angles(0, pane[1] * -0.35, 0))
+	local color = colourOf(character)
+	local tiles = {}
+	for col = 1, COLS do
+		for row = 1, ROWS do
+			local x = (col - (COLS + 1) / 2)
+			local y = (row - (ROWS + 1) / 2)
+			-- Curve round the body: outer columns angle back.
+			local yaw = -x * 0.32
+			local offset = CFrame.new(0, 0.3 + y * (TILE_H + GAP), 0) * CFrame.Angles(0, yaw, 0) * CFrame.new(0, 0, -2.3)
+			local p = VFXLib.part({ Material = Enum.Material.ForceField, Color = color, Size = Vector3.new(TILE_W, TILE_H, 0.12), Transparency = 0.1 })
+			p.Parent = m
+			table.insert(tiles, { Part = p, Offset = offset, Col = col, Row = row, Seed = math.random() * 10, Flash = 0 })
+		end
 	end
-	return m
+	-- A brighter rim along the top and bottom edges.
+	local rims = {}
+	for _, y in ipairs({ -1, 1 }) do
+		for col = 1, COLS do
+			local x = (col - (COLS + 1) / 2)
+			local offset = CFrame.new(0, 0.3 + y * (ROWS / 2) * (TILE_H + GAP), 0) * CFrame.Angles(0, -x * 0.32, 0) * CFrame.new(0, 0, -2.3)
+			local p = VFXLib.part({ Material = Enum.Material.Neon, Color = color:Lerp(Color3.new(1, 1, 1), 0.4), Size = Vector3.new(TILE_W + GAP, 0.08, 0.14), Transparency = 0.2 })
+			p.Parent = m
+			table.insert(rims, { Part = p, Offset = offset })
+		end
+	end
+	return m, tiles, rims, color
 end
 
 local function placeShield(entry, root, t)
-	local meter = entry.Character:GetAttribute("BlockMeter") or (TuskConfig.Defense and TuskConfig.Defense.MaxMeter) or 100
-	local k = math.clamp(meter / ((TuskConfig.Defense and TuskConfig.Defense.MaxMeter) or 100), 0, 1)
-	for _, p in ipairs(entry.Shield:GetChildren()) do
-		p.CFrame = root.CFrame * p:GetAttribute("Offset") * CFrame.new(0, math.sin(t * 6) * 0.05, 0)
-		-- The shield reddens as the guard bar runs out.
-		p.Color = SHIELD:Lerp(Color3.fromRGB(255, 80, 70), 1 - k)
+	local maxMeter = (TuskConfig.Defense and TuskConfig.Defense.MaxMeter) or 100
+	local k = math.clamp((entry.Character:GetAttribute("BlockMeter") or maxMeter) / maxMeter, 0, 1)
+	-- It builds in from the middle over the first moment.
+	local build = math.clamp((t - entry.Born) / 0.16, 0, 1)
+	local ripple = entry.Ripple -- { At = time, Col, Row }
+	for i, tile in ipairs(entry.Tiles) do
+		local p = tile.Part
+		-- How "broken" this tile is: as the guard drains, tiles fail from the edges in.
+		local edge = math.abs(tile.Col - (COLS + 1) / 2) / ((COLS - 1) / 2) * 0.5 + (tile.Row == 1 and 0.3 or 0)
+		local broken = math.clamp((1 - k) * 1.6 - (1 - edge) * 0.7, 0, 1)
+		local gone = broken > 0.85 and (math.floor(t * 10 + tile.Seed) % 3 == 0)
+		-- Ripple from a blocked hit travels across the tiles.
+		local wave = 0
+		if ripple then
+			local dist = math.sqrt((tile.Col - ripple.Col) ^ 2 + (tile.Row - ripple.Row) ^ 2)
+			local front = (t - ripple.At) * 14
+			wave = math.max(0, 1 - math.abs(front - dist)) * math.max(0, 1 - (t - ripple.At) / 0.5)
+		end
+		tile.Flash = math.max(0, tile.Flash - 0.08)
+		local bob = math.sin(t * 6 + tile.Seed) * 0.03
+		local pop = 1 + wave * 0.25 + tile.Flash * 0.3
+		p.Size = Vector3.new(TILE_W * build * pop, TILE_H * build * pop, 0.12)
+		p.CFrame = root.CFrame * tile.Offset * CFrame.new(0, bob, -wave * 0.3)
+		local shimmer = 0.1 + 0.08 * math.sin(t * 4 + tile.Seed * 2)
+		p.Transparency = gone and 1 or math.clamp(shimmer + broken * 0.35 - tile.Flash * 0.3, 0, 0.9)
+		local color = entry.Color:Lerp(CRACK, broken)
+		p.Color = color:Lerp(Color3.new(1, 1, 1), math.max(tile.Flash, wave * 0.6))
+		-- A cracked tile jitters.
+		if broken > 0.5 then
+			p.CFrame = p.CFrame * CFrame.new((math.random() - 0.5) * 0.06, (math.random() - 0.5) * 0.06, 0)
+		end
+	end
+	for _, rim in ipairs(entry.Rims) do
+		rim.Part.CFrame = root.CFrame * rim.Offset
+		rim.Part.Size = Vector3.new((TILE_W + GAP) * build, 0.08, 0.14)
+		rim.Part.Color = entry.Color:Lerp(CRACK, 1 - k):Lerp(Color3.new(1, 1, 1), 0.4)
+	end
+	-- Low guard: sag into a weak, shaky stance (and back up when it refills).
+	local weak = k < 0.35
+	if weak ~= entry.Weak then
+		entry.Weak = weak
+		TuskAnimation.hold(entry.Character, weak and "BlockWeak" or "BlockPose")
 	end
 end
 
 local function startBlock(character)
-	local entry = { Character = character, Shield = makeShield(), Previous = TuskAnimation.currentHold(character) }
+	local shield, tiles, rims, color = makeShield(character)
+	local entry = { Character = character, Shield = shield, Tiles = tiles, Rims = rims, Color = color, Born = os.clock(), Previous = TuskAnimation.currentHold(character) }
 	blocking[character] = entry
 	TuskAnimation.hold(character, "BlockPose")
+	TuskAnimation.play(character, "BlockRaise")
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if root then
+		local front = (root.CFrame * CFrame.new(0, 0.3, -2.3)).Position
+		VFXLib.burst(front, { Count = 8, Color = color, Speed = 10, Lifetime = 0.25 })
+	end
 	return entry
+end
+
+-- Release: the tiles scatter outward and fade.
+local function scatterTiles(entry, speed, life, color)
+	local root = entry.Character:FindFirstChild("HumanoidRootPart")
+	local center = root and (root.CFrame * CFrame.new(0, 0.3, -2)).Position
+	for _, tile in ipairs(entry.Tiles) do
+		local p = tile.Part
+		if p.Parent then
+			local from = p.CFrame
+			local away = center and (p.Position - center) or Vector3.new(0, 1, 0)
+			away = (away.Magnitude > 0.01 and away.Unit or Vector3.new(0, 1, 0)) + Vector3.new(0, 0.4, 0)
+			local spin = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 8
+			if color then
+				p.Color = color
+				p.Material = Enum.Material.Neon
+			end
+			VFXLib.animate(life, function(a)
+				p.CFrame = (from + away * speed * a - Vector3.new(0, (color and 12 or 0) * a * a, 0)) * CFrame.Angles(spin.X * a, spin.Y * a, spin.Z * a)
+				p.Transparency = math.max(p.Transparency, a)
+			end, function()
+				p:Destroy()
+			end)
+		end
+	end
+	for _, rim in ipairs(entry.Rims) do
+		rim.Part:Destroy()
+	end
+	task.delay(life + 0.05, function()
+		entry.Shield:Destroy()
+	end)
 end
 
 local function stopBlock(character, entry)
 	blocking[character] = nil
-	entry.Shield:Destroy()
-	TuskAnimation.stopHold(character, "BlockPose")
-	if entry.Previous and entry.Previous ~= "BlockPose" and character.Parent then
+	if not entry.Shattered then
+		scatterTiles(entry, 2, 0.18)
+	end
+	TuskAnimation.stopHold(character, entry.Weak and "BlockWeak" or "BlockPose")
+	if entry.Previous and entry.Previous ~= "BlockPose" and entry.Previous ~= "BlockWeak" and character.Parent then
 		TuskAnimation.hold(character, entry.Previous) -- back to the character's stance
 	end
 end
 
+-- A hit lands on someone's block: they recoil, the struck tile lights up,
+-- a ripple runs across the barrier and sparks fly off it.
+local function onBlockedHit(data)
+	local victim = data.Victim
+	local entry = victim and blocking[victim]
+	local root = victim and victim:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	TuskAnimation.play(victim, (entry and entry.Weak) and "BlockHitWeak" or "BlockHit")
+	local at = data.Position or (root.CFrame * CFrame.new(0, 0.3, -2.3)).Position
+	if entry then
+		-- The tile nearest the impact.
+		local best, bestD
+		for _, tile in ipairs(entry.Tiles) do
+			local d = (tile.Part.Position - at).Magnitude
+			if not bestD or d < bestD then
+				best, bestD = tile, d
+			end
+		end
+		if best then
+			best.Flash = 1
+			entry.Ripple = { At = os.clock(), Col = best.Col, Row = best.Row }
+			at = best.Part.Position
+		end
+	end
+	local color = entry and entry.Color or SHIELD
+	local out = root.CFrame.LookVector
+	VFXLib.burst(at, { Count = 14, Color = color:Lerp(Color3.new(1, 1, 1), 0.4), Speed = 30, Lifetime = 0.25, Spread = 55, Direction = out, Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0) }) })
+	TuskVFX.CreateRotationalShockwave(CFrame.lookAt(at, at + out) * CFrame.Angles(math.pi / 2, 0, 0), { Radius = 2.2, Layers = 1, Color = color, Color2 = Color3.new(1, 1, 1), Particles = 0, Width = 0.1, Duration = 0.2 })
+	VFXLib.sound(sounds.NailImpact, at, 0.35, 1.6)
+	if victim == player.Character then
+		CameraFX.shake(0.18, 0.12)
+	end
+end
+
+-- Who's blocking: start / stop their barrier.
 local function stepBlocks()
 	local t = os.clock()
 	local seen = {}
@@ -26961,6 +27111,17 @@ local function onParry(data)
 		return
 	end
 	TuskAnimation.play(defender, "Parry")
+	local entry = blocking[defender]
+	if entry then
+		for _, tile in ipairs(entry.Tiles) do
+			tile.Flash = 1
+			tile.Part.Color = GOLD
+		end
+		entry.Color = GOLD
+		task.delay(0.35, function()
+			entry.Color = colourOf(defender)
+		end)
+	end
 	local pos = (root.CFrame * CFrame.new(0, 0.5, -1.8)).Position
 	TuskVFX.CreateImpactStar(pos, { Size = 7, Rays = 10, Color = GOLD, Color2 = Color3.new(1, 1, 1), Duration = 0.3 })
 	VFXLib.burst(pos, { Count = 24, Color = GOLD, Speed = 40, Lifetime = 0.4 })
@@ -26984,6 +27145,12 @@ local function onGuardBreak(data)
 		return
 	end
 	TuskAnimation.play(victim, "GuardBreak")
+	local entry = blocking[victim]
+	if entry and not entry.Shattered then
+		-- The barrier's tiles shatter and fly.
+		entry.Shattered = true
+		scatterTiles(entry, 14, 0.7, Color3.fromRGB(255, 120, 100))
+	end
 	local pos = (root.CFrame * CFrame.new(0, 0.5, -1.8)).Position
 	-- The shield shatters into blue shards.
 	VFXLib.burst(pos, { Count = 30, Color = SHIELD, Speed = 35, Lifetime = 0.6, Acceleration = Vector3.new(0, -40, 0) })
@@ -27017,7 +27184,9 @@ function DefenseClient.init()
 		if typeof(data) ~= "table" then
 			return
 		end
-		if name == "Parry" then
+		if name == "Hit" and data.Blocked then
+			onBlockedHit(data)
+		elseif name == "Parry" then
 			onParry(data)
 		elseif name == "GuardBreak" then
 			onGuardBreak(data)
@@ -28196,6 +28365,10 @@ TuskAnimation.Poses = {
 	DashFwd = { Root = { -24, 0, 0, -0.25, 0.2 }, Waist = { -18, 0, 0 }, Neck = { 18, 0, 0 }, RightArm = { -45, 0, 12 }, LeftArm = { -45, 0, -12 }, RightHip = { 55, 0, 0 }, RightKnee = { -70, 0, 0 }, LeftHip = { -25, 0, 0 }, LeftKnee = { -30, 0, 0 } },
 	DashBack = { Root = { 18, 0, 0, -0.2, -0.2 }, Waist = { 14, 0, 0 }, Neck = { -6, 0, 0 }, RightArm = { 50, 0, 30 }, LeftArm = { 50, 0, -30 }, RightHip = { -20, 0, 0 }, LeftHip = { 45, 0, 0 }, LeftKnee = { -60, 0, 0 } },
 	DashRight = { Root = { 0, 0, -22, -0.3 }, Waist = { 0, 0, -14 }, Neck = { 0, 0, 10 }, RightArm = { 20, 0, 70 }, LeftArm = { 40, 0, -20 }, LeftHip = { 0, 0, -30 }, RightKnee = { -40, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	-- Block family: brace into it, recoil from blocked hits, sag when the guard is low.
+	BlockBrace = { Root = { 0, 0, 0, -0.35, 0.1 }, Waist = { -14, 0, 0 }, Neck = { -16, 0, 0 }, RightArm = { 105, 0, -30 }, RightElbow = { 115, 0, 0 }, LeftArm = { 105, 0, 30 }, LeftElbow = { 115, 0, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -40, 0, 0 }, LeftHip = { -10, 0, 0 }, LeftKnee = { -26, 0, 0 } },
+	BlockRecoil = { Root = { -8, 0, 0, -0.25, -0.25 }, Waist = { 8, 0, 0 }, Neck = { 6, 0, 0 }, RightArm = { 80, 0, -46 }, RightElbow = { 125, 0, 0 }, LeftArm = { 80, 0, 46 }, LeftElbow = { 125, 0, 0 }, RightHip = { 10, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -20, 0, 0 }, LeftKnee = { -16, 0, 0 } },
+	BlockWeak = { Root = { 6, 0, 0, -0.4 }, Waist = { 14, 0, 0 }, Neck = { 10, 0, 0 }, RightArm = { 70, 0, -30 }, RightElbow = { 95, 0, 0 }, LeftArm = { 70, 0, 30 }, LeftElbow = { 95, 0, 0 }, RightHip = { 26, 0, 0 }, RightKnee = { -44, 0, 0 }, LeftHip = { 6, 0, 0 }, LeftKnee = { -34, 0, 0 } },
 	ParryPose = { Root = { 6, 0, 0, -0.1, -0.15 }, Waist = { 12, 0, 0 }, RightArm = { 140, 0, -20 }, RightElbow = { 30, 0, 0 }, LeftArm = { 60, 0, 30 }, LeftElbow = { 50, 0, 0 }, Neck = { 6, 0, 0 } },
 	GuardBroken = { Root = { 14, 0, 0, -0.35, -0.3 }, Waist = { 22, 0, 0 }, Neck = { 28, 0, 0 }, RightArm = { 60, 0, 60 }, LeftArm = { 60, 0, -60 }, RightElbow = { 20, 0, 0 }, LeftElbow = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftKnee = { -30, 0, 0 } },
 	-- MOUNTAIN TIM: a cowboy with a lasso.
@@ -28361,6 +28534,9 @@ TuskAnimation.Actions = {
 	DashB = { { 0, "Rest" }, { 0.05, "DashBack", "Snap", 2 }, { 0.22, "DashBack", "Linear" }, { 0.32, "Rest", "Sine" } },
 	DashR = { { 0, "Rest" }, { 0.05, "DashRight", "Snap", 2 }, { 0.22, "DashRight", "Linear" }, { 0.32, "Rest", "Sine" } },
 	DashL = { { 0, "Rest" }, { 0.05, "DashLeft", "Snap", 2 }, { 0.22, "DashLeft", "Linear" }, { 0.32, "Rest", "Sine" } },
+	BlockRaise = { { 0, "Rest" }, { 0.07, "BlockBrace", "Snap", 3 }, { 0.18, "BlockPose", "Back", 2 } },
+	BlockHit = { { 0, "BlockPose" }, { 0.05, "BlockRecoil", "Snap", 5 }, { 0.22, "BlockPose", "Back", 2 } },
+	BlockHitWeak = { { 0, "BlockWeak" }, { 0.05, "BlockRecoil", "Snap", 7 }, { 0.3, "BlockWeak", "Back", 2 } },
 	Parry = { { 0, "BlockPose" }, { 0.06, "ParryPose", "Snap", 4 }, { 0.3, "ParryPose", "Sine" } },
 	GuardBreak = { { 0, "BlockPose" }, { 0.08, "GuardBroken", "Snap", 6 }, { 0.8, "GuardBroken", "Linear" }, { 1.0, "Rest", "Sine" } },
 

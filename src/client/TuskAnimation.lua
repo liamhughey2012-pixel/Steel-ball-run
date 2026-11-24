@@ -159,6 +159,10 @@ TuskAnimation.Poses = {
 	DashFwd = { Root = { -24, 0, 0, -0.25, 0.2 }, Waist = { -18, 0, 0 }, Neck = { 18, 0, 0 }, RightArm = { -45, 0, 12 }, LeftArm = { -45, 0, -12 }, RightHip = { 55, 0, 0 }, RightKnee = { -70, 0, 0 }, LeftHip = { -25, 0, 0 }, LeftKnee = { -30, 0, 0 } },
 	DashBack = { Root = { 18, 0, 0, -0.2, -0.2 }, Waist = { 14, 0, 0 }, Neck = { -6, 0, 0 }, RightArm = { 50, 0, 30 }, LeftArm = { 50, 0, -30 }, RightHip = { -20, 0, 0 }, LeftHip = { 45, 0, 0 }, LeftKnee = { -60, 0, 0 } },
 	DashRight = { Root = { 0, 0, -22, -0.3 }, Waist = { 0, 0, -14 }, Neck = { 0, 0, 10 }, RightArm = { 20, 0, 70 }, LeftArm = { 40, 0, -20 }, LeftHip = { 0, 0, -30 }, RightKnee = { -40, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	-- Block family: brace into it, recoil from blocked hits, sag when the guard is low.
+	BlockBrace = { Root = { 0, 0, 0, -0.35, 0.1 }, Waist = { -14, 0, 0 }, Neck = { -16, 0, 0 }, RightArm = { 105, 0, -30 }, RightElbow = { 115, 0, 0 }, LeftArm = { 105, 0, 30 }, LeftElbow = { 115, 0, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -40, 0, 0 }, LeftHip = { -10, 0, 0 }, LeftKnee = { -26, 0, 0 } },
+	BlockRecoil = { Root = { -8, 0, 0, -0.25, -0.25 }, Waist = { 8, 0, 0 }, Neck = { 6, 0, 0 }, RightArm = { 80, 0, -46 }, RightElbow = { 125, 0, 0 }, LeftArm = { 80, 0, 46 }, LeftElbow = { 125, 0, 0 }, RightHip = { 10, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftHip = { -20, 0, 0 }, LeftKnee = { -16, 0, 0 } },
+	BlockWeak = { Root = { 6, 0, 0, -0.4 }, Waist = { 14, 0, 0 }, Neck = { 10, 0, 0 }, RightArm = { 70, 0, -30 }, RightElbow = { 95, 0, 0 }, LeftArm = { 70, 0, 30 }, LeftElbow = { 95, 0, 0 }, RightHip = { 26, 0, 0 }, RightKnee = { -44, 0, 0 }, LeftHip = { 6, 0, 0 }, LeftKnee = { -34, 0, 0 } },
 	ParryPose = { Root = { 6, 0, 0, -0.1, -0.15 }, Waist = { 12, 0, 0 }, RightArm = { 140, 0, -20 }, RightElbow = { 30, 0, 0 }, LeftArm = { 60, 0, 30 }, LeftElbow = { 50, 0, 0 }, Neck = { 6, 0, 0 } },
 	GuardBroken = { Root = { 14, 0, 0, -0.35, -0.3 }, Waist = { 22, 0, 0 }, Neck = { 28, 0, 0 }, RightArm = { 60, 0, 60 }, LeftArm = { 60, 0, -60 }, RightElbow = { 20, 0, 0 }, LeftElbow = { 20, 0, 0 }, RightKnee = { -30, 0, 0 }, LeftKnee = { -30, 0, 0 } },
 	-- MOUNTAIN TIM: a cowboy with a lasso.
@@ -324,6 +328,9 @@ TuskAnimation.Actions = {
 	DashB = { { 0, "Rest" }, { 0.05, "DashBack", "Snap", 2 }, { 0.22, "DashBack", "Linear" }, { 0.32, "Rest", "Sine" } },
 	DashR = { { 0, "Rest" }, { 0.05, "DashRight", "Snap", 2 }, { 0.22, "DashRight", "Linear" }, { 0.32, "Rest", "Sine" } },
 	DashL = { { 0, "Rest" }, { 0.05, "DashLeft", "Snap", 2 }, { 0.22, "DashLeft", "Linear" }, { 0.32, "Rest", "Sine" } },
+	BlockRaise = { { 0, "Rest" }, { 0.07, "BlockBrace", "Snap", 3 }, { 0.18, "BlockPose", "Back", 2 } },
+	BlockHit = { { 0, "BlockPose" }, { 0.05, "BlockRecoil", "Snap", 5 }, { 0.22, "BlockPose", "Back", 2 } },
+	BlockHitWeak = { { 0, "BlockWeak" }, { 0.05, "BlockRecoil", "Snap", 7 }, { 0.3, "BlockWeak", "Back", 2 } },
 	Parry = { { 0, "BlockPose" }, { 0.06, "ParryPose", "Snap", 4 }, { 0.3, "ParryPose", "Sine" } },
 	GuardBreak = { { 0, "BlockPose" }, { 0.08, "GuardBroken", "Snap", 6 }, { 0.8, "GuardBroken", "Linear" }, { 1.0, "Rest", "Sine" } },
 
