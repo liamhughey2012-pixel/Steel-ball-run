@@ -11,12 +11,13 @@
 	TuskFX      : server -> client  (eventName, payloadTable)
 	WorldFX     : server -> client  map / NPC events (NPCSay)
 	Bounty      : both ways         bounty board (open / accept / tracker)
+	Race        : both ways         the Steel Ball Run horse race (join / leave / standings)
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local REMOTES = { "SpinRequest", "SpinFX", "TuskRequest", "TuskFX", "WorldFX", "Bounty" }
+local REMOTES = { "SpinRequest", "SpinFX", "TuskRequest", "TuskFX", "WorldFX", "Bounty", "Race" }
 
 local Net = {}
 local folder

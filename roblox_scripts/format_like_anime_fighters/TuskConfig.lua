@@ -941,6 +941,52 @@ TuskConfig.Corpse = {
 }
 
 ---------------------------------------------------------------------------
+-- THE STEEL BALL RUN: a horse race round the map. Every Every seconds entry
+-- opens for EntryTime seconds (JOIN button on screen, or the start gate);
+-- then everyone who entered is put on a horse at the start line, a
+-- countdown, and they race through the checkpoints to the finish. Fighting
+-- is allowed. Prizes for the top 3 (and a Saint's Corpse part for the winner).
+---------------------------------------------------------------------------
+TuskConfig.Race = {
+	Enabled = true,
+	Every = 600, -- seconds from one race's entry opening to the next (10 minutes)
+	FirstAfter = 120, -- the first race opens this long after the server starts
+	StudioFirstAfter = 20, -- in Studio the first race opens quickly so you can test it
+	EntryTime = 45, -- seconds entry stays open
+	Countdown = 4, -- seconds on the start line (3, 2, 1, GO!)
+	TimeLimit = 240, -- the race ends after this long no matter what
+	FinishGrace = 25, -- ...or this long after the winner crosses the line
+	-- The course (offsets from the map's origin; snapped to the ground).
+	Start = Vector3.new(25, 0, 112),
+	Checkpoints = {
+		Vector3.new(150, 0, -150), -- the dunes
+		Vector3.new(45, 0, -250), -- the mission church
+		Vector3.new(-100, 0, -180), -- the western desert
+		Vector3.new(-158, 0, -59), -- Dustwater ghost town
+		Vector3.new(-235, 0, 150), -- the oasis
+		Vector3.new(-165, 0, 275), -- the gold-panning camp
+		Vector3.new(40, 0, 140), -- FINISH, back by the spawn
+	},
+	GateWidth = 30, -- studs between a gate's posts
+	PassRadius = 20, -- get this close to the next gate to pass it
+	-- Horses
+	HorseSpeed = 3.2, -- walk speed multiplier while riding
+	HipRaise = 2.8, -- how much higher the rider sits
+	Coats = {
+		{ Color3.fromRGB(120, 76, 44), Color3.fromRGB(40, 26, 18) }, -- bay
+		{ Color3.fromRGB(40, 36, 36), Color3.fromRGB(18, 16, 16) }, -- black
+		{ Color3.fromRGB(226, 222, 212), Color3.fromRGB(180, 176, 168) }, -- grey / white
+		{ Color3.fromRGB(170, 90, 44), Color3.fromRGB(130, 64, 30) }, -- chestnut
+		{ Color3.fromRGB(214, 176, 110), Color3.fromRGB(245, 236, 210) }, -- palomino
+		{ Color3.fromRGB(150, 110, 80), Color3.fromRGB(240, 238, 230) }, -- paint
+	},
+	-- Prizes (Cash): 1st, 2nd, 3rd; every other finisher gets FinishPrize.
+	Prizes = { 500, 250, 150 },
+	FinishPrize = 50,
+	WinnerCorpsePart = true, -- a Saint's Corpse part appears at the finish for the winner (if one is lying out)
+}
+
+---------------------------------------------------------------------------
 -- Weather: it rains for a while every few minutes (the whole server).
 ---------------------------------------------------------------------------
 TuskConfig.Weather = {

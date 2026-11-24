@@ -307,6 +307,7 @@ __start("StandBots", TuskService)
 __start("BountyService")
 __start("WeatherService")
 __start("CorpseService", TuskService)
+__start("RaceService")
 __start("NPCService")
 __start("TestDummies")
 print("[Spin] Server ready")
@@ -346,7 +347,7 @@ local function __start(name)
 		warn("[Spin] " .. name .. " failed to start: " .. tostring(err))
 	end
 end
-for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient", "CorpseClient" }) do
+for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient", "CorpseClient", "RaceClient" }) do
 	__start(name)
 end
 print("[Spin] Client ready")

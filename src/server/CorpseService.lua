@@ -301,6 +301,24 @@ function CorpseService.scatter(id)
 	model:SetAttribute("Spot", i)
 end
 
+-- Bring a part that's lying out in the desert (nobody holding it) to a
+-- spot, e.g. the race finish for the winner. Returns its id, or nil when
+-- every part is held. It goes back out into the desert if nobody takes it.
+function CorpseService.summon(position)
+	local lying = {}
+	for id, m in pairs(relics) do
+		if m.Parent then
+			table.insert(lying, id)
+		end
+	end
+	if #lying == 0 then
+		return nil
+	end
+	local id = lying[rng:NextInteger(1, #lying)]
+	placeRelic(id, position, true)
+	return id, partInfo[id] and partInfo[id].Name
+end
+
 ---------------------------------------------------------------------------
 -- Holding parts: boosts
 ---------------------------------------------------------------------------

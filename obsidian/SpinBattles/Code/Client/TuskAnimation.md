@@ -230,6 +230,8 @@ TuskAnimation.Poses = {
 	DWAim = { Root = { 0, -20, 0, 0 }, Waist = { 0, -20, 0 }, Neck = { 0, 20, 0 }, RightArm = { 90, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 82, 0, -34 }, LeftElbow = { 40, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { -8, 0, 0 } },
 	DWFan = { Root = { 0, -20, 0, 0 }, Waist = { 0, -20, 0 }, Neck = { 0, 20, 0 }, RightArm = { 96, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 70, 0, -30 }, LeftElbow = { 56, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { -8, 0, 0 } },
 	DWTwirl = { Root = { 0, -6, 0, 0 }, Waist = { 0, -6, 0 }, Neck = { 4, 10, 0 }, RightArm = { 40, 0, 50 }, RightElbow = { 70, 0, 0 }, LeftArm = { -4, 0, -16 }, LeftElbow = { 24, 0, 0 } },
+	-- RIDING a horse (the Steel Ball Run): astride, leaning in, hands on the reins.
+	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 70, 0, 22 }, RightKnee = { -85, 0, 0 }, LeftHip = { 70, 0, -22 }, LeftKnee = { -85, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
 	AxlStance = { Root = { -4, -8, 0, -0.04 }, Waist = { -6, -6, 4 }, Neck = { -10, 12, 8 }, RightArm = { -6, 0, 8 }, RightElbow = { 10, 0, 0 }, LeftArm = { -4, 0, -8 }, LeftElbow = { 14, 0, 0 }, RightHip = { 4, 0, 0 } },
 	AxlPoint = { Root = { 0, -14, 0, -0.04 }, Waist = { 0, -14, 0 }, Neck = { 6, 14, 0 }, RightArm = { 88, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 0, 0, -10 }, LeftElbow = { 20, 0, 0 } },

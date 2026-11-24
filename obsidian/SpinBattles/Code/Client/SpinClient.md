@@ -43,6 +43,7 @@ local DefenseClient = require(script.DefenseClient)
 local BountyUI = require(script.UI.BountyUI)
 local WeatherClient = require(script.WeatherClient)
 local CorpseClient = require(script.CorpseClient)
+local RaceClient = require(script.RaceClient)
 
 SettingsUI.init()
 HitFX.init()
@@ -57,4 +58,5 @@ DefenseClient.init()
 BountyUI.init()
 WeatherClient.init()
 CorpseClient.init()
+RaceClient.init()
 ```
