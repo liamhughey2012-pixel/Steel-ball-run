@@ -12,7 +12,7 @@ Matched to the reference art the user sent (2026-11-24).
 **Look:** a dark blue hood up with orange toggles and a high white collar; silver hair with a jagged fringe and a long lock down one side; yellow lips; a green star earring. A dark top with his emblem (yellow horns, a green heart with a bow tie, a grey bib edged in red) and a pink strap round his chest. Pink shoulder pads, light-blue short sleeves, bare forearms. Navy trousers with orange buttons down the outside of each leg. He slouches with one hand behind his head.
 
 ![[november_rain_preview.png]]
-**November Rain:** a sleek white figure: a rounded helmet with a dark visor and two cyan lights, light-blue streamers flowing back from its head, two long hoses arching out of its back and down past its feet, a blue raindrop on its chest, blue bands on its forearms and knees.
+**November Rain** (remodelled from the user's second set of art): it hangs high above and behind him like a huge insect. A tall narrow white mask with blue ribbed side panels, two pink eyes and a centre stripe; a big fan of blue feather-blades spraying up and out behind its shoulders (deep blue roots, pale tips); a white body tapering to a nozzle point with a showerhead ring (no legs); two huge white-lilac scythe blades arching up from its shoulders and sweeping down to the ground either side; long thin dark-red hoses hanging down; small white arms folded in front.
 
 **The idea: crushing rain.** His raindrops hit with heavy pressure. They press people down (slow) rather than stun them, so it plays differently from Blackmore's rain.
 
