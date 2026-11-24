@@ -8,15 +8,18 @@
 	  * CALAMITY: things fall out of the sky (a steel girder, a flowerpot, a
 	    road sign, a tree branch): a dark shadow on the ground first, then
 	    it drops, smashes, kicks up dust and lies there a moment
-	  * DEBRIS: the shadow slides after the nearest enemy, then stops and
-	    turns red: get out from under it
+	  * PASSIVE: anyone running at him gets the same treatment, now and then
+	  * DEBRIS: three shadows in a row slide after the nearest enemy, each
+	    stopping and turning red before something drops; the last is bigger
 	  * THE PURSUER'S CURSE: a dark red spiral spins over each cursed head;
 	    each step toward him brings something down on them
 	  * WONDER OF U: the old man fades in right beside them, sweeps his cane
-	    through their legs, and fades away
+	    through their legs, and fades away; "PRESS 3: SWAP" shows for Tooru,
+	    and on a swap he vanishes in a swirl and steps out where it stood
 	  * THE FLOW OF CALAMITY: "WONDER OF U" over him, the world goes sepia
 	    round him, a maroon ring marks his reach and leaves fall all round;
-	    hit him or chase him and calamity finds you ("CALAMITY!")
+	    hit him or chase him and calamity finds you ("CALAMITY!"); it ends
+	    with a CALAMITY STORM, big shadows under everyone near him
 ]]
 
 local Players = game:GetService("Players")
@@ -244,7 +247,7 @@ end
 ---------------------------------------------------------------------------
 local function markFollow(data)
 	local target = data.Target
-	local sh = newShadow(3.5)
+	local sh = newShadow(data.Last and 4.5 or 3.5)
 	local follow = data.Follow or 0.55
 	VFXLib.animate(follow, function(a)
 		local tr = target and target.Parent and target:FindFirstChild("HumanoidRootPart")
@@ -256,7 +259,7 @@ local function markFollow(data)
 end
 
 local function markLock(data)
-	local sh = newShadow(4.5, WARN)
+	local sh = newShadow(data.Last and 6 or 4.5, WARN)
 	local at = ground(data.Position)
 	VFXLib.animate(data.Lock or 0.4, function(a)
 		placeShadow(sh, at, 1 + math.sin(a * 30) * 0.04)
@@ -310,6 +313,54 @@ local function appear(data)
 			ghosts[target or model] = nil
 		end
 	end)
+end
+
+-- Tooru's own screen: a short hint that 3 swaps places now.
+local function swapHint(seconds)
+	local pg = localPlayer and localPlayer:FindFirstChildOfClass("PlayerGui")
+	if not pg then
+		return
+	end
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "TooruSwapHint"
+	gui.ResetOnSpawn = false
+	local t = Instance.new("TextLabel")
+	t.AnchorPoint = Vector2.new(0.5, 0.5)
+	t.Position = UDim2.fromScale(0.5, 0.66)
+	t.Size = UDim2.fromScale(0.3, 0.045)
+	t.BackgroundTransparency = 1
+	t.Font = Enum.Font.GothamBlack
+	t.TextScaled = true
+	t.Text = "PRESS 3 AGAIN: SWAP PLACES"
+	t.TextColor3 = pal.Second
+	t.TextStrokeTransparency = 0.2
+	t.Parent = gui
+	gui.Parent = pg
+	VFXLib.animate(seconds, function(a)
+		t.TextTransparency = a > 0.75 and (a - 0.75) / 0.25 or 0
+	end, function()
+		gui:Destroy()
+	end)
+	return gui
+end
+local hintGui
+
+local function swapFx(data)
+	if data.From then
+		VFXLib.burst(data.From, { Count = 20, Color = MAROON, Speed = 10, Lifetime = 0.6 })
+		VFXLib.burst(data.From, { Count = 10, Color = LEAF2, Speed = 6, Lifetime = 0.9 })
+	end
+	if data.To then
+		VFXLib.burst(data.To, { Count = 20, Color = MAROON, Speed = 10, Lifetime = 0.6 })
+		VFXLib.flash(data.To, pal.Second, 3, 16, 0.25)
+	end
+	if data.Character and Common.isLocal(data.Character) then
+		if hintGui and hintGui.Parent then
+			hintGui:Destroy()
+		end
+		CameraFX.fovPunch(6, 0.25)
+	end
+	VFXLib.sound(sounds.Swing, data.To or data.From, 0.5, 1.4)
 end
 
 local function sweep(data)
@@ -546,8 +597,13 @@ local function onAbility(data)
 		if phase == "Appear" then
 			if character and root then
 				TuskAnimation.play(character, "TCast")
+				if Common.isLocal(character) and data.SwapWindow then
+					hintGui = swapHint((data.Delay or 0.45) + data.SwapWindow)
+				end
 			end
 			appear(data)
+		elseif phase == "Swap" then
+			swapFx(data)
 		elseif phase == "Sweep" then
 			sweep(data)
 		end
@@ -570,6 +626,12 @@ local function onUltimate(data)
 		startFlow(character, data)
 	elseif data.Phase == "End" and character then
 		endFlow(character)
+	elseif data.Phase == "Storm" and character then
+		label(character:FindFirstChild("Head"), "CALAMITY STORM", WARN, 1.6, 320)
+		local root2 = Common.rootOf(character)
+		if root2 and nearLocal(root2.Position, 50) then
+			CameraFX.shake(0.5, 0.4)
+		end
 	end
 end
 

@@ -927,6 +927,14 @@ TuskConfig.Josuke = {
 -- Tooru (JoJolion): WONDER OF U. Whoever pursues him meets calamity.
 ---------------------------------------------------------------------------
 TuskConfig.Tooru = {
+	-- PASSIVE: CALAMITY. Anyone running at him (closing in fast) has
+	-- something fall on them now and then. A shadow shows first: dodge it.
+	Passive = {
+		Range = 32, MinDistance = 6, -- they're this far away and closing in...
+		ApproachSpeed = 11, -- ...faster than this (studs/s): running or dashing at him
+		Every = 5, -- seconds between calamities on one pursuer
+		Radius = 4.5, Damage = 3, Stun = 0.4, Knockback = 8,
+	},
 	M1 = { -- WONDER OF U COMBO: the old man's cane
 		Interval = 0.28, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.09,
 		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
@@ -936,18 +944,22 @@ TuskConfig.Tooru = {
 			{ Damage = 4, Stun = 0.45, Knockback = 5 },
 			{ Damage = 7, Stun = 0.55, Knockback = 38, Launch = 10, ShockwaveRadius = 7, AoeRadius = 6.5 },
 		},
+		CursedBonus = { Every = 1.2, Damage = 3, Stun = 0.3 }, -- M1 hits on a cursed enemy bring something down on them too
 	},
-	Debris = { -- 1: a shadow follows the nearest enemy, locks, and something falls on it
-		Cooldown = 7, Windup = 0.15,
+	Debris = { -- 1: three shadows in a row chase the nearest enemy; each locks and something falls
+		Cooldown = 8, Windup = 0.15,
 		Range = 70, Cone = 100, -- who it picks (else a spot ahead of him)
-		Follow = 0.55, -- seconds the shadow follows them
+		Drops = 3, Gap = 0.45, -- one after another, this far apart
+		Follow = 0.55, -- seconds each shadow follows them
 		Lock = 0.4, -- then it stops where they are: get out!
-		Radius = 6.5, Damage = 10, Stun = 0.8, Knockback = 12,
+		Radius = 6, Damage = 5, Stun = 0.5, Knockback = 6,
+		LastDamage = 9, LastStun = 0.9, LastKnockback = 20, LastLaunch = 10, -- the last one is the big one
 	},
 	Curse = { -- 2: enemies in front are cursed: moving TOWARD him brings calamity
 		Cooldown = 13, Windup = 0.25,
 		Range = 45, Cone = 140, MaxTargets = 4,
 		Time = 6, -- seconds the curse lasts
+		Slow = 0.8, -- cursed enemies walk at 80% (misfortune weighs on them)
 		ApproachSpeed = 5, -- studs/s toward him that counts as pursuing
 		Every = 0.9, -- seconds between calamities on one target
 		Damage = 4, Stun = 0.5, Knockback = 14,
@@ -957,12 +969,15 @@ TuskConfig.Tooru = {
 		Range = 50, -- (line of sight)
 		Delay = 0.45, -- from appearing to the swing
 		Radius = 6, Damage = 8, Stun = 1.0, Knockback = 8, Launch = 6,
+		SwapWindow = 2.5, -- press 3 again within this long: Tooru swaps places with the old man
+		SwapIFrames = 0.35,
 	},
 	Ultimate = { -- THE FLOW OF CALAMITY: attacking or chasing him is calamity
 		Windup = 0.7, Duration = 7,
 		ReflectDamage = 6, ReflectStun = 0.8, ReflectEvery = 0.8, -- anyone whose attack would hit him is struck instead
 		Range = 45, ApproachSpeed = 4, -- anyone this close moving toward him...
 		Damage = 7, Stun = 0.6, Knockback = 16, Every = 1.2, -- ...gets debris dropped on them
+		Storm = { Delay = 0.7, Radius = 6, Damage = 12, Stun = 1.0, Knockback = 30, Launch = 18 }, -- when it ends: a big one on every enemy in range
 	},
 	CorpseCalamity = { Radius = 24, Delay = 0.6, Damage = 8, Stun = 0.7, Knockback = 12 }, -- corpse move: debris on everyone round him
 }

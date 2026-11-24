@@ -759,6 +759,15 @@ function TuskService.init()
 			actModules[act] = require(moduleScript)
 		end
 	end
+	-- Character modules with always-on behaviour (passives) start here.
+	for act, module in pairs(actModules) do
+		if module.Init then
+			local ok, err = pcall(module.Init, TuskService)
+			if not ok then
+				warn("[TuskService] Init for act " .. tostring(act) .. " failed: " .. tostring(err))
+			end
+		end
+	end
 	Sneak = require(script.Parent.TuskSneakService)
 	Sneak.init(TuskService)
 	Defense = require(script.Parent.DefenseService)

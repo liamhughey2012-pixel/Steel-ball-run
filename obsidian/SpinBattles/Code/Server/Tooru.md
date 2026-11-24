@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer › TuskActs` |
 | **Exact name** | `Tooru` (capitals matter) |
 
-**What it does:** Tooru (JoJolion): WONDER OF U. Its power is the "calamity": whoever pursues him is struck by misfortune. Registered as "Act" 16 so it reuses the Tusk ability system. M1        WONDER OF U COMBO: the old man swings his cane with him Ability 1 CALAMITY: DEBRIS: a shadow follows the nearest enemy, locks where they are, and something heavy falls out of the sky on it (a girder, a flowerpot, a road sign, a branch). Move! Ability 2 THE PURSUER'S CURSE: enemies in front are cursed for a few seconds: every time one MOVES TOWARD him, something falls on them. Back off and nothing happens Ability 3 WONDER OF U: the old man appears right beside the nearest enemy (it can be anywhere) and sweeps their legs with his cane Ultimate  THE FLOW OF CALAMITY: for a while nobody can hit him: anyone whose attack would land is struck by calamity instead, and anyone close who moves toward him has debris dropped on them Numbers: TuskConfig.Tooru. All damage goes through S.hit (CombatAdapter). Falling things take FallTime to land and only hit whoever is still under them, so they can be dodged.
+**What it does:** Tooru (JoJolion): WONDER OF U. Its power is the "calamity": whoever pursues him is struck by misfortune. Registered as "Act" 16 so it reuses the Tusk ability system. Passive   CALAMITY: anyone running at him (closing in fast from range) has something fall on them now and then M1        WONDER OF U COMBO: the old man swings his cane with him; hits on a CURSED enemy bring something down on them too Ability 1 CALAMITY: DEBRIS: three shadows in a row chase the nearest enemy; each one stops where they are and something heavy falls on it (a girder, a flowerpot, a road sign, a branch). The last is the big one. Keep moving! Ability 2 THE PURSUER'S CURSE: enemies in front are cursed for a few seconds and slowed: every time one MOVES TOWARD him, something falls on them. Back off and nothing happens Ability 3 WONDER OF U: the old man appears right beside the nearest enemy (it can be anywhere) and sweeps their legs with his cane. Press 3 AGAIN soon after to SWAP: Tooru steps out where the old man stood (a moment of untouchable) Ultimate  THE FLOW OF CALAMITY: for a while nobody can hit him: anyone whose attack would land is struck by calamity instead, and anyone close who moves toward him has debris dropped on them. When it ends, CALAMITY STORM: a big one falls on every enemy near him Numbers: TuskConfig.Tooru. All damage goes through S.hit (CombatAdapter). Falling things take FallTime to land and only hit whoever is still under them, so they can be dodged.
 
 ## How to add it
 1. In Studio's Explorer, find **TuskActs** (ServerScriptService › SpinServer › TuskActs).
@@ -30,18 +30,26 @@ Back to [[Where To Put Code]]
 	Tooru (JoJolion): WONDER OF U. Its power is the "calamity": whoever
 	pursues him is struck by misfortune. Registered as "Act" 16 so it reuses
 	the Tusk ability system.
-	  M1        WONDER OF U COMBO: the old man swings his cane with him
-	  Ability 1 CALAMITY: DEBRIS: a shadow follows the nearest enemy, locks
-	            where they are, and something heavy falls out of the sky on
-	            it (a girder, a flowerpot, a road sign, a branch). Move!
+	  Passive   CALAMITY: anyone running at him (closing in fast from
+	            range) has something fall on them now and then
+	  M1        WONDER OF U COMBO: the old man swings his cane with him; hits
+	            on a CURSED enemy bring something down on them too
+	  Ability 1 CALAMITY: DEBRIS: three shadows in a row chase the nearest
+	            enemy; each one stops where they are and something heavy
+	            falls on it (a girder, a flowerpot, a road sign, a branch).
+	            The last is the big one. Keep moving!
 	  Ability 2 THE PURSUER'S CURSE: enemies in front are cursed for a few
-	            seconds: every time one MOVES TOWARD him, something falls on
-	            them. Back off and nothing happens
+	            seconds and slowed: every time one MOVES TOWARD him,
+	            something falls on them. Back off and nothing happens
 	  Ability 3 WONDER OF U: the old man appears right beside the nearest
-	            enemy (it can be anywhere) and sweeps their legs with his cane
+	            enemy (it can be anywhere) and sweeps their legs with his
+	            cane. Press 3 AGAIN soon after to SWAP: Tooru steps out where
+	            the old man stood (a moment of untouchable)
 	  Ultimate  THE FLOW OF CALAMITY: for a while nobody can hit him: anyone
 	            whose attack would land is struck by calamity instead, and
-	            anyone close who moves toward him has debris dropped on them
+	            anyone close who moves toward him has debris dropped on them.
+	            When it ends, CALAMITY STORM: a big one falls on every enemy
+	            near him
 	Numbers: TuskConfig.Tooru. All damage goes through S.hit (CombatAdapter).
 	Falling things take FallTime to land and only hit whoever is still under
 	them, so they can be dodged.
@@ -136,26 +144,40 @@ local function debris(S, player, state, aim)
 	local direction = S.aim(aim, root)
 	local target = Moves.findTarget(S, character, root, c.Range, c.Cone, direction)
 	local troot = target and target:FindFirstChild("HumanoidRootPart")
-	local spot = troot and troot.Position or root.Position + flat(direction).Unit * 30
-	spot = Moves.groundBelow(spot, { character })
-	S.fx("Ability", { Character = character, Act = ACT, Move = "Debris", Phase = "Mark", Target = target, Position = spot, Follow = c.Follow, Lock = c.Lock })
-	-- The shadow follows them, then stops where they are.
-	task.delay(c.Follow, function()
-		if state.Life ~= life then
-			return
-		end
-		local tr = target and target.Parent and target:FindFirstChild("HumanoidRootPart")
-		if tr then
-			spot = Moves.groundBelow(tr.Position, { character, target })
-		end
-		S.fx("Ability", { Act = ACT, Move = "Debris", Phase = "Lock", Position = spot, Lock = c.Lock })
-		task.delay(math.max(0, c.Lock - FALL_TIME), function()
+	local first = troot and troot.Position or root.Position + flat(direction).Unit * 30
+	local drops = c.Drops or 1
+	for i = 1, drops do
+		task.delay((i - 1) * (c.Gap or 0.45), function()
 			if state.Life ~= life then
 				return
 			end
-			fall(S, player, spot, c.Radius, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Source = "TooruDebris" })
+			local tr = target and target.Parent and target:FindFirstChild("HumanoidRootPart")
+			local spot = Moves.groundBelow(tr and tr.Position or first, { character, target })
+			local last = i == drops
+			S.fx("Ability", { Character = i == 1 and character or nil, Act = ACT, Move = "Debris", Phase = "Mark", Target = target, Position = spot, Follow = c.Follow, Lock = c.Lock, Index = i, Last = last })
+			-- The shadow follows them, then stops where they are.
+			task.delay(c.Follow, function()
+				if state.Life ~= life then
+					return
+				end
+				local tr2 = target and target.Parent and target:FindFirstChild("HumanoidRootPart")
+				if tr2 then
+					spot = Moves.groundBelow(tr2.Position, { character, target })
+				end
+				S.fx("Ability", { Act = ACT, Move = "Debris", Phase = "Lock", Position = spot, Lock = c.Lock, Last = last })
+				task.delay(math.max(0, c.Lock - FALL_TIME), function()
+					if state.Life ~= life then
+						return
+					end
+					if last then
+						fall(S, player, spot, c.Radius + 1, { Damage = c.LastDamage, Stun = c.LastStun, Knockback = c.LastKnockback, Launch = c.LastLaunch, Source = "TooruDebris" })
+					else
+						fall(S, player, spot, c.Radius, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Source = "TooruDebris" })
+					end
+				end)
+			end)
 		end)
-	end)
+	end
 end
 
 ---------------------------------------------------------------------------
@@ -188,6 +210,10 @@ local function curse(S, player, state, aim)
 				if off.Magnitude < 1 or off.Unit:Dot(look) >= cosLimit then
 					table.insert(cursed, { Target = target, Next = 0 })
 					target:SetAttribute("CalamityCurseUntil", untilT)
+					local hum = target:FindFirstChildOfClass("Humanoid")
+					if hum and c.Slow then
+						S.Adapter.setMoveModifier(hum, "CalamityCurse", c.Slow)
+					end
 				end
 			end
 		end
@@ -208,6 +234,10 @@ local function curse(S, player, state, aim)
 				for _, entry in ipairs(cursed) do
 					if entry.Target.Parent and entry.Target:GetAttribute("CalamityCurseUntil") == untilT then
 						entry.Target:SetAttribute("CalamityCurseUntil", nil)
+						local hum = entry.Target:FindFirstChildOfClass("Humanoid")
+						if hum then
+							S.Adapter.setMoveModifier(hum, "CalamityCurse", nil)
+						end
 					end
 				end
 				return
@@ -231,8 +261,41 @@ end
 ---------------------------------------------------------------------------
 -- 3: WONDER OF U (it appears beside them)
 ---------------------------------------------------------------------------
+-- Press 3 again soon after: Tooru steps out where the old man stood.
+local function swap(S, player, state)
+	local c = cfg.Appear
+	local sw = state.TooruSwap
+	state.TooruSwap = nil
+	local character, _, root = alive(S, player)
+	if not root then
+		return
+	end
+	local from = root.Position
+	local target = sw.Target
+	local tr = target and target.Parent and target:FindFirstChild("HumanoidRootPart")
+	local face = tr and Vector3.new(tr.Position.X, sw.At.Y, tr.Position.Z) or (sw.At + flat(root.CFrame.LookVector))
+	if (face - sw.At).Magnitude < 0.1 then
+		face = sw.At + Vector3.new(0, 0, -1)
+	end
+	root.CFrame = CFrame.lookAt(sw.At, face)
+	root.AssemblyLinearVelocity = Vector3.zero
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	character:SetAttribute(iframes, true)
+	task.delay(c.SwapIFrames or 0.35, function()
+		if character.Parent then
+			character:SetAttribute(iframes, nil)
+		end
+	end)
+	S.fx("Ability", { Character = character, Act = ACT, Move = "Appear", Phase = "Swap", From = from, To = sw.At })
+end
+
 local function appear(S, player, state, aim)
 	local c = cfg.Appear
+	local sw = state.TooruSwap
+	if sw and sw.Life == state.Life and now() <= sw.Until and not S.isBusy(state) then
+		swap(S, player, state)
+		return
+	end
 	if not ready(S, player, state, "Appear", 3) then
 		return
 	end
@@ -252,7 +315,8 @@ local function appear(S, player, state, aim)
 	-- Beside them, a little behind.
 	local side = flat(tr.CFrame.RightVector)
 	local at = tr.Position + (side.Magnitude > 0 and side.Unit or Vector3.new(1, 0, 0)) * 3 - flat(tr.CFrame.LookVector) * 1.5
-	S.fx("Ability", { Character = character, Act = ACT, Move = "Appear", Phase = "Appear", Target = target, Position = at, Delay = c.Delay })
+	state.TooruSwap = { At = at, Target = target, Life = life, Until = now() + c.Delay + (c.SwapWindow or 2.5) }
+	S.fx("Ability", { Character = character, Act = ACT, Move = "Appear", Phase = "Appear", Target = target, Position = at, Delay = c.Delay, SwapWindow = c.SwapWindow })
 	task.delay(c.Delay, function()
 		if state.Life ~= life or not alive(S, player) then
 			return
@@ -349,6 +413,24 @@ function Tooru.Ultimate(S, player, state, aim)
 			if not r or state.Life ~= life or now() >= untilT or char ~= character then
 				endGuard(character)
 				S.fx("Ultimate", { Character = character, Act = ACT, Phase = "End" })
+				-- CALAMITY STORM: a big one on every enemy still near him.
+				local st = u.Storm
+				if st and r and state.Life == life and char == character then
+					local victims = S.Hitbox.inRadius(char, r.Position, u.Range, 12)
+					if #victims > 0 then
+						S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Storm", Count = #victims })
+					end
+					for _, target in ipairs(victims) do
+						local tr = target:FindFirstChild("HumanoidRootPart")
+						if tr then
+							local spot = Moves.groundBelow(tr.Position, { target })
+							S.fx("Ability", { Act = ACT, Move = "Debris", Phase = "Lock", Position = spot, Lock = st.Delay, Last = true })
+							task.delay(math.max(0, st.Delay - FALL_TIME), function()
+								fall(S, player, spot, st.Radius, { Damage = st.Damage, Stun = st.Stun, Knockback = st.Knockback, Launch = st.Launch, Source = "TooruStorm" })
+							end)
+						end
+					end
+				end
 				return
 			end
 			local t = now()
@@ -372,6 +454,68 @@ function Tooru.Cleanup(S, player, state)
 		character:SetAttribute("Armored", nil)
 		endGuard(character)
 	end
+	state.TooruSwap = nil
+end
+
+---------------------------------------------------------------------------
+-- PASSIVE: CALAMITY (and M1 hits on cursed enemies). Started once by
+-- TuskService for everyone playing Tooru, players and NPCs alike.
+---------------------------------------------------------------------------
+local started = false
+function Tooru.Init(S)
+	if started then
+		return
+	end
+	started = true
+	local p = cfg.Passive
+	local nextFor = setmetatable({}, { __mode = "k" })
+	local function passiveTick()
+		local t = now()
+		for player, state in pairs(S.States) do
+			if state.Act == ACT then
+				local char, _, r = S.Adapter.getAlive(player)
+				if r and not char:GetAttribute("TimeStopped") then
+					for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, p.Range, 8)) do
+						local tr = target:FindFirstChild("HumanoidRootPart")
+						if tr and t >= (nextFor[target] or 0) and flat(tr.Position - r.Position).Magnitude > p.MinDistance and pursuing(target, r, p.ApproachSpeed) then
+							nextFor[target] = t + p.Every
+							local spot = tr.Position + flat(tr.AssemblyLinearVelocity) * FALL_TIME * 0.8
+							fall(S, player, Moves.groundBelow(spot, { target }), p.Radius, { Damage = p.Damage, Stun = p.Stun, Knockback = p.Knockback, Source = "TooruPassive" }, target)
+						end
+					end
+				end
+			end
+		end
+	end
+	task.spawn(function()
+		while true do
+			task.wait(0.25)
+			local ok, err = pcall(passiveTick)
+			if not ok then
+				warn("[Tooru] passive: " .. tostring(err))
+			end
+		end
+	end)
+	-- His M1 on a cursed enemy: something comes down on them too.
+	local bonusNext = setmetatable({}, { __mode = "k" })
+	S.Adapter.on("Hit", function(attackerPlayer, target, _, info)
+		local b = cfg.M1.CursedBonus
+		if not b or not info or info.Source ~= "TuskM1" or not attackerPlayer or not target then
+			return
+		end
+		local state = S.States[attackerPlayer]
+		if not state or state.Act ~= ACT or (target:GetAttribute("CalamityCurseUntil") or 0) <= now() then
+			return
+		end
+		if (bonusNext[target] or 0) > now() then
+			return
+		end
+		bonusNext[target] = now() + b.Every
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			fall(S, attackerPlayer, Moves.groundBelow(tr.Position, { target }), 4.5, { Damage = b.Damage, Stun = b.Stun, Knockback = 4, Source = "TooruCurse" }, target)
+		end
+	end)
 end
 
 return Tooru
