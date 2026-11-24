@@ -2085,10 +2085,21 @@ TuskConfig.Corpse = {
 	RetrieveReward = 120,
 	RetrieveRewards = { Heart = 200, Head = 200 },
 	Move = { Cooldown = 20 }, -- the CORPSE MOVE (each character's own; see CorpseMoves)
+	-- ALL 8 PARTS: the holder glows gold, everyone is told, and V becomes
+	-- THE SAINT'S MIRACLE (one use): can't be hit, healed to full, pillars of
+	-- light strike every enemy in range in waves, a final blast; then the
+	-- corpse leaves them and every part scatters back across the desert.
+	Miracle = {
+		Windup = 1.5, Range = 70,
+		Waves = 5, WaveEvery = 0.6, Damage = 12, Stun = 0.8,
+		FinalRadius = 22, FinalDamage = 20, FinalKnockback = 60, FinalLaunch = 40,
+	},
+	CompleteBounty = 500, -- extra on the board for whoever holds all of it
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
 		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING",
+		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }
 

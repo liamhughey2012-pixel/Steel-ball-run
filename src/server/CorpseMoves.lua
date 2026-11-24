@@ -15,6 +15,8 @@
 	  Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow
 	  Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit
 	  Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse
+	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
+	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
 ]]
 
@@ -261,6 +263,53 @@ USE.Valentine = function(S, player, state, character, root)
 	end)
 end
 
+-- THE SAINT'S MIRACLE: only with the complete corpse (all 8 parts).
+local function miracle(S, player, state, character, root)
+	local m = TuskConfig.Corpse.Miracle
+	local _, humanoid = S.Adapter.getAlive(player)
+	local center = root.Position
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	S.lock(state, m.Windup + m.Waves * m.WaveEvery + 0.5)
+	character:SetAttribute(iframes, true)
+	character:SetAttribute("Armored", true)
+	humanoid.Health = humanoid.MaxHealth
+	fx({ Character = character, Who = "Miracle", Phase = "Start", Position = center, Windup = m.Windup, Range = m.Range, Time = m.Windup + m.Waves * m.WaveEvery })
+	for w = 1, m.Waves do
+		task.delay(m.Windup + (w - 1) * m.WaveEvery, function()
+			local char, _, r = S.Adapter.getAlive(player)
+			if not r then
+				return
+			end
+			local struck = {}
+			for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, m.Range, 16)) do
+				local tr = target:FindFirstChild("HumanoidRootPart")
+				if tr and S.hit(player, target, { Damage = m.Damage, Stun = m.Stun, Knockback = 0, Direction = Vector3.new(0, -1, 0), Position = tr.Position, Source = "CorpseMiracle" }) then
+					table.insert(struck, tr.Position)
+				end
+			end
+			fx({ Character = char, Who = "Miracle", Phase = "Pillars", Positions = struck, Wave = w })
+		end)
+	end
+	task.delay(m.Windup + m.Waves * m.WaveEvery, function()
+		if character.Parent then
+			character:SetAttribute(iframes, nil)
+			character:SetAttribute("Armored", nil)
+		end
+		local _, _, r = S.Adapter.getAlive(player)
+		if r then
+			around(S, player, r.Position, m.FinalRadius, { Damage = m.FinalDamage, Stun = 0.9, Knockback = m.FinalKnockback, Launch = m.FinalLaunch, Source = "CorpseMiracle" })
+			fx({ Character = character, Who = "Miracle", Phase = "Burst", Position = r.Position, Radius = m.FinalRadius })
+		end
+		-- The corpse leaves them: every part goes back out into the desert.
+		local ok, Corpse = pcall(function()
+			return require(script.Parent.CorpseService)
+		end)
+		if ok and Corpse then
+			Corpse.release(player)
+		end
+	end)
+end
+
 function CorpseMoves.use(S, player, state, aim, cfg)
 	local character, _, root = S.Adapter.getAlive(player)
 	if not character or not state.Act or S.isBusy(state) or state.Charging or not S.Adapter.canAct(player) then
@@ -268,6 +317,10 @@ function CorpseMoves.use(S, player, state, aim, cfg)
 	end
 	if (character:GetAttribute("CorpseReadyAt") or 0) > now() then
 		S.tell(player, "Denied", { Reason = "Cooldown" })
+		return
+	end
+	if character:GetAttribute("CorpseComplete") then
+		miracle(S, player, state, character, root)
 		return
 	end
 	local who = Registry.characterOf(state.Act)

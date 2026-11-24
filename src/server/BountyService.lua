@@ -229,6 +229,9 @@ local function listBounties(viewer)
 			local corpse = TuskConfig.Corpse or {}
 			local parts = p.Character:GetAttribute("CorpseParts")
 			local bonus, names = 0, {}
+			if p.Character:GetAttribute("CorpseComplete") then
+				bonus = bonus + (corpse.CompleteBounty or 500)
+			end
 			for id in string.gmatch(parts or "", "[^,]+") do
 				bonus = bonus + ((corpse.BigParts or {})[id] or corpse.PartBounty or 40)
 				for _, info in ipairs(corpse.Parts or {}) do
@@ -255,6 +258,9 @@ local function listBounties(viewer)
 			-- NPCs carrying corpse parts are worth more too.
 			local corpse = TuskConfig.Corpse or {}
 			local bonus, names = 0, {}
+			if model:GetAttribute("CorpseComplete") then
+				bonus = bonus + (corpse.CompleteBounty or 500)
+			end
 			for id in string.gmatch(model:GetAttribute("CorpseParts") or "", "[^,]+") do
 				bonus = bonus + ((corpse.BigParts or {})[id] or corpse.PartBounty or 40)
 				for _, info in ipairs(corpse.Parts or {}) do

@@ -346,6 +346,7 @@ local function apply(player)
 	end
 	local any = #ids > 0
 	character:SetAttribute("CorpseParts", any and table.concat(ids, ",") or nil)
+	character:SetAttribute("CorpseComplete", (#ids >= #cfg.Parts) or nil)
 	character:SetAttribute("CorpseDamage", sum.Damage > 0 and 1 + sum.Damage or nil)
 	character:SetAttribute("CorpseResist", sum.Resist > 0 and math.max(0.5, 1 - sum.Resist) or nil)
 	character:SetAttribute("CorpseCooldown", sum.Cooldown > 0 and math.max(0.5, 1 - sum.Cooldown) or nil)
@@ -383,6 +384,10 @@ function collect(player, id)
 	WorldFX:FireAllClients("CorpseTaken", { Player = player.UserId, Name = player.DisplayName, Part = id, Position = root.Position })
 	for _, fn in ipairs(CorpseService.OnTaken) do
 		task.spawn(fn, player, id)
+	end
+	-- All of it: everyone hears about it.
+	if #held[player].Ids >= #cfg.Parts then
+		WorldFX:FireAllClients("CorpseComplete", { Player = player.UserId, Name = player.DisplayName, Character = character })
 	end
 end
 
@@ -423,6 +428,22 @@ local function dropAll(player, position)
 			CorpseService.scatter(id)
 		end
 	end
+end
+
+-- After THE SAINT'S MIRACLE: the corpse leaves them; every part scatters.
+function CorpseService.release(player)
+	local h = held[player]
+	if not h then
+		return
+	end
+	local ids = h.Ids
+	h.Ids = {}
+	apply(player)
+	held[player] = nil
+	for _, id in ipairs(ids) do
+		CorpseService.scatter(id)
+	end
+	WorldFX:FireAllClients("CorpseScattered", { Name = player.DisplayName })
 end
 
 -- For Stand-user NPCs (StandBots): take a part, and drop theirs when they die.

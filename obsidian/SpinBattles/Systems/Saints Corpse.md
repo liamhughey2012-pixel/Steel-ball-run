@@ -74,3 +74,15 @@ Server: `CorpseService` (relics, pickup, boosts, drops) and `CorpseMoves` (each 
 
 ![[corpse_relics_1.png]]
 ![[corpse_relics_2.png]]
+
+## The complete corpse: THE SAINT'S MIRACLE (2026-11-24)
+- **Hold all 8 parts** and you have the complete Saint's Corpse:
+  - the **whole server is told** in a banner ("NAME HAS THE COMPLETE SAINT'S CORPSE!");
+  - a **gold halo** floats over you, with golden motes;
+  - your panel turns gold;
+  - your bounty gets **+$500** on top of the part bonuses (`CompleteBounty`). NPCs count too.
+- **V becomes THE SAINT'S MIRACLE** (any character, one use; `TuskConfig.Corpse.Miracle`):
+  1. You can't be hit and you're **healed to full**. A giant golden halo forms high above you, a column of light falls, and the sky turns gold for everyone in range.
+  2. **Pillars of light strike every enemy within 70 studs**: 5 waves, 0.6 s apart, 12 each.
+  3. A **final blast** (22 studs, 20 damage, a huge launch).
+  4. Then **the corpse leaves you**: every part scatters back across the desert ("The Saint's Corpse scatters across the desert!") for the next hunt.
