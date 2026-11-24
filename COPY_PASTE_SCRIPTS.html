@@ -16,7 +16,7 @@ pre{background:var(--code);border:1px solid var(--line);border-radius:8px;paddin
 .empty{color:var(--muted);margin:0}.card,.head>div{min-width:0;overflow-wrap:anywhere}pre{max-width:100%}code{word-break:break-all}.tip{border-left:4px solid var(--accent);background:var(--panel);padding:10px 14px;border-radius:0 10px 10px 0}
 </style></head><body><main>
 <h1>Spin Battlegrounds: copy-paste scripts</h1>
-<p class="lead">93 steps. Create each object <b>in this order</b>, with the exact name and type, then press <b>Copy code</b> and paste it into the script.</p>
+<p class="lead">96 steps. Create each object <b>in this order</b>, with the exact name and type, then press <b>Copy code</b> and paste it into the script.</p>
 <div class="tip">How: right-click the place in Explorer › <b>Insert Object</b> › choose the type › rename it exactly. Scripts that go "inside" another script: right-click that script and insert there. <b>Folder</b> steps have no code.</div>
 <section class="card" id="s1">
 <div class="head"><span class="num">1</span><div><h2>SpinShared <span class="badge folder">Folder</span></h2>
@@ -1308,7 +1308,7 @@ end
 return TuskActRegistry
 </pre></details></section><section class="card" id="s10">
 <div class="head"><span class="num">10</span><div><h2>TuskConfig <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="10">Copy code</button><details><summary>Show code (819 lines)</summary><pre id="c10">--[[
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="10">Copy code</button><details><summary>Show code (858 lines)</summary><pre id="c10">--[[
 	TuskConfig  (ReplicatedStorage.SpinShared.TuskConfig)
 
 	Every tunable number for Tusk. The server uses it for damage, timing,
@@ -1331,6 +1331,7 @@ TuskConfig.Keys = {
 	ActMenu = { Keyboard = Enum.KeyCode.T, Gamepad = Enum.KeyCode.DPadDown },
 	Block = { Keyboard = Enum.KeyCode.F, Gamepad = Enum.KeyCode.ButtonL2 }, -- hold
 	Dash = { Keyboard = Enum.KeyCode.Q, Gamepad = Enum.KeyCode.ButtonR2 },
+	CorpseMove = { Keyboard = Enum.KeyCode.V, Gamepad = Enum.KeyCode.DPadRight }, -- needs a corpse part
 }
 
 ---------------------------------------------------------------------------
@@ -2061,6 +2062,44 @@ TuskConfig.Gyro = {
 -- Sound ids. Upload assets/audio/tusk_*.ogg (Creator Hub &gt; Asset Manager)
 -- and paste &quot;rbxassetid://...&quot; here. Empty string = silent.
 ---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+-- SAINT&#x27;S CORPSE: parts lie around the map. Take one (E) for a boost that
+-- lasts until you die (then it drops where you fell). Holding any part
+-- unlocks your character&#x27;s CORPSE MOVE (V). Holders are worth more on the
+-- bounty board, the Heart and the Head most of all.
+---------------------------------------------------------------------------
+TuskConfig.Corpse = {
+	Enabled = true,
+	DropDespawn = 60, -- a dropped part nobody takes moves to a new spot after this long
+	-- Each part exists once. Buff: Damage / Resist / Cooldown / UltGain (fractions),
+	-- Speed (fraction), MaxHealth (points).
+	Parts = {
+		{ Id = &quot;Heart&quot;, Name = &quot;HEART&quot;, Buff = &quot;MaxHealth&quot;, Amount = 25, Text = &quot;+25 max HP&quot; },
+		{ Id = &quot;Head&quot;, Name = &quot;HEAD&quot;, Buff = &quot;Damage&quot;, Amount = 0.12, Text = &quot;+12% damage&quot; },
+		{ Id = &quot;LeftArm&quot;, Name = &quot;LEFT ARM&quot;, Buff = &quot;Damage&quot;, Amount = 0.08, Text = &quot;+8% damage&quot; },
+		{ Id = &quot;RightArm&quot;, Name = &quot;RIGHT ARM&quot;, Buff = &quot;Damage&quot;, Amount = 0.08, Text = &quot;+8% damage&quot; },
+		{ Id = &quot;Spine&quot;, Name = &quot;SPINE&quot;, Buff = &quot;Resist&quot;, Amount = 0.1, Text = &quot;-10% damage taken&quot; },
+		{ Id = &quot;Eyes&quot;, Name = &quot;EYES&quot;, Buff = &quot;Cooldown&quot;, Amount = 0.12, Text = &quot;abilities recharge 12% faster&quot; },
+		{ Id = &quot;Ears&quot;, Name = &quot;EARS&quot;, Buff = &quot;UltGain&quot;, Amount = 0.25, Text = &quot;+25% ultimate charge&quot; },
+		{ Id = &quot;Legs&quot;, Name = &quot;LEGS&quot;, Buff = &quot;Speed&quot;, Amount = 0.12, Text = &quot;+12% speed&quot; },
+	},
+	-- Where parts can lie (offsets from the map&#x27;s origin; snapped to the ground).
+	Spots = {
+		Vector3.new(-150, 0, -30), Vector3.new(-290, 0, -300), Vector3.new(-190, 0, 245), Vector3.new(150, 0, 232),
+		Vector3.new(300, 0, 20), Vector3.new(40, 0, -262), Vector3.new(-20, 0, -395), Vector3.new(210, 0, -190),
+		Vector3.new(370, 0, -370), Vector3.new(-410, 0, 10), Vector3.new(100, 0, -120), Vector3.new(-120, 0, 120),
+	},
+	-- Bounties: holders are worth more; these parts most of all.
+	PartBounty = 40, -- each part adds this to their price
+	BigParts = { Heart = 150, Head = 150 }, -- ...or this, for these
+	Move = { Cooldown = 20 }, -- the CORPSE MOVE (each character&#x27;s own; see CorpseMoves)
+	MoveNames = {
+		Johnny = &quot;GOLDEN SPIN NAIL&quot;, Gyro = &quot;GOLDEN RECTANGLE&quot;, Diego = &quot;DINOSAUR CRASH&quot;, PorkPie = &quot;HOOK HARVEST&quot;,
+		Sandman = &quot;SOUND BARRIER&quot;, MountainTim = &quot;LASSO CYCLONE&quot;, HotPants = &quot;FLESH COCOON&quot;, Blackmore = &quot;RAIN CURTAIN&quot;,
+		Axl = &quot;GUILT FLOOD&quot;, Valentine = &quot;CORPSE BLESSING&quot;,
+	},
+}
+
 ---------------------------------------------------------------------------
 -- Weather: it rains for a while every few minutes (the whole server).
 ---------------------------------------------------------------------------
@@ -3547,7 +3586,7 @@ end
 return WreckingBallModel
 </pre></details></section><section class="card" id="s14">
 <div class="head"><span class="num">14</span><div><h2>SpinServer <span class="badge server">Script</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService</b></p></div></div><button class="copy" data-i="14">Copy code</button><details><summary>Show code (48 lines)</summary><pre id="c14">--[[
+<p class="loc">Put it in: <b>ServerScriptService</b></p></div></div><button class="copy" data-i="14">Copy code</button><details><summary>Show code (50 lines)</summary><pre id="c14">--[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
 	Boots every server system: characters (Johnny/Tusk, Gyro/Ball Breaker,
 	Diego/Scary Monsters, Pork Pie Hat Kid/Wired, Sandman/In a Silent Way),
@@ -3573,6 +3612,7 @@ local ValentineOutfit = require(script.ValentineOutfit)
 local StandBots = require(script.StandBots)
 local BountyService = require(script.BountyService)
 local WeatherService = require(script.WeatherService)
+local CorpseService = require(script.CorpseService)
 
 -- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
@@ -3592,6 +3632,7 @@ ValentineOutfit.init()
 StandBots.init(TuskService)
 BountyService.init()
 WeatherService.init()
+CorpseService.init(TuskService)
 NPCService.init()
 TestDummies.init()
 </pre></details></section><section class="card" id="s15">
@@ -4153,7 +4194,7 @@ end
 return BlackmoreOutfit
 </pre></details></section><section class="card" id="s17">
 <div class="head"><span class="num">17</span><div><h2>BountyService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="17">Copy code</button><details><summary>Show code (445 lines)</summary><pre id="c17">--[[
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="17">Copy code</button><details><summary>Show code (458 lines)</summary><pre id="c17">--[[
 	BountyService  (ServerScriptService.SpinServer.BountyService)
 
 	The BOUNTY BOARD by the spawn (owner&#x27;s design):
@@ -4342,14 +4383,27 @@ local function listBounties(viewer)
 	for _, p in ipairs(Players:GetPlayers()) do
 		if p ~= viewer and aliveModel(p.Character) then
 			local streak = p:GetAttribute(&quot;KillStreak&quot;) or 0
+			-- Saint&#x27;s Corpse holders are worth more (the Heart and Head most of all).
+			local corpse = TuskConfig.Corpse or {}
+			local parts = p.Character:GetAttribute(&quot;CorpseParts&quot;)
+			local bonus, names = 0, {}
+			for id in string.gmatch(parts or &quot;&quot;, &quot;[^,]+&quot;) do
+				bonus = bonus + ((corpse.BigParts or {})[id] or corpse.PartBounty or 40)
+				for _, info in ipairs(corpse.Parts or {}) do
+					if info.Id == id then
+						table.insert(names, info.Name)
+					end
+				end
+			end
 			table.insert(list, {
 				Key = &quot;P&quot; .. p.UserId,
 				Kind = &quot;Player&quot;,
 				UserId = p.UserId,
 				Name = p.DisplayName,
-				Reward = (cfg.BaseReward or 100) + streak * (cfg.StreakReward or 50),
+				Reward = (cfg.BaseReward or 100) + streak * (cfg.StreakReward or 50) + bonus,
 				Streak = streak,
 				Act = p.Character:GetAttribute(&quot;TuskAct&quot;),
+				Corpse = #names &gt; 0 and table.concat(names, &quot;, &quot;) or nil,
 			})
 		end
 	end
@@ -4380,7 +4434,7 @@ local function send(player, kind, data)
 end
 
 local function publicBounty(b)
-	return { Key = b.Key, Kind = b.Kind, UserId = b.UserId, Model = b.Model, Name = b.Name, Reward = b.Reward, Expires = b.Expires, Act = b.Act }
+	return { Key = b.Key, Kind = b.Kind, UserId = b.UserId, Model = b.Model, Name = b.Name, Reward = b.Reward, Expires = b.Expires, Act = b.Act, Corpse = b.Corpse }
 end
 
 local function accept(player, key)
@@ -4599,7 +4653,7 @@ end
 return BountyService
 </pre></details></section><section class="card" id="s18">
 <div class="head"><span class="num">18</span><div><h2>CombatAdapter <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="18">Copy code</button><details><summary>Show code (325 lines)</summary><pre id="c18">--[[
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="18">Copy code</button><details><summary>Show code (331 lines)</summary><pre id="c18">--[[
 	CombatAdapter  (ServerScriptService.SpinServer.CombatAdapter)
 
 	THE ONE PLACE the Spin system touches combat. If SPIN BATTLEGROUNDS
@@ -4881,6 +4935,12 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	end
 
 	local damage = info.Damage * (blocked and s.BlockDamageMultiplier or 1)
+	-- Saint&#x27;s Corpse boosts: the attacker&#x27;s damage, the target&#x27;s resistance.
+	local attackerCharacter = attackerPlayer and attackerPlayer.Character
+	if attackerCharacter then
+		damage = damage * (attackerCharacter:GetAttribute(&quot;CorpseDamage&quot;) or 1)
+	end
+	damage = damage * (targetCharacter:GetAttribute(&quot;CorpseResist&quot;) or 1)
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
 
 	-- Who hit them last (kill credit for bounties and kill streaks).
@@ -4970,8 +5030,643 @@ end)
 
 return CooldownService
 </pre></details></section><section class="card" id="s20">
-<div class="head"><span class="num">20</span><div><h2>DefenseService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="20">Copy code</button><details><summary>Show code (158 lines)</summary><pre id="c20">--[[
+<div class="head"><span class="num">20</span><div><h2>CorpseMoves <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="20">Copy code</button><details><summary>Show code (285 lines)</summary><pre id="c20">--[[
+	CorpseMoves  (ServerScriptService.SpinServer.CorpseMoves)
+
+	Every character&#x27;s CORPSE MOVE (V), unlocked while holding a Saint&#x27;s
+	Corpse part. One shared cooldown (TuskConfig.Corpse.Move.Cooldown); the
+	ready time is the character attribute CorpseReadyAt (server time) for
+	the HUD. Visuals: CorpseClient, from WorldFX &quot;CorpseMove&quot;.
+	  Johnny       GOLDEN SPIN NAIL: a huge golden spinning nail
+	  Gyro         GOLDEN RECTANGLE: a spinning shockwave straight ahead
+	  Diego        DINOSAUR CRASH: leaps to the aim point and slams down
+	  Pork Pie     HOOK HARVEST: hooks yank everyone round him in
+	  Sandman      SOUND BARRIER: dashes through enemies, then a blast
+	  Mountain Tim LASSO CYCLONE: a spinning lasso pulls everyone in
+	  Hot Pants    FLESH COCOON: heals and armours herself, then a burst
+	  Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow
+	  Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit
+	  Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse
+	All damage goes through S.hit (CombatAdapter).
+]]
+
+local Shared = game:GetService(&quot;ReplicatedStorage&quot;):WaitForChild(&quot;SpinShared&quot;)
+local Registry = require(Shared.TuskActRegistry)
+local Net = require(Shared.Net)
+local Moves = require(script.Parent.TuskMoves)
+
+local CorpseMoves = {}
+
+local TuskConfig = require(Shared.TuskConfig)
+CorpseMoves.Names = TuskConfig.Corpse.MoveNames
+
+local WorldFX
+local function fx(data)
+	WorldFX = WorldFX or Net.get(&quot;WorldFX&quot;)
+	WorldFX:FireAllClients(&quot;CorpseMove&quot;, data)
+end
+
+local function now()
+	return workspace:GetServerTimeNow()
+end
+
+local function slow(S, target, key, multiplier, seconds)
+	local humanoid = target:FindFirstChildOfClass(&quot;Humanoid&quot;)
+	if not humanoid then
+		return
+	end
+	S.Adapter.setMoveModifier(humanoid, key, multiplier)
+	local token = tostring({})
+	target:SetAttribute(key .. &quot;Token&quot;, token)
+	task.delay(seconds, function()
+		if humanoid.Parent and target:GetAttribute(key .. &quot;Token&quot;) == token then
+			S.Adapter.setMoveModifier(humanoid, key, nil)
+			target:SetAttribute(key .. &quot;Token&quot;, nil)
+		end
+	end)
+end
+
+-- Everyone in range (pulled toward `center` when pull is set).
+local function around(S, player, center, radius, info, pull)
+	local character = player.Character
+	local count = 0
+	for _, target in ipairs(S.Hitbox.inRadius(character, center, radius, 8)) do
+		local tr = target:FindFirstChild(&quot;HumanoidRootPart&quot;)
+		if tr then
+			local hitInfo = table.clone(info)
+			hitInfo.Position = tr.Position
+			hitInfo.Direction = pull and (center - tr.Position) or (tr.Position - center)
+			if S.hit(player, target, hitInfo) then
+				count = count + 1
+			end
+		end
+	end
+	return count
+end
+
+local USE = {}
+
+USE.Johnny = function(S, player, state, character, root, aim)
+	local dir = S.aim(aim, root)
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = &quot;Johnny&quot;, Phase = &quot;Cast&quot;, Direction = dir })
+	task.delay(0.2, function()
+		local char, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		Moves.nail(S, player, state, {
+			Origin = S.origin(char, r, Moves.HAND), Direction = dir, Speed = 210, Radius = 1.7, Range = 220,
+			Style = &quot;Spinning&quot;, Charge = 1, Damage = 15, Stun = 0.6, Knockback = 45, Launch = 12, Source = &quot;CorpseNail&quot;,
+		})
+	end)
+end
+
+USE.Gyro = function(S, player, state, character, root, aim)
+	local dir = Moves.flat(S.aim(aim, root))
+	S.lock(state, 0.5)
+	fx({ Character = character, Who = &quot;Gyro&quot;, Phase = &quot;Cast&quot;, Position = root.Position, Direction = dir, Length = 34 })
+	task.delay(0.25, function()
+		local _, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		local mid = r.Position + dir * 17
+		Moves.boxHit(S, player, CFrame.lookAt(mid, mid + dir), Vector3.new(7, 7, 34), { Damage = 13, Stun = 0.7, Knockback = 35, Launch = 16, Direction = dir, Source = &quot;CorpseSpin&quot; }, 6)
+	end)
+end
+
+USE.Diego = function(S, player, state, character, root, aim)
+	local dir = Moves.flat(S.aim(aim, root))
+	local to = Moves.safeStep(character, root, dir, 30) or root.Position
+	S.lock(state, 0.7)
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	character:SetAttribute(iframes, true)
+	fx({ Character = character, Who = &quot;Diego&quot;, Phase = &quot;Leap&quot;, From = root.Position, To = to, Time = 0.45 })
+	task.delay(0.45, function()
+		character:SetAttribute(iframes, nil)
+		local char, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		char:PivotTo(CFrame.lookAt(to, to + dir))
+		around(S, player, to, 10, { Damage = 12, Stun = 0.7, Knockback = 30, Launch = 18, Source = &quot;CorpseCrash&quot; })
+		fx({ Character = char, Who = &quot;Diego&quot;, Phase = &quot;Slam&quot;, Position = to, Radius = 10 })
+	end)
+end
+
+USE.PorkPie = function(S, player, state, character, root)
+	S.lock(state, 0.5)
+	fx({ Character = character, Who = &quot;PorkPie&quot;, Phase = &quot;Cast&quot;, Position = root.Position, Radius = 20 })
+	task.delay(0.3, function()
+		local _, _, r = S.Adapter.getAlive(player)
+		if r then
+			around(S, player, r.Position, 20, { Damage = 11, Stun = 1.0, Knockback = 45, Source = &quot;CorpseHooks&quot; }, true)
+		end
+	end)
+end
+
+USE.Sandman = function(S, player, state, character, root, aim)
+	local dir = Moves.flat(S.aim(aim, root))
+	local to = Moves.safeStep(character, root, dir, 36)
+	if not to then
+		S.tell(player, &quot;Denied&quot;, { Reason = &quot;Blocked&quot; })
+		return false
+	end
+	local from = root.Position
+	S.lock(state, 0.5)
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	character:SetAttribute(iframes, true)
+	fx({ Character = character, Who = &quot;Sandman&quot;, Phase = &quot;Dash&quot;, From = from, To = to })
+	task.delay(0.2, function()
+		character:SetAttribute(iframes, nil)
+		local char, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		char:PivotTo(CFrame.lookAt(to, to + dir))
+		local mid = (from + to) / 2
+		Moves.boxHit(S, player, CFrame.lookAt(mid, to), Vector3.new(7, 7, (to - from).Magnitude + 2), { Damage = 9, Stun = 0.6, Knockback = 10, Direction = dir, Source = &quot;CorpseSound&quot; }, 6)
+		task.delay(0.45, function()
+			around(S, player, mid, 9, { Damage = 6, Stun = 0.6, Knockback = 30, Launch = 18, Source = &quot;CorpseSound&quot; })
+			fx({ Character = char, Who = &quot;Sandman&quot;, Phase = &quot;Boom&quot;, Position = mid })
+		end)
+	end)
+end
+
+USE.MountainTim = function(S, player, state, character, root)
+	S.lock(state, 0.8)
+	fx({ Character = character, Who = &quot;MountainTim&quot;, Phase = &quot;Spin&quot;, Position = root.Position, Radius = 14, Time = 0.8 })
+	for i = 1, 3 do
+		task.delay(i * 0.25, function()
+			local _, _, r = S.Adapter.getAlive(player)
+			if r then
+				around(S, player, r.Position, 14, { Damage = 4, Stun = 0.5, Knockback = 25, Source = &quot;CorpseLasso&quot; }, true)
+			end
+		end)
+	end
+end
+
+USE.HotPants = function(S, player, state, character, root)
+	local _, humanoid = S.Adapter.getAlive(player)
+	S.lock(state, 0.5)
+	character:SetAttribute(&quot;Armored&quot;, true)
+	fx({ Character = character, Who = &quot;HotPants&quot;, Phase = &quot;Cocoon&quot;, Position = root.Position, Time = 2 })
+	for i = 1, 5 do
+		task.delay(i * 0.3, function()
+			if humanoid.Parent and humanoid.Health &gt; 0 then
+				humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + 6)
+			end
+		end)
+	end
+	task.delay(2, function()
+		if character.Parent then
+			character:SetAttribute(&quot;Armored&quot;, nil)
+		end
+		local _, _, r = S.Adapter.getAlive(player)
+		if r then
+			around(S, player, r.Position, 9, { Damage = 7, Stun = 0.6, Knockback = 30, Launch = 10, Source = &quot;CorpseFlesh&quot; })
+			fx({ Character = character, Who = &quot;HotPants&quot;, Phase = &quot;Burst&quot;, Position = r.Position })
+		end
+	end)
+end
+
+USE.Blackmore = function(S, player, state, character, root, aim)
+	local dir = Moves.flat(S.aim(aim, root))
+	S.lock(state, 0.5)
+	fx({ Character = character, Who = &quot;Blackmore&quot;, Phase = &quot;Curtain&quot;, Position = root.Position, Direction = dir, Range = 26, Cone = 70 })
+	task.delay(0.3, function()
+		local char, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		local cosLimit = math.cos(math.rad(35))
+		for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, 26, 8)) do
+			local tr = target:FindFirstChild(&quot;HumanoidRootPart&quot;)
+			local off = tr and Vector3.new(tr.Position.X - r.Position.X, 0, tr.Position.Z - r.Position.Z)
+			if tr and (off.Magnitude &lt; 1 or off.Unit:Dot(dir) &gt;= cosLimit) then
+				if S.hit(player, target, { Damage = 12, Stun = 0.6, Knockback = 12, Direction = dir, Position = tr.Position, Source = &quot;CorpseRain&quot; }) then
+					slow(S, target, &quot;CorpseRain&quot;, 0.6, 2)
+				end
+			end
+		end
+	end)
+end
+
+USE.Axl = function(S, player, state, character, root)
+	S.lock(state, 0.5)
+	fx({ Character = character, Who = &quot;Axl&quot;, Phase = &quot;Flood&quot;, Position = root.Position, Radius = 22 })
+	task.delay(0.3, function()
+		local char, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, 22, 8)) do
+			local tr = target:FindFirstChild(&quot;HumanoidRootPart&quot;)
+			if tr and S.hit(player, target, { Damage = 8, Stun = 0.6, Knockback = 8, Direction = tr.Position - r.Position, Position = tr.Position, Source = &quot;CorpseGuilt&quot; }) then
+				-- +2 guilt (the same stacks Axl&#x27;s moves feed on).
+				local g = math.min(5, (target:GetAttribute(&quot;Guilt&quot;) or 0) + 2)
+				target:SetAttribute(&quot;Guilt&quot;, g)
+				target:SetAttribute(&quot;GuiltAt&quot;, os.clock())
+				S.fx(&quot;Ability&quot;, { Act = 12, Move = &quot;Guilt&quot;, Phase = &quot;Mark&quot;, Target = target, Stacks = g })
+			end
+		end
+	end)
+end
+
+USE.Valentine = function(S, player, state, character, root)
+	local _, humanoid = S.Adapter.getAlive(player)
+	S.lock(state, 0.3)
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	character:SetAttribute(iframes, true)
+	humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + 15)
+	fx({ Character = character, Who = &quot;Valentine&quot;, Phase = &quot;Bless&quot;, Position = root.Position, Time = 2.5 })
+	task.delay(2.5, function()
+		if character.Parent then
+			character:SetAttribute(iframes, nil)
+		end
+		local _, _, r = S.Adapter.getAlive(player)
+		if r then
+			around(S, player, r.Position, 12, { Damage = 9, Stun = 0.6, Knockback = 35, Source = &quot;CorpseLight&quot; })
+			fx({ Character = character, Who = &quot;Valentine&quot;, Phase = &quot;Pulse&quot;, Position = r.Position, Radius = 12 })
+		end
+	end)
+end
+
+function CorpseMoves.use(S, player, state, aim, cfg)
+	local character, _, root = S.Adapter.getAlive(player)
+	if not character or not state.Act or S.isBusy(state) or state.Charging or not S.Adapter.canAct(player) then
+		return
+	end
+	if (character:GetAttribute(&quot;CorpseReadyAt&quot;) or 0) &gt; now() then
+		S.tell(player, &quot;Denied&quot;, { Reason = &quot;Cooldown&quot; })
+		return
+	end
+	local who = Registry.characterOf(state.Act)
+	local fn = USE[who]
+	if not fn then
+		return
+	end
+	if fn(S, player, state, character, root, aim) == false then
+		return
+	end
+	character:SetAttribute(&quot;CorpseReadyAt&quot;, now() + (cfg and cfg.Cooldown or 20))
+end
+
+return CorpseMoves
+</pre></details></section><section class="card" id="s21">
+<div class="head"><span class="num">21</span><div><h2>CorpseService <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="21">Copy code</button><details><summary>Show code (348 lines)</summary><pre id="c21">--[[
+	CorpseService  (ServerScriptService.SpinServer.CorpseService)
+
+	SAINT&#x27;S CORPSE. Eight parts (TuskConfig.Corpse.Parts), each existing
+	once, lie around the map: a mummified relic glowing gold with a beam of
+	light you can see from far away. Hold E by one to take it.
+	  * each part gives its own boost until you die (Damage, Resist, Cooldown,
+	    UltGain, Speed, MaxHealth), stacking with any others you hold
+	  * when you die your parts drop where you fell for anyone to grab; one
+	    nobody takes moves to a new random spot after a while
+	  * holding any part unlocks your character&#x27;s CORPSE MOVE (V), see
+	    CorpseMoves
+	  * holders are worth more on the bounty board (BountyService)
+	Boosts are character attributes the combat code reads:
+	  CorpseDamage, CorpseResist, CorpseCooldown, CorpseUltGain (multipliers)
+	  CorpseParts (&quot;Heart,Spine&quot;) for the HUD and the bounty board
+	Clients are told about pickups and drops over WorldFX (&quot;Corpse...&quot;).
+]]
+
+local Players = game:GetService(&quot;Players&quot;)
+local CollectionService = game:GetService(&quot;CollectionService&quot;)
+
+local Shared = game:GetService(&quot;ReplicatedStorage&quot;):WaitForChild(&quot;SpinShared&quot;)
+local TuskConfig = require(Shared.TuskConfig)
+local Net = require(Shared.Net)
+
+local CorpseService = {}
+
+local cfg
+local S -- TuskService
+local folder
+local WorldFX
+local partInfo = {} -- [id] = config entry
+local relics = {} -- [id] = relic model lying in the world
+local held = {} -- [player] = { Ids = { ... }, BaseMax = number }
+local rng = Random.new()
+
+local MUMMY = Color3.fromRGB(122, 90, 60)
+local MUMMY_DARK = Color3.fromRGB(84, 60, 40)
+local WRAP = Color3.fromRGB(222, 204, 164)
+local GLOW = Color3.fromRGB(255, 214, 110)
+
+local function origin()
+	local map = workspace:FindFirstChild(&quot;SBRMap&quot;)
+	return map and map:GetAttribute(&quot;Origin&quot;) or Vector3.new()
+end
+
+local function groundAt(pos)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ex = { folder }
+	for _, m in ipairs(CollectionService:GetTagged(&quot;SpinFighter&quot;)) do
+		table.insert(ex, m)
+	end
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p.Character then
+			table.insert(ex, p.Character)
+		end
+	end
+	params.FilterDescendantsInstances = ex
+	local hit = workspace:Raycast(pos + Vector3.new(0, 200, 0), Vector3.new(0, -400, 0), params)
+	return hit and hit.Position or pos
+end
+
+---------------------------------------------------------------------------
+-- The relics
+---------------------------------------------------------------------------
+local function piece(model, size, cf, color, shape)
+	local p = Instance.new(&quot;Part&quot;)
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Material = Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	if shape then
+		p.Shape = shape
+	end
+	p.Parent = model
+	return p
+end
+
+-- A mummified part, blocky, built round `at` (the floating centre).
+local function shape(model, id, at)
+	local c = CFrame.new(at)
+	if id == &quot;Heart&quot; then
+		piece(model, Vector3.new(1.3, 1.5, 1.1), c * CFrame.Angles(0, 0, 0.3), MUMMY)
+		piece(model, Vector3.new(0.3, 0.6, 0.3), c * CFrame.new(-0.3, 0.9, 0), MUMMY_DARK)
+		piece(model, Vector3.new(0.3, 0.5, 0.3), c * CFrame.new(0.25, 0.85, 0.1), MUMMY_DARK)
+		piece(model, Vector3.new(1.36, 0.16, 1.16), c * CFrame.new(0, -0.2, 0) * CFrame.Angles(0, 0, 0.3), WRAP)
+	elseif id == &quot;Head&quot; then
+		piece(model, Vector3.new(1.3, 1.4, 1.3), c, MUMMY)
+		for _, x in ipairs({ -0.3, 0.3 }) do
+			piece(model, Vector3.new(0.3, 0.3, 0.05), c * CFrame.new(x, 0.15, -0.66), MUMMY_DARK)
+		end
+		piece(model, Vector3.new(0.6, 0.12, 0.05), c * CFrame.new(0, -0.35, -0.66), MUMMY_DARK)
+		piece(model, Vector3.new(1.36, 0.16, 1.36), c * CFrame.new(0, 0.45, 0), WRAP)
+	elseif id == &quot;Spine&quot; then
+		for i = 0, 5 do
+			piece(model, Vector3.new(0.5 + (i % 2) * 0.2, 0.32, 0.4), c * CFrame.new(0, -1 + i * 0.4, 0), i % 2 == 0 and MUMMY or WRAP)
+		end
+	elseif id == &quot;Eyes&quot; then
+		piece(model, Vector3.new(1.6, 0.35, 0.3), c, WRAP)
+		for _, x in ipairs({ -0.4, 0.4 }) do
+			piece(model, Vector3.new(0.45, 0.45, 0.45), c * CFrame.new(x, 0, -0.2), Color3.fromRGB(236, 228, 214), Enum.PartType.Ball)
+			piece(model, Vector3.new(0.2, 0.2, 0.2), c * CFrame.new(x, 0, -0.4), Color3.fromRGB(40, 30, 30), Enum.PartType.Ball)
+		end
+	elseif id == &quot;Ears&quot; then
+		for _, x in ipairs({ -0.45, 0.45 }) do
+			piece(model, Vector3.new(0.2, 1.0, 0.7), c * CFrame.new(x, 0, 0) * CFrame.Angles(0, 0, x * 0.4), MUMMY)
+		end
+		piece(model, Vector3.new(1.2, 0.18, 0.3), c * CFrame.new(0, -0.3, 0), WRAP)
+	elseif id == &quot;Legs&quot; then
+		for _, x in ipairs({ -0.35, 0.35 }) do
+			piece(model, Vector3.new(0.5, 2.4, 0.5), c * CFrame.new(x, 0, 0), MUMMY)
+			piece(model, Vector3.new(0.56, 0.2, 0.56), c * CFrame.new(x, 0.4, 0), WRAP)
+			piece(model, Vector3.new(0.5, 0.3, 0.8), c * CFrame.new(x, -1.2, -0.15), MUMMY_DARK)
+		end
+	else -- LeftArm / RightArm
+		local side = id == &quot;LeftArm&quot; and -1 or 1
+		local arm = c * CFrame.Angles(0, 0, side * 0.3)
+		piece(model, Vector3.new(0.5, 2.2, 0.5), arm, MUMMY)
+		piece(model, Vector3.new(0.56, 0.2, 0.56), arm * CFrame.new(0, 0.5, 0), WRAP)
+		piece(model, Vector3.new(0.6, 0.5, 0.35), arm * CFrame.new(0, -1.3, 0), MUMMY_DARK)
+		for f = -1.5, 1.5 do
+			piece(model, Vector3.new(0.1, 0.4, 0.1), arm * CFrame.new(f * 0.13, -1.7, 0), MUMMY_DARK)
+		end
+	end
+end
+
+local collect -- (defined below)
+
+local function placeRelic(id, position, dropped)
+	local old = relics[id]
+	if old then
+		old:Destroy()
+	end
+	local info = partInfo[id]
+	local ground = groundAt(position)
+	local model = Instance.new(&quot;Model&quot;)
+	model.Name = &quot;Corpse&quot; .. id
+	local holder = piece(model, Vector3.new(3, 3, 3), CFrame.new(ground + Vector3.new(0, 2.5, 0)), GLOW)
+	holder.Name = &quot;Holder&quot;
+	holder.Transparency = 1
+	model.PrimaryPart = holder
+	shape(model, id, ground + Vector3.new(0, 2.5, 0))
+	-- A pillar of light you can see from far away.
+	local beam = piece(model, Vector3.new(60, 1.6, 1.6), CFrame.new(ground + Vector3.new(0, 31, 0)) * CFrame.Angles(0, 0, math.pi / 2), GLOW, Enum.PartType.Cylinder)
+	beam.Name = &quot;Beam&quot;
+	beam.Material = Enum.Material.Neon
+	beam.Transparency = 0.65
+	local light = Instance.new(&quot;PointLight&quot;)
+	light.Color = GLOW
+	light.Range = 14
+	light.Brightness = 1.5
+	light.Parent = holder
+	local highlight = Instance.new(&quot;Highlight&quot;)
+	highlight.FillColor = GLOW
+	highlight.FillTransparency = 0.7
+	highlight.OutlineColor = GLOW
+	highlight.Parent = model
+	local prompt = Instance.new(&quot;ProximityPrompt&quot;)
+	prompt.ActionText = &quot;Take&quot;
+	prompt.ObjectText = &quot;Saint&#x27;s Corpse: &quot; .. info.Name
+	prompt.HoldDuration = 0.6
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = holder
+	prompt.Triggered:Connect(function(player)
+		collect(player, id)
+	end)
+	model:SetAttribute(&quot;PartId&quot;, id)
+	model:SetAttribute(&quot;Dropped&quot;, dropped == true)
+	model.Parent = folder
+	CollectionService:AddTag(model, &quot;SpinCorpse&quot;)
+	relics[id] = model
+	if dropped then
+		-- Nobody takes it: it goes back out into the desert somewhere else.
+		local stamp = os.clock()
+		model:SetAttribute(&quot;DroppedAt&quot;, stamp)
+		task.delay(cfg.DropDespawn or 60, function()
+			if relics[id] == model and model.Parent and model:GetAttribute(&quot;DroppedAt&quot;) == stamp then
+				CorpseService.scatter(id)
+			end
+		end)
+	end
+	return model
+end
+
+-- Put a part on a random spot (not one another part is already on).
+function CorpseService.scatter(id)
+	local used = {}
+	for otherId, m in pairs(relics) do
+		if otherId ~= id and m.Parent then
+			used[m:GetAttribute(&quot;Spot&quot;) or -1] = true
+		end
+	end
+	local free = {}
+	for i = 1, #cfg.Spots do
+		if not used[i] then
+			table.insert(free, i)
+		end
+	end
+	local i = #free &gt; 0 and free[rng:NextInteger(1, #free)] or rng:NextInteger(1, #cfg.Spots)
+	local model = placeRelic(id, origin() + cfg.Spots[i], false)
+	model:SetAttribute(&quot;Spot&quot;, i)
+end
+
+---------------------------------------------------------------------------
+-- Holding parts: boosts
+---------------------------------------------------------------------------
+local function apply(player)
+	local h = held[player]
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass(&quot;Humanoid&quot;)
+	if not character or not humanoid then
+		return
+	end
+	local sum = { Damage = 0, Resist = 0, Cooldown = 0, UltGain = 0, Speed = 0, MaxHealth = 0 }
+	local ids = h and h.Ids or {}
+	for _, id in ipairs(ids) do
+		local info = partInfo[id]
+		if info then
+			sum[info.Buff] = (sum[info.Buff] or 0) + info.Amount
+		end
+	end
+	local any = #ids &gt; 0
+	character:SetAttribute(&quot;CorpseParts&quot;, any and table.concat(ids, &quot;,&quot;) or nil)
+	character:SetAttribute(&quot;CorpseDamage&quot;, sum.Damage &gt; 0 and 1 + sum.Damage or nil)
+	character:SetAttribute(&quot;CorpseResist&quot;, sum.Resist &gt; 0 and math.max(0.5, 1 - sum.Resist) or nil)
+	character:SetAttribute(&quot;CorpseCooldown&quot;, sum.Cooldown &gt; 0 and math.max(0.5, 1 - sum.Cooldown) or nil)
+	character:SetAttribute(&quot;CorpseUltGain&quot;, sum.UltGain &gt; 0 and 1 + sum.UltGain or nil)
+	S.Adapter.setMoveModifier(humanoid, &quot;Corpse&quot;, sum.Speed &gt; 0 and 1 + sum.Speed or nil)
+	if h then
+		h.BaseMax = h.BaseMax or humanoid.MaxHealth
+		local want = h.BaseMax + sum.MaxHealth
+		if humanoid.MaxHealth ~= want then
+			local gained = want - humanoid.MaxHealth
+			humanoid.MaxHealth = want
+			if gained &gt; 0 then
+				humanoid.Health = math.min(want, humanoid.Health + gained)
+			end
+		end
+	end
+end
+
+function collect(player, id)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass(&quot;Humanoid&quot;)
+	local model = relics[id]
+	if not humanoid or humanoid.Health &lt;= 0 or not model or not model.Parent then
+		return
+	end
+	local root = character:FindFirstChild(&quot;HumanoidRootPart&quot;)
+	if not root or (root.Position - model:GetPivot().Position).Magnitude &gt; 14 then
+		return
+	end
+	relics[id] = nil
+	model:Destroy()
+	held[player] = held[player] or { Ids = {} }
+	table.insert(held[player].Ids, id)
+	apply(player)
+	WorldFX:FireAllClients(&quot;CorpseTaken&quot;, { Player = player.UserId, Name = player.DisplayName, Part = id, Position = root.Position })
+end
+
+-- Dies (or leaves): their parts fall where they were.
+local function dropAll(player, position)
+	local h = held[player]
+	held[player] = nil
+	if not h then
+		return
+	end
+	for i, id in ipairs(h.Ids) do
+		if position then
+			local a = i / #h.Ids * math.pi * 2
+			placeRelic(id, position + Vector3.new(math.cos(a) * 3, 0, math.sin(a) * 3), true)
+			WorldFX:FireAllClients(&quot;CorpseDropped&quot;, { Part = id, Position = position, Name = player.DisplayName })
+		else
+			CorpseService.scatter(id)
+		end
+	end
+end
+
+function CorpseService.holding(player)
+	local h = held[player]
+	return h and #h.Ids or 0
+end
+
+local function watch(player, character)
+	local humanoid = character:WaitForChild(&quot;Humanoid&quot;, 10)
+	if not humanoid then
+		return
+	end
+	humanoid.Died:Connect(function()
+		local root = character:FindFirstChild(&quot;HumanoidRootPart&quot;)
+		dropAll(player, root and root.Position or nil)
+	end)
+end
+
+function CorpseService.init(TuskService)
+	cfg = TuskConfig.Corpse
+	if not cfg or cfg.Enabled == false then
+		return
+	end
+	S = TuskService
+	WorldFX = Net.get(&quot;WorldFX&quot;)
+	for _, info in ipairs(cfg.Parts) do
+		partInfo[info.Id] = info
+	end
+	folder = Instance.new(&quot;Folder&quot;)
+	folder.Name = &quot;SaintsCorpse&quot;
+	folder.Parent = workspace
+	for _, info in ipairs(cfg.Parts) do
+		CorpseService.scatter(info.Id)
+	end
+	local function onPlayer(player)
+		player.CharacterAdded:Connect(function(character)
+			watch(player, character)
+		end)
+		if player.Character then
+			task.spawn(watch, player, player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	for _, p in ipairs(Players:GetPlayers()) do
+		onPlayer(p)
+	end
+	Players.PlayerRemoving:Connect(function(player)
+		dropAll(player, nil)
+	end)
+	-- The CORPSE MOVE goes through TuskService&#x27;s request handler.
+	local Moves = require(script.Parent.CorpseMoves)
+	TuskService.CorpseMove = function(player, state, aim)
+		if CorpseService.holding(player) &lt; 1 then
+			TuskService.tell(player, &quot;Denied&quot;, { Reason = &quot;NeedCorpse&quot; })
+			return
+		end
+		Moves.use(TuskService, player, state, aim, cfg.Move)
+	end
+end
+
+return CorpseService
+</pre></details></section><section class="card" id="s22">
+<div class="head"><span class="num">22</span><div><h2>DefenseService <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="22">Copy code</button><details><summary>Show code (158 lines)</summary><pre id="c22">--[[
 	DefenseService  (ServerScriptService.SpinServer.DefenseService)
 
 	BLOCK and DASH for every character (players and Stand-user NPCs).
@@ -5128,9 +5823,9 @@ function DefenseService.init(TuskService)
 end
 
 return DefenseService
-</pre></details></section><section class="card" id="s21">
-<div class="head"><span class="num">21</span><div><h2>DiegoOutfit <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="21">Copy code</button><details><summary>Show code (226 lines)</summary><pre id="c21">--[[
+</pre></details></section><section class="card" id="s23">
+<div class="head"><span class="num">23</span><div><h2>DiegoOutfit <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="23">Copy code</button><details><summary>Show code (226 lines)</summary><pre id="c23">--[[
 	DiegoOutfit  (ServerScriptService.SpinServer.DiegoOutfit)
 
 	Gives a character Diego Brando&#x27;s half-dinosaur look while they play Diego
@@ -5355,9 +6050,9 @@ function DiegoOutfit.init()
 end
 
 return DiegoOutfit
-</pre></details></section><section class="card" id="s22">
-<div class="head"><span class="num">22</span><div><h2>GyroOutfit <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="22">Copy code</button><details><summary>Show code (197 lines)</summary><pre id="c22">--[[
+</pre></details></section><section class="card" id="s24">
+<div class="head"><span class="num">24</span><div><h2>GyroOutfit <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="24">Copy code</button><details><summary>Show code (197 lines)</summary><pre id="c24">--[[
 	GyroOutfit  (ServerScriptService.SpinServer.GyroOutfit)
 
 	Gives a character Gyro Zeppeli&#x27;s hat and hair while they play Gyro
@@ -5553,9 +6248,9 @@ function GyroOutfit.init()
 end
 
 return GyroOutfit
-</pre></details></section><section class="card" id="s23">
-<div class="head"><span class="num">23</span><div><h2>HotPantsOutfit <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="23">Copy code</button><details><summary>Show code (289 lines)</summary><pre id="c23">--[[
+</pre></details></section><section class="card" id="s25">
+<div class="head"><span class="num">25</span><div><h2>HotPantsOutfit <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="25">Copy code</button><details><summary>Show code (289 lines)</summary><pre id="c25">--[[
 	HotPantsOutfit  (ServerScriptService.SpinServer.HotPantsOutfit)
 
 	Gives a character Hot Pants&#x27; look while they play her (TuskAct 10),
@@ -5843,9 +6538,9 @@ function HotPantsOutfit.init()
 end
 
 return HotPantsOutfit
-</pre></details></section><section class="card" id="s24">
-<div class="head"><span class="num">24</span><div><h2>JohnnyOutfit <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="24">Copy code</button><details><summary>Show code (265 lines)</summary><pre id="c24">--[[
+</pre></details></section><section class="card" id="s26">
+<div class="head"><span class="num">26</span><div><h2>JohnnyOutfit <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="26">Copy code</button><details><summary>Show code (265 lines)</summary><pre id="c26">--[[
 	JohnnyOutfit  (ServerScriptService.SpinServer.JohnnyOutfit)
 
 	Gives a character Johnny Joestar&#x27;s look while they play him (Tusk, Acts
@@ -6109,9 +6804,9 @@ function JohnnyOutfit.init()
 end
 
 return JohnnyOutfit
-</pre></details></section><section class="card" id="s25">
-<div class="head"><span class="num">25</span><div><h2>MountainTimOutfit <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="25">Copy code</button><details><summary>Show code (303 lines)</summary><pre id="c25">--[[
+</pre></details></section><section class="card" id="s27">
+<div class="head"><span class="num">27</span><div><h2>MountainTimOutfit <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="27">Copy code</button><details><summary>Show code (303 lines)</summary><pre id="c27">--[[
 	MountainTimOutfit  (ServerScriptService.SpinServer.MountainTimOutfit)
 
 	Gives a character Mountain Tim&#x27;s cowboy look while they play him (TuskAct 9),
@@ -6413,9 +7108,9 @@ function MountainTimOutfit.init()
 end
 
 return MountainTimOutfit
-</pre></details></section><section class="card" id="s26">
-<div class="head"><span class="num">26</span><div><h2>NPCService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="26">Copy code</button><details><summary>Show code (215 lines)</summary><pre id="c26">--[[
+</pre></details></section><section class="card" id="s28">
+<div class="head"><span class="num">28</span><div><h2>NPCService <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="28">Copy code</button><details><summary>Show code (215 lines)</summary><pre id="c28">--[[
 	NPCService  (ServerScriptService.SpinServer.NPCService)
 
 	Turns the markers in workspace.SBRMap.NPCSpawns (made by SBRMapBuilder)
@@ -6629,9 +7324,9 @@ function NPCService.init()
 end
 
 return NPCService
-</pre></details></section><section class="card" id="s27">
-<div class="head"><span class="num">27</span><div><h2>PorkPieOutfit <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="27">Copy code</button><details><summary>Show code (271 lines)</summary><pre id="c27">--[[
+</pre></details></section><section class="card" id="s29">
+<div class="head"><span class="num">29</span><div><h2>PorkPieOutfit <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="29">Copy code</button><details><summary>Show code (271 lines)</summary><pre id="c29">--[[
 	PorkPieOutfit  (ServerScriptService.SpinServer.PorkPieOutfit)
 
 	Gives a character Pork Pie Hat Kid&#x27;s look while they play him (TuskAct 7),
@@ -6901,9 +7596,9 @@ function PorkPieOutfit.init()
 end
 
 return PorkPieOutfit
-</pre></details></section><section class="card" id="s28">
-<div class="head"><span class="num">28</span><div><h2>ProjectileService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="28">Copy code</button><details><summary>Show code (196 lines)</summary><pre id="c28">--[[
+</pre></details></section><section class="card" id="s30">
+<div class="head"><span class="num">30</span><div><h2>ProjectileService <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="30">Copy code</button><details><summary>Show code (196 lines)</summary><pre id="c30">--[[
 	ProjectileService  (ServerScriptService.SpinServer.ProjectileService)
 
 	Server-simulated projectiles. The server owns position, collision and
@@ -7098,9 +7793,9 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return ProjectileService
-</pre></details></section><section class="card" id="s29">
-<div class="head"><span class="num">29</span><div><h2>SandmanOutfit <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="29">Copy code</button><details><summary>Show code (283 lines)</summary><pre id="c29">--[[
+</pre></details></section><section class="card" id="s31">
+<div class="head"><span class="num">31</span><div><h2>SandmanOutfit <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="31">Copy code</button><details><summary>Show code (283 lines)</summary><pre id="c31">--[[
 	SandmanOutfit  (ServerScriptService.SpinServer.SandmanOutfit)
 
 	Gives a character Sandman&#x27;s look while they play him (TuskAct 8), built
@@ -7382,9 +8077,9 @@ function SandmanOutfit.init()
 end
 
 return SandmanOutfit
-</pre></details></section><section class="card" id="s30">
-<div class="head"><span class="num">30</span><div><h2>StandAssetLoader <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="30">Copy code</button><details><summary>Show code (85 lines)</summary><pre id="c30">--[[
+</pre></details></section><section class="card" id="s32">
+<div class="head"><span class="num">32</span><div><h2>StandAssetLoader <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="32">Copy code</button><details><summary>Show code (85 lines)</summary><pre id="c32">--[[
 	StandAssetLoader  (ServerScriptService.SpinServer.StandAssetLoader)
 
 	Loads the Stand models listed in TuskConfig.StandModels (by asset id)
@@ -7468,9 +8163,9 @@ function StandAssetLoader.init()
 end
 
 return StandAssetLoader
-</pre></details></section><section class="card" id="s31">
-<div class="head"><span class="num">31</span><div><h2>StandBots <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="31">Copy code</button><details><summary>Show code (515 lines)</summary><pre id="c31">--[[
+</pre></details></section><section class="card" id="s33">
+<div class="head"><span class="num">33</span><div><h2>StandBots <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="33">Copy code</button><details><summary>Show code (515 lines)</summary><pre id="c33">--[[
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
@@ -7984,9 +8679,9 @@ function StandBots.init(TuskService)
 end
 
 return StandBots
-</pre></details></section><section class="card" id="s32">
-<div class="head"><span class="num">32</span><div><h2>TestDummies <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="32">Copy code</button><details><summary>Show code (165 lines)</summary><pre id="c32">--[[
+</pre></details></section><section class="card" id="s34">
+<div class="head"><span class="num">34</span><div><h2>TestDummies <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="34">Copy code</button><details><summary>Show code (165 lines)</summary><pre id="c34">--[[
 	TestDummies  (ServerScriptService.SpinServer.TestDummies)
 	Studio-only practice targets so Spin can be tested solo.
 	Never runs in a live server (guarded by RunService:IsStudio()).
@@ -8150,11 +8845,11 @@ function TestDummies.init()
 end
 
 return TestDummies
-</pre></details></section><section class="card" id="s33">
-<div class="head"><span class="num">33</span><div><h2>TuskActs <span class="badge folder">Folder</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s34">
-<div class="head"><span class="num">34</span><div><h2>Axl <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="34">Copy code</button><details><summary>Show code (480 lines)</summary><pre id="c34">--[[
+</pre></details></section><section class="card" id="s35">
+<div class="head"><span class="num">35</span><div><h2>TuskActs <span class="badge folder">Folder</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s36">
+<div class="head"><span class="num">36</span><div><h2>Axl <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="36">Copy code</button><details><summary>Show code (480 lines)</summary><pre id="c36">--[[
 	Axl  (ServerScriptService.SpinServer.TuskActs.Axl)
 
 	Axl RO: CIVIL WAR. His Stand makes a target&#x27;s guilt real: the people
@@ -8633,9 +9328,9 @@ function Axl.Cleanup(S, player, state)
 end
 
 return Axl
-</pre></details></section><section class="card" id="s35">
-<div class="head"><span class="num">35</span><div><h2>Blackmore <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="35">Copy code</button><details><summary>Show code (337 lines)</summary><pre id="c35">--[[
+</pre></details></section><section class="card" id="s37">
+<div class="head"><span class="num">37</span><div><h2>Blackmore <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="37">Copy code</button><details><summary>Show code (337 lines)</summary><pre id="c37">--[[
 	Blackmore  (ServerScriptService.SpinServer.TuskActs.Blackmore)
 
 	Blackmore: CATCH THE RAINBOW. His Stand freezes raindrops in mid-air: he
@@ -8971,9 +9666,9 @@ function Blackmore.Cleanup(S, player, state)
 end
 
 return Blackmore
-</pre></details></section><section class="card" id="s36">
-<div class="head"><span class="num">36</span><div><h2>DiegoBrando <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="36">Copy code</button><details><summary>Show code (453 lines)</summary><pre id="c36">--[[
+</pre></details></section><section class="card" id="s38">
+<div class="head"><span class="num">38</span><div><h2>DiegoBrando <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="38">Copy code</button><details><summary>Show code (453 lines)</summary><pre id="c38">--[[
 	DiegoBrando  (ServerScriptService.SpinServer.TuskActs.DiegoBrando)
 
 	Diego Brando: SCARY MONSTERS (dinosaur Stand). Registered as &quot;Act&quot; 6 so it
@@ -9425,9 +10120,9 @@ function Diego.Cleanup(S, player, state)
 end
 
 return Diego
-</pre></details></section><section class="card" id="s37">
-<div class="head"><span class="num">37</span><div><h2>GyroZeppeli <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="37">Copy code</button><details><summary>Show code (319 lines)</summary><pre id="c37">--[[
+</pre></details></section><section class="card" id="s39">
+<div class="head"><span class="num">39</span><div><h2>GyroZeppeli <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="39">Copy code</button><details><summary>Show code (319 lines)</summary><pre id="c39">--[[
 	GyroZeppeli  (ServerScriptService.SpinServer.TuskActs.GyroZeppeli)
 
 	Gyro Zeppeli: Steel Ball moveset (registered as &quot;Act&quot; 5 so it reuses the
@@ -9745,9 +10440,9 @@ function Gyro.Cleanup(S, player, state)
 end
 
 return Gyro
-</pre></details></section><section class="card" id="s38">
-<div class="head"><span class="num">38</span><div><h2>HotPants <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="38">Copy code</button><details><summary>Show code (278 lines)</summary><pre id="c38">--[[
+</pre></details></section><section class="card" id="s40">
+<div class="head"><span class="num">40</span><div><h2>HotPants <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="40">Copy code</button><details><summary>Show code (278 lines)</summary><pre id="c40">--[[
 	HotPants  (ServerScriptService.SpinServer.TuskActs.HotPants)
 
 	Hot Pants: CREAM STARTER, a spray can that sprays flesh. It can seal
@@ -10024,9 +10719,9 @@ function HotPants.Cleanup(S, player, state)
 end
 
 return HotPants
-</pre></details></section><section class="card" id="s39">
-<div class="head"><span class="num">39</span><div><h2>MountainTim <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="39">Copy code</button><details><summary>Show code (400 lines)</summary><pre id="c39">--[[
+</pre></details></section><section class="card" id="s41">
+<div class="head"><span class="num">41</span><div><h2>MountainTim <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="41">Copy code</button><details><summary>Show code (400 lines)</summary><pre id="c41">--[[
 	MountainTim  (ServerScriptService.SpinServer.TuskActs.MountainTim)
 
 	Mountain Tim: OH! LONESOME ME. The cowboy&#x27;s Stand splits his body into
@@ -10425,9 +11120,9 @@ function Tim.Cleanup(S, player, state)
 end
 
 return Tim
-</pre></details></section><section class="card" id="s40">
-<div class="head"><span class="num">40</span><div><h2>PorkPieHatKid <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="40">Copy code</button><details><summary>Show code (385 lines)</summary><pre id="c40">--[[
+</pre></details></section><section class="card" id="s42">
+<div class="head"><span class="num">42</span><div><h2>PorkPieHatKid <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="42">Copy code</button><details><summary>Show code (385 lines)</summary><pre id="c42">--[[
 	PorkPieHatKid  (ServerScriptService.SpinServer.TuskActs.PorkPieHatKid)
 
 	Pork Pie Hat Kid: WIRED. Two fish hooks on steel cables that roll out of a
@@ -10811,9 +11506,9 @@ function PorkPie.Cleanup(S, player, state)
 end
 
 return PorkPie
-</pre></details></section><section class="card" id="s41">
-<div class="head"><span class="num">41</span><div><h2>Sandman <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="41">Copy code</button><details><summary>Show code (268 lines)</summary><pre id="c41">--[[
+</pre></details></section><section class="card" id="s43">
+<div class="head"><span class="num">43</span><div><h2>Sandman <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="43">Copy code</button><details><summary>Show code (268 lines)</summary><pre id="c43">--[[
 	Sandman  (ServerScriptService.SpinServer.TuskActs.Sandman)
 
 	Sandman (Soundman): IN A SILENT WAY. His Stand turns sounds into solid,
@@ -11080,9 +11775,9 @@ function Sandman.Cleanup(S, player, state)
 end
 
 return Sandman
-</pre></details></section><section class="card" id="s42">
-<div class="head"><span class="num">42</span><div><h2>TuskAct1 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="42">Copy code</button><details><summary>Show code (355 lines)</summary><pre id="c42">--[[
+</pre></details></section><section class="card" id="s44">
+<div class="head"><span class="num">44</span><div><h2>TuskAct1 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="44">Copy code</button><details><summary>Show code (355 lines)</summary><pre id="c44">--[[
 	TuskAct1  (ServerScriptService.SpinServer.TuskActs.TuskAct1)
 
 	Server logic for Tusk Act 1, &quot;the beginning of Spin&quot;.
@@ -11436,9 +12131,9 @@ function Act1.Cleanup(S, player, state)
 end
 
 return Act1
-</pre></details></section><section class="card" id="s43">
-<div class="head"><span class="num">43</span><div><h2>TuskAct2 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="43">Copy code</button><details><summary>Show code (268 lines)</summary><pre id="c43">--[[
+</pre></details></section><section class="card" id="s45">
+<div class="head"><span class="num">45</span><div><h2>TuskAct2 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="45">Copy code</button><details><summary>Show code (268 lines)</summary><pre id="c45">--[[
 	TuskAct2  (ServerScriptService.SpinServer.TuskActs.TuskAct2)
 
 	Tusk Act 2: wormhole combat.
@@ -11705,9 +12400,9 @@ function Act2.Cleanup(S, player, state)
 end
 
 return Act2
-</pre></details></section><section class="card" id="s44">
-<div class="head"><span class="num">44</span><div><h2>TuskAct3 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="44">Copy code</button><details><summary>Show code (186 lines)</summary><pre id="c44">--[[
+</pre></details></section><section class="card" id="s46">
+<div class="head"><span class="num">46</span><div><h2>TuskAct3 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="46">Copy code</button><details><summary>Show code (186 lines)</summary><pre id="c46">--[[
 	TuskAct3  (ServerScriptService.SpinServer.TuskActs.TuskAct3)
 
 	Tusk Act 3: master of spatial movement.
@@ -11892,9 +12587,9 @@ function Act3.Cleanup(S, player, state)
 end
 
 return Act3
-</pre></details></section><section class="card" id="s45">
-<div class="head"><span class="num">45</span><div><h2>TuskAct4 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="45">Copy code</button><details><summary>Show code (268 lines)</summary><pre id="c45">--[[
+</pre></details></section><section class="card" id="s47">
+<div class="head"><span class="num">47</span><div><h2>TuskAct4 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="47">Copy code</button><details><summary>Show code (268 lines)</summary><pre id="c47">--[[
 	TuskAct4  (ServerScriptService.SpinServer.TuskActs.TuskAct4)
 
 	Tusk Act 4: Infinite Rotation. Gold and deep blue, heavy and majestic.
@@ -12161,9 +12856,9 @@ function Act4.Cleanup(S, player, state)
 end
 
 return Act4
-</pre></details></section><section class="card" id="s46">
-<div class="head"><span class="num">46</span><div><h2>Valentine <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="46">Copy code</button><details><summary>Show code (431 lines)</summary><pre id="c46">--[[
+</pre></details></section><section class="card" id="s48">
+<div class="head"><span class="num">48</span><div><h2>Valentine <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer › TuskActs</b></p></div></div><button class="copy" data-i="48">Copy code</button><details><summary>Show code (431 lines)</summary><pre id="c48">--[[
 	Valentine  (ServerScriptService.SpinServer.TuskActs.Valentine)
 
 	Funny Valentine: D4C (Dirty Deeds Done Dirt Cheap). Sandwiched between
@@ -12593,9 +13288,9 @@ function Valentine.Cleanup(S, player, state)
 end
 
 return Valentine
-</pre></details></section><section class="card" id="s47">
-<div class="head"><span class="num">47</span><div><h2>TuskHitbox <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="47">Copy code</button><details><summary>Show code (76 lines)</summary><pre id="c47">--[[
+</pre></details></section><section class="card" id="s49">
+<div class="head"><span class="num">49</span><div><h2>TuskHitbox <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="49">Copy code</button><details><summary>Show code (76 lines)</summary><pre id="c49">--[[
 	TuskHitbox  (ServerScriptService.SpinServer.TuskHitbox)
 	Server-side spatial queries for melee and area attacks.
 	Returns unique characters (models with a Humanoid), nearest first.
@@ -12670,9 +13365,9 @@ function TuskHitbox.lineOfSight(fromPos, toPos, ignore)
 end
 
 return TuskHitbox
-</pre></details></section><section class="card" id="s48">
-<div class="head"><span class="num">48</span><div><h2>TuskMoves <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="48">Copy code</button><details><summary>Show code (257 lines)</summary><pre id="c48">--[[
+</pre></details></section><section class="card" id="s50">
+<div class="head"><span class="num">50</span><div><h2>TuskMoves <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="50">Copy code</button><details><summary>Show code (257 lines)</summary><pre id="c50">--[[
 	TuskMoves  (ServerScriptService.SpinServer.TuskMoves)
 
 	Shared server building blocks for every Tusk Act, so each Act module
@@ -12928,9 +13623,9 @@ end
 
 TuskMoves.Config = TuskConfig
 return TuskMoves
-</pre></details></section><section class="card" id="s49">
-<div class="head"><span class="num">49</span><div><h2>TuskService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="49">Copy code</button><details><summary>Show code (731 lines)</summary><pre id="c49">--[[
+</pre></details></section><section class="card" id="s51">
+<div class="head"><span class="num">51</span><div><h2>TuskService <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="51">Copy code</button><details><summary>Show code (745 lines)</summary><pre id="c51">--[[
 	TuskService  (ServerScriptService.SpinServer.TuskService)
 
 	Server brain for Tusk (the &quot;TuskController&quot; of the design doc):
@@ -13022,6 +13717,9 @@ function TuskService.cooldownReady(player, state, name, slot)
 end
 
 function TuskService.startCooldown(player, state, name, seconds, slot)
+	-- Saint&#x27;s Corpse (Eyes): abilities recharge faster.
+	local character = player.Character
+	seconds = seconds * (character and character:GetAttribute(&quot;CorpseCooldown&quot;) or 1)
 	Cooldowns.start(player, cooldownKey(state, name), seconds)
 	TuskService.tell(player, &quot;Cooldown&quot;, { Slot = slot, Duration = seconds })
 end
@@ -13072,6 +13770,9 @@ function TuskService.addUlt(player, amount)
 	if state and state.Act and byAct and byAct[state.Act] then
 		amount = amount * byAct[state.Act]
 	end
+	-- Saint&#x27;s Corpse (Ears): the ultimate charges faster.
+	local character = player.Character
+	amount = amount * (character and character:GetAttribute(&quot;CorpseUltGain&quot;) or 1)
 	local current = player:GetAttribute(&quot;TuskUlt&quot;) or 0
 	player:SetAttribute(&quot;TuskUlt&quot;, math.clamp(current + amount, 0, max))
 end
@@ -13404,6 +14105,14 @@ local function onRequest(player, action, a, b, c)
 		TuskService.select(player, start, true)
 		return
 	end
+	if action == &quot;CorpseMove&quot; then
+		-- The character&#x27;s own move, unlocked by holding a Saint&#x27;s Corpse part.
+		local st = states[player]
+		if st and TuskService.CorpseMove then
+			TuskService.CorpseMove(player, st, a)
+		end
+		return
+	end
 	if action == &quot;RainFloat&quot; then
 		-- Blackmore standing on frozen raindrops in mid-air (the movement is the
 		-- client&#x27;s; this only shows the drops to everyone).
@@ -13660,9 +14369,9 @@ function TuskService.init()
 end
 
 return TuskService
-</pre></details></section><section class="card" id="s50">
-<div class="head"><span class="num">50</span><div><h2>TuskSneakService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="50">Copy code</button><details><summary>Show code (258 lines)</summary><pre id="c50">--[[
+</pre></details></section><section class="card" id="s52">
+<div class="head"><span class="num">52</span><div><h2>TuskSneakService <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="52">Copy code</button><details><summary>Show code (258 lines)</summary><pre id="c52">--[[
 	TuskSneakService  (ServerScriptService.SpinServer.TuskSneakService)
 
 	Tusk Sneak (every Act): a crouched, slowed stalking state, plus the
@@ -13919,9 +14628,9 @@ function TuskSneakService.burrowStrike(player, state, target, a, source)
 end
 
 return TuskSneakService
-</pre></details></section><section class="card" id="s51">
-<div class="head"><span class="num">51</span><div><h2>ValentineOutfit <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="51">Copy code</button><details><summary>Show code (249 lines)</summary><pre id="c51">--[[
+</pre></details></section><section class="card" id="s53">
+<div class="head"><span class="num">53</span><div><h2>ValentineOutfit <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="53">Copy code</button><details><summary>Show code (249 lines)</summary><pre id="c53">--[[
 	ValentineOutfit  (ServerScriptService.SpinServer.ValentineOutfit)
 
 	Gives a character Funny Valentine&#x27;s look while they play him (TuskAct
@@ -14169,9 +14878,9 @@ function ValentineOutfit.init()
 end
 
 return ValentineOutfit
-</pre></details></section><section class="card" id="s52">
-<div class="head"><span class="num">52</span><div><h2>WeatherService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="52">Copy code</button><details><summary>Show code (57 lines)</summary><pre id="c52">--[[
+</pre></details></section><section class="card" id="s54">
+<div class="head"><span class="num">54</span><div><h2>WeatherService <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="54">Copy code</button><details><summary>Show code (57 lines)</summary><pre id="c54">--[[
 	WeatherService  (ServerScriptService.SpinServer.WeatherService)
 
 	Rain for the whole server: every TuskConfig.Weather.RainEvery seconds it
@@ -14227,9 +14936,9 @@ function WeatherService.init()
 end
 
 return WeatherService
-</pre></details></section><section class="card" id="s53">
-<div class="head"><span class="num">53</span><div><h2>SpinClient <span class="badge client">LocalScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts</b></p></div></div><button class="copy" data-i="53">Copy code</button><details><summary>Show code (32 lines)</summary><pre id="c53">--[[
+</pre></details></section><section class="card" id="s55">
+<div class="head"><span class="num">55</span><div><h2>SpinClient <span class="badge client">LocalScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts</b></p></div></div><button class="copy" data-i="55">Copy code</button><details><summary>Show code (34 lines)</summary><pre id="c55">--[[
 	SpinClient  (StarterPlayer.StarterPlayerScripts.SpinClient — LocalScript)
 	Boots every client system: hit feedback, settings, Stands, characters,
 	HUD, character card, NPC bubbles and map ambience.
@@ -14247,6 +14956,7 @@ local CombatUI = require(script.UI.CombatUI)
 local DefenseClient = require(script.DefenseClient)
 local BountyUI = require(script.UI.BountyUI)
 local WeatherClient = require(script.WeatherClient)
+local CorpseClient = require(script.CorpseClient)
 
 SettingsUI.init()
 HitFX.init()
@@ -14260,9 +14970,10 @@ CombatUI.init()
 DefenseClient.init()
 BountyUI.init()
 WeatherClient.init()
-</pre></details></section><section class="card" id="s54">
-<div class="head"><span class="num">54</span><div><h2>CameraFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="54">Copy code</button><details><summary>Show code (174 lines)</summary><pre id="c54">--[[
+CorpseClient.init()
+</pre></details></section><section class="card" id="s56">
+<div class="head"><span class="num">56</span><div><h2>CameraFX <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="56">Copy code</button><details><summary>Show code (174 lines)</summary><pre id="c56">--[[
 	CameraFX  (StarterPlayerScripts.SpinClient.CameraFX)
 	Screen-space feedback: camera shake, FOV punch, anime speed lines and
 	short impact frames. All of it respects VFXQuality and cleans up.
@@ -14435,9 +15146,455 @@ function CameraFX.impactFrame(tint)
 end
 
 return CameraFX
-</pre></details></section><section class="card" id="s55">
-<div class="head"><span class="num">55</span><div><h2>DefenseClient <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="55">Copy code</button><details><summary>Show code (296 lines)</summary><pre id="c55">--[[
+</pre></details></section><section class="card" id="s57">
+<div class="head"><span class="num">57</span><div><h2>CorpseClient <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="57">Copy code</button><details><summary>Show code (445 lines)</summary><pre id="c57">--[[
+	CorpseClient  (StarterPlayerScripts.SpinClient.CorpseClient)
+
+	Client side of the SAINT&#x27;S CORPSE (server: CorpseService, CorpseMoves).
+	  * the relics float, turn and bob (tag &quot;SpinCorpse&quot;)
+	  * a panel on the left while you hold parts: each part with its boost,
+	    and your CORPSE MOVE button (V / D-pad right, or tap it) with its
+	    cooldown
+	  * announcements: you took a part (big), someone else took one or a
+	    part fell where someone died (a line at the top)
+	  * the visuals for every character&#x27;s corpse move, with its name popping
+	    up over the caster
+]]
+
+local Players = game:GetService(&quot;Players&quot;)
+local UserInputService = game:GetService(&quot;UserInputService&quot;)
+local RunService = game:GetService(&quot;RunService&quot;)
+local CollectionService = game:GetService(&quot;CollectionService&quot;)
+
+local Shared = game:GetService(&quot;ReplicatedStorage&quot;):WaitForChild(&quot;SpinShared&quot;)
+local TuskConfig = require(Shared.TuskConfig)
+local Registry = require(Shared.TuskActRegistry)
+local Net = require(Shared.Net)
+local VFXLib = require(script.Parent.VFXLib)
+local TuskVFX = require(script.Parent.TuskVFX)
+local CameraFX = require(script.Parent.CameraFX)
+local Common = require(script.Parent.TuskActCommon)
+
+local CorpseClient = {}
+
+local player = Players.LocalPlayer
+local cfg
+local GOLD = Color3.fromRGB(255, 205, 90)
+local INK = Color3.fromRGB(40, 26, 14)
+local PANEL = Color3.fromRGB(26, 20, 16)
+local partInfo = {}
+
+local gui, panel, list, moveButton, moveName, moveFill, moveTime, feed, banner
+local shown = &quot;&quot; -- the parts string the panel was built for
+
+---------------------------------------------------------------------------
+-- Small UI helpers
+---------------------------------------------------------------------------
+local function new(class, props, parent)
+	local i = Instance.new(class)
+	for k, v in pairs(props or {}) do
+		i[k] = v
+	end
+	i.Parent = parent
+	return i
+end
+
+local function corner(p, r)
+	new(&quot;UICorner&quot;, { CornerRadius = UDim.new(0, r) }, p)
+end
+
+local function label(parent, props)
+	local l = new(&quot;TextLabel&quot;, { BackgroundTransparency = 1, Font = Enum.Font.GothamBlack, TextColor3 = Color3.new(1, 1, 1), TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left }, parent)
+	for k, v in pairs(props) do
+		l[k] = v
+	end
+	return l
+end
+
+local function myCharacterName()
+	local c = player.Character
+	local act = c and c:GetAttribute(&quot;TuskAct&quot;)
+	return act and Registry.characterOf(act) or nil
+end
+
+local function aim()
+	local character = player.Character
+	local root = character and character:FindFirstChild(&quot;HumanoidRootPart&quot;)
+	local camera = workspace.CurrentCamera
+	if not root or not camera then
+		return nil
+	end
+	local last = UserInputService:GetLastInputType()
+	if last == Enum.UserInputType.Touch or string.find(last.Name, &quot;Gamepad&quot;) then
+		return camera.CFrame.LookVector
+	end
+	local mouse = UserInputService:GetMouseLocation()
+	local ray = camera:ViewportPointToRay(mouse.X, mouse.Y)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character, VFXLib.Folder }
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 600, params)
+	local target = hit and hit.Position or ray.Origin + ray.Direction * 600
+	local dir = target - root.Position
+	return dir.Magnitude &gt; 1 and dir.Unit or root.CFrame.LookVector
+end
+
+local function useMove()
+	local c = player.Character
+	if not c or not c:GetAttribute(&quot;CorpseParts&quot;) then
+		return
+	end
+	Net.get(&quot;TuskRequest&quot;):FireServer(&quot;CorpseMove&quot;, aim())
+end
+
+---------------------------------------------------------------------------
+-- The panel (left side, while you hold parts)
+---------------------------------------------------------------------------
+local function rebuildPanel(parts)
+	for _, c in ipairs(list:GetChildren()) do
+		if c:IsA(&quot;Frame&quot;) then
+			c:Destroy()
+		end
+	end
+	local ids = {}
+	for id in string.gmatch(parts, &quot;[^,]+&quot;) do
+		table.insert(ids, id)
+	end
+	for i, id in ipairs(ids) do
+		local info = partInfo[id]
+		local row = new(&quot;Frame&quot;, { LayoutOrder = i, BackgroundColor3 = Color3.fromRGB(46, 36, 26), Size = UDim2.new(1, 0, 0, 30) }, list)
+		corner(row, 6)
+		local icon = new(&quot;Frame&quot;, { Position = UDim2.fromOffset(5, 5), Size = UDim2.fromOffset(20, 20), BackgroundColor3 = Color3.fromRGB(122, 90, 60), Rotation = 45 }, row)
+		new(&quot;UIStroke&quot;, { Color = GOLD, Thickness = 1.5 }, icon)
+		label(row, { Position = UDim2.fromOffset(34, 2), Size = UDim2.new(1, -40, 0, 14), Text = info and info.Name or id, TextColor3 = GOLD })
+		label(row, { Position = UDim2.fromOffset(34, 16), Size = UDim2.new(1, -40, 0, 11), Text = info and info.Text or &quot;&quot;, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(230, 220, 200) })
+	end
+	panel.Size = UDim2.fromOffset(240, 44 + #ids * 34 + 52)
+	local who = myCharacterName()
+	moveName.Text = (cfg.MoveNames and who and cfg.MoveNames[who]) or &quot;CORPSE MOVE&quot;
+end
+
+local function buildUI()
+	gui = new(&quot;ScreenGui&quot;, { Name = &quot;CorpseHUD&quot;, ResetOnSpawn = false, DisplayOrder = 4 }, player:WaitForChild(&quot;PlayerGui&quot;))
+	panel = new(&quot;Frame&quot;, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.46, 0), Size = UDim2.fromOffset(240, 120), BackgroundColor3 = PANEL, BackgroundTransparency = 0.08, Visible = false }, gui)
+	corner(panel, 10)
+	new(&quot;UIStroke&quot;, { Color = GOLD, Thickness = 2 }, panel)
+	label(panel, { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -24, 0, 22), Text = &quot;SAINT&#x27;S CORPSE&quot;, Font = Enum.Font.Bangers, TextColor3 = GOLD })
+	label(panel, { Position = UDim2.fromOffset(12, 26), Size = UDim2.new(1, -24, 0, 11), Text = &quot;Boosts last until you die&quot;, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(190, 175, 150) })
+	list = new(&quot;Frame&quot;, { Position = UDim2.fromOffset(8, 42), Size = UDim2.new(1, -16, 1, -96), BackgroundTransparency = 1 }, panel)
+	new(&quot;UIListLayout&quot;, { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, list)
+	-- The corpse move: a button with a cooldown fill.
+	moveButton = new(&quot;TextButton&quot;, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 8, 1, -8), Size = UDim2.new(1, -16, 0, 40), BackgroundColor3 = Color3.fromRGB(150, 110, 40), Text = &quot;&quot;, AutoButtonColor = true }, panel)
+	corner(moveButton, 8)
+	new(&quot;UIStroke&quot;, { Color = GOLD, Thickness = 2 }, moveButton)
+	moveFill = new(&quot;Frame&quot;, { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Size = UDim2.fromScale(0, 1), BorderSizePixel = 0 }, moveButton)
+	corner(moveFill, 8)
+	local key = new(&quot;Frame&quot;, { Position = UDim2.fromOffset(6, 7), Size = UDim2.fromOffset(26, 26), BackgroundColor3 = GOLD }, moveButton)
+	corner(key, 6)
+	label(key, { Size = UDim2.fromScale(1, 1), Text = &quot;V&quot;, TextColor3 = INK, TextXAlignment = Enum.TextXAlignment.Center })
+	moveName = label(moveButton, { Position = UDim2.fromOffset(40, 6), Size = UDim2.new(1, -86, 0, 28), Text = &quot;&quot;, Font = Enum.Font.Bangers })
+	new(&quot;UITextSizeConstraint&quot;, { MaxTextSize = 22, MinTextSize = 10 }, moveName)
+	moveTime = label(moveButton, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 10), Size = UDim2.fromOffset(40, 20), Text = &quot;&quot;, TextXAlignment = Enum.TextXAlignment.Right })
+	moveButton.Activated:Connect(useMove)
+	-- Announcements.
+	feed = label(gui, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 120), Size = UDim2.fromOffset(520, 22), Text = &quot;&quot;, Font = Enum.Font.GothamBold, TextColor3 = GOLD, TextStrokeTransparency = 0.3, TextXAlignment = Enum.TextXAlignment.Center, Visible = false })
+	banner = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.34), Size = UDim2.fromOffset(620, 70), Text = &quot;&quot;, Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center, Visible = false })
+end
+
+local feedToken, bannerToken
+local function showFeed(text)
+	feed.Text = text
+	feed.Visible = true
+	local token = {}
+	feedToken = token
+	task.delay(3.5, function()
+		if feedToken == token then
+			feed.Visible = false
+		end
+	end)
+end
+
+local function showBanner(text)
+	banner.Text = text
+	banner.Visible = true
+	local token = {}
+	bannerToken = token
+	VFXLib.animate(0.25, function(a)
+		banner.Size = UDim2.fromOffset(620 * (0.6 + 0.4 * a), 70 * (0.6 + 0.4 * a))
+	end)
+	task.delay(3, function()
+		if bannerToken == token then
+			banner.Visible = false
+		end
+	end)
+end
+
+local function stepPanel()
+	local c = player.Character
+	local parts = c and c:GetAttribute(&quot;CorpseParts&quot;) or &quot;&quot;
+	panel.Visible = parts ~= &quot;&quot;
+	if parts ~= shown then
+		shown = parts
+		if parts ~= &quot;&quot; then
+			rebuildPanel(parts)
+		end
+	end
+	if parts ~= &quot;&quot; then
+		local left = math.max(0, (c:GetAttribute(&quot;CorpseReadyAt&quot;) or 0) - workspace:GetServerTimeNow())
+		local total = cfg.Move and cfg.Move.Cooldown or 20
+		moveFill.Size = UDim2.fromScale(math.clamp(left / total, 0, 1), 1)
+		moveTime.Text = left &gt; 0 and tostring(math.ceil(left)) or &quot;&quot;
+	end
+end
+
+---------------------------------------------------------------------------
+-- Relics: float, turn and bob
+---------------------------------------------------------------------------
+local relicBase = setmetatable({}, { __mode = &quot;k&quot; }) -- [part] = original CFrame
+
+local function stepRelics(now)
+	for _, model in ipairs(CollectionService:GetTagged(&quot;SpinCorpse&quot;)) do
+		local holder = model.PrimaryPart
+		if holder then
+			local center = holder.Position
+			local turn = CFrame.new(center) * CFrame.new(0, math.sin(now * 2 + center.X) * 0.4, 0) * CFrame.Angles(0, now * 1.2, 0) * CFrame.new(-center)
+			for _, p in ipairs(model:GetChildren()) do
+				if p:IsA(&quot;BasePart&quot;) and p ~= holder and p.Name ~= &quot;Beam&quot; then
+					relicBase[p] = relicBase[p] or p.CFrame
+					p.CFrame = turn * relicBase[p]
+				end
+			end
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Corpse move visuals
+---------------------------------------------------------------------------
+local function paletteOf(who)
+	local act = Registry.StartAct[who] or 1
+	return Common.palette(act)
+end
+
+-- The move&#x27;s name pops up over the caster.
+local function callout(character, who)
+	local head = character and character:FindFirstChild(&quot;Head&quot;)
+	if not head then
+		return
+	end
+	local bb = new(&quot;BillboardGui&quot;, { Adornee = head, Size = UDim2.fromOffset(240, 40), StudsOffset = Vector3.new(0, 3.4, 0), AlwaysOnTop = true, LightInfluence = 0 }, VFXLib.Folder)
+	local l = label(bb, { Size = UDim2.fromScale(1, 1), Text = (cfg.MoveNames and cfg.MoveNames[who] or &quot;CORPSE MOVE&quot;) .. &quot;!&quot;, Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center })
+	VFXLib.animate(1.3, function(a)
+		bb.StudsOffset = Vector3.new(0, 3.4 + a * 1.2, 0)
+		l.TextTransparency = math.max(0, (a - 0.6) / 0.4)
+		l.TextStrokeTransparency = l.TextTransparency
+	end, function()
+		bb:Destroy()
+	end)
+end
+
+local function ring(position, radius, color, time)
+	local p = VFXLib.part({ Size = Vector3.new(0.5, 1, 1), Color = color, Material = Enum.Material.Neon, Transparency = 0.2, Shape = Enum.PartType.Cylinder })
+	VFXLib.animate(time or 0.4, function(a)
+		p.Size = Vector3.new(0.5, radius * 2 * a, radius * 2 * a)
+		p.CFrame = CFrame.new(position + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+		p.Transparency = 0.2 + 0.8 * a
+	end, function()
+		p:Destroy()
+	end)
+end
+
+local function streak(from, to, color, width, time)
+	local p = VFXLib.part({ Size = Vector3.new(width or 0.4, width or 0.4, (to - from).Magnitude), CFrame = CFrame.lookAt((from + to) / 2, to), Color = color, Material = Enum.Material.Neon, Transparency = 0.2 })
+	VFXLib.animate(time or 0.3, function(a)
+		p.Transparency = 0.2 + 0.8 * a
+	end, function()
+		p:Destroy()
+	end)
+end
+
+-- A shell round someone for a while (cocoon / light).
+local function shell(character, color, material, time)
+	local p = VFXLib.part({ Size = Vector3.new(5, 7, 5), Color = color, Material = material, Transparency = 0.3 })
+	local start = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local r = Common.rootOf(character)
+		local t = os.clock() - start
+		if not r or t &gt; time then
+			conn:Disconnect()
+			p:Destroy()
+			return
+		end
+		p.CFrame = r.CFrame * CFrame.Angles(0, t * 2, 0)
+		p.Size = Vector3.new(5, 7, 5) * (1 + math.sin(t * 8) * 0.03)
+	end)
+end
+
+local function onMove(data)
+	local character = data.Character
+	local who = data.Who
+	local pal = paletteOf(who)
+	local local_ = character == player.Character
+	if data.Phase == &quot;Cast&quot; or data.Phase == &quot;Leap&quot; or data.Phase == &quot;Dash&quot; or data.Phase == &quot;Spin&quot; or data.Phase == &quot;Cocoon&quot; or data.Phase == &quot;Curtain&quot; or data.Phase == &quot;Flood&quot; or data.Phase == &quot;Bless&quot; then
+		callout(character, who)
+		local root = Common.rootOf(character)
+		if root then
+			TuskVFX.CreateImpactStar(root.Position + Vector3.new(0, 1, 0), { Size = 4, Rays = 8, Color = GOLD, Color2 = pal.Main, Duration = 0.18 })
+		end
+	end
+	if who == &quot;Gyro&quot; and data.Phase == &quot;Cast&quot; then
+		-- Golden rings spinning down the line.
+		for i = 1, 6 do
+			task.delay(i * 0.05, function()
+				local at = data.Position + data.Direction * (i * (data.Length or 34) / 6)
+				local p = VFXLib.part({ Size = Vector3.new(0.4, 6, 6), Color = GOLD, Material = Enum.Material.Neon, Transparency = 0.2, Shape = Enum.PartType.Cylinder })
+				VFXLib.animate(0.4, function(a)
+					p.CFrame = CFrame.lookAt(at, at + data.Direction) * CFrame.Angles(0, math.pi / 2, a * 6)
+					p.Transparency = 0.2 + 0.8 * a
+				end, function()
+					p:Destroy()
+				end)
+			end)
+		end
+	elseif who == &quot;Diego&quot; then
+		if data.Phase == &quot;Leap&quot; then
+			for i = 0, 6 do
+				local t = i / 6
+				local p = data.From:Lerp(data.To, t) + Vector3.new(0, math.sin(t * math.pi) * 10, 0)
+				task.delay(t * (data.Time or 0.45), function()
+					VFXLib.afterimage(CFrame.new(p), 2.4, pal.Main)
+				end)
+			end
+		elseif data.Phase == &quot;Slam&quot; then
+			ring(data.Position, data.Radius or 10, pal.Main, 0.45)
+			TuskVFX.CreateGroundCracks(data.Position, { Radius = data.Radius or 10, Color = pal.Main })
+			CameraFX.shakeAt(data.Position, 0.8, 40)
+		end
+	elseif who == &quot;PorkPie&quot; and data.Phase == &quot;Cast&quot; then
+		-- Hooks fly out in every direction and yank back in.
+		for i = 1, 10 do
+			local a = i / 10 * math.pi * 2
+			local out = data.Position + Vector3.new(math.cos(a), 0.3, math.sin(a)) * (data.Radius or 20)
+			streak(data.Position + Vector3.new(0, 1, 0), out, Color3.fromRGB(200, 205, 215), 0.15, 0.4)
+		end
+		ring(data.Position, data.Radius or 20, pal.Main, 0.5)
+	elseif who == &quot;Sandman&quot; then
+		if data.Phase == &quot;Dash&quot; then
+			streak(data.From, data.To, Color3.fromRGB(230, 200, 140), 1.2, 0.6)
+			VFXLib.burst(data.From, { Count = 16, Color = Color3.fromRGB(230, 200, 140), Speed = 14, Lifetime = 0.5 })
+		elseif data.Phase == &quot;Boom&quot; then
+			ring(data.Position, 9, pal.Main, 0.4)
+			TuskVFX.CreateImpactStar(data.Position + Vector3.new(0, 1, 0), { Size = 7, Rays = 10, Color = pal.Main, Color2 = GOLD, Duration = 0.2 })
+		end
+	elseif who == &quot;MountainTim&quot; and data.Phase == &quot;Spin&quot; then
+		-- A lasso loop spinning round him, closing in.
+		local loop = {}
+		for i = 1, 16 do
+			loop[i] = VFXLib.part({ Size = Vector3.new(0.3, 0.3, 2.4), Color = Color3.fromRGB(205, 170, 110), Material = Enum.Material.Fabric })
+		end
+		VFXLib.animate(data.Time or 0.8, function(a)
+			local r = Common.rootOf(character)
+			local c = r and r.Position or data.Position
+			local radius = (data.Radius or 14) * (1 - 0.7 * a)
+			for i, seg in ipairs(loop) do
+				local ang = i / #loop * math.pi * 2 + a * 12
+				local p = c + Vector3.new(math.cos(ang) * radius, 1, math.sin(ang) * radius)
+				seg.CFrame = CFrame.lookAt(p, p + Vector3.new(-math.sin(ang), 0, math.cos(ang)))
+			end
+		end, function()
+			for _, seg in ipairs(loop) do
+				seg:Destroy()
+			end
+		end)
+	elseif who == &quot;HotPants&quot; then
+		if data.Phase == &quot;Cocoon&quot; then
+			shell(character, Color3.fromRGB(236, 150, 170), Enum.Material.SmoothPlastic, data.Time or 2)
+		elseif data.Phase == &quot;Burst&quot; then
+			ring(data.Position, 9, Color3.fromRGB(236, 150, 170), 0.4)
+			VFXLib.burst(data.Position, { Count = 24, Color = Color3.fromRGB(236, 150, 170), Speed = 18, Lifetime = 0.45 })
+		end
+	elseif who == &quot;Blackmore&quot; and data.Phase == &quot;Curtain&quot; then
+		-- Frozen drops fly out in a cone.
+		for i = 1, 24 do
+			local ang = math.rad((math.random() - 0.5) * (data.Cone or 70))
+			local dir = (CFrame.lookAt(Vector3.new(), data.Direction) * CFrame.Angles(0, ang, 0)).LookVector
+			local from = data.Position + Vector3.new(0, 1 + math.random() * 2, 0)
+			local d = VFXLib.part({ Size = Vector3.new(0.25, 0.5, 0.25), Color = Color3.fromRGB(150, 205, 255), Material = Enum.Material.Glass, Transparency = 0.2 })
+			VFXLib.animate(0.35, function(a)
+				local p = from + dir * (data.Range or 26) * a
+				d.CFrame = CFrame.lookAt(p, p + dir) * CFrame.Angles(math.pi / 2, 0, 0)
+			end, function()
+				d:Destroy()
+			end)
+		end
+	elseif who == &quot;Axl&quot; and data.Phase == &quot;Flood&quot; then
+		ring(data.Position, data.Radius or 22, pal.Main, 0.6)
+		VFXLib.burst(data.Position, { Count = 30, Color = Color3.fromRGB(150, 130, 170), Speed = 16, Lifetime = 0.6 })
+	elseif who == &quot;Valentine&quot; then
+		if data.Phase == &quot;Bless&quot; then
+			shell(character, Color3.fromRGB(255, 250, 225), Enum.Material.ForceField, data.Time or 2.5)
+		elseif data.Phase == &quot;Pulse&quot; then
+			ring(data.Position, data.Radius or 12, Color3.fromRGB(255, 250, 225), 0.45)
+		end
+	end
+	if local_ and (data.Phase == &quot;Slam&quot; or data.Phase == &quot;Boom&quot; or data.Phase == &quot;Burst&quot; or data.Phase == &quot;Pulse&quot;) then
+		CameraFX.shake(0.5, 0.2)
+	end
+end
+
+---------------------------------------------------------------------------
+function CorpseClient.init()
+	cfg = TuskConfig.Corpse
+	if not cfg or cfg.Enabled == false then
+		return
+	end
+	for _, info in ipairs(cfg.Parts) do
+		partInfo[info.Id] = info
+	end
+	buildUI()
+	local keys = TuskConfig.Keys.CorpseMove or {}
+	UserInputService.InputBegan:Connect(function(input, processed)
+		if processed then
+			return
+		end
+		if input.KeyCode == keys.Keyboard or input.KeyCode == keys.Gamepad then
+			useMove()
+		end
+	end)
+	Net.get(&quot;WorldFX&quot;).OnClientEvent:Connect(function(name, data)
+		if typeof(data) ~= &quot;table&quot; then
+			return
+		end
+		if name == &quot;CorpseTaken&quot; then
+			local info = partInfo[data.Part]
+			local partName = info and info.Name or tostring(data.Part)
+			if data.Player == player.UserId then
+				showBanner(&quot;YOU TOOK THE &quot; .. partName .. &quot;!  &quot; .. (info and string.upper(info.Text) or &quot;&quot;))
+			else
+				showFeed((data.Name or &quot;Someone&quot;) .. &quot; took the Saint&#x27;s Corpse &quot; .. partName .. &quot;!&quot;)
+			end
+		elseif name == &quot;CorpseDropped&quot; then
+			local info = partInfo[data.Part]
+			showFeed(&quot;The &quot; .. (info and info.Name or &quot;part&quot;) .. &quot; fell where &quot; .. (data.Name or &quot;someone&quot;) .. &quot; died!&quot;)
+			if data.Position then
+				ring(data.Position, 8, GOLD, 0.6)
+			end
+		elseif name == &quot;CorpseMove&quot; then
+			onMove(data)
+		end
+	end)
+	RunService.RenderStepped:Connect(function()
+		stepPanel()
+		stepRelics(os.clock())
+	end)
+end
+
+return CorpseClient
+</pre></details></section><section class="card" id="s58">
+<div class="head"><span class="num">58</span><div><h2>DefenseClient <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="58">Copy code</button><details><summary>Show code (296 lines)</summary><pre id="c58">--[[
 	DefenseClient  (StarterPlayerScripts.SpinClient.DefenseClient)
 
 	Block and Dash on the client, for every character:
@@ -14732,9 +15889,9 @@ function DefenseClient.init()
 end
 
 return DefenseClient
-</pre></details></section><section class="card" id="s56">
-<div class="head"><span class="num">56</span><div><h2>Fighters <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="56">Copy code</button><details><summary>Show code (30 lines)</summary><pre id="c56">--[[
+</pre></details></section><section class="card" id="s59">
+<div class="head"><span class="num">59</span><div><h2>Fighters <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="59">Copy code</button><details><summary>Show code (30 lines)</summary><pre id="c59">--[[
 	Fighters  (StarterPlayerScripts.SpinClient.Fighters)
 
 	Everyone who can use a Stand: the players plus the Stand-user NPCs
@@ -14763,9 +15920,9 @@ function Fighters.list()
 end
 
 return Fighters
-</pre></details></section><section class="card" id="s57">
-<div class="head"><span class="num">57</span><div><h2>HitFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="57">Copy code</button><details><summary>Show code (146 lines)</summary><pre id="c57">--[[
+</pre></details></section><section class="card" id="s60">
+<div class="head"><span class="num">60</span><div><h2>HitFX <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="60">Copy code</button><details><summary>Show code (146 lines)</summary><pre id="c60">--[[
 	HitFX  (StarterPlayerScripts.SpinClient.HitFX)
 	Feedback for every hit in the game (any character):
 	  * victim flash (white, or blue when blocked) + camera shake for the victim
@@ -14910,9 +16067,9 @@ function HitFX.init()
 end
 
 return HitFX
-</pre></details></section><section class="card" id="s58">
-<div class="head"><span class="num">58</span><div><h2>JointCache <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="58">Copy code</button><details><summary>Show code (50 lines)</summary><pre id="c58">--[[
+</pre></details></section><section class="card" id="s61">
+<div class="head"><span class="num">61</span><div><h2>JointCache <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="61">Copy code</button><details><summary>Show code (50 lines)</summary><pre id="c61">--[[
 	JointCache  (StarterPlayerScripts.SpinClient.JointCache)
 	Reads and writes a joint&#x27;s offset for the pose system, and remembers
 	each joint&#x27;s original offset the first time it is touched.
@@ -14961,9 +16118,9 @@ function JointCache.original(j)
 end
 
 return JointCache
-</pre></details></section><section class="card" id="s59">
-<div class="head"><span class="num">59</span><div><h2>TuskActCommon <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="59">Copy code</button><details><summary>Show code (250 lines)</summary><pre id="c59">--[[
+</pre></details></section><section class="card" id="s62">
+<div class="head"><span class="num">62</span><div><h2>TuskActCommon <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="62">Copy code</button><details><summary>Show code (250 lines)</summary><pre id="c62">--[[
 	TuskActCommon  (StarterPlayerScripts.SpinClient.TuskActCommon)
 
 	Shared client choreography used by every Act&#x27;s visual module:
@@ -15212,11 +16369,11 @@ function Common.actName(act)
 end
 
 return Common
-</pre></details></section><section class="card" id="s60">
-<div class="head"><span class="num">60</span><div><h2>TuskActVFX <span class="badge folder">Folder</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s61">
-<div class="head"><span class="num">61</span><div><h2>Act1 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="61">Copy code</button><details><summary>Show code (377 lines)</summary><pre id="c61">--[[
+</pre></details></section><section class="card" id="s63">
+<div class="head"><span class="num">63</span><div><h2>TuskActVFX <span class="badge folder">Folder</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s64">
+<div class="head"><span class="num">64</span><div><h2>Act1 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="64">Copy code</button><details><summary>Show code (377 lines)</summary><pre id="c64">--[[
 	TuskActVFX.Act1  (StarterPlayerScripts.SpinClient.TuskActVFX.Act1)
 
 	Client choreography for Tusk Act 1: poses, Stand motion, effects and
@@ -15592,9 +16749,9 @@ function Act1.step()
 end
 
 return Act1
-</pre></details></section><section class="card" id="s62">
-<div class="head"><span class="num">62</span><div><h2>Act2 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="62">Copy code</button><details><summary>Show code (107 lines)</summary><pre id="c62">--[[
+</pre></details></section><section class="card" id="s65">
+<div class="head"><span class="num">65</span><div><h2>Act2 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="65">Copy code</button><details><summary>Show code (107 lines)</summary><pre id="c65">--[[
 	TuskActVFX.Act2  (StarterPlayerScripts.SpinClient.TuskActVFX.Act2)
 	Client choreography for Tusk Act 2 (THE GOLDEN RATIO): golden rectangles
 	and golden spirals open where Act 2 used to open portals; nails fly out
@@ -15700,9 +16857,9 @@ function Act2.handle(name, data)
 end
 
 return Act2
-</pre></details></section><section class="card" id="s63">
-<div class="head"><span class="num">63</span><div><h2>Act3 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="63">Copy code</button><details><summary>Show code (173 lines)</summary><pre id="c63">--[[
+</pre></details></section><section class="card" id="s66">
+<div class="head"><span class="num">66</span><div><h2>Act3 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="66">Copy code</button><details><summary>Show code (173 lines)</summary><pre id="c66">--[[
 	TuskActVFX.Act3  (StarterPlayerScripts.SpinClient.TuskActVFX.Act3)
 	Client choreography for Tusk Act 3 (spatial movement): deep-blue
 	layered portals, blue distortion afterimages, a tearing dimensional break.
@@ -15874,9 +17031,9 @@ function Act3.handle(name, data)
 end
 
 return Act3
-</pre></details></section><section class="card" id="s64">
-<div class="head"><span class="num">64</span><div><h2>Act4 <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="64">Copy code</button><details><summary>Show code (305 lines)</summary><pre id="c64">--[[
+</pre></details></section><section class="card" id="s67">
+<div class="head"><span class="num">67</span><div><h2>Act4 <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="67">Copy code</button><details><summary>Show code (305 lines)</summary><pre id="c67">--[[
 	TuskActVFX.Act4  (StarterPlayerScripts.SpinClient.TuskActVFX.Act4)
 	Client choreography for Tusk Act 4 (Infinite Rotation): gold and deep
 	blue, giant rotational rings, golden afterimages, distorted air, and the
@@ -16180,9 +17337,9 @@ function Act4.step()
 end
 
 return Act4
-</pre></details></section><section class="card" id="s65">
-<div class="head"><span class="num">65</span><div><h2>AxlVFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="65">Copy code</button><details><summary>Show code (750 lines)</summary><pre id="c65">--[[
+</pre></details></section><section class="card" id="s68">
+<div class="head"><span class="num">68</span><div><h2>AxlVFX <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="68">Copy code</button><details><summary>Show code (750 lines)</summary><pre id="c68">--[[
 	TuskActVFX.AxlVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.AxlVFX)
 
 	Client visuals for Axl RO / CIVIL WAR: guilt made real. Blocky.
@@ -16931,9 +18088,9 @@ Net.get(&quot;SpinFX&quot;).OnClientEvent:Connect(function(name, data)
 end)
 
 return AxlVFX
-</pre></details></section><section class="card" id="s66">
-<div class="head"><span class="num">66</span><div><h2>BlackmoreVFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="66">Copy code</button><details><summary>Show code (764 lines)</summary><pre id="c66">--[[
+</pre></details></section><section class="card" id="s69">
+<div class="head"><span class="num">69</span><div><h2>BlackmoreVFX <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="69">Copy code</button><details><summary>Show code (764 lines)</summary><pre id="c69">--[[
 	TuskActVFX.BlackmoreVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.BlackmoreVFX)
 
 	Client visuals for Blackmore / CATCH THE RAINBOW: raindrops frozen in
@@ -17696,9 +18853,9 @@ Net.get(&quot;SpinFX&quot;).OnClientEvent:Connect(function(name, data)
 end)
 
 return BlackmoreVFX
-</pre></details></section><section class="card" id="s67">
-<div class="head"><span class="num">67</span><div><h2>CivilWarStand <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="67">Copy code</button><details><summary>Show code (201 lines)</summary><pre id="c67">--[[
+</pre></details></section><section class="card" id="s70">
+<div class="head"><span class="num">70</span><div><h2>CivilWarStand <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="70">Copy code</button><details><summary>Show code (201 lines)</summary><pre id="c70">--[[
 	TuskActVFX.CivilWarStand  (StarterPlayerScripts.SpinClient.TuskActVFX.CivilWarStand)
 
 	The CIVIL WAR Stand model (Axl RO), blocky, matched to the art: red,
@@ -17898,9 +19055,9 @@ function CivilWarStand.build(scale)
 end
 
 return CivilWarStand
-</pre></details></section><section class="card" id="s68">
-<div class="head"><span class="num">68</span><div><h2>D4CStand <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="68">Copy code</button><details><summary>Show code (156 lines)</summary><pre id="c68">--[[
+</pre></details></section><section class="card" id="s71">
+<div class="head"><span class="num">71</span><div><h2>D4CStand <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="71">Copy code</button><details><summary>Show code (156 lines)</summary><pre id="c71">--[[
 	TuskActVFX.D4CStand  (StarterPlayerScripts.SpinClient.TuskActVFX.D4CStand)
 
 	The D4C (Dirty Deeds Done Dirt Cheap) Stand model (Funny Valentine),
@@ -18055,9 +19212,9 @@ function D4CStand.build(scale)
 end
 
 return D4CStand
-</pre></details></section><section class="card" id="s69">
-<div class="head"><span class="num">69</span><div><h2>Diego <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="69">Copy code</button><details><summary>Show code (887 lines)</summary><pre id="c69">--[[
+</pre></details></section><section class="card" id="s72">
+<div class="head"><span class="num">72</span><div><h2>Diego <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="72">Copy code</button><details><summary>Show code (887 lines)</summary><pre id="c72">--[[
 	TuskActVFX.Diego  (StarterPlayerScripts.SpinClient.TuskActVFX.Diego)
 
 	Client visuals for Diego Brando / SCARY MONSTERS:
@@ -18943,9 +20100,9 @@ function Diego.step(dt)
 end
 
 return Diego
-</pre></details></section><section class="card" id="s70">
-<div class="head"><span class="num">70</span><div><h2>Gyro <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="70">Copy code</button><details><summary>Show code (1130 lines)</summary><pre id="c70">--[[
+</pre></details></section><section class="card" id="s73">
+<div class="head"><span class="num">73</span><div><h2>Gyro <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="73">Copy code</button><details><summary>Show code (1130 lines)</summary><pre id="c73">--[[
 	TuskActVFX.Gyro  (StarterPlayerScripts.SpinClient.TuskActVFX.Gyro)
 
 	Client visuals for Gyro Zeppeli (Steel Ball moveset):
@@ -20074,9 +21231,9 @@ Net.get(&quot;SpinFX&quot;).OnClientEvent:Connect(function(name, data)
 end)
 
 return Gyro
-</pre></details></section><section class="card" id="s71">
-<div class="head"><span class="num">71</span><div><h2>HotPantsVFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="71">Copy code</button><details><summary>Show code (555 lines)</summary><pre id="c71">--[[
+</pre></details></section><section class="card" id="s74">
+<div class="head"><span class="num">74</span><div><h2>HotPantsVFX <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="74">Copy code</button><details><summary>Show code (555 lines)</summary><pre id="c74">--[[
 	TuskActVFX.HotPantsVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.HotPantsVFX)
 
 	Client visuals for Hot Pants / CREAM STARTER, a spray can that sprays
@@ -20630,9 +21787,9 @@ function HotPantsVFX.step(dt)
 end
 
 return HotPantsVFX
-</pre></details></section><section class="card" id="s72">
-<div class="head"><span class="num">72</span><div><h2>MountainTimVFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="72">Copy code</button><details><summary>Show code (905 lines)</summary><pre id="c72">--[[
+</pre></details></section><section class="card" id="s75">
+<div class="head"><span class="num">75</span><div><h2>MountainTimVFX <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="75">Copy code</button><details><summary>Show code (905 lines)</summary><pre id="c75">--[[
 	TuskActVFX.MountainTimVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.MountainTimVFX)
 
 	Client visuals for Mountain Tim / OH! LONESOME ME: bodies come apart into
@@ -21536,9 +22693,9 @@ Net.get(&quot;SpinFX&quot;).OnClientEvent:Connect(function(name, data)
 end)
 
 return TimVFX
-</pre></details></section><section class="card" id="s73">
-<div class="head"><span class="num">73</span><div><h2>PorkPie <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="73">Copy code</button><details><summary>Show code (654 lines)</summary><pre id="c73">--[[
+</pre></details></section><section class="card" id="s76">
+<div class="head"><span class="num">76</span><div><h2>PorkPie <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="76">Copy code</button><details><summary>Show code (654 lines)</summary><pre id="c76">--[[
 	TuskActVFX.PorkPie  (StarterPlayerScripts.SpinClient.TuskActVFX.PorkPie)
 
 	Client visuals for Pork Pie Hat Kid / WIRED (from the owner&#x27;s pictures):
@@ -22191,9 +23348,9 @@ Net.get(&quot;SpinFX&quot;).OnClientEvent:Connect(function(name, data)
 end)
 
 return PorkPie
-</pre></details></section><section class="card" id="s74">
-<div class="head"><span class="num">74</span><div><h2>SandmanVFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="74">Copy code</button><details><summary>Show code (411 lines)</summary><pre id="c74">--[[
+</pre></details></section><section class="card" id="s77">
+<div class="head"><span class="num">77</span><div><h2>SandmanVFX <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="77">Copy code</button><details><summary>Show code (411 lines)</summary><pre id="c77">--[[
 	TuskActVFX.SandmanVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.SandmanVFX)
 
 	Client visuals for Sandman (Soundman) / IN A SILENT WAY: sounds become
@@ -22603,9 +23760,9 @@ Net.get(&quot;SpinFX&quot;).OnClientEvent:Connect(function(name, data)
 end)
 
 return SandmanVFX
-</pre></details></section><section class="card" id="s75">
-<div class="head"><span class="num">75</span><div><h2>SilentWayStand <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="75">Copy code</button><details><summary>Show code (206 lines)</summary><pre id="c75">--[[
+</pre></details></section><section class="card" id="s78">
+<div class="head"><span class="num">78</span><div><h2>SilentWayStand <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="78">Copy code</button><details><summary>Show code (206 lines)</summary><pre id="c78">--[[
 	TuskActVFX.SilentWayStand  (StarterPlayerScripts.SpinClient.TuskActVFX.SilentWayStand)
 
 	The IN A SILENT WAY Stand model (Sandman), blocky, matched to the art:
@@ -22810,9 +23967,9 @@ function SilentWayStand.build(scale)
 end
 
 return SilentWayStand
-</pre></details></section><section class="card" id="s76">
-<div class="head"><span class="num">76</span><div><h2>ValentineVFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="76">Copy code</button><details><summary>Show code (614 lines)</summary><pre id="c76">--[[
+</pre></details></section><section class="card" id="s79">
+<div class="head"><span class="num">79</span><div><h2>ValentineVFX <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX</b></p></div></div><button class="copy" data-i="79">Copy code</button><details><summary>Show code (614 lines)</summary><pre id="c79">--[[
 	TuskActVFX.ValentineVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.ValentineVFX)
 
 	Client visuals for Funny Valentine / D4C. Blocky.
@@ -23425,9 +24582,9 @@ function ValentineVFX.step(dt)
 end
 
 return ValentineVFX
-</pre></details></section><section class="card" id="s77">
-<div class="head"><span class="num">77</span><div><h2>TuskAnimation <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="77">Copy code</button><details><summary>Show code (750 lines)</summary><pre id="c77">--[[
+</pre></details></section><section class="card" id="s80">
+<div class="head"><span class="num">80</span><div><h2>TuskAnimation <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="80">Copy code</button><details><summary>Show code (750 lines)</summary><pre id="c80">--[[
 	TuskAnimation  (StarterPlayerScripts.SpinClient.TuskAnimation)
 	(&quot;TuskAnimationController&quot; in the design doc)
 
@@ -24176,9 +25333,9 @@ Players.LocalPlayer.CharacterRemoving:Connect(function(character)
 end)
 
 return TuskAnimation
-</pre></details></section><section class="card" id="s78">
-<div class="head"><span class="num">78</span><div><h2>TuskController <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="78">Copy code</button><details><summary>Show code (243 lines)</summary><pre id="c78">--[[
+</pre></details></section><section class="card" id="s81">
+<div class="head"><span class="num">81</span><div><h2>TuskController <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="81">Copy code</button><details><summary>Show code (243 lines)</summary><pre id="c81">--[[
 	TuskController  (StarterPlayerScripts.SpinClient.TuskController)
 	(&quot;TuskAbilityController&quot; in the design doc)
 
@@ -24420,9 +25577,9 @@ function TuskController.init()
 end
 
 return TuskController
-</pre></details></section><section class="card" id="s79">
-<div class="head"><span class="num">79</span><div><h2>TuskProjectiles <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="79">Copy code</button><details><summary>Show code (271 lines)</summary><pre id="c79">--[[
+</pre></details></section><section class="card" id="s82">
+<div class="head"><span class="num">82</span><div><h2>TuskProjectiles <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="82">Copy code</button><details><summary>Show code (271 lines)</summary><pre id="c82">--[[
 	TuskProjectiles  (StarterPlayerScripts.SpinClient.TuskProjectiles)
 
 	Draws every server &quot;TuskNail&quot; projectile (ProjectileService events on
@@ -24692,9 +25849,9 @@ function TuskProjectiles.init()
 end
 
 return TuskProjectiles
-</pre></details></section><section class="card" id="s80">
-<div class="head"><span class="num">80</span><div><h2>TuskSneakController <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="80">Copy code</button><details><summary>Show code (280 lines)</summary><pre id="c80">--[[
+</pre></details></section><section class="card" id="s83">
+<div class="head"><span class="num">83</span><div><h2>TuskSneakController <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="83">Copy code</button><details><summary>Show code (280 lines)</summary><pre id="c83">--[[
 	TuskSneakController  (StarterPlayerScripts.SpinClient.TuskSneakController)
 
 	Client side of Tusk Sneak and the Sneak Attack, for every Act.
@@ -24973,9 +26130,9 @@ function TuskSneakController.init()
 end
 
 return TuskSneakController
-</pre></details></section><section class="card" id="s81">
-<div class="head"><span class="num">81</span><div><h2>TuskStand <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="81">Copy code</button><details><summary>Show code (366 lines)</summary><pre id="c81">--[[
+</pre></details></section><section class="card" id="s84">
+<div class="head"><span class="num">84</span><div><h2>TuskStand <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="84">Copy code</button><details><summary>Show code (366 lines)</summary><pre id="c84">--[[
 	TuskStand  (StarterPlayerScripts.SpinClient.TuskStand)
 
 	Builds and animates the Tusk Stand for every player whose character
@@ -25340,9 +26497,9 @@ function TuskStand.init()
 end
 
 return TuskStand
-</pre></details></section><section class="card" id="s82">
-<div class="head"><span class="num">82</span><div><h2>TuskVFX <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="82">Copy code</button><details><summary>Show code (1239 lines)</summary><pre id="c82">--[[
+</pre></details></section><section class="card" id="s85">
+<div class="head"><span class="num">85</span><div><h2>TuskVFX <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="85">Copy code</button><details><summary>Show code (1239 lines)</summary><pre id="c85">--[[
 	TuskVFX  (StarterPlayerScripts.SpinClient.TuskVFX)
 
 	Reusable procedural VFX framework for every Tusk Act (built on VFXLib).
@@ -26580,11 +27737,11 @@ end
 
 
 return TuskVFX
-</pre></details></section><section class="card" id="s83">
-<div class="head"><span class="num">83</span><div><h2>UI <span class="badge folder">Folder</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s84">
-<div class="head"><span class="num">84</span><div><h2>BountyUI <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="84">Copy code</button><details><summary>Show code (648 lines)</summary><pre id="c84">--[[
+</pre></details></section><section class="card" id="s86">
+<div class="head"><span class="num">86</span><div><h2>UI <span class="badge folder">Folder</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s87">
+<div class="head"><span class="num">87</span><div><h2>BountyUI <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="87">Copy code</button><details><summary>Show code (656 lines)</summary><pre id="c87">--[[
 	BountyUI  (StarterPlayerScripts.SpinClient.UI.BountyUI)
 
 	The bounty board screen (owner&#x27;s design):
@@ -26806,7 +27963,9 @@ local function showConfirm(entry)
 		pip.BackgroundColor3 = i &lt;= danger and RED or PAPER_DARK
 	end
 	local minutes = math.floor((TuskConfig.Bounty and TuskConfig.Bounty.Duration or 300) / 60)
-	body:FindFirstChild(&quot;Note&quot;).Text = (current and current.Key ~= entry.Key) and (&quot;This replaces your bounty on &quot; .. current.Name .. &quot;.&quot;) or (minutes .. &quot; minutes to find them. Land the final hit to claim the reward.&quot;)
+	body:FindFirstChild(&quot;Note&quot;).Text = (current and current.Key ~= entry.Key) and (&quot;This replaces your bounty on &quot; .. current.Name .. &quot;.&quot;)
+		or (entry.Corpse and (&quot;Carrying the Saint&#x27;s Corpse: &quot; .. entry.Corpse .. &quot;. Take them down and the parts drop.&quot;))
+		or (minutes .. &quot; minutes to find them. Land the final hit to claim the reward.&quot;)
 	body:FindFirstChild(&quot;Stamp&quot;).Visible = false
 	confirmEntry = entry
 	local scale = confirm:FindFirstChildOfClass(&quot;UIScale&quot;)
@@ -26854,6 +28013,12 @@ local function makePoster(entry, index)
 	local ribbon = new(&quot;Frame&quot;, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.84, 0), Size = UDim2.fromScale(0.72, 0.12), BackgroundColor3 = RED }, paper)
 	corner(ribbon, 4)
 	label(ribbon, { Size = UDim2.fromScale(1, 1), Text = &quot;$&quot; .. entry.Reward, Font = Enum.Font.Bangers, TextColor3 = PAPER })
+	if entry.Corpse then
+		-- A gold &quot;SAINT&#x27;S CORPSE&quot; tag: they&#x27;re carrying parts.
+		local tagC = new(&quot;Frame&quot;, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -16), Size = UDim2.fromOffset(120, 18), BackgroundColor3 = GOLD, Rotation = -4, ZIndex = 4 }, paper)
+		corner(tagC, 4)
+		label(tagC, { Size = UDim2.fromScale(1, 1), Text = &quot;SAINT&#x27;S CORPSE&quot;, Font = Enum.Font.GothamBlack, TextColor3 = INK, TextScaled = true, ZIndex = 4 })
+	end
 	if (entry.Streak or 0) &gt; 0 then
 		local badge = new(&quot;Frame&quot;, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 6, 0, -6), Size = UDim2.fromOffset(46, 22), BackgroundColor3 = INK, Rotation = 8, ZIndex = 3 }, paper)
 		corner(badge, 6)
@@ -27231,9 +28396,9 @@ function BountyUI.init()
 end
 
 return BountyUI
-</pre></details></section><section class="card" id="s85">
-<div class="head"><span class="num">85</span><div><h2>CharacterCard <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="85">Copy code</button><details><summary>Show code (615 lines)</summary><pre id="c85">--[[
+</pre></details></section><section class="card" id="s88">
+<div class="head"><span class="num">88</span><div><h2>CharacterCard <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="88">Copy code</button><details><summary>Show code (615 lines)</summary><pre id="c88">--[[
 	CharacterCard  (StarterPlayerScripts.SpinClient.UI.CharacterCard)
 
 	Top-left character card:
@@ -27847,9 +29012,9 @@ function CharacterCard.step()
 end
 
 return CharacterCard
-</pre></details></section><section class="card" id="s86">
-<div class="head"><span class="num">86</span><div><h2>CombatUI <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="86">Copy code</button><details><summary>Show code (341 lines)</summary><pre id="c86">--[[
+</pre></details></section><section class="card" id="s89">
+<div class="head"><span class="num">89</span><div><h2>CombatUI <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="89">Copy code</button><details><summary>Show code (341 lines)</summary><pre id="c89">--[[
 	CombatUI  (StarterPlayerScripts.SpinClient.UI.CombatUI)
 
 	Battlegrounds-style fight feedback:
@@ -28189,9 +29354,9 @@ function CombatUI.init()
 end
 
 return CombatUI
-</pre></details></section><section class="card" id="s87">
-<div class="head"><span class="num">87</span><div><h2>SettingsUI <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="87">Copy code</button><details><summary>Show code (70 lines)</summary><pre id="c87">--[[
+</pre></details></section><section class="card" id="s90">
+<div class="head"><span class="num">90</span><div><h2>SettingsUI <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="90">Copy code</button><details><summary>Show code (70 lines)</summary><pre id="c90">--[[
 	SettingsUI  (StarterPlayerScripts.SpinClient.UI.SettingsUI)
 	The small &quot;VFX: MEDIUM&quot; button (top right) that cycles Low / Medium / High.
 	Phones start on Low to keep the frame rate smooth.
@@ -28260,9 +29425,9 @@ function SettingsUI.init()
 end
 
 return SettingsUI
-</pre></details></section><section class="card" id="s88">
-<div class="head"><span class="num">88</span><div><h2>TuskUI <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="88">Copy code</button><details><summary>Show code (1187 lines)</summary><pre id="c88">--[[
+</pre></details></section><section class="card" id="s91">
+<div class="head"><span class="num">91</span><div><h2>TuskUI <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="91">Copy code</button><details><summary>Show code (1188 lines)</summary><pre id="c91">--[[
 	TuskUI  (StarterPlayerScripts.SpinClient.UI.TuskUI)
 
 	Battlegrounds-style move HUD (shown while Johnny or Gyro is equipped):
@@ -29394,6 +30559,7 @@ local DENY_TEXT = {
 	NoTarget = &quot;NO TARGET IN FRONT&quot;,
 	Blocked = &quot;NO ROOM TO MOVE THERE&quot;,
 	TooSoon = &quot;TUSK ISN&#x27;T READY TO AWAKEN YET&quot;,
+	NeedCorpse = &quot;FIND A SAINT&#x27;S CORPSE PART FIRST&quot;,
 }
 
 -- Wobble a card (denied input).
@@ -29448,9 +30614,9 @@ function TuskUI.onState(data)
 end
 
 return TuskUI
-</pre></details></section><section class="card" id="s89">
-<div class="head"><span class="num">89</span><div><h2>VFXLib <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="89">Copy code</button><details><summary>Show code (361 lines)</summary><pre id="c89">--[[
+</pre></details></section><section class="card" id="s92">
+<div class="head"><span class="num">92</span><div><h2>VFXLib <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="92">Copy code</button><details><summary>Show code (361 lines)</summary><pre id="c92">--[[
 	VFXLib  (StarterPlayerScripts.SpinClient.VFXLib)
 
 	Reusable procedural VFX building blocks. Built for Spin first, and meant
@@ -29810,9 +30976,9 @@ function VFXLib.sound(soundId, parentOrPosition, volume, pitch, looped)
 end
 
 return VFXLib
-</pre></details></section><section class="card" id="s90">
-<div class="head"><span class="num">90</span><div><h2>WeatherClient <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="90">Copy code</button><details><summary>Show code (263 lines)</summary><pre id="c90">--[[
+</pre></details></section><section class="card" id="s93">
+<div class="head"><span class="num">93</span><div><h2>WeatherClient <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="93">Copy code</button><details><summary>Show code (263 lines)</summary><pre id="c93">--[[
 	WeatherClient  (StarterPlayerScripts.SpinClient.WeatherClient)
 
 	Draws the server&#x27;s rain (WeatherService sets ReplicatedStorage
@@ -30074,9 +31240,9 @@ function WeatherClient.init()
 end
 
 return WeatherClient
-</pre></details></section><section class="card" id="s91">
-<div class="head"><span class="num">91</span><div><h2>WorldClient <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="91">Copy code</button><details><summary>Show code (232 lines)</summary><pre id="c91">--[[
+</pre></details></section><section class="card" id="s94">
+<div class="head"><span class="num">94</span><div><h2>WorldClient <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="94">Copy code</button><details><summary>Show code (232 lines)</summary><pre id="c94">--[[
 	WorldClient  (StarterPlayerScripts.SpinClient.WorldClient)
 	Client side of the SBR map:
 	  * NPC speech bubbles (from NPCService &quot;NPCSay&quot;), shown within 60 studs
@@ -30307,11 +31473,11 @@ function WorldClient.init()
 end
 
 return WorldClient
-</pre></details></section><section class="card" id="s92">
-<div class="head"><span class="num">92</span><div><h2>SpinTools <span class="badge folder">Folder</span></h2>
-<p class="loc">Put it in: <b>ServerStorage</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s93">
-<div class="head"><span class="num">93</span><div><h2>SBRMapBuilder <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerStorage › SpinTools</b></p></div></div><button class="copy" data-i="93">Copy code</button><details><summary>Show code (1953 lines)</summary><pre id="c93">--[[
+</pre></details></section><section class="card" id="s95">
+<div class="head"><span class="num">95</span><div><h2>SpinTools <span class="badge folder">Folder</span></h2>
+<p class="loc">Put it in: <b>ServerStorage</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s96">
+<div class="head"><span class="num">96</span><div><h2>SBRMapBuilder <span class="badge module">ModuleScript</span></h2>
+<p class="loc">Put it in: <b>ServerStorage › SpinTools</b></p></div></div><button class="copy" data-i="96">Copy code</button><details><summary>Show code (1953 lines)</summary><pre id="c96">--[[
 	SBRMapBuilder  (ServerStorage.SpinTools.SBRMapBuilder — ModuleScript)
 
 	One-time Studio tool that builds an original Steel Ball Run-style

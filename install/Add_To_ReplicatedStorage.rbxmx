@@ -173,6 +173,7 @@ TuskConfig.Keys = {
 	ActMenu = { Keyboard = Enum.KeyCode.T, Gamepad = Enum.KeyCode.DPadDown },
 	Block = { Keyboard = Enum.KeyCode.F, Gamepad = Enum.KeyCode.ButtonL2 }, -- hold
 	Dash = { Keyboard = Enum.KeyCode.Q, Gamepad = Enum.KeyCode.ButtonR2 },
+	CorpseMove = { Keyboard = Enum.KeyCode.V, Gamepad = Enum.KeyCode.DPadRight }, -- needs a corpse part
 }
 
 ---------------------------------------------------------------------------
@@ -903,6 +904,44 @@ TuskConfig.Gyro = {
 -- Sound ids. Upload assets/audio/tusk_*.ogg (Creator Hub > Asset Manager)
 -- and paste "rbxassetid://..." here. Empty string = silent.
 ---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+-- SAINT'S CORPSE: parts lie around the map. Take one (E) for a boost that
+-- lasts until you die (then it drops where you fell). Holding any part
+-- unlocks your character's CORPSE MOVE (V). Holders are worth more on the
+-- bounty board, the Heart and the Head most of all.
+---------------------------------------------------------------------------
+TuskConfig.Corpse = {
+	Enabled = true,
+	DropDespawn = 60, -- a dropped part nobody takes moves to a new spot after this long
+	-- Each part exists once. Buff: Damage / Resist / Cooldown / UltGain (fractions),
+	-- Speed (fraction), MaxHealth (points).
+	Parts = {
+		{ Id = "Heart", Name = "HEART", Buff = "MaxHealth", Amount = 25, Text = "+25 max HP" },
+		{ Id = "Head", Name = "HEAD", Buff = "Damage", Amount = 0.12, Text = "+12% damage" },
+		{ Id = "LeftArm", Name = "LEFT ARM", Buff = "Damage", Amount = 0.08, Text = "+8% damage" },
+		{ Id = "RightArm", Name = "RIGHT ARM", Buff = "Damage", Amount = 0.08, Text = "+8% damage" },
+		{ Id = "Spine", Name = "SPINE", Buff = "Resist", Amount = 0.1, Text = "-10% damage taken" },
+		{ Id = "Eyes", Name = "EYES", Buff = "Cooldown", Amount = 0.12, Text = "abilities recharge 12% faster" },
+		{ Id = "Ears", Name = "EARS", Buff = "UltGain", Amount = 0.25, Text = "+25% ultimate charge" },
+		{ Id = "Legs", Name = "LEGS", Buff = "Speed", Amount = 0.12, Text = "+12% speed" },
+	},
+	-- Where parts can lie (offsets from the map's origin; snapped to the ground).
+	Spots = {
+		Vector3.new(-150, 0, -30), Vector3.new(-290, 0, -300), Vector3.new(-190, 0, 245), Vector3.new(150, 0, 232),
+		Vector3.new(300, 0, 20), Vector3.new(40, 0, -262), Vector3.new(-20, 0, -395), Vector3.new(210, 0, -190),
+		Vector3.new(370, 0, -370), Vector3.new(-410, 0, 10), Vector3.new(100, 0, -120), Vector3.new(-120, 0, 120),
+	},
+	-- Bounties: holders are worth more; these parts most of all.
+	PartBounty = 40, -- each part adds this to their price
+	BigParts = { Heart = 150, Head = 150 }, -- ...or this, for these
+	Move = { Cooldown = 20 }, -- the CORPSE MOVE (each character's own; see CorpseMoves)
+	MoveNames = {
+		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
+		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING",
+	},
+}
+
 ---------------------------------------------------------------------------
 -- Weather: it rains for a while every few minutes (the whole server).
 ---------------------------------------------------------------------------

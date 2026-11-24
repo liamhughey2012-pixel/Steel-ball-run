@@ -1331,6 +1331,7 @@ TuskConfig.Keys = {
 	ActMenu = { Keyboard = Enum.KeyCode.T, Gamepad = Enum.KeyCode.DPadDown },
 	Block = { Keyboard = Enum.KeyCode.F, Gamepad = Enum.KeyCode.ButtonL2 }, -- hold
 	Dash = { Keyboard = Enum.KeyCode.Q, Gamepad = Enum.KeyCode.ButtonR2 },
+	CorpseMove = { Keyboard = Enum.KeyCode.V, Gamepad = Enum.KeyCode.DPadRight }, -- needs a corpse part
 }
 
 ---------------------------------------------------------------------------
@@ -2061,6 +2062,44 @@ TuskConfig.Gyro = {
 -- Sound ids. Upload assets/audio/tusk_*.ogg (Creator Hub > Asset Manager)
 -- and paste "rbxassetid://..." here. Empty string = silent.
 ---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+-- SAINT'S CORPSE: parts lie around the map. Take one (E) for a boost that
+-- lasts until you die (then it drops where you fell). Holding any part
+-- unlocks your character's CORPSE MOVE (V). Holders are worth more on the
+-- bounty board, the Heart and the Head most of all.
+---------------------------------------------------------------------------
+TuskConfig.Corpse = {
+	Enabled = true,
+	DropDespawn = 60, -- a dropped part nobody takes moves to a new spot after this long
+	-- Each part exists once. Buff: Damage / Resist / Cooldown / UltGain (fractions),
+	-- Speed (fraction), MaxHealth (points).
+	Parts = {
+		{ Id = "Heart", Name = "HEART", Buff = "MaxHealth", Amount = 25, Text = "+25 max HP" },
+		{ Id = "Head", Name = "HEAD", Buff = "Damage", Amount = 0.12, Text = "+12% damage" },
+		{ Id = "LeftArm", Name = "LEFT ARM", Buff = "Damage", Amount = 0.08, Text = "+8% damage" },
+		{ Id = "RightArm", Name = "RIGHT ARM", Buff = "Damage", Amount = 0.08, Text = "+8% damage" },
+		{ Id = "Spine", Name = "SPINE", Buff = "Resist", Amount = 0.1, Text = "-10% damage taken" },
+		{ Id = "Eyes", Name = "EYES", Buff = "Cooldown", Amount = 0.12, Text = "abilities recharge 12% faster" },
+		{ Id = "Ears", Name = "EARS", Buff = "UltGain", Amount = 0.25, Text = "+25% ultimate charge" },
+		{ Id = "Legs", Name = "LEGS", Buff = "Speed", Amount = 0.12, Text = "+12% speed" },
+	},
+	-- Where parts can lie (offsets from the map's origin; snapped to the ground).
+	Spots = {
+		Vector3.new(-150, 0, -30), Vector3.new(-290, 0, -300), Vector3.new(-190, 0, 245), Vector3.new(150, 0, 232),
+		Vector3.new(300, 0, 20), Vector3.new(40, 0, -262), Vector3.new(-20, 0, -395), Vector3.new(210, 0, -190),
+		Vector3.new(370, 0, -370), Vector3.new(-410, 0, 10), Vector3.new(100, 0, -120), Vector3.new(-120, 0, 120),
+	},
+	-- Bounties: holders are worth more; these parts most of all.
+	PartBounty = 40, -- each part adds this to their price
+	BigParts = { Heart = 150, Head = 150 }, -- ...or this, for these
+	Move = { Cooldown = 20 }, -- the CORPSE MOVE (each character's own; see CorpseMoves)
+	MoveNames = {
+		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
+		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING",
+	},
+}
+
 ---------------------------------------------------------------------------
 -- Weather: it rains for a while every few minutes (the whole server).
 ---------------------------------------------------------------------------
@@ -3573,6 +3612,7 @@ local ValentineOutfit = require(script.ValentineOutfit)
 local StandBots = require(script.StandBots)
 local BountyService = require(script.BountyService)
 local WeatherService = require(script.WeatherService)
+local CorpseService = require(script.CorpseService)
 
 -- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
@@ -3592,6 +3632,7 @@ ValentineOutfit.init()
 StandBots.init(TuskService)
 BountyService.init()
 WeatherService.init()
+CorpseService.init(TuskService)
 NPCService.init()
 TestDummies.init()
 ]=] },
@@ -4342,14 +4383,27 @@ local function listBounties(viewer)
 	for _, p in ipairs(Players:GetPlayers()) do
 		if p ~= viewer and aliveModel(p.Character) then
 			local streak = p:GetAttribute("KillStreak") or 0
+			-- Saint's Corpse holders are worth more (the Heart and Head most of all).
+			local corpse = TuskConfig.Corpse or {}
+			local parts = p.Character:GetAttribute("CorpseParts")
+			local bonus, names = 0, {}
+			for id in string.gmatch(parts or "", "[^,]+") do
+				bonus = bonus + ((corpse.BigParts or {})[id] or corpse.PartBounty or 40)
+				for _, info in ipairs(corpse.Parts or {}) do
+					if info.Id == id then
+						table.insert(names, info.Name)
+					end
+				end
+			end
 			table.insert(list, {
 				Key = "P" .. p.UserId,
 				Kind = "Player",
 				UserId = p.UserId,
 				Name = p.DisplayName,
-				Reward = (cfg.BaseReward or 100) + streak * (cfg.StreakReward or 50),
+				Reward = (cfg.BaseReward or 100) + streak * (cfg.StreakReward or 50) + bonus,
 				Streak = streak,
 				Act = p.Character:GetAttribute("TuskAct"),
+				Corpse = #names > 0 and table.concat(names, ", ") or nil,
 			})
 		end
 	end
@@ -4380,7 +4434,7 @@ local function send(player, kind, data)
 end
 
 local function publicBounty(b)
-	return { Key = b.Key, Kind = b.Kind, UserId = b.UserId, Model = b.Model, Name = b.Name, Reward = b.Reward, Expires = b.Expires, Act = b.Act }
+	return { Key = b.Key, Kind = b.Kind, UserId = b.UserId, Model = b.Model, Name = b.Name, Reward = b.Reward, Expires = b.Expires, Act = b.Act, Corpse = b.Corpse }
 end
 
 local function accept(player, key)
@@ -4881,6 +4935,12 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	end
 
 	local damage = info.Damage * (blocked and s.BlockDamageMultiplier or 1)
+	-- Saint's Corpse boosts: the attacker's damage, the target's resistance.
+	local attackerCharacter = attackerPlayer and attackerPlayer.Character
+	if attackerCharacter then
+		damage = damage * (attackerCharacter:GetAttribute("CorpseDamage") or 1)
+	end
+	damage = damage * (targetCharacter:GetAttribute("CorpseResist") or 1)
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
 
 	-- Who hit them last (kill credit for bounties and kill streaks).
@@ -4969,6 +5029,641 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return CooldownService
+]=] },
+	{ Service = "ServerScriptService", Path = "SpinServer/CorpseMoves", Class = "ModuleScript", Source = [=[
+--[[
+	CorpseMoves  (ServerScriptService.SpinServer.CorpseMoves)
+
+	Every character's CORPSE MOVE (V), unlocked while holding a Saint's
+	Corpse part. One shared cooldown (TuskConfig.Corpse.Move.Cooldown); the
+	ready time is the character attribute CorpseReadyAt (server time) for
+	the HUD. Visuals: CorpseClient, from WorldFX "CorpseMove".
+	  Johnny       GOLDEN SPIN NAIL: a huge golden spinning nail
+	  Gyro         GOLDEN RECTANGLE: a spinning shockwave straight ahead
+	  Diego        DINOSAUR CRASH: leaps to the aim point and slams down
+	  Pork Pie     HOOK HARVEST: hooks yank everyone round him in
+	  Sandman      SOUND BARRIER: dashes through enemies, then a blast
+	  Mountain Tim LASSO CYCLONE: a spinning lasso pulls everyone in
+	  Hot Pants    FLESH COCOON: heals and armours herself, then a burst
+	  Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow
+	  Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit
+	  Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse
+	All damage goes through S.hit (CombatAdapter).
+]]
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local Registry = require(Shared.TuskActRegistry)
+local Net = require(Shared.Net)
+local Moves = require(script.Parent.TuskMoves)
+
+local CorpseMoves = {}
+
+local TuskConfig = require(Shared.TuskConfig)
+CorpseMoves.Names = TuskConfig.Corpse.MoveNames
+
+local WorldFX
+local function fx(data)
+	WorldFX = WorldFX or Net.get("WorldFX")
+	WorldFX:FireAllClients("CorpseMove", data)
+end
+
+local function now()
+	return workspace:GetServerTimeNow()
+end
+
+local function slow(S, target, key, multiplier, seconds)
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	S.Adapter.setMoveModifier(humanoid, key, multiplier)
+	local token = tostring({})
+	target:SetAttribute(key .. "Token", token)
+	task.delay(seconds, function()
+		if humanoid.Parent and target:GetAttribute(key .. "Token") == token then
+			S.Adapter.setMoveModifier(humanoid, key, nil)
+			target:SetAttribute(key .. "Token", nil)
+		end
+	end)
+end
+
+-- Everyone in range (pulled toward `center` when pull is set).
+local function around(S, player, center, radius, info, pull)
+	local character = player.Character
+	local count = 0
+	for _, target in ipairs(S.Hitbox.inRadius(character, center, radius, 8)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local hitInfo = table.clone(info)
+			hitInfo.Position = tr.Position
+			hitInfo.Direction = pull and (center - tr.Position) or (tr.Position - center)
+			if S.hit(player, target, hitInfo) then
+				count = count + 1
+			end
+		end
+	end
+	return count
+end
+
+local USE = {}
+
+USE.Johnny = function(S, player, state, character, root, aim)
+	local dir = S.aim(aim, root)
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Johnny", Phase = "Cast", Direction = dir })
+	task.delay(0.2, function()
+		local char, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		Moves.nail(S, player, state, {
+			Origin = S.origin(char, r, Moves.HAND), Direction = dir, Speed = 210, Radius = 1.7, Range = 220,
+			Style = "Spinning", Charge = 1, Damage = 15, Stun = 0.6, Knockback = 45, Launch = 12, Source = "CorpseNail",
+		})
+	end)
+end
+
+USE.Gyro = function(S, player, state, character, root, aim)
+	local dir = Moves.flat(S.aim(aim, root))
+	S.lock(state, 0.5)
+	fx({ Character = character, Who = "Gyro", Phase = "Cast", Position = root.Position, Direction = dir, Length = 34 })
+	task.delay(0.25, function()
+		local _, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		local mid = r.Position + dir * 17
+		Moves.boxHit(S, player, CFrame.lookAt(mid, mid + dir), Vector3.new(7, 7, 34), { Damage = 13, Stun = 0.7, Knockback = 35, Launch = 16, Direction = dir, Source = "CorpseSpin" }, 6)
+	end)
+end
+
+USE.Diego = function(S, player, state, character, root, aim)
+	local dir = Moves.flat(S.aim(aim, root))
+	local to = Moves.safeStep(character, root, dir, 30) or root.Position
+	S.lock(state, 0.7)
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	character:SetAttribute(iframes, true)
+	fx({ Character = character, Who = "Diego", Phase = "Leap", From = root.Position, To = to, Time = 0.45 })
+	task.delay(0.45, function()
+		character:SetAttribute(iframes, nil)
+		local char, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		char:PivotTo(CFrame.lookAt(to, to + dir))
+		around(S, player, to, 10, { Damage = 12, Stun = 0.7, Knockback = 30, Launch = 18, Source = "CorpseCrash" })
+		fx({ Character = char, Who = "Diego", Phase = "Slam", Position = to, Radius = 10 })
+	end)
+end
+
+USE.PorkPie = function(S, player, state, character, root)
+	S.lock(state, 0.5)
+	fx({ Character = character, Who = "PorkPie", Phase = "Cast", Position = root.Position, Radius = 20 })
+	task.delay(0.3, function()
+		local _, _, r = S.Adapter.getAlive(player)
+		if r then
+			around(S, player, r.Position, 20, { Damage = 11, Stun = 1.0, Knockback = 45, Source = "CorpseHooks" }, true)
+		end
+	end)
+end
+
+USE.Sandman = function(S, player, state, character, root, aim)
+	local dir = Moves.flat(S.aim(aim, root))
+	local to = Moves.safeStep(character, root, dir, 36)
+	if not to then
+		S.tell(player, "Denied", { Reason = "Blocked" })
+		return false
+	end
+	local from = root.Position
+	S.lock(state, 0.5)
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	character:SetAttribute(iframes, true)
+	fx({ Character = character, Who = "Sandman", Phase = "Dash", From = from, To = to })
+	task.delay(0.2, function()
+		character:SetAttribute(iframes, nil)
+		local char, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		char:PivotTo(CFrame.lookAt(to, to + dir))
+		local mid = (from + to) / 2
+		Moves.boxHit(S, player, CFrame.lookAt(mid, to), Vector3.new(7, 7, (to - from).Magnitude + 2), { Damage = 9, Stun = 0.6, Knockback = 10, Direction = dir, Source = "CorpseSound" }, 6)
+		task.delay(0.45, function()
+			around(S, player, mid, 9, { Damage = 6, Stun = 0.6, Knockback = 30, Launch = 18, Source = "CorpseSound" })
+			fx({ Character = char, Who = "Sandman", Phase = "Boom", Position = mid })
+		end)
+	end)
+end
+
+USE.MountainTim = function(S, player, state, character, root)
+	S.lock(state, 0.8)
+	fx({ Character = character, Who = "MountainTim", Phase = "Spin", Position = root.Position, Radius = 14, Time = 0.8 })
+	for i = 1, 3 do
+		task.delay(i * 0.25, function()
+			local _, _, r = S.Adapter.getAlive(player)
+			if r then
+				around(S, player, r.Position, 14, { Damage = 4, Stun = 0.5, Knockback = 25, Source = "CorpseLasso" }, true)
+			end
+		end)
+	end
+end
+
+USE.HotPants = function(S, player, state, character, root)
+	local _, humanoid = S.Adapter.getAlive(player)
+	S.lock(state, 0.5)
+	character:SetAttribute("Armored", true)
+	fx({ Character = character, Who = "HotPants", Phase = "Cocoon", Position = root.Position, Time = 2 })
+	for i = 1, 5 do
+		task.delay(i * 0.3, function()
+			if humanoid.Parent and humanoid.Health > 0 then
+				humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + 6)
+			end
+		end)
+	end
+	task.delay(2, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+		local _, _, r = S.Adapter.getAlive(player)
+		if r then
+			around(S, player, r.Position, 9, { Damage = 7, Stun = 0.6, Knockback = 30, Launch = 10, Source = "CorpseFlesh" })
+			fx({ Character = character, Who = "HotPants", Phase = "Burst", Position = r.Position })
+		end
+	end)
+end
+
+USE.Blackmore = function(S, player, state, character, root, aim)
+	local dir = Moves.flat(S.aim(aim, root))
+	S.lock(state, 0.5)
+	fx({ Character = character, Who = "Blackmore", Phase = "Curtain", Position = root.Position, Direction = dir, Range = 26, Cone = 70 })
+	task.delay(0.3, function()
+		local char, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		local cosLimit = math.cos(math.rad(35))
+		for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, 26, 8)) do
+			local tr = target:FindFirstChild("HumanoidRootPart")
+			local off = tr and Vector3.new(tr.Position.X - r.Position.X, 0, tr.Position.Z - r.Position.Z)
+			if tr and (off.Magnitude < 1 or off.Unit:Dot(dir) >= cosLimit) then
+				if S.hit(player, target, { Damage = 12, Stun = 0.6, Knockback = 12, Direction = dir, Position = tr.Position, Source = "CorpseRain" }) then
+					slow(S, target, "CorpseRain", 0.6, 2)
+				end
+			end
+		end
+	end)
+end
+
+USE.Axl = function(S, player, state, character, root)
+	S.lock(state, 0.5)
+	fx({ Character = character, Who = "Axl", Phase = "Flood", Position = root.Position, Radius = 22 })
+	task.delay(0.3, function()
+		local char, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, 22, 8)) do
+			local tr = target:FindFirstChild("HumanoidRootPart")
+			if tr and S.hit(player, target, { Damage = 8, Stun = 0.6, Knockback = 8, Direction = tr.Position - r.Position, Position = tr.Position, Source = "CorpseGuilt" }) then
+				-- +2 guilt (the same stacks Axl's moves feed on).
+				local g = math.min(5, (target:GetAttribute("Guilt") or 0) + 2)
+				target:SetAttribute("Guilt", g)
+				target:SetAttribute("GuiltAt", os.clock())
+				S.fx("Ability", { Act = 12, Move = "Guilt", Phase = "Mark", Target = target, Stacks = g })
+			end
+		end
+	end)
+end
+
+USE.Valentine = function(S, player, state, character, root)
+	local _, humanoid = S.Adapter.getAlive(player)
+	S.lock(state, 0.3)
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	character:SetAttribute(iframes, true)
+	humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + 15)
+	fx({ Character = character, Who = "Valentine", Phase = "Bless", Position = root.Position, Time = 2.5 })
+	task.delay(2.5, function()
+		if character.Parent then
+			character:SetAttribute(iframes, nil)
+		end
+		local _, _, r = S.Adapter.getAlive(player)
+		if r then
+			around(S, player, r.Position, 12, { Damage = 9, Stun = 0.6, Knockback = 35, Source = "CorpseLight" })
+			fx({ Character = character, Who = "Valentine", Phase = "Pulse", Position = r.Position, Radius = 12 })
+		end
+	end)
+end
+
+function CorpseMoves.use(S, player, state, aim, cfg)
+	local character, _, root = S.Adapter.getAlive(player)
+	if not character or not state.Act or S.isBusy(state) or state.Charging or not S.Adapter.canAct(player) then
+		return
+	end
+	if (character:GetAttribute("CorpseReadyAt") or 0) > now() then
+		S.tell(player, "Denied", { Reason = "Cooldown" })
+		return
+	end
+	local who = Registry.characterOf(state.Act)
+	local fn = USE[who]
+	if not fn then
+		return
+	end
+	if fn(S, player, state, character, root, aim) == false then
+		return
+	end
+	character:SetAttribute("CorpseReadyAt", now() + (cfg and cfg.Cooldown or 20))
+end
+
+return CorpseMoves
+]=] },
+	{ Service = "ServerScriptService", Path = "SpinServer/CorpseService", Class = "ModuleScript", Source = [=[
+--[[
+	CorpseService  (ServerScriptService.SpinServer.CorpseService)
+
+	SAINT'S CORPSE. Eight parts (TuskConfig.Corpse.Parts), each existing
+	once, lie around the map: a mummified relic glowing gold with a beam of
+	light you can see from far away. Hold E by one to take it.
+	  * each part gives its own boost until you die (Damage, Resist, Cooldown,
+	    UltGain, Speed, MaxHealth), stacking with any others you hold
+	  * when you die your parts drop where you fell for anyone to grab; one
+	    nobody takes moves to a new random spot after a while
+	  * holding any part unlocks your character's CORPSE MOVE (V), see
+	    CorpseMoves
+	  * holders are worth more on the bounty board (BountyService)
+	Boosts are character attributes the combat code reads:
+	  CorpseDamage, CorpseResist, CorpseCooldown, CorpseUltGain (multipliers)
+	  CorpseParts ("Heart,Spine") for the HUD and the bounty board
+	Clients are told about pickups and drops over WorldFX ("Corpse...").
+]]
+
+local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local Net = require(Shared.Net)
+
+local CorpseService = {}
+
+local cfg
+local S -- TuskService
+local folder
+local WorldFX
+local partInfo = {} -- [id] = config entry
+local relics = {} -- [id] = relic model lying in the world
+local held = {} -- [player] = { Ids = { ... }, BaseMax = number }
+local rng = Random.new()
+
+local MUMMY = Color3.fromRGB(122, 90, 60)
+local MUMMY_DARK = Color3.fromRGB(84, 60, 40)
+local WRAP = Color3.fromRGB(222, 204, 164)
+local GLOW = Color3.fromRGB(255, 214, 110)
+
+local function origin()
+	local map = workspace:FindFirstChild("SBRMap")
+	return map and map:GetAttribute("Origin") or Vector3.new()
+end
+
+local function groundAt(pos)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ex = { folder }
+	for _, m in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		table.insert(ex, m)
+	end
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p.Character then
+			table.insert(ex, p.Character)
+		end
+	end
+	params.FilterDescendantsInstances = ex
+	local hit = workspace:Raycast(pos + Vector3.new(0, 200, 0), Vector3.new(0, -400, 0), params)
+	return hit and hit.Position or pos
+end
+
+---------------------------------------------------------------------------
+-- The relics
+---------------------------------------------------------------------------
+local function piece(model, size, cf, color, shape)
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Material = Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	if shape then
+		p.Shape = shape
+	end
+	p.Parent = model
+	return p
+end
+
+-- A mummified part, blocky, built round `at` (the floating centre).
+local function shape(model, id, at)
+	local c = CFrame.new(at)
+	if id == "Heart" then
+		piece(model, Vector3.new(1.3, 1.5, 1.1), c * CFrame.Angles(0, 0, 0.3), MUMMY)
+		piece(model, Vector3.new(0.3, 0.6, 0.3), c * CFrame.new(-0.3, 0.9, 0), MUMMY_DARK)
+		piece(model, Vector3.new(0.3, 0.5, 0.3), c * CFrame.new(0.25, 0.85, 0.1), MUMMY_DARK)
+		piece(model, Vector3.new(1.36, 0.16, 1.16), c * CFrame.new(0, -0.2, 0) * CFrame.Angles(0, 0, 0.3), WRAP)
+	elseif id == "Head" then
+		piece(model, Vector3.new(1.3, 1.4, 1.3), c, MUMMY)
+		for _, x in ipairs({ -0.3, 0.3 }) do
+			piece(model, Vector3.new(0.3, 0.3, 0.05), c * CFrame.new(x, 0.15, -0.66), MUMMY_DARK)
+		end
+		piece(model, Vector3.new(0.6, 0.12, 0.05), c * CFrame.new(0, -0.35, -0.66), MUMMY_DARK)
+		piece(model, Vector3.new(1.36, 0.16, 1.36), c * CFrame.new(0, 0.45, 0), WRAP)
+	elseif id == "Spine" then
+		for i = 0, 5 do
+			piece(model, Vector3.new(0.5 + (i % 2) * 0.2, 0.32, 0.4), c * CFrame.new(0, -1 + i * 0.4, 0), i % 2 == 0 and MUMMY or WRAP)
+		end
+	elseif id == "Eyes" then
+		piece(model, Vector3.new(1.6, 0.35, 0.3), c, WRAP)
+		for _, x in ipairs({ -0.4, 0.4 }) do
+			piece(model, Vector3.new(0.45, 0.45, 0.45), c * CFrame.new(x, 0, -0.2), Color3.fromRGB(236, 228, 214), Enum.PartType.Ball)
+			piece(model, Vector3.new(0.2, 0.2, 0.2), c * CFrame.new(x, 0, -0.4), Color3.fromRGB(40, 30, 30), Enum.PartType.Ball)
+		end
+	elseif id == "Ears" then
+		for _, x in ipairs({ -0.45, 0.45 }) do
+			piece(model, Vector3.new(0.2, 1.0, 0.7), c * CFrame.new(x, 0, 0) * CFrame.Angles(0, 0, x * 0.4), MUMMY)
+		end
+		piece(model, Vector3.new(1.2, 0.18, 0.3), c * CFrame.new(0, -0.3, 0), WRAP)
+	elseif id == "Legs" then
+		for _, x in ipairs({ -0.35, 0.35 }) do
+			piece(model, Vector3.new(0.5, 2.4, 0.5), c * CFrame.new(x, 0, 0), MUMMY)
+			piece(model, Vector3.new(0.56, 0.2, 0.56), c * CFrame.new(x, 0.4, 0), WRAP)
+			piece(model, Vector3.new(0.5, 0.3, 0.8), c * CFrame.new(x, -1.2, -0.15), MUMMY_DARK)
+		end
+	else -- LeftArm / RightArm
+		local side = id == "LeftArm" and -1 or 1
+		local arm = c * CFrame.Angles(0, 0, side * 0.3)
+		piece(model, Vector3.new(0.5, 2.2, 0.5), arm, MUMMY)
+		piece(model, Vector3.new(0.56, 0.2, 0.56), arm * CFrame.new(0, 0.5, 0), WRAP)
+		piece(model, Vector3.new(0.6, 0.5, 0.35), arm * CFrame.new(0, -1.3, 0), MUMMY_DARK)
+		for f = -1.5, 1.5 do
+			piece(model, Vector3.new(0.1, 0.4, 0.1), arm * CFrame.new(f * 0.13, -1.7, 0), MUMMY_DARK)
+		end
+	end
+end
+
+local collect -- (defined below)
+
+local function placeRelic(id, position, dropped)
+	local old = relics[id]
+	if old then
+		old:Destroy()
+	end
+	local info = partInfo[id]
+	local ground = groundAt(position)
+	local model = Instance.new("Model")
+	model.Name = "Corpse" .. id
+	local holder = piece(model, Vector3.new(3, 3, 3), CFrame.new(ground + Vector3.new(0, 2.5, 0)), GLOW)
+	holder.Name = "Holder"
+	holder.Transparency = 1
+	model.PrimaryPart = holder
+	shape(model, id, ground + Vector3.new(0, 2.5, 0))
+	-- A pillar of light you can see from far away.
+	local beam = piece(model, Vector3.new(60, 1.6, 1.6), CFrame.new(ground + Vector3.new(0, 31, 0)) * CFrame.Angles(0, 0, math.pi / 2), GLOW, Enum.PartType.Cylinder)
+	beam.Name = "Beam"
+	beam.Material = Enum.Material.Neon
+	beam.Transparency = 0.65
+	local light = Instance.new("PointLight")
+	light.Color = GLOW
+	light.Range = 14
+	light.Brightness = 1.5
+	light.Parent = holder
+	local highlight = Instance.new("Highlight")
+	highlight.FillColor = GLOW
+	highlight.FillTransparency = 0.7
+	highlight.OutlineColor = GLOW
+	highlight.Parent = model
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Take"
+	prompt.ObjectText = "Saint's Corpse: " .. info.Name
+	prompt.HoldDuration = 0.6
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = holder
+	prompt.Triggered:Connect(function(player)
+		collect(player, id)
+	end)
+	model:SetAttribute("PartId", id)
+	model:SetAttribute("Dropped", dropped == true)
+	model.Parent = folder
+	CollectionService:AddTag(model, "SpinCorpse")
+	relics[id] = model
+	if dropped then
+		-- Nobody takes it: it goes back out into the desert somewhere else.
+		local stamp = os.clock()
+		model:SetAttribute("DroppedAt", stamp)
+		task.delay(cfg.DropDespawn or 60, function()
+			if relics[id] == model and model.Parent and model:GetAttribute("DroppedAt") == stamp then
+				CorpseService.scatter(id)
+			end
+		end)
+	end
+	return model
+end
+
+-- Put a part on a random spot (not one another part is already on).
+function CorpseService.scatter(id)
+	local used = {}
+	for otherId, m in pairs(relics) do
+		if otherId ~= id and m.Parent then
+			used[m:GetAttribute("Spot") or -1] = true
+		end
+	end
+	local free = {}
+	for i = 1, #cfg.Spots do
+		if not used[i] then
+			table.insert(free, i)
+		end
+	end
+	local i = #free > 0 and free[rng:NextInteger(1, #free)] or rng:NextInteger(1, #cfg.Spots)
+	local model = placeRelic(id, origin() + cfg.Spots[i], false)
+	model:SetAttribute("Spot", i)
+end
+
+---------------------------------------------------------------------------
+-- Holding parts: boosts
+---------------------------------------------------------------------------
+local function apply(player)
+	local h = held[player]
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not character or not humanoid then
+		return
+	end
+	local sum = { Damage = 0, Resist = 0, Cooldown = 0, UltGain = 0, Speed = 0, MaxHealth = 0 }
+	local ids = h and h.Ids or {}
+	for _, id in ipairs(ids) do
+		local info = partInfo[id]
+		if info then
+			sum[info.Buff] = (sum[info.Buff] or 0) + info.Amount
+		end
+	end
+	local any = #ids > 0
+	character:SetAttribute("CorpseParts", any and table.concat(ids, ",") or nil)
+	character:SetAttribute("CorpseDamage", sum.Damage > 0 and 1 + sum.Damage or nil)
+	character:SetAttribute("CorpseResist", sum.Resist > 0 and math.max(0.5, 1 - sum.Resist) or nil)
+	character:SetAttribute("CorpseCooldown", sum.Cooldown > 0 and math.max(0.5, 1 - sum.Cooldown) or nil)
+	character:SetAttribute("CorpseUltGain", sum.UltGain > 0 and 1 + sum.UltGain or nil)
+	S.Adapter.setMoveModifier(humanoid, "Corpse", sum.Speed > 0 and 1 + sum.Speed or nil)
+	if h then
+		h.BaseMax = h.BaseMax or humanoid.MaxHealth
+		local want = h.BaseMax + sum.MaxHealth
+		if humanoid.MaxHealth ~= want then
+			local gained = want - humanoid.MaxHealth
+			humanoid.MaxHealth = want
+			if gained > 0 then
+				humanoid.Health = math.min(want, humanoid.Health + gained)
+			end
+		end
+	end
+end
+
+function collect(player, id)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local model = relics[id]
+	if not humanoid or humanoid.Health <= 0 or not model or not model.Parent then
+		return
+	end
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root or (root.Position - model:GetPivot().Position).Magnitude > 14 then
+		return
+	end
+	relics[id] = nil
+	model:Destroy()
+	held[player] = held[player] or { Ids = {} }
+	table.insert(held[player].Ids, id)
+	apply(player)
+	WorldFX:FireAllClients("CorpseTaken", { Player = player.UserId, Name = player.DisplayName, Part = id, Position = root.Position })
+end
+
+-- Dies (or leaves): their parts fall where they were.
+local function dropAll(player, position)
+	local h = held[player]
+	held[player] = nil
+	if not h then
+		return
+	end
+	for i, id in ipairs(h.Ids) do
+		if position then
+			local a = i / #h.Ids * math.pi * 2
+			placeRelic(id, position + Vector3.new(math.cos(a) * 3, 0, math.sin(a) * 3), true)
+			WorldFX:FireAllClients("CorpseDropped", { Part = id, Position = position, Name = player.DisplayName })
+		else
+			CorpseService.scatter(id)
+		end
+	end
+end
+
+function CorpseService.holding(player)
+	local h = held[player]
+	return h and #h.Ids or 0
+end
+
+local function watch(player, character)
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	if not humanoid then
+		return
+	end
+	humanoid.Died:Connect(function()
+		local root = character:FindFirstChild("HumanoidRootPart")
+		dropAll(player, root and root.Position or nil)
+	end)
+end
+
+function CorpseService.init(TuskService)
+	cfg = TuskConfig.Corpse
+	if not cfg or cfg.Enabled == false then
+		return
+	end
+	S = TuskService
+	WorldFX = Net.get("WorldFX")
+	for _, info in ipairs(cfg.Parts) do
+		partInfo[info.Id] = info
+	end
+	folder = Instance.new("Folder")
+	folder.Name = "SaintsCorpse"
+	folder.Parent = workspace
+	for _, info in ipairs(cfg.Parts) do
+		CorpseService.scatter(info.Id)
+	end
+	local function onPlayer(player)
+		player.CharacterAdded:Connect(function(character)
+			watch(player, character)
+		end)
+		if player.Character then
+			task.spawn(watch, player, player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	for _, p in ipairs(Players:GetPlayers()) do
+		onPlayer(p)
+	end
+	Players.PlayerRemoving:Connect(function(player)
+		dropAll(player, nil)
+	end)
+	-- The CORPSE MOVE goes through TuskService's request handler.
+	local Moves = require(script.Parent.CorpseMoves)
+	TuskService.CorpseMove = function(player, state, aim)
+		if CorpseService.holding(player) < 1 then
+			TuskService.tell(player, "Denied", { Reason = "NeedCorpse" })
+			return
+		end
+		Moves.use(TuskService, player, state, aim, cfg.Move)
+	end
+end
+
+return CorpseService
 ]=] },
 	{ Service = "ServerScriptService", Path = "SpinServer/DefenseService", Class = "ModuleScript", Source = [=[
 --[[
@@ -13021,6 +13716,9 @@ function TuskService.cooldownReady(player, state, name, slot)
 end
 
 function TuskService.startCooldown(player, state, name, seconds, slot)
+	-- Saint's Corpse (Eyes): abilities recharge faster.
+	local character = player.Character
+	seconds = seconds * (character and character:GetAttribute("CorpseCooldown") or 1)
 	Cooldowns.start(player, cooldownKey(state, name), seconds)
 	TuskService.tell(player, "Cooldown", { Slot = slot, Duration = seconds })
 end
@@ -13071,6 +13769,9 @@ function TuskService.addUlt(player, amount)
 	if state and state.Act and byAct and byAct[state.Act] then
 		amount = amount * byAct[state.Act]
 	end
+	-- Saint's Corpse (Ears): the ultimate charges faster.
+	local character = player.Character
+	amount = amount * (character and character:GetAttribute("CorpseUltGain") or 1)
 	local current = player:GetAttribute("TuskUlt") or 0
 	player:SetAttribute("TuskUlt", math.clamp(current + amount, 0, max))
 end
@@ -13401,6 +14102,14 @@ local function onRequest(player, action, a, b, c)
 			return
 		end
 		TuskService.select(player, start, true)
+		return
+	end
+	if action == "CorpseMove" then
+		-- The character's own move, unlocked by holding a Saint's Corpse part.
+		local st = states[player]
+		if st and TuskService.CorpseMove then
+			TuskService.CorpseMove(player, st, a)
+		end
 		return
 	end
 	if action == "RainFloat" then
@@ -14246,6 +14955,7 @@ local CombatUI = require(script.UI.CombatUI)
 local DefenseClient = require(script.DefenseClient)
 local BountyUI = require(script.UI.BountyUI)
 local WeatherClient = require(script.WeatherClient)
+local CorpseClient = require(script.CorpseClient)
 
 SettingsUI.init()
 HitFX.init()
@@ -14259,6 +14969,7 @@ CombatUI.init()
 DefenseClient.init()
 BountyUI.init()
 WeatherClient.init()
+CorpseClient.init()
 ]=] },
 	{ Service = "StarterPlayerScripts", Path = "SpinClient/CameraFX", Class = "ModuleScript", Source = [=[
 --[[
@@ -14434,6 +15145,452 @@ function CameraFX.impactFrame(tint)
 end
 
 return CameraFX
+]=] },
+	{ Service = "StarterPlayerScripts", Path = "SpinClient/CorpseClient", Class = "ModuleScript", Source = [=[
+--[[
+	CorpseClient  (StarterPlayerScripts.SpinClient.CorpseClient)
+
+	Client side of the SAINT'S CORPSE (server: CorpseService, CorpseMoves).
+	  * the relics float, turn and bob (tag "SpinCorpse")
+	  * a panel on the left while you hold parts: each part with its boost,
+	    and your CORPSE MOVE button (V / D-pad right, or tap it) with its
+	    cooldown
+	  * announcements: you took a part (big), someone else took one or a
+	    part fell where someone died (a line at the top)
+	  * the visuals for every character's corpse move, with its name popping
+	    up over the caster
+]]
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local Registry = require(Shared.TuskActRegistry)
+local Net = require(Shared.Net)
+local VFXLib = require(script.Parent.VFXLib)
+local TuskVFX = require(script.Parent.TuskVFX)
+local CameraFX = require(script.Parent.CameraFX)
+local Common = require(script.Parent.TuskActCommon)
+
+local CorpseClient = {}
+
+local player = Players.LocalPlayer
+local cfg
+local GOLD = Color3.fromRGB(255, 205, 90)
+local INK = Color3.fromRGB(40, 26, 14)
+local PANEL = Color3.fromRGB(26, 20, 16)
+local partInfo = {}
+
+local gui, panel, list, moveButton, moveName, moveFill, moveTime, feed, banner
+local shown = "" -- the parts string the panel was built for
+
+---------------------------------------------------------------------------
+-- Small UI helpers
+---------------------------------------------------------------------------
+local function new(class, props, parent)
+	local i = Instance.new(class)
+	for k, v in pairs(props or {}) do
+		i[k] = v
+	end
+	i.Parent = parent
+	return i
+end
+
+local function corner(p, r)
+	new("UICorner", { CornerRadius = UDim.new(0, r) }, p)
+end
+
+local function label(parent, props)
+	local l = new("TextLabel", { BackgroundTransparency = 1, Font = Enum.Font.GothamBlack, TextColor3 = Color3.new(1, 1, 1), TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left }, parent)
+	for k, v in pairs(props) do
+		l[k] = v
+	end
+	return l
+end
+
+local function myCharacterName()
+	local c = player.Character
+	local act = c and c:GetAttribute("TuskAct")
+	return act and Registry.characterOf(act) or nil
+end
+
+local function aim()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local camera = workspace.CurrentCamera
+	if not root or not camera then
+		return nil
+	end
+	local last = UserInputService:GetLastInputType()
+	if last == Enum.UserInputType.Touch or string.find(last.Name, "Gamepad") then
+		return camera.CFrame.LookVector
+	end
+	local mouse = UserInputService:GetMouseLocation()
+	local ray = camera:ViewportPointToRay(mouse.X, mouse.Y)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character, VFXLib.Folder }
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 600, params)
+	local target = hit and hit.Position or ray.Origin + ray.Direction * 600
+	local dir = target - root.Position
+	return dir.Magnitude > 1 and dir.Unit or root.CFrame.LookVector
+end
+
+local function useMove()
+	local c = player.Character
+	if not c or not c:GetAttribute("CorpseParts") then
+		return
+	end
+	Net.get("TuskRequest"):FireServer("CorpseMove", aim())
+end
+
+---------------------------------------------------------------------------
+-- The panel (left side, while you hold parts)
+---------------------------------------------------------------------------
+local function rebuildPanel(parts)
+	for _, c in ipairs(list:GetChildren()) do
+		if c:IsA("Frame") then
+			c:Destroy()
+		end
+	end
+	local ids = {}
+	for id in string.gmatch(parts, "[^,]+") do
+		table.insert(ids, id)
+	end
+	for i, id in ipairs(ids) do
+		local info = partInfo[id]
+		local row = new("Frame", { LayoutOrder = i, BackgroundColor3 = Color3.fromRGB(46, 36, 26), Size = UDim2.new(1, 0, 0, 30) }, list)
+		corner(row, 6)
+		local icon = new("Frame", { Position = UDim2.fromOffset(5, 5), Size = UDim2.fromOffset(20, 20), BackgroundColor3 = Color3.fromRGB(122, 90, 60), Rotation = 45 }, row)
+		new("UIStroke", { Color = GOLD, Thickness = 1.5 }, icon)
+		label(row, { Position = UDim2.fromOffset(34, 2), Size = UDim2.new(1, -40, 0, 14), Text = info and info.Name or id, TextColor3 = GOLD })
+		label(row, { Position = UDim2.fromOffset(34, 16), Size = UDim2.new(1, -40, 0, 11), Text = info and info.Text or "", Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(230, 220, 200) })
+	end
+	panel.Size = UDim2.fromOffset(240, 44 + #ids * 34 + 52)
+	local who = myCharacterName()
+	moveName.Text = (cfg.MoveNames and who and cfg.MoveNames[who]) or "CORPSE MOVE"
+end
+
+local function buildUI()
+	gui = new("ScreenGui", { Name = "CorpseHUD", ResetOnSpawn = false, DisplayOrder = 4 }, player:WaitForChild("PlayerGui"))
+	panel = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.46, 0), Size = UDim2.fromOffset(240, 120), BackgroundColor3 = PANEL, BackgroundTransparency = 0.08, Visible = false }, gui)
+	corner(panel, 10)
+	new("UIStroke", { Color = GOLD, Thickness = 2 }, panel)
+	label(panel, { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -24, 0, 22), Text = "SAINT'S CORPSE", Font = Enum.Font.Bangers, TextColor3 = GOLD })
+	label(panel, { Position = UDim2.fromOffset(12, 26), Size = UDim2.new(1, -24, 0, 11), Text = "Boosts last until you die", Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(190, 175, 150) })
+	list = new("Frame", { Position = UDim2.fromOffset(8, 42), Size = UDim2.new(1, -16, 1, -96), BackgroundTransparency = 1 }, panel)
+	new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, list)
+	-- The corpse move: a button with a cooldown fill.
+	moveButton = new("TextButton", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 8, 1, -8), Size = UDim2.new(1, -16, 0, 40), BackgroundColor3 = Color3.fromRGB(150, 110, 40), Text = "", AutoButtonColor = true }, panel)
+	corner(moveButton, 8)
+	new("UIStroke", { Color = GOLD, Thickness = 2 }, moveButton)
+	moveFill = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Size = UDim2.fromScale(0, 1), BorderSizePixel = 0 }, moveButton)
+	corner(moveFill, 8)
+	local key = new("Frame", { Position = UDim2.fromOffset(6, 7), Size = UDim2.fromOffset(26, 26), BackgroundColor3 = GOLD }, moveButton)
+	corner(key, 6)
+	label(key, { Size = UDim2.fromScale(1, 1), Text = "V", TextColor3 = INK, TextXAlignment = Enum.TextXAlignment.Center })
+	moveName = label(moveButton, { Position = UDim2.fromOffset(40, 6), Size = UDim2.new(1, -86, 0, 28), Text = "", Font = Enum.Font.Bangers })
+	new("UITextSizeConstraint", { MaxTextSize = 22, MinTextSize = 10 }, moveName)
+	moveTime = label(moveButton, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 10), Size = UDim2.fromOffset(40, 20), Text = "", TextXAlignment = Enum.TextXAlignment.Right })
+	moveButton.Activated:Connect(useMove)
+	-- Announcements.
+	feed = label(gui, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 120), Size = UDim2.fromOffset(520, 22), Text = "", Font = Enum.Font.GothamBold, TextColor3 = GOLD, TextStrokeTransparency = 0.3, TextXAlignment = Enum.TextXAlignment.Center, Visible = false })
+	banner = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.34), Size = UDim2.fromOffset(620, 70), Text = "", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center, Visible = false })
+end
+
+local feedToken, bannerToken
+local function showFeed(text)
+	feed.Text = text
+	feed.Visible = true
+	local token = {}
+	feedToken = token
+	task.delay(3.5, function()
+		if feedToken == token then
+			feed.Visible = false
+		end
+	end)
+end
+
+local function showBanner(text)
+	banner.Text = text
+	banner.Visible = true
+	local token = {}
+	bannerToken = token
+	VFXLib.animate(0.25, function(a)
+		banner.Size = UDim2.fromOffset(620 * (0.6 + 0.4 * a), 70 * (0.6 + 0.4 * a))
+	end)
+	task.delay(3, function()
+		if bannerToken == token then
+			banner.Visible = false
+		end
+	end)
+end
+
+local function stepPanel()
+	local c = player.Character
+	local parts = c and c:GetAttribute("CorpseParts") or ""
+	panel.Visible = parts ~= ""
+	if parts ~= shown then
+		shown = parts
+		if parts ~= "" then
+			rebuildPanel(parts)
+		end
+	end
+	if parts ~= "" then
+		local left = math.max(0, (c:GetAttribute("CorpseReadyAt") or 0) - workspace:GetServerTimeNow())
+		local total = cfg.Move and cfg.Move.Cooldown or 20
+		moveFill.Size = UDim2.fromScale(math.clamp(left / total, 0, 1), 1)
+		moveTime.Text = left > 0 and tostring(math.ceil(left)) or ""
+	end
+end
+
+---------------------------------------------------------------------------
+-- Relics: float, turn and bob
+---------------------------------------------------------------------------
+local relicBase = setmetatable({}, { __mode = "k" }) -- [part] = original CFrame
+
+local function stepRelics(now)
+	for _, model in ipairs(CollectionService:GetTagged("SpinCorpse")) do
+		local holder = model.PrimaryPart
+		if holder then
+			local center = holder.Position
+			local turn = CFrame.new(center) * CFrame.new(0, math.sin(now * 2 + center.X) * 0.4, 0) * CFrame.Angles(0, now * 1.2, 0) * CFrame.new(-center)
+			for _, p in ipairs(model:GetChildren()) do
+				if p:IsA("BasePart") and p ~= holder and p.Name ~= "Beam" then
+					relicBase[p] = relicBase[p] or p.CFrame
+					p.CFrame = turn * relicBase[p]
+				end
+			end
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Corpse move visuals
+---------------------------------------------------------------------------
+local function paletteOf(who)
+	local act = Registry.StartAct[who] or 1
+	return Common.palette(act)
+end
+
+-- The move's name pops up over the caster.
+local function callout(character, who)
+	local head = character and character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local bb = new("BillboardGui", { Adornee = head, Size = UDim2.fromOffset(240, 40), StudsOffset = Vector3.new(0, 3.4, 0), AlwaysOnTop = true, LightInfluence = 0 }, VFXLib.Folder)
+	local l = label(bb, { Size = UDim2.fromScale(1, 1), Text = (cfg.MoveNames and cfg.MoveNames[who] or "CORPSE MOVE") .. "!", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center })
+	VFXLib.animate(1.3, function(a)
+		bb.StudsOffset = Vector3.new(0, 3.4 + a * 1.2, 0)
+		l.TextTransparency = math.max(0, (a - 0.6) / 0.4)
+		l.TextStrokeTransparency = l.TextTransparency
+	end, function()
+		bb:Destroy()
+	end)
+end
+
+local function ring(position, radius, color, time)
+	local p = VFXLib.part({ Size = Vector3.new(0.5, 1, 1), Color = color, Material = Enum.Material.Neon, Transparency = 0.2, Shape = Enum.PartType.Cylinder })
+	VFXLib.animate(time or 0.4, function(a)
+		p.Size = Vector3.new(0.5, radius * 2 * a, radius * 2 * a)
+		p.CFrame = CFrame.new(position + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+		p.Transparency = 0.2 + 0.8 * a
+	end, function()
+		p:Destroy()
+	end)
+end
+
+local function streak(from, to, color, width, time)
+	local p = VFXLib.part({ Size = Vector3.new(width or 0.4, width or 0.4, (to - from).Magnitude), CFrame = CFrame.lookAt((from + to) / 2, to), Color = color, Material = Enum.Material.Neon, Transparency = 0.2 })
+	VFXLib.animate(time or 0.3, function(a)
+		p.Transparency = 0.2 + 0.8 * a
+	end, function()
+		p:Destroy()
+	end)
+end
+
+-- A shell round someone for a while (cocoon / light).
+local function shell(character, color, material, time)
+	local p = VFXLib.part({ Size = Vector3.new(5, 7, 5), Color = color, Material = material, Transparency = 0.3 })
+	local start = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local r = Common.rootOf(character)
+		local t = os.clock() - start
+		if not r or t > time then
+			conn:Disconnect()
+			p:Destroy()
+			return
+		end
+		p.CFrame = r.CFrame * CFrame.Angles(0, t * 2, 0)
+		p.Size = Vector3.new(5, 7, 5) * (1 + math.sin(t * 8) * 0.03)
+	end)
+end
+
+local function onMove(data)
+	local character = data.Character
+	local who = data.Who
+	local pal = paletteOf(who)
+	local local_ = character == player.Character
+	if data.Phase == "Cast" or data.Phase == "Leap" or data.Phase == "Dash" or data.Phase == "Spin" or data.Phase == "Cocoon" or data.Phase == "Curtain" or data.Phase == "Flood" or data.Phase == "Bless" then
+		callout(character, who)
+		local root = Common.rootOf(character)
+		if root then
+			TuskVFX.CreateImpactStar(root.Position + Vector3.new(0, 1, 0), { Size = 4, Rays = 8, Color = GOLD, Color2 = pal.Main, Duration = 0.18 })
+		end
+	end
+	if who == "Gyro" and data.Phase == "Cast" then
+		-- Golden rings spinning down the line.
+		for i = 1, 6 do
+			task.delay(i * 0.05, function()
+				local at = data.Position + data.Direction * (i * (data.Length or 34) / 6)
+				local p = VFXLib.part({ Size = Vector3.new(0.4, 6, 6), Color = GOLD, Material = Enum.Material.Neon, Transparency = 0.2, Shape = Enum.PartType.Cylinder })
+				VFXLib.animate(0.4, function(a)
+					p.CFrame = CFrame.lookAt(at, at + data.Direction) * CFrame.Angles(0, math.pi / 2, a * 6)
+					p.Transparency = 0.2 + 0.8 * a
+				end, function()
+					p:Destroy()
+				end)
+			end)
+		end
+	elseif who == "Diego" then
+		if data.Phase == "Leap" then
+			for i = 0, 6 do
+				local t = i / 6
+				local p = data.From:Lerp(data.To, t) + Vector3.new(0, math.sin(t * math.pi) * 10, 0)
+				task.delay(t * (data.Time or 0.45), function()
+					VFXLib.afterimage(CFrame.new(p), 2.4, pal.Main)
+				end)
+			end
+		elseif data.Phase == "Slam" then
+			ring(data.Position, data.Radius or 10, pal.Main, 0.45)
+			TuskVFX.CreateGroundCracks(data.Position, { Radius = data.Radius or 10, Color = pal.Main })
+			CameraFX.shakeAt(data.Position, 0.8, 40)
+		end
+	elseif who == "PorkPie" and data.Phase == "Cast" then
+		-- Hooks fly out in every direction and yank back in.
+		for i = 1, 10 do
+			local a = i / 10 * math.pi * 2
+			local out = data.Position + Vector3.new(math.cos(a), 0.3, math.sin(a)) * (data.Radius or 20)
+			streak(data.Position + Vector3.new(0, 1, 0), out, Color3.fromRGB(200, 205, 215), 0.15, 0.4)
+		end
+		ring(data.Position, data.Radius or 20, pal.Main, 0.5)
+	elseif who == "Sandman" then
+		if data.Phase == "Dash" then
+			streak(data.From, data.To, Color3.fromRGB(230, 200, 140), 1.2, 0.6)
+			VFXLib.burst(data.From, { Count = 16, Color = Color3.fromRGB(230, 200, 140), Speed = 14, Lifetime = 0.5 })
+		elseif data.Phase == "Boom" then
+			ring(data.Position, 9, pal.Main, 0.4)
+			TuskVFX.CreateImpactStar(data.Position + Vector3.new(0, 1, 0), { Size = 7, Rays = 10, Color = pal.Main, Color2 = GOLD, Duration = 0.2 })
+		end
+	elseif who == "MountainTim" and data.Phase == "Spin" then
+		-- A lasso loop spinning round him, closing in.
+		local loop = {}
+		for i = 1, 16 do
+			loop[i] = VFXLib.part({ Size = Vector3.new(0.3, 0.3, 2.4), Color = Color3.fromRGB(205, 170, 110), Material = Enum.Material.Fabric })
+		end
+		VFXLib.animate(data.Time or 0.8, function(a)
+			local r = Common.rootOf(character)
+			local c = r and r.Position or data.Position
+			local radius = (data.Radius or 14) * (1 - 0.7 * a)
+			for i, seg in ipairs(loop) do
+				local ang = i / #loop * math.pi * 2 + a * 12
+				local p = c + Vector3.new(math.cos(ang) * radius, 1, math.sin(ang) * radius)
+				seg.CFrame = CFrame.lookAt(p, p + Vector3.new(-math.sin(ang), 0, math.cos(ang)))
+			end
+		end, function()
+			for _, seg in ipairs(loop) do
+				seg:Destroy()
+			end
+		end)
+	elseif who == "HotPants" then
+		if data.Phase == "Cocoon" then
+			shell(character, Color3.fromRGB(236, 150, 170), Enum.Material.SmoothPlastic, data.Time or 2)
+		elseif data.Phase == "Burst" then
+			ring(data.Position, 9, Color3.fromRGB(236, 150, 170), 0.4)
+			VFXLib.burst(data.Position, { Count = 24, Color = Color3.fromRGB(236, 150, 170), Speed = 18, Lifetime = 0.45 })
+		end
+	elseif who == "Blackmore" and data.Phase == "Curtain" then
+		-- Frozen drops fly out in a cone.
+		for i = 1, 24 do
+			local ang = math.rad((math.random() - 0.5) * (data.Cone or 70))
+			local dir = (CFrame.lookAt(Vector3.new(), data.Direction) * CFrame.Angles(0, ang, 0)).LookVector
+			local from = data.Position + Vector3.new(0, 1 + math.random() * 2, 0)
+			local d = VFXLib.part({ Size = Vector3.new(0.25, 0.5, 0.25), Color = Color3.fromRGB(150, 205, 255), Material = Enum.Material.Glass, Transparency = 0.2 })
+			VFXLib.animate(0.35, function(a)
+				local p = from + dir * (data.Range or 26) * a
+				d.CFrame = CFrame.lookAt(p, p + dir) * CFrame.Angles(math.pi / 2, 0, 0)
+			end, function()
+				d:Destroy()
+			end)
+		end
+	elseif who == "Axl" and data.Phase == "Flood" then
+		ring(data.Position, data.Radius or 22, pal.Main, 0.6)
+		VFXLib.burst(data.Position, { Count = 30, Color = Color3.fromRGB(150, 130, 170), Speed = 16, Lifetime = 0.6 })
+	elseif who == "Valentine" then
+		if data.Phase == "Bless" then
+			shell(character, Color3.fromRGB(255, 250, 225), Enum.Material.ForceField, data.Time or 2.5)
+		elseif data.Phase == "Pulse" then
+			ring(data.Position, data.Radius or 12, Color3.fromRGB(255, 250, 225), 0.45)
+		end
+	end
+	if local_ and (data.Phase == "Slam" or data.Phase == "Boom" or data.Phase == "Burst" or data.Phase == "Pulse") then
+		CameraFX.shake(0.5, 0.2)
+	end
+end
+
+---------------------------------------------------------------------------
+function CorpseClient.init()
+	cfg = TuskConfig.Corpse
+	if not cfg or cfg.Enabled == false then
+		return
+	end
+	for _, info in ipairs(cfg.Parts) do
+		partInfo[info.Id] = info
+	end
+	buildUI()
+	local keys = TuskConfig.Keys.CorpseMove or {}
+	UserInputService.InputBegan:Connect(function(input, processed)
+		if processed then
+			return
+		end
+		if input.KeyCode == keys.Keyboard or input.KeyCode == keys.Gamepad then
+			useMove()
+		end
+	end)
+	Net.get("WorldFX").OnClientEvent:Connect(function(name, data)
+		if typeof(data) ~= "table" then
+			return
+		end
+		if name == "CorpseTaken" then
+			local info = partInfo[data.Part]
+			local partName = info and info.Name or tostring(data.Part)
+			if data.Player == player.UserId then
+				showBanner("YOU TOOK THE " .. partName .. "!  " .. (info and string.upper(info.Text) or ""))
+			else
+				showFeed((data.Name or "Someone") .. " took the Saint's Corpse " .. partName .. "!")
+			end
+		elseif name == "CorpseDropped" then
+			local info = partInfo[data.Part]
+			showFeed("The " .. (info and info.Name or "part") .. " fell where " .. (data.Name or "someone") .. " died!")
+			if data.Position then
+				ring(data.Position, 8, GOLD, 0.6)
+			end
+		elseif name == "CorpseMove" then
+			onMove(data)
+		end
+	end)
+	RunService.RenderStepped:Connect(function()
+		stepPanel()
+		stepRelics(os.clock())
+	end)
+end
+
+return CorpseClient
 ]=] },
 	{ Service = "StarterPlayerScripts", Path = "SpinClient/DefenseClient", Class = "ModuleScript", Source = [=[
 --[[
@@ -26803,7 +27960,9 @@ local function showConfirm(entry)
 		pip.BackgroundColor3 = i <= danger and RED or PAPER_DARK
 	end
 	local minutes = math.floor((TuskConfig.Bounty and TuskConfig.Bounty.Duration or 300) / 60)
-	body:FindFirstChild("Note").Text = (current and current.Key ~= entry.Key) and ("This replaces your bounty on " .. current.Name .. ".") or (minutes .. " minutes to find them. Land the final hit to claim the reward.")
+	body:FindFirstChild("Note").Text = (current and current.Key ~= entry.Key) and ("This replaces your bounty on " .. current.Name .. ".")
+		or (entry.Corpse and ("Carrying the Saint's Corpse: " .. entry.Corpse .. ". Take them down and the parts drop."))
+		or (minutes .. " minutes to find them. Land the final hit to claim the reward.")
 	body:FindFirstChild("Stamp").Visible = false
 	confirmEntry = entry
 	local scale = confirm:FindFirstChildOfClass("UIScale")
@@ -26851,6 +28010,12 @@ local function makePoster(entry, index)
 	local ribbon = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.84, 0), Size = UDim2.fromScale(0.72, 0.12), BackgroundColor3 = RED }, paper)
 	corner(ribbon, 4)
 	label(ribbon, { Size = UDim2.fromScale(1, 1), Text = "$" .. entry.Reward, Font = Enum.Font.Bangers, TextColor3 = PAPER })
+	if entry.Corpse then
+		-- A gold "SAINT'S CORPSE" tag: they're carrying parts.
+		local tagC = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -16), Size = UDim2.fromOffset(120, 18), BackgroundColor3 = GOLD, Rotation = -4, ZIndex = 4 }, paper)
+		corner(tagC, 4)
+		label(tagC, { Size = UDim2.fromScale(1, 1), Text = "SAINT'S CORPSE", Font = Enum.Font.GothamBlack, TextColor3 = INK, TextScaled = true, ZIndex = 4 })
+	end
 	if (entry.Streak or 0) > 0 then
 		local badge = new("Frame", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 6, 0, -6), Size = UDim2.fromOffset(46, 22), BackgroundColor3 = INK, Rotation = 8, ZIndex = 3 }, paper)
 		corner(badge, 6)
@@ -29391,6 +30556,7 @@ local DENY_TEXT = {
 	NoTarget = "NO TARGET IN FRONT",
 	Blocked = "NO ROOM TO MOVE THERE",
 	TooSoon = "TUSK ISN'T READY TO AWAKEN YET",
+	NeedCorpse = "FIND A SAINT'S CORPSE PART FIRST",
 }
 
 -- Wobble a card (denied input).

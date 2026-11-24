@@ -213,14 +213,27 @@ local function listBounties(viewer)
 	for _, p in ipairs(Players:GetPlayers()) do
 		if p ~= viewer and aliveModel(p.Character) then
 			local streak = p:GetAttribute("KillStreak") or 0
+			-- Saint's Corpse holders are worth more (the Heart and Head most of all).
+			local corpse = TuskConfig.Corpse or {}
+			local parts = p.Character:GetAttribute("CorpseParts")
+			local bonus, names = 0, {}
+			for id in string.gmatch(parts or "", "[^,]+") do
+				bonus = bonus + ((corpse.BigParts or {})[id] or corpse.PartBounty or 40)
+				for _, info in ipairs(corpse.Parts or {}) do
+					if info.Id == id then
+						table.insert(names, info.Name)
+					end
+				end
+			end
 			table.insert(list, {
 				Key = "P" .. p.UserId,
 				Kind = "Player",
 				UserId = p.UserId,
 				Name = p.DisplayName,
-				Reward = (cfg.BaseReward or 100) + streak * (cfg.StreakReward or 50),
+				Reward = (cfg.BaseReward or 100) + streak * (cfg.StreakReward or 50) + bonus,
 				Streak = streak,
 				Act = p.Character:GetAttribute("TuskAct"),
+				Corpse = #names > 0 and table.concat(names, ", ") or nil,
 			})
 		end
 	end
@@ -251,7 +264,7 @@ local function send(player, kind, data)
 end
 
 local function publicBounty(b)
-	return { Key = b.Key, Kind = b.Kind, UserId = b.UserId, Model = b.Model, Name = b.Name, Reward = b.Reward, Expires = b.Expires, Act = b.Act }
+	return { Key = b.Key, Kind = b.Kind, UserId = b.UserId, Model = b.Model, Name = b.Name, Reward = b.Reward, Expires = b.Expires, Act = b.Act, Corpse = b.Corpse }
 end
 
 local function accept(player, key)

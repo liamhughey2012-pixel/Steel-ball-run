@@ -306,6 +306,12 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	end
 
 	local damage = info.Damage * (blocked and s.BlockDamageMultiplier or 1)
+	-- Saint's Corpse boosts: the attacker's damage, the target's resistance.
+	local attackerCharacter = attackerPlayer and attackerPlayer.Character
+	if attackerCharacter then
+		damage = damage * (attackerCharacter:GetAttribute("CorpseDamage") or 1)
+	end
+	damage = damage * (targetCharacter:GetAttribute("CorpseResist") or 1)
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
 
 	-- Who hit them last (kill credit for bounties and kill streaks).

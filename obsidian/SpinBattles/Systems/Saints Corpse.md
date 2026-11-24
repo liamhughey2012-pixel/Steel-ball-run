@@ -1,0 +1,47 @@
+---
+tags: [system, corpse]
+status: built
+updated: 2026-11-24
+---
+# Saint's Corpse
+Server: `CorpseService` (relics, pickup, boosts, drops) and `CorpseMoves` (each character's move). Client: `CorpseClient`. Numbers: `TuskConfig.Corpse`.
+
+- **8 parts, each exists once:** Heart, Head, Left Arm, Right Arm, Spine, Eyes, Ears, Legs.
+  - Each lies on a random spot (12 spots round the map).
+  - It's a mummified relic that floats and turns, glowing gold, with a **pillar of light** you can see from far away.
+  - **Hold E** to take it.
+- **Boosts until you die** (they stack):
+
+| Part | Boost |
+|---|---|
+| Heart | +25 max HP (and healed by 25) |
+| Head | +12% damage |
+| Left Arm / Right Arm | +8% damage each |
+| Spine | -10% damage taken |
+| Eyes | abilities recharge 12% faster |
+| Ears | +25% ultimate charge |
+| Legs | +12% speed |
+
+- **When you die**, your parts **drop where you fell** for anyone to grab. A dropped part nobody takes moves to a new random spot after 60 s. Leaving the game scatters them.
+- **CORPSE MOVE (V / D-pad right, or tap the button):** needs at least one part; 20 s cooldown. Each character's own move:
+
+| Character | Move | What it does |
+|---|---|---|
+| Johnny | GOLDEN SPIN NAIL | a huge golden spinning nail (15, launch) |
+| Gyro | GOLDEN RECTANGLE | a spinning shockwave 34 studs straight ahead (13, launch) |
+| Diego | DINOSAUR CRASH | leaps 30 studs (can't be hit mid-air) and slams down (12 in 10 studs) |
+| Pork Pie Hat Kid | HOOK HARVEST | hooks yank everyone within 20 studs in (11, long stun) |
+| Sandman | SOUND BARRIER | dashes 36 studs through enemies (9), then a blast on the path (6, launch) |
+| Mountain Tim | LASSO CYCLONE | a spinning lasso pulls everyone within 14 studs in (3 × 4) |
+| Hot Pants | FLESH COCOON | armoured for 2 s and heals 30, then a burst (7) |
+| Blackmore | RAIN CURTAIN | a cone of frozen drops (12, slowed 2 s) |
+| Axl RO | GUILT FLOOD | everyone within 22 studs takes 8 and gets +2 guilt |
+| Funny Valentine | CORPSE BLESSING | can't be hit for 2.5 s, heals 15, then a pulse of light (9) |
+
+- **HUD:** a panel on the left lists your parts and their boosts, with the move button and its cooldown. A big banner shows when you take a part; a line at the top when someone else takes one, or a part falls where someone died. The move's name pops up over the caster.
+- **Bounties:** holders are worth more on the board: +$40 per part, **+$150 for the Heart or the Head**. Their poster gets a gold "SAINT'S CORPSE" tag, and the contract says which parts they carry.
+- **How it works:** boosts are character attributes the combat code reads:
+  - `CorpseDamage` and `CorpseResist` in CombatAdapter;
+  - `CorpseCooldown` in startCooldown;
+  - `CorpseUltGain` in addUlt;
+  - speed via the move modifier "Corpse".

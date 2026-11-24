@@ -1156,6 +1156,7 @@ local DENY_TEXT = {
 	NoTarget = "NO TARGET IN FRONT",
 	Blocked = "NO ROOM TO MOVE THERE",
 	TooSoon = "TUSK ISN'T READY TO AWAKEN YET",
+	NeedCorpse = "FIND A SAINT'S CORPSE PART FIRST",
 }
 
 -- Wobble a card (denied input).

@@ -116,6 +116,9 @@ function TuskService.cooldownReady(player, state, name, slot)
 end
 
 function TuskService.startCooldown(player, state, name, seconds, slot)
+	-- Saint's Corpse (Eyes): abilities recharge faster.
+	local character = player.Character
+	seconds = seconds * (character and character:GetAttribute("CorpseCooldown") or 1)
 	Cooldowns.start(player, cooldownKey(state, name), seconds)
 	TuskService.tell(player, "Cooldown", { Slot = slot, Duration = seconds })
 end
@@ -166,6 +169,9 @@ function TuskService.addUlt(player, amount)
 	if state and state.Act and byAct and byAct[state.Act] then
 		amount = amount * byAct[state.Act]
 	end
+	-- Saint's Corpse (Ears): the ultimate charges faster.
+	local character = player.Character
+	amount = amount * (character and character:GetAttribute("CorpseUltGain") or 1)
 	local current = player:GetAttribute("TuskUlt") or 0
 	player:SetAttribute("TuskUlt", math.clamp(current + amount, 0, max))
 end
@@ -496,6 +502,14 @@ local function onRequest(player, action, a, b, c)
 			return
 		end
 		TuskService.select(player, start, true)
+		return
+	end
+	if action == "CorpseMove" then
+		-- The character's own move, unlocked by holding a Saint's Corpse part.
+		local st = states[player]
+		if st and TuskService.CorpseMove then
+			TuskService.CorpseMove(player, st, a)
+		end
 		return
 	end
 	if action == "RainFloat" then

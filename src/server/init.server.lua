@@ -24,6 +24,7 @@ local ValentineOutfit = require(script.ValentineOutfit)
 local StandBots = require(script.StandBots)
 local BountyService = require(script.BountyService)
 local WeatherService = require(script.WeatherService)
+local CorpseService = require(script.CorpseService)
 
 -- Shared projectile budget (barrages and wrecking balls fire several at once).
 ProjectileService.MaxActivePerPlayer = 20
@@ -43,5 +44,6 @@ ValentineOutfit.init()
 StandBots.init(TuskService)
 BountyService.init()
 WeatherService.init()
+CorpseService.init(TuskService)
 NPCService.init()
 TestDummies.init()
