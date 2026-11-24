@@ -1570,6 +1570,32 @@ local function fillGrid()
 			table.insert(shown, entry)
 		end
 	end
+	-- ALL: corpse contracts are spread out among the other bounties (evenly)
+	-- instead of all sitting together; the CORPSE tab still groups them.
+	if filter == "ALL" then
+		local others, parts = {}, {}
+		for _, entry in ipairs(shown) do
+			table.insert(entry.Kind == "Corpse" and parts or others, entry)
+		end
+		if #parts > 0 and #others > 0 then
+			local mixed = {}
+			local step = (#others + #parts) / #parts
+			local nextAt = step / 2 -- first one partway in, not at the very top
+			local pi = 1
+			for _, entry in ipairs(others) do
+				while pi <= #parts and #mixed + 1 >= nextAt do
+					table.insert(mixed, parts[pi])
+					pi = pi + 1
+					nextAt = nextAt + step
+				end
+				table.insert(mixed, entry)
+			end
+			for i = pi, #parts do
+				table.insert(mixed, parts[i])
+			end
+			shown = mixed
+		end
+	end
 	local empty = grid:FindFirstChild("Empty")
 	empty.Visible = #shown == 0
 	empty.Text = filter == "PLAYERS" and "No other players are wanted right now.\n(Testing alone? Try Test > Clients and Servers.)" or "No bounties right now. Check back later!"

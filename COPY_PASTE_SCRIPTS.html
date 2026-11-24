@@ -28468,7 +28468,7 @@ return TuskVFX
 <div class="head"><span class="num">87</span><div><h2>UI <span class="badge folder">Folder</span></h2>
 <p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s88">
 <div class="head"><span class="num">88</span><div><h2>BountyUI <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="88">Copy code</button><details><summary>Show code (743 lines)</summary><pre id="c88">--[[
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="88">Copy code</button><details><summary>Show code (769 lines)</summary><pre id="c88">--[[
 	BountyUI  (StarterPlayerScripts.SpinClient.UI.BountyUI)
 
 	The bounty board screen (owner&#x27;s design):
@@ -28877,6 +28877,32 @@ local function fillGrid()
 	for _, entry in ipairs(lastList) do
 		if filter == &quot;ALL&quot; or (filter == &quot;PLAYERS&quot; and entry.Kind == &quot;Player&quot;) or (filter == &quot;NPCS&quot; and entry.Kind == &quot;NPC&quot;) or (filter == &quot;CORPSE&quot; and entry.Kind == &quot;Corpse&quot;) then
 			table.insert(shown, entry)
+		end
+	end
+	-- ALL: corpse contracts are spread out among the other bounties (evenly)
+	-- instead of all sitting together; the CORPSE tab still groups them.
+	if filter == &quot;ALL&quot; then
+		local others, parts = {}, {}
+		for _, entry in ipairs(shown) do
+			table.insert(entry.Kind == &quot;Corpse&quot; and parts or others, entry)
+		end
+		if #parts &gt; 0 and #others &gt; 0 then
+			local mixed = {}
+			local step = (#others + #parts) / #parts
+			local nextAt = step / 2 -- first one partway in, not at the very top
+			local pi = 1
+			for _, entry in ipairs(others) do
+				while pi &lt;= #parts and #mixed + 1 &gt;= nextAt do
+					table.insert(mixed, parts[pi])
+					pi = pi + 1
+					nextAt = nextAt + step
+				end
+				table.insert(mixed, entry)
+			end
+			for i = pi, #parts do
+				table.insert(mixed, parts[i])
+			end
+			shown = mixed
 		end
 	end
 	local empty = grid:FindFirstChild(&quot;Empty&quot;)

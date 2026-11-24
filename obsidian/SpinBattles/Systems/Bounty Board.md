@@ -38,3 +38,6 @@ Server: `BountyService` (built into Spin_Server). Client: `UI/BountyUI` (built i
 - **Photos never show "?" now:** if an NPC respawned after the list was sent, the photo finds its current body by name (tag SpinFighter). Failing that, it shows the character's initials on their Stand colour.
 - **Active-bounty tracker moved to the right side of the screen** (it covered the character card top-left). Full names now shrink to fit; a red side strip and a rounded photo.
 - **Character card and dropdown:** 330 wide (was 290); names and Stand names shrink to fit instead of being cut off ("JOHNNY...", "FUNNY...").
+
+## Corpse contracts mixed in (2026-11-24)
+- In the **ALL** tab, RETRIEVE contracts are **spread evenly among the other bounties** (players and NPCs stay sorted by reward) instead of sitting together. The **CORPSE** tab still groups them all. (BountyUI `fillGrid`)
