@@ -2,7 +2,9 @@
 tags: [install]
 updated: 2026-11-24
 ---
-# Core parts (fast pasting)
+# Core parts (fast pasting): NOT USED
+> **2026-11-24: the owner went back to ONE big Spin_Server / Spin_Client.** The split is still in the build but switched off (`SPLIT_CORE = False` in `tools/build_bundles.py`). The notes below apply only if it is turned back on.
+
 Pasting one 400–600 KB script froze Studio for minutes, so the core is split up. **No single script is over ~100 KB.**
 
 | File | Type | Where |
