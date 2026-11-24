@@ -1,16 +1,20 @@
 --[[
 	CombatUI  (StarterPlayerScripts.SpinClient.UI.CombatUI)
 
-	Battlegrounds-style fight feedback:
-	  * TARGET BAR: hit someone and their name + health bar appears at the
-	    top of the screen. The bar drains smoothly, with a white "chunk" that
-	    catches up a moment later so big hits read. Fades after a few seconds.
+	Battlegrounds-style fight feedback, in the bounty-board style:
+	  * TARGET BAR: hit someone and a nailed wooden plank pops in at the top
+	    of the screen with their name in Bangers and a wood-framed health
+	    meter (green -> gold -> red). The meter drains smoothly, with a white
+	    "chunk" that catches up a moment later so big hits read. Shrinks
+	    away after a few seconds.
 	  * DAMAGE EDGES: the screen edges flash red when you get hit, and pulse
 	    while your health is low.
-	  * GUARD BAR: under your character while you block (or while it
-	    refills); it turns red as it runs out and shows BROKEN after a
-	    guard break.
-	  * DASH / BLOCK chips (bottom right): the dash cooldown sweeps back.
+	  * GUARD BAR: a small wood-framed meter under your character while you
+	    block (or while it refills); it turns red as it runs out and shows
+	    GUARD BROKEN after a guard break.
+	  * DASH / BLOCK chips (bottom right): little wooden planks with a brass
+	    key cap; the dash cooldown sweeps back as a dark shadow, and the
+	    BLOCK plank glows steel-blue while you block.
 	Driven by the shared "Hit" event (CombatAdapter).
 ]]
 
@@ -18,14 +22,17 @@ local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local Net = require(Shared.Net)
+local UITheme = require(script.Parent.UITheme)
+local C = UITheme.C
+local F = UITheme.Font
 
 local CombatUI = {}
 local player = Players.LocalPlayer
-local DARK = Color3.fromRGB(14, 12, 20)
-local GOLD = Color3.fromRGB(255, 205, 90)
+local GOLD = C.GOLD
 local RED = Color3.fromRGB(230, 50, 60)
+local BLOCK_BLUE = Color3.fromRGB(110, 180, 255)
 
-local gui, bar, nameLabel, fill, chunk, hpText, edges
+local gui, bar, barScale, nameLabel, fill, chunk, hpText, edges
 local target -- the model shown in the bar
 local shownUntil = 0
 local fillValue, chunkValue = 1, 1
@@ -35,9 +42,20 @@ local guardGui, guardFill, guardText, chips
 local stepDefense -- (defined further down)
 
 local function corner(p, r)
-	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, r)
-	c.Parent = p
+	return UITheme.corner(p, r)
+end
+
+local function text(parent, props)
+	local l = Instance.new("TextLabel")
+	l.BackgroundTransparency = 1
+	l.TextStrokeColor3 = C.SHADOW
+	l.TextStrokeTransparency = 0.3
+	l.ZIndex = 4
+	for k, v in pairs(props) do
+		l[k] = v
+	end
+	l.Parent = parent
+	return l
 end
 
 local function nameOf(model)
@@ -58,63 +76,61 @@ local function build()
 	gui.ResetOnSpawn = false
 	gui.IgnoreGuiInset = true
 	gui.DisplayOrder = 4
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = player:WaitForChild("PlayerGui")
 
-	-- Target bar (top centre).
+	-- Target bar (top centre): a nailed wooden plank.
 	bar = Instance.new("Frame")
+	bar.Name = "TargetBar"
 	bar.AnchorPoint = Vector2.new(0.5, 0)
 	bar.Position = UDim2.new(0.5, 0, 0, 58)
-	bar.Size = UDim2.fromOffset(340, 46)
-	bar.BackgroundColor3 = DARK
-	bar.BackgroundTransparency = 0.15
+	bar.Size = UDim2.fromOffset(340, 50)
 	bar.Visible = false
 	bar.Parent = gui
-	corner(bar, 10)
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = GOLD
-	stroke.Thickness = 1.5
-	stroke.Parent = bar
-	nameLabel = Instance.new("TextLabel")
-	nameLabel.BackgroundTransparency = 1
-	nameLabel.Position = UDim2.fromOffset(12, 3)
-	nameLabel.Size = UDim2.new(1, -90, 0, 20)
-	nameLabel.Font = Enum.Font.Bangers
-	nameLabel.TextSize = 20
-	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-	nameLabel.TextColor3 = GOLD
-	nameLabel.TextStrokeTransparency = 0.5
-	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-	nameLabel.Parent = bar
-	hpText = Instance.new("TextLabel")
-	hpText.BackgroundTransparency = 1
-	hpText.AnchorPoint = Vector2.new(1, 0)
-	hpText.Position = UDim2.new(1, -12, 0, 5)
-	hpText.Size = UDim2.fromOffset(80, 16)
-	hpText.Font = Enum.Font.GothamBlack
-	hpText.TextSize = 12
-	hpText.TextXAlignment = Enum.TextXAlignment.Right
-	hpText.TextColor3 = Color3.new(1, 1, 1)
-	hpText.Parent = bar
-	local back = Instance.new("Frame")
-	back.Position = UDim2.fromOffset(12, 26)
-	back.Size = UDim2.new(1, -24, 0, 12)
-	back.BackgroundColor3 = Color3.fromRGB(40, 36, 50)
-	back.Parent = bar
-	corner(back, 6)
+	UITheme.wood(bar, { Planks = 2, Border = 4, Radius = 8, Nails = true, Brackets = true, BracketSize = 10 })
+	barScale = Instance.new("UIScale")
+	barScale.Scale = 1
+	barScale.Parent = bar
+	nameLabel = text(bar, {
+		Position = UDim2.fromOffset(14, 4),
+		Size = UDim2.new(1, -100, 0, 21),
+		Font = F.Title,
+		TextSize = 21,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = C.PAPER,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+	})
+	hpText = text(bar, {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -14, 0, 6),
+		Size = UDim2.fromOffset(80, 16),
+		Font = F.Heavy,
+		TextSize = 12,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		TextColor3 = GOLD,
+	})
+	local back
+	back, fill = UITheme.bar(bar, RED, {
+		Name = "Health",
+		Position = UDim2.fromOffset(12, 26),
+		Size = UDim2.new(1, -24, 0, 17),
+		ZIndex = 3,
+	})
+	-- The white "chunk" sits under the fill, inside the meter's well.
 	chunk = Instance.new("Frame")
+	chunk.Name = "Chunk"
+	chunk.BorderSizePixel = 0
 	chunk.Size = UDim2.fromScale(1, 1)
-	chunk.BackgroundColor3 = Color3.new(1, 1, 1)
-	chunk.Parent = back
-	corner(chunk, 6)
-	fill = Instance.new("Frame")
-	fill.Size = UDim2.fromScale(1, 1)
-	fill.BackgroundColor3 = RED
-	fill.Parent = back
-	corner(fill, 6)
-	local shine = Instance.new("UIGradient")
-	shine.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 190))
-	shine.Rotation = 90
-	shine.Parent = fill
+	chunk.BackgroundColor3 = Color3.fromRGB(255, 244, 220)
+	chunk.ZIndex = 3
+	chunk.Parent = fill.Parent
+	corner(chunk, 3)
+	fill.ZIndex = 4
+	for _, d in ipairs(fill:GetChildren()) do
+		if d:IsA("GuiObject") then
+			d.ZIndex = 4
+		end
+	end
 
 	-- Red damage edges (four gradients round the screen).
 	edges = {}
@@ -152,7 +168,13 @@ local function showTarget(model)
 		nameLabel.Text = string.upper(nameOf(model))
 	end
 	shownUntil = os.clock() + 4
-	bar.Visible = true
+	if not bar.Visible then
+		bar.Visible = true
+		UITheme.pop(bar, 0.7)
+	elseif barScale.Scale < 0.99 then
+		-- Hit again while it was shrinking away: bounce back up.
+		UITheme.pop(bar, barScale.Scale)
+	end
 end
 
 function CombatUI.step(dt)
@@ -176,8 +198,11 @@ function CombatUI.step(dt)
 		chunk.Size = UDim2.fromScale(chunkValue, 1)
 		fill.BackgroundColor3 = k > 0.5 and Color3.fromRGB(90, 220, 110):Lerp(GOLD, (1 - k) * 2) or GOLD:Lerp(RED, (0.5 - k) * 2)
 		hpText.Text = humanoid.Health <= 0 and "K.O." or (math.ceil(humanoid.Health) .. " / " .. math.floor(humanoid.MaxHealth))
+		-- Shrinks away over its last 0.4 s (a fade would mean fading every plank).
 		local fade = math.clamp((shownUntil - now) / 0.4, 0, 1)
-		bar.BackgroundTransparency = 1 - 0.85 * fade
+		if fade < 1 then
+			barScale.Scale = 0.6 + 0.4 * fade
+		end
 		bar.Visible = fade > 0
 	else
 		bar.Visible = false
@@ -202,39 +227,53 @@ local function chip(name, key, order)
 	f.AnchorPoint = Vector2.new(1, 1)
 	f.Position = UDim2.new(1, -16, 1, -16 - order * 38)
 	f.Size = UDim2.fromOffset(112, 32)
-	f.BackgroundColor3 = DARK
-	f.BackgroundTransparency = 0.15
 	f.ClipsDescendants = true
 	f.Parent = gui
-	corner(f, 8)
+	local planks = UITheme.wood(f, { Planks = 1, Border = 3, Radius = 7, Nails = false, Stroke = 2 })
+	local edge = f:FindFirstChildOfClass("UIStroke")
+	-- Steel-blue glow while blocking.
+	local tint = Instance.new("Frame")
+	tint.Name = "Tint"
+	tint.BorderSizePixel = 0
+	tint.Size = UDim2.fromScale(1, 1)
+	tint.BackgroundColor3 = BLOCK_BLUE
+	tint.BackgroundTransparency = 1
+	tint.ZIndex = 2
+	tint.Parent = planks
+	-- Cooldown: a dark shadow that sweeps back.
 	local sweep = Instance.new("Frame")
 	sweep.Name = "Sweep"
 	sweep.BorderSizePixel = 0
 	sweep.Size = UDim2.fromScale(0, 1)
-	sweep.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
-	sweep.BackgroundTransparency = 0.3
-	sweep.Parent = f
-	local keyLabel = Instance.new("TextLabel")
-	keyLabel.BackgroundColor3 = GOLD
-	keyLabel.Position = UDim2.fromOffset(5, 5)
-	keyLabel.Size = UDim2.fromOffset(22, 22)
-	keyLabel.Font = Enum.Font.GothamBlack
-	keyLabel.TextSize = 13
-	keyLabel.TextColor3 = DARK
-	keyLabel.Text = key
-	keyLabel.Parent = f
+	sweep.BackgroundColor3 = C.SHADOW
+	sweep.BackgroundTransparency = 0.35
+	sweep.ZIndex = 2
+	sweep.Parent = planks
+	-- Brass key cap.
+	local keyLabel = text(f, {
+		Name = "Key",
+		BackgroundTransparency = 0,
+		BackgroundColor3 = GOLD,
+		Position = UDim2.fromOffset(5, 5),
+		Size = UDim2.fromOffset(22, 22),
+		Font = F.Title,
+		TextSize = 17,
+		TextColor3 = C.INK,
+		TextStrokeTransparency = 1,
+		Text = key,
+	})
 	corner(keyLabel, 5)
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Position = UDim2.fromOffset(34, 0)
-	label.Size = UDim2.new(1, -38, 1, 0)
-	label.Font = Enum.Font.GothamBlack
-	label.TextSize = 13
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.Text = name
-	label.Parent = f
-	return { Frame = f, Sweep = sweep, Label = label, Name = name }
+	UITheme.stroke(keyLabel, C.WOOD_EDGE, 2)
+	local label = text(f, {
+		Position = UDim2.fromOffset(33, 0),
+		Size = UDim2.new(1, -37, 1, 0),
+		Font = F.Heavy,
+		TextSize = 13,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = C.PAPER,
+		Text = name,
+	})
+	return { Frame = f, Sweep = sweep, Tint = tint, Edge = edge, Label = label, Name = name }
 end
 
 local function buildDefense()
@@ -249,33 +288,24 @@ local function buildDefense()
 	}
 	guardGui = Instance.new("BillboardGui")
 	guardGui.Name = "GuardBar"
-	guardGui.Size = UDim2.fromOffset(90, 12)
+	guardGui.Size = UDim2.fromOffset(96, 15)
 	guardGui.StudsOffset = Vector3.new(0, -3.4, 0)
 	guardGui.AlwaysOnTop = true
 	guardGui.LightInfluence = 0
 	guardGui.Enabled = false
+	guardGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	guardGui.Parent = gui
-	local back = Instance.new("Frame")
-	back.Size = UDim2.fromScale(1, 1)
-	back.BackgroundColor3 = DARK
-	back.BackgroundTransparency = 0.2
-	back.Parent = guardGui
-	corner(back, 6)
-	guardFill = Instance.new("Frame")
-	guardFill.Position = UDim2.fromOffset(2, 2)
-	guardFill.Size = UDim2.new(1, -4, 1, -4)
-	guardFill.BackgroundColor3 = Color3.fromRGB(110, 180, 255)
-	guardFill.Parent = back
-	corner(guardFill, 5)
-	guardText = Instance.new("TextLabel")
-	guardText.BackgroundTransparency = 1
-	guardText.Size = UDim2.fromScale(1, 1)
-	guardText.Font = Enum.Font.GothamBlack
-	guardText.TextSize = 9
-	guardText.TextColor3 = Color3.new(1, 1, 1)
-	guardText.TextStrokeTransparency = 0.4
-	guardText.Text = ""
-	guardText.Parent = back
+	local back
+	back, guardFill = UITheme.bar(guardGui, BLOCK_BLUE, { Name = "Guard", Size = UDim2.fromScale(1, 1) })
+	guardText = text(back, {
+		Size = UDim2.fromScale(1, 1),
+		Font = F.Title,
+		TextSize = 12,
+		TextColor3 = C.PAPER,
+		TextStrokeTransparency = 0.2,
+		Text = "",
+		ZIndex = 5,
+	})
 end
 
 function stepDefense()
@@ -304,11 +334,11 @@ function stepDefense()
 		local left = nextAt - t
 		dashChip.Sweep.Size = UDim2.fromScale(math.clamp(left / (d.DashCooldown or 2.2), 0, 1), 1)
 		dashChip.Label.Text = string.format("DASH %s %.1f", pips, left)
-		dashChip.Label.TextColor3 = have > 0 and Color3.new(1, 1, 1) or Color3.fromRGB(170, 170, 185)
+		dashChip.Label.TextColor3 = have > 0 and C.PAPER or Color3.fromRGB(175, 150, 120)
 	else
 		dashChip.Sweep.Size = UDim2.fromScale(0, 1)
 		dashChip.Label.Text = "DASH " .. pips
-		dashChip.Label.TextColor3 = Color3.new(1, 1, 1)
+		dashChip.Label.TextColor3 = C.PAPER
 	end
 	if counter then
 		dashChip.Label.Text = "COUNTER!"
@@ -321,14 +351,17 @@ function stepDefense()
 	local max = d.MaxMeter or 100
 	local blockChip = chips.Block
 	blockChip.Label.Text = broken and "BROKEN" or (blockingNow and "BLOCKING" or "BLOCK")
-	blockChip.Label.TextColor3 = broken and RED or (blockingNow and Color3.fromRGB(150, 205, 255) or Color3.new(1, 1, 1))
-	blockChip.Frame.BackgroundColor3 = blockingNow and Color3.fromRGB(30, 50, 90) or DARK
+	blockChip.Label.TextColor3 = broken and RED or (blockingNow and Color3.fromRGB(190, 225, 255) or C.PAPER)
+	blockChip.Tint.BackgroundTransparency = blockingNow and 0.6 or 1
+	if blockChip.Edge then
+		blockChip.Edge.Color = broken and RED or (blockingNow and BLOCK_BLUE or C.WOOD_EDGE)
+	end
 	if root and (blockingNow or broken or (meter and meter < max)) then
 		guardGui.Adornee = root
 		guardGui.Enabled = true
 		local k = broken and 0 or math.clamp((meter or max) / max, 0, 1)
-		guardFill.Size = UDim2.new(k, k > 0 and -4 or 0, 1, -4)
-		guardFill.BackgroundColor3 = Color3.fromRGB(110, 180, 255):Lerp(RED, 1 - k)
+		guardFill.Size = UDim2.fromScale(k, 1)
+		guardFill.BackgroundColor3 = BLOCK_BLUE:Lerp(RED, 1 - k)
 		guardText.Text = broken and "GUARD BROKEN" or ""
 	else
 		guardGui.Enabled = false
