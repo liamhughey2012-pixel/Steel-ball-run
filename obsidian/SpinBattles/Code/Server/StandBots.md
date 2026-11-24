@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `StandBots` (capitals matter) |
 
-**What it does:** Enemy NPCs that fight you with a Stand. Each one plays a real character (Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine: whichever are installed) through exactly the same move code as players, so their M1s, abilities and ultimates hit, stun and look the same. they're scattered round the map (TuskConfig.StandBots.Spots), chase any player who comes within AggroRange and walk back to their spot when the player gets away each respawn picks a new free spot, so they move around over time M1 combo up close, abilities on cooldown, ultimate when their meter is full hold abilities are charged and released automatically they block now and then, dash in to close the gap, and dash away when hurt a sneaking player isn't noticed until they're close (TuskConfig.Sneak NoticeRange), or they hit the bot; a bot that saw them keeps track for a few seconds every installed character has an NPC out: a new NPC is whichever character has the fewest right now (TuskConfig.StandBots.Characters) Blackmore NPCs rain walk while it rains: they step up onto frozen raindrops (an invisible step only NPCs collide with) and climb toward players above them they respawn RespawnTime seconds after dying, as whoever is missing Settings: TuskConfig.StandBots (Enabled = false turns them off). Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
+**What it does:** Enemy NPCs that fight you with a Stand. Each one plays a real character (Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine: whichever are installed) through exactly the same move code as players, so their M1s, abilities and ultimates hit, stun and look the same. they're scattered round the map (TuskConfig.StandBots.Spots), chase any player who comes within AggroRange and walk back to their spot when the player gets away each respawn picks a new free spot, so they move around over time M1 combo up close, abilities on cooldown, ultimate when their meter is full hold abilities are charged and released automatically they block now and then, dash in to close the gap, and dash away when hurt a sneaking player isn't noticed until they're close (TuskConfig.Sneak NoticeRange), or they hit the bot; a bot that saw them keeps track for a few seconds every installed character has an NPC out: a new NPC is whichever character has the fewest right now (TuskConfig.StandBots.Characters) Blackmore NPCs rain walk while it rains: they step up onto frozen raindrops (an invisible step only NPCs collide with) and climb toward players above them idle bots walk over and pick up Saint's Corpse parts lying near their camp; bots holding parts use their corpse move and drop them on death they respawn RespawnTime seconds after dying, as whoever is missing Settings: TuskConfig.StandBots (Enabled = false turns them off). Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -46,6 +46,8 @@ Back to [[Where To Put Code]]
 	  * Blackmore NPCs rain walk while it rains: they step up onto frozen
 	    raindrops (an invisible step only NPCs collide with) and climb
 	    toward players above them
+	  * idle bots walk over and pick up Saint's Corpse parts lying near their
+	    camp; bots holding parts use their corpse move and drop them on death
 	  * they respawn RespawnTime seconds after dying, as whoever is missing
 	Settings: TuskConfig.StandBots (Enabled = false turns them off).
 	Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
@@ -167,6 +169,7 @@ local function buildModel(who)
 end
 
 local spawnBot -- (defined below; respawn calls it)
+local corpseService -- (defined below with the corpse helpers)
 
 local endRainWalk -- (rain walk, below)
 
@@ -241,6 +244,11 @@ function spawnBot(slot)
 	CollectionService:AddTag(model, "SpinFighter")
 	humanoid.Died:Connect(function()
 		endRainWalk(bot, false)
+		local C = corpseService()
+		if C then
+			local r = model:FindFirstChild("HumanoidRootPart")
+			C.dropFor(botPlayer, r and r.Position or nil)
+		end
 		task.delay(cfg.RespawnTime or 10, function()
 			if bots[slot] == bot then
 				removeBot(bot)
@@ -434,6 +442,60 @@ local function findTarget(bot, root)
 	return best, bestDist
 end
 
+---------------------------------------------------------------------------
+-- Saint's Corpse: idle bots go and pick up parts lying near their camp; in a
+-- fight, bots holding parts use their corpse move; their parts drop on death.
+---------------------------------------------------------------------------
+local Corpse
+corpseService = function()
+	if Corpse == nil then
+		-- (Wrapped in a function so the bundler can rewrite the require.)
+		local ok, mod = pcall(function()
+			return require(script.Parent.CorpseService)
+		end)
+		Corpse = ok and mod or false
+	end
+	return Corpse or nil
+end
+
+local function seekCorpse(bot, root)
+	local C = corpseService()
+	local range = cfg.CorpseSeekRange or 90
+	if not C then
+		return false
+	end
+	local goal = bot.CorpseGoal
+	if not (goal and goal.Parent) then
+		goal = nil
+		if os.clock() >= (bot.NextCorpseLook or 0) then
+			bot.NextCorpseLook = os.clock() + 2
+			local best, bestD
+			for _, relic in ipairs(CollectionService:GetTagged("SpinCorpse")) do
+				local at = relic.Parent and relic:GetPivot().Position
+				if at and (at - bot.Home).Magnitude <= range then
+					local d = (at - root.Position).Magnitude
+					if not bestD or d < bestD then
+						best, bestD = relic, d
+					end
+				end
+			end
+			goal = best
+		end
+		bot.CorpseGoal = goal
+	end
+	if not goal then
+		return false
+	end
+	local at = goal:GetPivot().Position
+	if (at - root.Position).Magnitude <= 7 then
+		C.take(bot.Player, goal:GetAttribute("PartId"))
+		bot.CorpseGoal = nil
+	else
+		bot.Humanoid:MoveTo(at)
+	end
+	return true
+end
+
 local function useAbility(bot, module, slot, aim)
 	local info = Registry.get(bot.State.Act)
 	local kind = info and info.AbilityKinds and info.AbilityKinds[slot] or "Press"
@@ -463,6 +525,9 @@ local function think(bot, now)
 	if not target then
 		if bot.RainWalk then
 			endRainWalk(bot, false)
+		end
+		if seekCorpse(bot, root) then
+			return
 		end
 		if (root.Position - bot.Home).Magnitude > 6 then
 			humanoid:MoveTo(bot.Home)
@@ -514,6 +579,11 @@ local function think(bot, now)
 	if bot.Player:GetAttribute("TuskUlt") and bot.Player:GetAttribute("TuskUlt") >= TuskConfig.Ultimate.MaxMeter and dist < 22 and now >= bot.NextUlt then
 		bot.NextUlt = now + 5
 		module.Ultimate(S, bot.Player, state, aim)
+		return
+	end
+	-- Holding a corpse part: use the corpse move now and then.
+	if model:GetAttribute("CorpseParts") and dist < 22 and (model:GetAttribute("CorpseReadyAt") or 0) <= workspace:GetServerTimeNow() and math.random() < (cfg.CorpseMoveChance or 0.12) and S.CorpseMove then
+		S.CorpseMove(bot.Player, state, aim)
 		return
 	end
 	if now >= bot.NextAbility and dist < (cfg.AbilityRange or 35) then

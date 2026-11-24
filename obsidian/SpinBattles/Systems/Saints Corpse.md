@@ -56,3 +56,21 @@ Server: `CorpseService` (relics, pickup, boosts, drops) and `CorpseMoves` (each 
   - You never see a contract for a part you're carrying.
   - (CorpseService `where(id)` / `OnTaken`; BountyService `retrieveBounties`)
 - The **Saint's Corpse panel** moved to the **bottom-left corner** (lifted above the thumbstick on touch screens).
+
+## NPC collectors + new relic models (2026-11-24)
+- **NPCs collect parts too:**
+  - an idle Stand-user NPC walks to any relic within 90 studs of its camp and takes it (`StandBots.CorpseSeekRange`);
+  - it gets the boosts, uses its corpse move in fights (`CorpseMoveChance`), and drops its parts where it dies;
+  - NPC carriers are worth more on the board (same bonuses as players), and retrieve contracts can say "HELD BY Stand User: X".
+- **Relic models rebuilt:**
+  - Heart: lobes, aorta and veins, crossed bandages.
+  - Head: a skull with a brow ridge, deep sockets, teeth, a jaw and wraps.
+  - Spine: 7 vertebrae with wings and discs.
+  - Eyes: eyeballs with irises and nerves in a cloth band.
+  - Ears: C-shaped ears with folds.
+  - Arms: bent at the elbow, with a hand, fingers, a thumb and loose bandages.
+  - Legs: thighs, knees, shins, feet and toes.
+  - Every relic has a **floating gold halo** and golden motes rising.
+
+![[corpse_relics_1.png]]
+![[corpse_relics_2.png]]

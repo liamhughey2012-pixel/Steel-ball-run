@@ -252,13 +252,25 @@ local function listBounties(viewer)
 	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
 		if aliveModel(model) then
 			local h = model:FindFirstChildOfClass("Humanoid")
+			-- NPCs carrying corpse parts are worth more too.
+			local corpse = TuskConfig.Corpse or {}
+			local bonus, names = 0, {}
+			for id in string.gmatch(model:GetAttribute("CorpseParts") or "", "[^,]+") do
+				bonus = bonus + ((corpse.BigParts or {})[id] or corpse.PartBounty or 40)
+				for _, info in ipairs(corpse.Parts or {}) do
+					if info.Id == id then
+						table.insert(names, info.Name)
+					end
+				end
+			end
 			table.insert(list, {
 				Key = npcId(model),
 				Kind = "NPC",
 				Model = model,
 				Name = h.DisplayName ~= "" and h.DisplayName or model.Name,
-				Reward = cfg.NPCReward or 75,
+				Reward = (cfg.NPCReward or 75) + bonus,
 				Act = model:GetAttribute("TuskAct"),
+				Corpse = #names > 0 and table.concat(names, ", ") or nil,
 			})
 		end
 	end

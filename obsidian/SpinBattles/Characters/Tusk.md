@@ -53,3 +53,13 @@ Each Act keeps its signature curved pieces smooth again (Act 1's egg body, face 
 ![[tusk_act1_vs_drawing_v2.png]]
 
 **Using a Toolbox model instead:** Studio › Toolbox › find a Tusk model › drag it into ReplicatedStorage › put it in a Folder named `SpinAssets` › rename it `TuskAct1` (or 2, 3, 4). The game uses it instead of the built-in Stand, strips any scripts inside it, and still adds the pink aura.
+
+## Awakening: Infinite Rotation (2026-11-24)
+- **You can't pick your Act any more** (the Act menu is off, even in Studio: `Progression.StudioMenu = false`). Johnny always starts at Act 1; **dying sends you back to Act 1**.
+- **G on Acts 1-3 is the AWAKENING: INFINITE ROTATION.**
+  - A golden spinning nail charged with the Golden Rotation (Act 4's cinematic) fires.
+  - It blasts where it lands, then **Tusk awakens one Act higher** (1 → 2 → 3 → 4).
+  - It gets stronger each Act: nail 14 / 19 / 24, blast 6 / 8 / 11, blast radius 10 / 13 / 16 (`TuskConfig.Awakening`).
+- **Act 4's G** is the full Infinite Rotation, as before.
+- The 45 s minimum per Act before the next awakening still applies.
+- Code: `TuskAwakening.use`, called by Act1-3 `.Ultimate`.

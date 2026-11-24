@@ -208,12 +208,27 @@ TuskConfig.Progression = {
 	--           Point IsUnlocked at your existing unlock / quest system.
 	Mode = "Awaken",
 	ResetOnDeath = true, -- Awaken mode: dying sends you back to Act 1
-	StudioMenu = true, -- the Act menu (T) still works inside Studio for testing
+	StudioMenu = false, -- true: the Act menu (T) works inside Studio for testing (off: awakening is the only way up)
 	DefaultAct = 1,
 	AutoEquip = true, -- players spawn as Tusk (set false if your game picks movesets elsewhere)
 	ShowSelectionMenu = true,
 	IsUnlocked = nil, -- function(player, actNumber) -> boolean
 	SwitchCooldown = 3, -- seconds between Act switches
+}
+
+---------------------------------------------------------------------------
+-- AWAKENING (G on Tusk Acts 1-3): INFINITE ROTATION. A golden spinning nail
+-- (stronger each Act) that blasts where it lands; then Tusk awakens one Act
+-- higher. One value per Act 1, 2, 3. (Act 4's G is the full Infinite Rotation.)
+---------------------------------------------------------------------------
+TuskConfig.Awakening = {
+	Windup = { 1.4, 1.6, 1.8 },
+	Damage = { 14, 19, 24 },
+	ProjectileRadius = { 2, 2.6, 3.2 },
+	BlastRadius = { 10, 13, 16 },
+	BlastDamage = { 6, 8, 11 },
+	Speed = 110, Range = 180,
+	Stun = 0.7, Knockback = 55, Launch = 25,
 }
 
 ---------------------------------------------------------------------------
@@ -300,6 +315,8 @@ TuskConfig.StandBots = {
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
 	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine" },
+	CorpseSeekRange = 90, -- idle bots pick up corpse parts lying this close to their camp
+	CorpseMoveChance = 0.12, -- per think tick in a fight, if they hold a part and it's ready
 	RainWalkChance = 0.05, -- Blackmore NPCs: chance per think tick to start a rain walk while it rains
 	Health = 200,
 	WalkSpeed = 15,
@@ -9595,13 +9612,25 @@ local function listBounties(viewer)
 	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
 		if aliveModel(model) then
 			local h = model:FindFirstChildOfClass("Humanoid")
+			-- NPCs carrying corpse parts are worth more too.
+			local corpse = TuskConfig.Corpse or {}
+			local bonus, names = 0, {}
+			for id in string.gmatch(model:GetAttribute("CorpseParts") or "", "[^,]+") do
+				bonus = bonus + ((corpse.BigParts or {})[id] or corpse.PartBounty or 40)
+				for _, info in ipairs(corpse.Parts or {}) do
+					if info.Id == id then
+						table.insert(names, info.Name)
+					end
+				end
+			end
 			table.insert(list, {
 				Key = npcId(model),
 				Kind = "NPC",
 				Model = model,
 				Name = h.DisplayName ~= "" and h.DisplayName or model.Name,
-				Reward = cfg.NPCReward or 75,
+				Reward = (cfg.NPCReward or 75) + bonus,
 				Act = model:GetAttribute("TuskAct"),
+				Corpse = #names > 0 and table.concat(names, ", ") or nil,
 			})
 		end
 	end
@@ -10559,6 +10588,8 @@ __modules["CorpseService"] = function()
 	  * holding any part unlocks your character's CORPSE MOVE (V), see
 	    CorpseMoves
 	  * holders are worth more on the bounty board (BountyService)
+	  * Stand-user NPCs pick parts up too, use their corpse move, and drop
+	    their parts when they die (StandBots uses take / dropFor)
 	Boosts are character attributes the combat code reads:
 	  CorpseDamage, CorpseResist, CorpseCooldown, CorpseUltGain (multipliers)
 	  CorpseParts ("Heart,Spine") for the HUD and the bounty board
@@ -10634,52 +10665,126 @@ local function piece(model, size, cf, color, shape)
 	return p
 end
 
--- A mummified part, blocky, built round `at` (the floating centre).
+local WRAP_DARK = Color3.fromRGB(184, 164, 124)
+local BONE = Color3.fromRGB(226, 214, 186)
+local SINEW = Color3.fromRGB(96, 52, 40)
+local GOLD = Color3.fromRGB(226, 182, 70)
+
+-- A bandage band round a box-shaped piece.
+local function band(model, cf, w, d)
+	piece(model, Vector3.new(w + 0.06, 0.14, d + 0.06), cf, WRAP)
+	piece(model, Vector3.new(w + 0.07, 0.04, d + 0.07), cf * CFrame.new(0, 0.05, 0), WRAP_DARK)
+end
+
+-- A mummified part, blocky but detailed, built round `at` (the floating centre).
 local function shape(model, id, at)
 	local c = CFrame.new(at)
 	if id == "Heart" then
-		piece(model, Vector3.new(1.3, 1.5, 1.1), c * CFrame.Angles(0, 0, 0.3), MUMMY)
-		piece(model, Vector3.new(0.3, 0.6, 0.3), c * CFrame.new(-0.3, 0.9, 0), MUMMY_DARK)
-		piece(model, Vector3.new(0.3, 0.5, 0.3), c * CFrame.new(0.25, 0.85, 0.1), MUMMY_DARK)
-		piece(model, Vector3.new(1.36, 0.16, 1.16), c * CFrame.new(0, -0.2, 0) * CFrame.Angles(0, 0, 0.3), WRAP)
+		local h = c * CFrame.Angles(0, 0, 0.25)
+		piece(model, Vector3.new(1.2, 1.4, 1.0), h, MUMMY)
+		piece(model, Vector3.new(0.7, 0.8, 0.9), h * CFrame.new(-0.45, 0.25, 0), MUMMY) -- left lobe
+		piece(model, Vector3.new(0.6, 0.7, 0.8), h * CFrame.new(0.42, 0.3, 0.05), MUMMY_DARK) -- right lobe
+		piece(model, Vector3.new(0.5, 0.5, 0.6), h * CFrame.new(0.05, -0.75, 0) * CFrame.Angles(0, 0, 0.6), MUMMY_DARK) -- apex
+		-- The aorta arching over the top, and two vessels.
+		piece(model, Vector3.new(0.28, 0.5, 0.28), h * CFrame.new(-0.15, 0.9, 0), SINEW)
+		piece(model, Vector3.new(0.5, 0.24, 0.24), h * CFrame.new(0.05, 1.15, 0) * CFrame.Angles(0, 0, -0.2), SINEW)
+		piece(model, Vector3.new(0.22, 0.4, 0.22), h * CFrame.new(0.32, 0.95, 0), SINEW)
+		piece(model, Vector3.new(0.2, 0.35, 0.2), h * CFrame.new(-0.45, 0.8, 0.15), SINEW)
+		-- Veins over the front.
+		for i = -1, 1 do
+			piece(model, Vector3.new(0.05, 0.7, 0.04), h * CFrame.new(i * 0.25, 0, -0.52) * CFrame.Angles(0, 0, i * 0.4), SINEW)
+		end
+		-- Crossed bandages.
+		piece(model, Vector3.new(1.5, 0.16, 1.1), h * CFrame.new(0, -0.1, 0) * CFrame.Angles(0, 0, 0.5), WRAP)
+		piece(model, Vector3.new(1.4, 0.14, 1.08), h * CFrame.new(0, 0.2, 0) * CFrame.Angles(0, 0, -0.6), WRAP_DARK)
 	elseif id == "Head" then
-		piece(model, Vector3.new(1.3, 1.4, 1.3), c, MUMMY)
+		piece(model, Vector3.new(1.3, 1.3, 1.35), c * CFrame.new(0, 0.1, 0), BONE) -- cranium
+		piece(model, Vector3.new(1.36, 0.16, 0.3), c * CFrame.new(0, 0.32, -0.6), MUMMY) -- brow ridge
 		for _, x in ipairs({ -0.3, 0.3 }) do
-			piece(model, Vector3.new(0.3, 0.3, 0.05), c * CFrame.new(x, 0.15, -0.66), MUMMY_DARK)
+			piece(model, Vector3.new(0.34, 0.34, 0.12), c * CFrame.new(x, 0.08, -0.66), MUMMY_DARK) -- eye socket
+			piece(model, Vector3.new(0.16, 0.16, 0.06), c * CFrame.new(x, 0.08, -0.7), Color3.fromRGB(30, 20, 16))
+			piece(model, Vector3.new(0.3, 0.2, 0.2), c * CFrame.new(x * 1.7, -0.15, -0.5), MUMMY) -- cheekbones
 		end
-		piece(model, Vector3.new(0.6, 0.12, 0.05), c * CFrame.new(0, -0.35, -0.66), MUMMY_DARK)
-		piece(model, Vector3.new(1.36, 0.16, 1.36), c * CFrame.new(0, 0.45, 0), WRAP)
+		piece(model, Vector3.new(0.2, 0.3, 0.1), c * CFrame.new(0, -0.15, -0.68), MUMMY_DARK) -- nose
+		-- Jaw hanging slightly open, a row of teeth.
+		piece(model, Vector3.new(1.0, 0.3, 0.9), c * CFrame.new(0, -0.68, -0.15) * CFrame.Angles(0.2, 0, 0), MUMMY)
+		for i = -2, 2 do
+			piece(model, Vector3.new(0.12, 0.16, 0.08), c * CFrame.new(i * 0.16, -0.48, -0.62), BONE)
+		end
+		-- Bandages wound round the top and under the chin.
+		band(model, c * CFrame.new(0, 0.55, 0), 1.3, 1.35)
+		piece(model, Vector3.new(0.18, 1.5, 1.4), c * CFrame.new(0.55, -0.05, 0) * CFrame.Angles(0, 0, 0.15), WRAP)
+		piece(model, Vector3.new(0.5, 0.12, 0.08), c * CFrame.new(0.6, -0.9, -0.3) * CFrame.Angles(0, 0, -0.8), WRAP_DARK) -- loose end
 	elseif id == "Spine" then
-		for i = 0, 5 do
-			piece(model, Vector3.new(0.5 + (i % 2) * 0.2, 0.32, 0.4), c * CFrame.new(0, -1 + i * 0.4, 0), i % 2 == 0 and MUMMY or WRAP)
+		for i = 0, 6 do
+			local v = c * CFrame.new(math.sin(i * 0.7) * 0.08, -1.3 + i * 0.43, 0)
+			piece(model, Vector3.new(0.5, 0.3, 0.45), v, BONE) -- vertebra
+			piece(model, Vector3.new(1.0, 0.12, 0.2), v * CFrame.new(0, 0, 0.12), MUMMY) -- side wings
+			piece(model, Vector3.new(0.14, 0.2, 0.4), v * CFrame.new(0, -0.05, 0.35) * CFrame.Angles(-0.5, 0, 0), MUMMY_DARK) -- spike
+			if i < 6 then
+				piece(model, Vector3.new(0.42, 0.12, 0.38), v * CFrame.new(0, 0.22, 0), SINEW) -- disc
+			end
 		end
+		band(model, c * CFrame.new(0, 0.1, 0), 0.5, 0.45)
+		band(model, c * CFrame.new(0, -0.8, 0), 0.5, 0.45)
 	elseif id == "Eyes" then
-		piece(model, Vector3.new(1.6, 0.35, 0.3), c, WRAP)
-		for _, x in ipairs({ -0.4, 0.4 }) do
-			piece(model, Vector3.new(0.45, 0.45, 0.45), c * CFrame.new(x, 0, -0.2), Color3.fromRGB(236, 228, 214), Enum.PartType.Ball)
-			piece(model, Vector3.new(0.2, 0.2, 0.2), c * CFrame.new(x, 0, -0.4), Color3.fromRGB(40, 30, 30), Enum.PartType.Ball)
+		piece(model, Vector3.new(1.9, 0.45, 0.4), c * CFrame.new(0, 0, 0.1), WRAP) -- cloth band
+		piece(model, Vector3.new(1.92, 0.06, 0.42), c * CFrame.new(0, 0.12, 0.1), WRAP_DARK)
+		for _, x in ipairs({ -0.45, 0.45 }) do
+			piece(model, Vector3.new(0.5, 0.5, 0.5), c * CFrame.new(x, 0, -0.2), Color3.fromRGB(236, 228, 214), Enum.PartType.Ball)
+			piece(model, Vector3.new(0.24, 0.24, 0.24), c * CFrame.new(x, 0, -0.42), Color3.fromRGB(70, 110, 140), Enum.PartType.Ball) -- iris
+			piece(model, Vector3.new(0.12, 0.12, 0.12), c * CFrame.new(x, 0, -0.52), Color3.fromRGB(20, 16, 16), Enum.PartType.Ball) -- pupil
+			-- Nerves trailing back.
+			piece(model, Vector3.new(0.08, 0.08, 0.7), c * CFrame.new(x * 0.8, -0.05, 0.4) * CFrame.Angles(0, x * 0.6, 0), SINEW)
 		end
 	elseif id == "Ears" then
-		for _, x in ipairs({ -0.45, 0.45 }) do
-			piece(model, Vector3.new(0.2, 1.0, 0.7), c * CFrame.new(x, 0, 0) * CFrame.Angles(0, 0, x * 0.4), MUMMY)
+		for _, side in ipairs({ -1, 1 }) do
+			local e = c * CFrame.new(side * 0.5, 0, 0) * CFrame.Angles(0, side * 0.3, 0)
+			-- The outer rim: a C of blocks.
+			piece(model, Vector3.new(0.2, 0.25, 0.6), e * CFrame.new(0, 0.5, 0), MUMMY)
+			piece(model, Vector3.new(0.2, 0.8, 0.25), e * CFrame.new(0, 0.1, 0.28), MUMMY)
+			piece(model, Vector3.new(0.2, 0.25, 0.45), e * CFrame.new(0, -0.35, 0.05), MUMMY)
+			piece(model, Vector3.new(0.18, 0.3, 0.3), e * CFrame.new(0, -0.55, -0.1), MUMMY_DARK) -- lobe
+			piece(model, Vector3.new(0.16, 0.45, 0.3), e * CFrame.new(0.02, 0.1, 0.02), MUMMY_DARK) -- inner fold
 		end
-		piece(model, Vector3.new(1.2, 0.18, 0.3), c * CFrame.new(0, -0.3, 0), WRAP)
+		piece(model, Vector3.new(1.4, 0.14, 0.3), c * CFrame.new(0, -0.75, 0), WRAP) -- tied together
 	elseif id == "Legs" then
-		for _, x in ipairs({ -0.35, 0.35 }) do
-			piece(model, Vector3.new(0.5, 2.4, 0.5), c * CFrame.new(x, 0, 0), MUMMY)
-			piece(model, Vector3.new(0.56, 0.2, 0.56), c * CFrame.new(x, 0.4, 0), WRAP)
-			piece(model, Vector3.new(0.5, 0.3, 0.8), c * CFrame.new(x, -1.2, -0.15), MUMMY_DARK)
+		for _, side in ipairs({ -1, 1 }) do
+			local l = c * CFrame.new(side * 0.38, 0, 0) * CFrame.Angles(0, 0, side * 0.06)
+			piece(model, Vector3.new(0.55, 1.2, 0.55), l * CFrame.new(0, 0.7, 0), MUMMY) -- thigh
+			piece(model, Vector3.new(0.5, 0.3, 0.55), l * CFrame.new(0, 0.05, -0.05), BONE) -- knee
+			piece(model, Vector3.new(0.45, 1.2, 0.45), l * CFrame.new(0, -0.65, 0), MUMMY) -- shin
+			piece(model, Vector3.new(0.5, 0.25, 0.85), l * CFrame.new(0, -1.35, -0.2), MUMMY_DARK) -- foot
+			for t = -1.5, 1.5 do
+				piece(model, Vector3.new(0.1, 0.12, 0.16), l * CFrame.new(t * 0.11, -1.38, -0.68), MUMMY_DARK) -- toes
+			end
+			band(model, l * CFrame.new(0, 0.9, 0), 0.55, 0.55)
+			band(model, l * CFrame.new(0, -0.4, 0), 0.45, 0.45)
 		end
-	else -- LeftArm / RightArm
+	else -- LeftArm / RightArm: bent at the elbow
 		local side = id == "LeftArm" and -1 or 1
-		local arm = c * CFrame.Angles(0, 0, side * 0.3)
-		piece(model, Vector3.new(0.5, 2.2, 0.5), arm, MUMMY)
-		piece(model, Vector3.new(0.56, 0.2, 0.56), arm * CFrame.new(0, 0.5, 0), WRAP)
-		piece(model, Vector3.new(0.6, 0.5, 0.35), arm * CFrame.new(0, -1.3, 0), MUMMY_DARK)
+		local upper = c * CFrame.new(0, 0.6, 0) * CFrame.Angles(0, 0, side * 0.3)
+		piece(model, Vector3.new(0.5, 1.2, 0.5), upper, MUMMY)
+		local elbow = upper * CFrame.new(0, -0.65, 0)
+		piece(model, Vector3.new(0.45, 0.3, 0.45), elbow, BONE)
+		local fore = elbow * CFrame.Angles(0, 0, side * -0.7) * CFrame.new(0, -0.6, 0)
+		piece(model, Vector3.new(0.42, 1.1, 0.42), fore, MUMMY)
+		local hand = fore * CFrame.new(0, -0.7, 0)
+		piece(model, Vector3.new(0.55, 0.45, 0.25), hand, MUMMY_DARK)
 		for f = -1.5, 1.5 do
-			piece(model, Vector3.new(0.1, 0.4, 0.1), arm * CFrame.new(f * 0.13, -1.7, 0), MUMMY_DARK)
+			piece(model, Vector3.new(0.09, 0.42, 0.09), hand * CFrame.new(f * 0.13, -0.4, 0) * CFrame.Angles(0.25, 0, 0), MUMMY_DARK)
 		end
+		piece(model, Vector3.new(0.09, 0.3, 0.09), hand * CFrame.new(side * -0.32, -0.1, -0.05) * CFrame.Angles(0, 0, side * 0.6), MUMMY_DARK) -- thumb
+		band(model, upper * CFrame.new(0, 0.3, 0), 0.5, 0.5)
+		band(model, fore * CFrame.new(0, 0.2, 0), 0.42, 0.42)
+		piece(model, Vector3.new(0.1, 0.8, 0.06), fore * CFrame.new(0.2, -0.2, 0.22) * CFrame.Angles(0.2, 0, 0.2), WRAP) -- loose strip
 	end
+	-- A floating gold halo over every relic.
+	local halo = piece(model, Vector3.new(0.12, 2.2, 2.2), CFrame.new(at + Vector3.new(0, 1.9, 0)) * CFrame.Angles(0, 0, math.pi / 2), GOLD, Enum.PartType.Cylinder)
+	halo.Name = "Halo"
+	halo.Material = Enum.Material.Neon
+	halo.Transparency = 0.3
+	piece(model, Vector3.new(0.14, 1.7, 1.7), CFrame.new(at + Vector3.new(0, 1.9, 0)) * CFrame.Angles(0, 0, math.pi / 2), GLOW, Enum.PartType.Cylinder).Transparency = 1
 end
 
 local collect -- (defined below)
@@ -10708,6 +10813,18 @@ local function placeRelic(id, position, dropped)
 	light.Range = 14
 	light.Brightness = 1.5
 	light.Parent = holder
+	-- Golden motes drifting up from it.
+	local motes = Instance.new("ParticleEmitter")
+	motes.Color = ColorSequence.new(GLOW)
+	motes.LightEmission = 1
+	motes.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 0) })
+	motes.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+	motes.Lifetime = NumberRange.new(1, 1.8)
+	motes.Speed = NumberRange.new(1, 2.5)
+	motes.SpreadAngle = Vector2.new(40, 40)
+	motes.EmissionDirection = Enum.NormalId.Top
+	motes.Rate = 8
+	motes.Parent = holder
 	local highlight = Instance.new("Highlight")
 	highlight.FillColor = GLOW
 	highlight.FillTransparency = 0.7
@@ -10857,6 +10974,15 @@ local function dropAll(player, position)
 			CorpseService.scatter(id)
 		end
 	end
+end
+
+-- For Stand-user NPCs (StandBots): take a part, and drop theirs when they die.
+function CorpseService.take(botPlayer, id)
+	collect(botPlayer, id)
+end
+
+function CorpseService.dropFor(botPlayer, position)
+	dropAll(botPlayer, position)
 end
 
 function CorpseService.holding(player)
@@ -13906,6 +14032,8 @@ __modules["StandBots"] = function()
 	  * Blackmore NPCs rain walk while it rains: they step up onto frozen
 	    raindrops (an invisible step only NPCs collide with) and climb
 	    toward players above them
+	  * idle bots walk over and pick up Saint's Corpse parts lying near their
+	    camp; bots holding parts use their corpse move and drop them on death
 	  * they respawn RespawnTime seconds after dying, as whoever is missing
 	Settings: TuskConfig.StandBots (Enabled = false turns them off).
 	Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
@@ -14027,6 +14155,7 @@ local function buildModel(who)
 end
 
 local spawnBot -- (defined below; respawn calls it)
+local corpseService -- (defined below with the corpse helpers)
 
 local endRainWalk -- (rain walk, below)
 
@@ -14101,6 +14230,11 @@ function spawnBot(slot)
 	CollectionService:AddTag(model, "SpinFighter")
 	humanoid.Died:Connect(function()
 		endRainWalk(bot, false)
+		local C = corpseService()
+		if C then
+			local r = model:FindFirstChild("HumanoidRootPart")
+			C.dropFor(botPlayer, r and r.Position or nil)
+		end
 		task.delay(cfg.RespawnTime or 10, function()
 			if bots[slot] == bot then
 				removeBot(bot)
@@ -14294,6 +14428,60 @@ local function findTarget(bot, root)
 	return best, bestDist
 end
 
+---------------------------------------------------------------------------
+-- Saint's Corpse: idle bots go and pick up parts lying near their camp; in a
+-- fight, bots holding parts use their corpse move; their parts drop on death.
+---------------------------------------------------------------------------
+local Corpse
+corpseService = function()
+	if Corpse == nil then
+		-- (Wrapped in a function so the bundler can rewrite the require.)
+		local ok, mod = pcall(function()
+			return __require("CorpseService")
+		end)
+		Corpse = ok and mod or false
+	end
+	return Corpse or nil
+end
+
+local function seekCorpse(bot, root)
+	local C = corpseService()
+	local range = cfg.CorpseSeekRange or 90
+	if not C then
+		return false
+	end
+	local goal = bot.CorpseGoal
+	if not (goal and goal.Parent) then
+		goal = nil
+		if os.clock() >= (bot.NextCorpseLook or 0) then
+			bot.NextCorpseLook = os.clock() + 2
+			local best, bestD
+			for _, relic in ipairs(CollectionService:GetTagged("SpinCorpse")) do
+				local at = relic.Parent and relic:GetPivot().Position
+				if at and (at - bot.Home).Magnitude <= range then
+					local d = (at - root.Position).Magnitude
+					if not bestD or d < bestD then
+						best, bestD = relic, d
+					end
+				end
+			end
+			goal = best
+		end
+		bot.CorpseGoal = goal
+	end
+	if not goal then
+		return false
+	end
+	local at = goal:GetPivot().Position
+	if (at - root.Position).Magnitude <= 7 then
+		C.take(bot.Player, goal:GetAttribute("PartId"))
+		bot.CorpseGoal = nil
+	else
+		bot.Humanoid:MoveTo(at)
+	end
+	return true
+end
+
 local function useAbility(bot, module, slot, aim)
 	local info = Registry.get(bot.State.Act)
 	local kind = info and info.AbilityKinds and info.AbilityKinds[slot] or "Press"
@@ -14323,6 +14511,9 @@ local function think(bot, now)
 	if not target then
 		if bot.RainWalk then
 			endRainWalk(bot, false)
+		end
+		if seekCorpse(bot, root) then
+			return
 		end
 		if (root.Position - bot.Home).Magnitude > 6 then
 			humanoid:MoveTo(bot.Home)
@@ -14374,6 +14565,11 @@ local function think(bot, now)
 	if bot.Player:GetAttribute("TuskUlt") and bot.Player:GetAttribute("TuskUlt") >= TuskConfig.Ultimate.MaxMeter and dist < 22 and now >= bot.NextUlt then
 		bot.NextUlt = now + 5
 		module.Ultimate(S, bot.Player, state, aim)
+		return
+	end
+	-- Holding a corpse part: use the corpse move now and then.
+	if model:GetAttribute("CorpseParts") and dist < 22 and (model:GetAttribute("CorpseReadyAt") or 0) <= workspace:GetServerTimeNow() and math.random() < (cfg.CorpseMoveChance or 0.12) and S.CorpseMove then
+		S.CorpseMove(bot.Player, state, aim)
 		return
 	end
 	if now >= bot.NextAbility and dist < (cfg.AbilityRange or 35) then
@@ -14615,6 +14811,7 @@ __modules["TuskAct1"] = function()
 local Shared = nil -- (bundled: modules are inlined)
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
 
+local Awakening = __require("TuskAwakening")
 local Act1 = {}
 local cfg = TuskConfig.Act1
 
@@ -14884,59 +15081,9 @@ local function endAwakening(S, player, state)
 	S.tell(player, "AwakenEnded", {})
 end
 
+-- G: AWAKENING. Infinite Rotation (TuskAwakening), then Tusk awakens to Act 2.
 function Act1.Ultimate(S, player, state, aim)
-	local u = cfg.Ultimate
-	if S.isBusy(state) or state.Charging or state.Awakened then
-		return
-	end
-	if not S.spendUlt(player) then
-		return
-	end
-	local character = alive(S, player)
-	local life = state.Life
-	S.lock(state, u.Windup + 0.4)
-	character:SetAttribute("Armored", true)
-	S.fx("Ultimate", { Character = character, Act = 1, Phase = "Start", Windup = u.Windup })
-
-	task.delay(u.Windup, function()
-		if character.Parent then
-			character:SetAttribute("Armored", nil)
-		end
-		if not S.stillValid(player, state, life, true) then
-			return
-		end
-		local char, _, root = alive(S, player)
-		for _, target in ipairs(S.Hitbox.inRadius(char, root.Position, u.Radius, 8)) do
-			local targetRoot = target:FindFirstChild("HumanoidRootPart")
-			if targetRoot and S.Hitbox.lineOfSight(root.Position, targetRoot.Position, { char, target }) then
-				S.hit(player, target, {
-					Damage = u.Damage,
-					Stun = u.Stun,
-					Knockback = u.Knockback,
-					Launch = u.Launch,
-					Direction = targetRoot.Position - root.Position,
-					Position = targetRoot.Position,
-					Source = "TuskAwakening",
-				})
-			end
-		end
-		S.fx("Ultimate", { Character = char, Act = 1, Phase = "Burst", Position = root.Position, Radius = u.Radius })
-
-		if TuskConfig.Progression.Mode == "Awaken" then
-			S.finishUltimate(player, state) -- awakens Tusk to Act 2
-			return
-		end
-		state.Awakened = true
-		local token = {}
-		state.AwakenToken = token
-		char:SetAttribute("TuskAwakened", true)
-		S.tell(player, "Awakened", { Duration = u.Duration })
-		task.delay(u.Duration, function()
-			if state.AwakenToken == token then
-				endAwakening(S, player, state)
-			end
-		end)
-	end)
+	return Awakening.use(S, player, state, aim)
 end
 
 function Act1.Cleanup(S, player, state)
@@ -14973,6 +15120,7 @@ __modules["TuskAct2"] = function()
 local Shared = nil -- (bundled: modules are inlined)
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
 local Moves = __require("TuskMoves")
+local Awakening = __require("TuskAwakening")
 local Sneak = __require("TuskSneakService")
 
 local Act2 = {}
@@ -15151,68 +15299,9 @@ function Act2.Ability(S, player, state, slot, phase, aim)
 end
 
 -- DIMENSIONAL STORM
+-- G: AWAKENING. Infinite Rotation (TuskAwakening), then Tusk awakens to Act 3.
 function Act2.Ultimate(S, player, state, aim)
-	local u = cfg.Ultimate
-	if S.isBusy(state) or state.Charging then
-		return
-	end
-	if not S.spendUlt(player) then
-		return
-	end
-	local character, _, root = alive(S, player)
-	local life = state.Life
-	local total = u.Windup + u.Waves * u.WaveInterval + 0.5
-	S.lock(state, total)
-	character:SetAttribute("Armored", true)
-	local center = root.Position
-	local portals = Moves.ring(center, u.Portals, u.Radius * 0.55, math.random() * math.pi * 2, 7, 11)
-	S.fx("Ultimate", { Character = character, Act = 2, Phase = "Start", Windup = u.Windup, Portals = portals, Center = center })
-
-	local function finish()
-		if character.Parent then
-			character:SetAttribute("Armored", nil)
-		end
-	end
-	for wave = 1, u.Waves do
-		task.delay(u.Windup + (wave - 1) * u.WaveInterval, function()
-			if state.Life ~= life then
-				return
-			end
-			local targets = S.Hitbox.inRadius(character, center, u.Radius, 8)
-			for i, pos in ipairs(portals) do
-				local t = targets[(i + wave) % math.max(#targets, 1) + 1]
-				local tr = t and t:FindFirstChild("HumanoidRootPart")
-				local aimAt = tr and tr.Position or (center + Vector3.new(math.random(-12, 12), -2, math.random(-12, 12)))
-				local dir = aimAt - pos
-				Moves.nail(S, player, state, {
-					Origin = pos,
-					Direction = dir.Unit,
-					Speed = u.NailSpeed,
-					Radius = 0.8,
-					Range = dir.Magnitude + 10,
-					Style = "Portal",
-					Damage = u.NailDamage,
-					Stun = 0.3,
-					Knockback = 4,
-					Source = "TuskDimensionalStorm",
-				})
-			end
-		end)
-	end
-	task.delay(total - 0.4, function()
-		finish()
-		if state.Life ~= life or not alive(S, player) then
-			return
-		end
-		Moves.aoe(S, player, center, u.BurstRadius, { Damage = u.BurstDamage, Stun = u.Stun, Knockback = u.Knockback, Launch = u.Launch, Source = "TuskDimensionalStorm" }, 8)
-		S.fx("Ultimate", { Character = character, Act = 2, Phase = "Burst", Position = center, Radius = u.BurstRadius })
-		task.delay(0.35, function()
-			if state.Life == life then
-				S.finishUltimate(player, state) -- evolves to Act 3
-			end
-		end)
-	end)
-	task.delay(total + 1, finish)
+	return Awakening.use(S, player, state, aim)
 end
 
 function Act2.Cleanup(S, player, state)
@@ -15246,6 +15335,7 @@ __modules["TuskAct3"] = function()
 local Shared = nil -- (bundled: modules are inlined)
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
 local Moves = __require("TuskMoves")
+local Awakening = __require("TuskAwakening")
 
 local Act3 = {}
 local cfg = TuskConfig.Act3
@@ -15365,44 +15455,9 @@ function Act3.Ability(S, player, state, slot, phase, aim)
 end
 
 -- INFINITE DIMENSION
+-- G: AWAKENING. Infinite Rotation (TuskAwakening), then Tusk awakens to Act 4.
 function Act3.Ultimate(S, player, state, aim)
-	local u = cfg.Ultimate
-	if S.isBusy(state) or state.Charging then
-		return
-	end
-	if not S.spendUlt(player) then
-		return
-	end
-	local character, _, root = alive(S, player)
-	local life = state.Life
-	S.lock(state, u.Windup + 0.6)
-	character:SetAttribute("Armored", true)
-	local center = root.Position
-	local inner = Moves.ring(center, u.Portals / 2, u.Radius * 0.45, 0, 5, 9)
-	local outer = Moves.ring(center, u.Portals / 2, u.Radius * 0.85, math.pi / (u.Portals / 2), 10, 14)
-	local portals = {}
-	for _, p in ipairs(inner) do
-		table.insert(portals, p)
-	end
-	for _, p in ipairs(outer) do
-		table.insert(portals, p)
-	end
-	S.fx("Ultimate", { Character = character, Act = 3, Phase = "Start", Windup = u.Windup, Portals = portals, Center = center, Radius = u.Radius })
-	task.delay(u.Windup, function()
-		if character.Parent then
-			character:SetAttribute("Armored", nil)
-		end
-		if state.Life ~= life or not alive(S, player) then
-			return
-		end
-		Moves.aoe(S, player, center, u.Radius, { Damage = u.Damage, Stun = u.Stun, Knockback = u.Knockback, Launch = u.Launch, Source = "TuskInfiniteDimension" }, 10)
-		S.fx("Ultimate", { Character = character, Act = 3, Phase = "Burst", Position = center, Radius = u.Radius })
-		task.delay(0.4, function()
-			if state.Life == life then
-				S.finishUltimate(player, state) -- evolves to Act 4
-			end
-		end)
-	end)
+	return Awakening.use(S, player, state, aim)
 end
 
 function Act3.Cleanup(S, player, state)
@@ -15716,7 +15771,7 @@ TuskActRegistry.Acts = {
 		M1 = "NAIL COMBO",
 		Abilities = { "NAIL SHOT", "NAIL BARRAGE", "SPINNING NAIL" },
 		AbilityKinds = { "Press", "Press", "Hold" }, -- Hold = charge on press, fire on release
-		Ultimate = "TUSK AWAKENING",
+		Ultimate = "AWAKEN: INFINITE ROTATION",
 		Next = 2, -- the ultimate awakens Tusk to this Act
 	},
 	[2] = {
@@ -15728,7 +15783,7 @@ TuskActRegistry.Acts = {
 		Abilities = { "GOLDEN RATIO NAIL", "UNDERGROUND PURSUIT", "GOLDEN SPIRAL" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Next = 3,
-		Ultimate = "GOLDEN RATIO STORM",
+		Ultimate = "AWAKEN: INFINITE ROTATION",
 	},
 	[3] = {
 		Name = "TUSK ACT 3",
@@ -15738,7 +15793,7 @@ TuskActRegistry.Acts = {
 		M1 = "WORMHOLE STRIKES",
 		Abilities = { "DIMENSIONAL STEP", "SPATIAL PURSUIT", "DIMENSIONAL BREAK" },
 		AbilityKinds = { "Press", "Press", "Press" },
-		Ultimate = "INFINITE DIMENSION",
+		Ultimate = "AWAKEN: INFINITE ROTATION",
 		Next = 4,
 	},
 	[4] = {
@@ -15941,6 +15996,91 @@ function TuskActRegistry.isImplemented(act)
 end
 
 return TuskActRegistry
+end
+
+-- ======================================================================
+-- MODULE: TuskAwakening
+-- ======================================================================
+__modules["TuskAwakening"] = function()
+--[[
+	TuskAwakening  (ServerScriptService.SpinServer.TuskAwakening)
+
+	Johnny's AWAKENING (G on Tusk Acts 1-3): INFINITE ROTATION. A golden
+	spinning nail charged with the Golden Rotation fires (stronger each Act),
+	blasts where it lands, and Tusk AWAKENS one Act higher (1 -> 2 -> 3 -> 4).
+	Act 4's own ultimate is the full Infinite Rotation (TuskAct4).
+	You can't pick your Act: awakening is the only way up, and dying sends
+	you back to Act 1 (TuskConfig.Progression).
+	Numbers: TuskConfig.Awakening (one value per Act 1-3).
+]]
+
+local Shared = nil -- (bundled: modules are inlined)
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local Moves = __require("TuskMoves")
+
+local TuskAwakening = {}
+
+local function pick(list, act)
+	if type(list) ~= "table" then
+		return list
+	end
+	return list[math.clamp(act, 1, #list)]
+end
+
+function TuskAwakening.use(S, player, state, aim)
+	local cfg = TuskConfig.Awakening
+	local act = state.Act or 1
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	local character, _, root = S.Adapter.getAlive(player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	local windup = pick(cfg.Windup, act)
+	S.lock(state, windup + 0.6)
+	character:SetAttribute("Armored", true)
+	-- The Infinite Rotation visuals (Act 4's), scaled by the Act.
+	S.fx("Ultimate", { Character = character, Act = 4, Phase = "Start", Windup = windup, Direction = direction, Awakening = act })
+	task.delay(windup, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+		if state.Life ~= life or not S.Adapter.getAlive(player) then
+			return
+		end
+		local _, _, r = S.Adapter.getAlive(player)
+		S.fx("Ultimate", { Character = character, Act = 4, Phase = "Release", Position = r.Position, Direction = direction, Awakening = act })
+		local directHit = {}
+		local blastRadius, blastDamage = pick(cfg.BlastRadius, act), pick(cfg.BlastDamage, act)
+		Moves.nail(S, player, state, {
+			Origin = S.origin(character, r, CFrame.new(0, 2, -4)),
+			Direction = direction,
+			Speed = cfg.Speed,
+			Radius = pick(cfg.ProjectileRadius, act),
+			Range = cfg.Range,
+			Style = "InfiniteUlt",
+			Charge = 1,
+			Damage = pick(cfg.Damage, act),
+			Stun = cfg.Stun,
+			Knockback = cfg.Knockback,
+			Launch = cfg.Launch,
+			Source = "TuskAwakening",
+			OnEnd = function(position, _, hitCharacter)
+				if hitCharacter then
+					directHit[hitCharacter] = true
+				end
+				Moves.aoe(S, player, position, blastRadius, { Damage = blastDamage, Stun = 0.4, Knockback = 30, Launch = 12, Source = "TuskAwakening" }, 6, directHit)
+			end,
+		})
+		-- ...and Tusk awakens one Act higher.
+		S.finishUltimate(player, state)
+	end)
+end
+
+return TuskAwakening
 end
 
 -- ======================================================================
@@ -24688,10 +24828,19 @@ local function corpseRelic(partId)
 end
 
 local function corpseHolder(partId)
+	local function holds(model)
+		local parts = model and model:GetAttribute("CorpseParts")
+		return parts and string.find("," .. parts .. ",", "," .. partId .. ",", 1, true)
+	end
 	for _, p in ipairs(Players:GetPlayers()) do
-		local parts = p.Character and p.Character:GetAttribute("CorpseParts")
-		if parts and string.find("," .. parts .. ",", "," .. partId .. ",", 1, true) then
+		if holds(p.Character) then
 			return p.Character
+		end
+	end
+	-- Stand-user NPCs pick parts up too.
+	for _, m in ipairs(game:GetService("CollectionService"):GetTagged("SpinFighter")) do
+		if m.Parent and holds(m) then
+			return m
 		end
 	end
 	return nil
@@ -28136,7 +28285,7 @@ TuskActRegistry.Acts = {
 		M1 = "NAIL COMBO",
 		Abilities = { "NAIL SHOT", "NAIL BARRAGE", "SPINNING NAIL" },
 		AbilityKinds = { "Press", "Press", "Hold" }, -- Hold = charge on press, fire on release
-		Ultimate = "TUSK AWAKENING",
+		Ultimate = "AWAKEN: INFINITE ROTATION",
 		Next = 2, -- the ultimate awakens Tusk to this Act
 	},
 	[2] = {
@@ -28148,7 +28297,7 @@ TuskActRegistry.Acts = {
 		Abilities = { "GOLDEN RATIO NAIL", "UNDERGROUND PURSUIT", "GOLDEN SPIRAL" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Next = 3,
-		Ultimate = "GOLDEN RATIO STORM",
+		Ultimate = "AWAKEN: INFINITE ROTATION",
 	},
 	[3] = {
 		Name = "TUSK ACT 3",
@@ -28158,7 +28307,7 @@ TuskActRegistry.Acts = {
 		M1 = "WORMHOLE STRIKES",
 		Abilities = { "DIMENSIONAL STEP", "SPATIAL PURSUIT", "DIMENSIONAL BREAK" },
 		AbilityKinds = { "Press", "Press", "Press" },
-		Ultimate = "INFINITE DIMENSION",
+		Ultimate = "AWAKEN: INFINITE ROTATION",
 		Next = 4,
 	},
 	[4] = {

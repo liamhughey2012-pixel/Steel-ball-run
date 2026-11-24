@@ -16,6 +16,7 @@
 local Shared = game:GetService("ReplicatedStorage").SpinShared
 local TuskConfig = require(Shared.TuskConfig)
 local Moves = require(script.Parent.Parent.TuskMoves)
+local Awakening = require(script.Parent.Parent.TuskAwakening)
 
 local Act3 = {}
 local cfg = TuskConfig.Act3
@@ -135,44 +136,9 @@ function Act3.Ability(S, player, state, slot, phase, aim)
 end
 
 -- INFINITE DIMENSION
+-- G: AWAKENING. Infinite Rotation (TuskAwakening), then Tusk awakens to Act 4.
 function Act3.Ultimate(S, player, state, aim)
-	local u = cfg.Ultimate
-	if S.isBusy(state) or state.Charging then
-		return
-	end
-	if not S.spendUlt(player) then
-		return
-	end
-	local character, _, root = alive(S, player)
-	local life = state.Life
-	S.lock(state, u.Windup + 0.6)
-	character:SetAttribute("Armored", true)
-	local center = root.Position
-	local inner = Moves.ring(center, u.Portals / 2, u.Radius * 0.45, 0, 5, 9)
-	local outer = Moves.ring(center, u.Portals / 2, u.Radius * 0.85, math.pi / (u.Portals / 2), 10, 14)
-	local portals = {}
-	for _, p in ipairs(inner) do
-		table.insert(portals, p)
-	end
-	for _, p in ipairs(outer) do
-		table.insert(portals, p)
-	end
-	S.fx("Ultimate", { Character = character, Act = 3, Phase = "Start", Windup = u.Windup, Portals = portals, Center = center, Radius = u.Radius })
-	task.delay(u.Windup, function()
-		if character.Parent then
-			character:SetAttribute("Armored", nil)
-		end
-		if state.Life ~= life or not alive(S, player) then
-			return
-		end
-		Moves.aoe(S, player, center, u.Radius, { Damage = u.Damage, Stun = u.Stun, Knockback = u.Knockback, Launch = u.Launch, Source = "TuskInfiniteDimension" }, 10)
-		S.fx("Ultimate", { Character = character, Act = 3, Phase = "Burst", Position = center, Radius = u.Radius })
-		task.delay(0.4, function()
-			if state.Life == life then
-				S.finishUltimate(player, state) -- evolves to Act 4
-			end
-		end)
-	end)
+	return Awakening.use(S, player, state, aim)
 end
 
 function Act3.Cleanup(S, player, state)

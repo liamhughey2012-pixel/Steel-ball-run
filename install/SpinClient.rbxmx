@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="LocalScript" referent="RBX94"><Properties><string name="Name">SpinClient</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="LocalScript" referent="RBX95"><Properties><string name="Name">SpinClient</string><ProtectedString name="Source"><![CDATA[--[[
 	SpinClient  (StarterPlayer.StarterPlayerScripts.SpinClient — LocalScript)
 	Boots every client system: hit feedback, settings, Stands, characters,
 	HUD, character card, NPC bubbles and map ambience.
@@ -31,7 +31,7 @@ DefenseClient.init()
 BountyUI.init()
 WeatherClient.init()
 CorpseClient.init()
-]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX55"><Properties><string name="Name">CameraFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX56"><Properties><string name="Name">CameraFX</string><ProtectedString name="Source"><![CDATA[--[[
 	CameraFX  (StarterPlayerScripts.SpinClient.CameraFX)
 	Screen-space feedback: camera shake, FOV punch, anime speed lines and
 	short impact frames. All of it respects VFXQuality and cleans up.
@@ -204,7 +204,7 @@ function CameraFX.impactFrame(tint)
 end
 
 return CameraFX
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX56"><Properties><string name="Name">CorpseClient</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX57"><Properties><string name="Name">CorpseClient</string><ProtectedString name="Source"><![CDATA[--[[
 	CorpseClient  (StarterPlayerScripts.SpinClient.CorpseClient)
 
 	Client side of the SAINT'S CORPSE (server: CorpseService, CorpseMoves).
@@ -650,7 +650,7 @@ function CorpseClient.init()
 end
 
 return CorpseClient
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX57"><Properties><string name="Name">DefenseClient</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX58"><Properties><string name="Name">DefenseClient</string><ProtectedString name="Source"><![CDATA[--[[
 	DefenseClient  (StarterPlayerScripts.SpinClient.DefenseClient)
 
 	Block and Dash on the client, for every character:
@@ -1114,7 +1114,7 @@ function DefenseClient.init()
 end
 
 return DefenseClient
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX58"><Properties><string name="Name">Fighters</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX59"><Properties><string name="Name">Fighters</string><ProtectedString name="Source"><![CDATA[--[[
 	Fighters  (StarterPlayerScripts.SpinClient.Fighters)
 
 	Everyone who can use a Stand: the players plus the Stand-user NPCs
@@ -1143,7 +1143,7 @@ function Fighters.list()
 end
 
 return Fighters
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX59"><Properties><string name="Name">HitFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX60"><Properties><string name="Name">HitFX</string><ProtectedString name="Source"><![CDATA[--[[
 	HitFX  (StarterPlayerScripts.SpinClient.HitFX)
 	Feedback for every hit in the game (any character):
 	  * victim flash (white, or blue when blocked) + camera shake for the victim
@@ -1288,7 +1288,7 @@ function HitFX.init()
 end
 
 return HitFX
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX60"><Properties><string name="Name">JointCache</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX61"><Properties><string name="Name">JointCache</string><ProtectedString name="Source"><![CDATA[--[[
 	JointCache  (StarterPlayerScripts.SpinClient.JointCache)
 	Reads and writes a joint's offset for the pose system, and remembers
 	each joint's original offset the first time it is touched.
@@ -1337,7 +1337,7 @@ function JointCache.original(j)
 end
 
 return JointCache
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX61"><Properties><string name="Name">TuskActCommon</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX62"><Properties><string name="Name">TuskActCommon</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActCommon  (StarterPlayerScripts.SpinClient.TuskActCommon)
 
 	Shared client choreography used by every Act's visual module:
@@ -1586,7 +1586,7 @@ function Common.actName(act)
 end
 
 return Common
-]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX78"><Properties><string name="Name">TuskActVFX</string></Properties><Item class="ModuleScript" referent="RBX62"><Properties><string name="Name">Act1</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX79"><Properties><string name="Name">TuskActVFX</string></Properties><Item class="ModuleScript" referent="RBX63"><Properties><string name="Name">Act1</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Act1  (StarterPlayerScripts.SpinClient.TuskActVFX.Act1)
 
 	Client choreography for Tusk Act 1: poses, Stand motion, effects and
@@ -1962,7 +1962,7 @@ function Act1.step()
 end
 
 return Act1
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX63"><Properties><string name="Name">Act2</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX64"><Properties><string name="Name">Act2</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Act2  (StarterPlayerScripts.SpinClient.TuskActVFX.Act2)
 	Client choreography for Tusk Act 2 (THE GOLDEN RATIO): golden rectangles
 	and golden spirals open where Act 2 used to open portals; nails fly out
@@ -2068,7 +2068,7 @@ function Act2.handle(name, data)
 end
 
 return Act2
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX64"><Properties><string name="Name">Act3</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX65"><Properties><string name="Name">Act3</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Act3  (StarterPlayerScripts.SpinClient.TuskActVFX.Act3)
 	Client choreography for Tusk Act 3 (spatial movement): deep-blue
 	layered portals, blue distortion afterimages, a tearing dimensional break.
@@ -2240,7 +2240,7 @@ function Act3.handle(name, data)
 end
 
 return Act3
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX65"><Properties><string name="Name">Act4</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX66"><Properties><string name="Name">Act4</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Act4  (StarterPlayerScripts.SpinClient.TuskActVFX.Act4)
 	Client choreography for Tusk Act 4 (Infinite Rotation): gold and deep
 	blue, giant rotational rings, golden afterimages, distorted air, and the
@@ -2544,7 +2544,7 @@ function Act4.step()
 end
 
 return Act4
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX66"><Properties><string name="Name">AxlVFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX67"><Properties><string name="Name">AxlVFX</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.AxlVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.AxlVFX)
 
 	Client visuals for Axl RO / CIVIL WAR: guilt made real. Blocky.
@@ -3293,7 +3293,7 @@ Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
 end)
 
 return AxlVFX
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX67"><Properties><string name="Name">BlackmoreVFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX68"><Properties><string name="Name">BlackmoreVFX</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.BlackmoreVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.BlackmoreVFX)
 
 	Client visuals for Blackmore / CATCH THE RAINBOW: raindrops frozen in
@@ -4056,7 +4056,7 @@ Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
 end)
 
 return BlackmoreVFX
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX68"><Properties><string name="Name">CivilWarStand</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX69"><Properties><string name="Name">CivilWarStand</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.CivilWarStand  (StarterPlayerScripts.SpinClient.TuskActVFX.CivilWarStand)
 
 	The CIVIL WAR Stand model (Axl RO), blocky, matched to the art: red,
@@ -4256,7 +4256,7 @@ function CivilWarStand.build(scale)
 end
 
 return CivilWarStand
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX69"><Properties><string name="Name">D4CStand</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX70"><Properties><string name="Name">D4CStand</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.D4CStand  (StarterPlayerScripts.SpinClient.TuskActVFX.D4CStand)
 
 	The D4C (Dirty Deeds Done Dirt Cheap) Stand model (Funny Valentine),
@@ -4411,7 +4411,7 @@ function D4CStand.build(scale)
 end
 
 return D4CStand
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX70"><Properties><string name="Name">Diego</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX71"><Properties><string name="Name">Diego</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Diego  (StarterPlayerScripts.SpinClient.TuskActVFX.Diego)
 
 	Client visuals for Diego Brando / SCARY MONSTERS:
@@ -5297,7 +5297,7 @@ function Diego.step(dt)
 end
 
 return Diego
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX71"><Properties><string name="Name">Gyro</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX72"><Properties><string name="Name">Gyro</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.Gyro  (StarterPlayerScripts.SpinClient.TuskActVFX.Gyro)
 
 	Client visuals for Gyro Zeppeli (Steel Ball moveset):
@@ -6426,7 +6426,7 @@ Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
 end)
 
 return Gyro
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX72"><Properties><string name="Name">HotPantsVFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX73"><Properties><string name="Name">HotPantsVFX</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.HotPantsVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.HotPantsVFX)
 
 	Client visuals for Hot Pants / CREAM STARTER, a spray can that sprays
@@ -6980,7 +6980,7 @@ function HotPantsVFX.step(dt)
 end
 
 return HotPantsVFX
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX73"><Properties><string name="Name">MountainTimVFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX74"><Properties><string name="Name">MountainTimVFX</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.MountainTimVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.MountainTimVFX)
 
 	Client visuals for Mountain Tim / OH! LONESOME ME: bodies come apart into
@@ -7884,7 +7884,7 @@ Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
 end)
 
 return TimVFX
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX74"><Properties><string name="Name">PorkPie</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX75"><Properties><string name="Name">PorkPie</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.PorkPie  (StarterPlayerScripts.SpinClient.TuskActVFX.PorkPie)
 
 	Client visuals for Pork Pie Hat Kid / WIRED (from the owner's pictures):
@@ -8537,7 +8537,7 @@ Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
 end)
 
 return PorkPie
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX75"><Properties><string name="Name">SandmanVFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX76"><Properties><string name="Name">SandmanVFX</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.SandmanVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.SandmanVFX)
 
 	Client visuals for Sandman (Soundman) / IN A SILENT WAY: sounds become
@@ -8947,7 +8947,7 @@ Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
 end)
 
 return SandmanVFX
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX76"><Properties><string name="Name">SilentWayStand</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX77"><Properties><string name="Name">SilentWayStand</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.SilentWayStand  (StarterPlayerScripts.SpinClient.TuskActVFX.SilentWayStand)
 
 	The IN A SILENT WAY Stand model (Sandman), blocky, matched to the art:
@@ -9152,7 +9152,7 @@ function SilentWayStand.build(scale)
 end
 
 return SilentWayStand
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX77"><Properties><string name="Name">ValentineVFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX78"><Properties><string name="Name">ValentineVFX</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskActVFX.ValentineVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.ValentineVFX)
 
 	Client visuals for Funny Valentine / D4C. Blocky.
@@ -9765,7 +9765,7 @@ function ValentineVFX.step(dt)
 end
 
 return ValentineVFX
-]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX79"><Properties><string name="Name">TuskAnimation</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX80"><Properties><string name="Name">TuskAnimation</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAnimation  (StarterPlayerScripts.SpinClient.TuskAnimation)
 	("TuskAnimationController" in the design doc)
 
@@ -10521,7 +10521,7 @@ Players.LocalPlayer.CharacterRemoving:Connect(function(character)
 end)
 
 return TuskAnimation
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX80"><Properties><string name="Name">TuskController</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX81"><Properties><string name="Name">TuskController</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskController  (StarterPlayerScripts.SpinClient.TuskController)
 	("TuskAbilityController" in the design doc)
 
@@ -10763,7 +10763,7 @@ function TuskController.init()
 end
 
 return TuskController
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX81"><Properties><string name="Name">TuskProjectiles</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX82"><Properties><string name="Name">TuskProjectiles</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskProjectiles  (StarterPlayerScripts.SpinClient.TuskProjectiles)
 
 	Draws every server "TuskNail" projectile (ProjectileService events on
@@ -11033,7 +11033,7 @@ function TuskProjectiles.init()
 end
 
 return TuskProjectiles
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX82"><Properties><string name="Name">TuskSneakController</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX83"><Properties><string name="Name">TuskSneakController</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskSneakController  (StarterPlayerScripts.SpinClient.TuskSneakController)
 
 	Client side of Tusk Sneak and the Sneak Attack, for every Act.
@@ -11360,7 +11360,7 @@ function TuskSneakController.init()
 end
 
 return TuskSneakController
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX83"><Properties><string name="Name">TuskStand</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX84"><Properties><string name="Name">TuskStand</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskStand  (StarterPlayerScripts.SpinClient.TuskStand)
 
 	Builds and animates the Tusk Stand for every player whose character
@@ -11725,7 +11725,7 @@ function TuskStand.init()
 end
 
 return TuskStand
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX84"><Properties><string name="Name">TuskVFX</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX85"><Properties><string name="Name">TuskVFX</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskVFX  (StarterPlayerScripts.SpinClient.TuskVFX)
 
 	Reusable procedural VFX framework for every Tusk Act (built on VFXLib).
@@ -12963,7 +12963,7 @@ end
 
 
 return TuskVFX
-]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX90"><Properties><string name="Name">UI</string></Properties><Item class="ModuleScript" referent="RBX85"><Properties><string name="Name">BountyUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX91"><Properties><string name="Name">UI</string></Properties><Item class="ModuleScript" referent="RBX86"><Properties><string name="Name">BountyUI</string><ProtectedString name="Source"><![CDATA[--[[
 	BountyUI  (StarterPlayerScripts.SpinClient.UI.BountyUI)
 
 	The bounty board screen (owner's design):
@@ -13079,10 +13079,19 @@ local function corpseRelic(partId)
 end
 
 local function corpseHolder(partId)
+	local function holds(model)
+		local parts = model and model:GetAttribute("CorpseParts")
+		return parts and string.find("," .. parts .. ",", "," .. partId .. ",", 1, true)
+	end
 	for _, p in ipairs(Players:GetPlayers()) do
-		local parts = p.Character and p.Character:GetAttribute("CorpseParts")
-		if parts and string.find("," .. parts .. ",", "," .. partId .. ",", 1, true) then
+		if holds(p.Character) then
 			return p.Character
+		end
+	end
+	-- Stand-user NPCs pick parts up too.
+	for _, m in ipairs(game:GetService("CollectionService"):GetTagged("SpinFighter")) do
+		if m.Parent and holds(m) then
+			return m
 		end
 	end
 	return nil
@@ -13696,7 +13705,7 @@ function BountyUI.init()
 end
 
 return BountyUI
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX86"><Properties><string name="Name">CharacterCard</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX87"><Properties><string name="Name">CharacterCard</string><ProtectedString name="Source"><![CDATA[--[[
 	CharacterCard  (StarterPlayerScripts.SpinClient.UI.CharacterCard)
 
 	Top-left character card:
@@ -14310,7 +14319,7 @@ function CharacterCard.step()
 end
 
 return CharacterCard
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX87"><Properties><string name="Name">CombatUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX88"><Properties><string name="Name">CombatUI</string><ProtectedString name="Source"><![CDATA[--[[
 	CombatUI  (StarterPlayerScripts.SpinClient.UI.CombatUI)
 
 	Battlegrounds-style fight feedback:
@@ -14650,7 +14659,7 @@ function CombatUI.init()
 end
 
 return CombatUI
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX88"><Properties><string name="Name">SettingsUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX89"><Properties><string name="Name">SettingsUI</string><ProtectedString name="Source"><![CDATA[--[[
 	SettingsUI  (StarterPlayerScripts.SpinClient.UI.SettingsUI)
 	The small "VFX: MEDIUM" button (top right) that cycles Low / Medium / High.
 	Phones start on Low to keep the frame rate smooth.
@@ -14719,7 +14728,7 @@ function SettingsUI.init()
 end
 
 return SettingsUI
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX89"><Properties><string name="Name">TuskUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX90"><Properties><string name="Name">TuskUI</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskUI  (StarterPlayerScripts.SpinClient.UI.TuskUI)
 
 	Battlegrounds-style move HUD (shown while Johnny or Gyro is equipped):
@@ -15910,7 +15919,7 @@ function TuskUI.onState(data)
 end
 
 return TuskUI
-]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX91"><Properties><string name="Name">VFXLib</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX92"><Properties><string name="Name">VFXLib</string><ProtectedString name="Source"><![CDATA[--[[
 	VFXLib  (StarterPlayerScripts.SpinClient.VFXLib)
 
 	Reusable procedural VFX building blocks. Built for Spin first, and meant
@@ -16270,7 +16279,7 @@ function VFXLib.sound(soundId, parentOrPosition, volume, pitch, looped)
 end
 
 return VFXLib
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX92"><Properties><string name="Name">WeatherClient</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX93"><Properties><string name="Name">WeatherClient</string><ProtectedString name="Source"><![CDATA[--[[
 	WeatherClient  (StarterPlayerScripts.SpinClient.WeatherClient)
 
 	Draws the server's rain (WeatherService sets ReplicatedStorage
@@ -16532,7 +16541,7 @@ function WeatherClient.init()
 end
 
 return WeatherClient
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX93"><Properties><string name="Name">WorldClient</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX94"><Properties><string name="Name">WorldClient</string><ProtectedString name="Source"><![CDATA[--[[
 	WorldClient  (StarterPlayerScripts.SpinClient.WorldClient)
 	Client side of the SBR map:
 	  * NPC speech bubbles (from NPCService "NPCSay"), shown within 60 studs

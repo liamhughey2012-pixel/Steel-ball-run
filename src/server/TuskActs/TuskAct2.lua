@@ -16,6 +16,7 @@
 local Shared = game:GetService("ReplicatedStorage").SpinShared
 local TuskConfig = require(Shared.TuskConfig)
 local Moves = require(script.Parent.Parent.TuskMoves)
+local Awakening = require(script.Parent.Parent.TuskAwakening)
 local Sneak = require(script.Parent.Parent.TuskSneakService)
 
 local Act2 = {}
@@ -194,68 +195,9 @@ function Act2.Ability(S, player, state, slot, phase, aim)
 end
 
 -- DIMENSIONAL STORM
+-- G: AWAKENING. Infinite Rotation (TuskAwakening), then Tusk awakens to Act 3.
 function Act2.Ultimate(S, player, state, aim)
-	local u = cfg.Ultimate
-	if S.isBusy(state) or state.Charging then
-		return
-	end
-	if not S.spendUlt(player) then
-		return
-	end
-	local character, _, root = alive(S, player)
-	local life = state.Life
-	local total = u.Windup + u.Waves * u.WaveInterval + 0.5
-	S.lock(state, total)
-	character:SetAttribute("Armored", true)
-	local center = root.Position
-	local portals = Moves.ring(center, u.Portals, u.Radius * 0.55, math.random() * math.pi * 2, 7, 11)
-	S.fx("Ultimate", { Character = character, Act = 2, Phase = "Start", Windup = u.Windup, Portals = portals, Center = center })
-
-	local function finish()
-		if character.Parent then
-			character:SetAttribute("Armored", nil)
-		end
-	end
-	for wave = 1, u.Waves do
-		task.delay(u.Windup + (wave - 1) * u.WaveInterval, function()
-			if state.Life ~= life then
-				return
-			end
-			local targets = S.Hitbox.inRadius(character, center, u.Radius, 8)
-			for i, pos in ipairs(portals) do
-				local t = targets[(i + wave) % math.max(#targets, 1) + 1]
-				local tr = t and t:FindFirstChild("HumanoidRootPart")
-				local aimAt = tr and tr.Position or (center + Vector3.new(math.random(-12, 12), -2, math.random(-12, 12)))
-				local dir = aimAt - pos
-				Moves.nail(S, player, state, {
-					Origin = pos,
-					Direction = dir.Unit,
-					Speed = u.NailSpeed,
-					Radius = 0.8,
-					Range = dir.Magnitude + 10,
-					Style = "Portal",
-					Damage = u.NailDamage,
-					Stun = 0.3,
-					Knockback = 4,
-					Source = "TuskDimensionalStorm",
-				})
-			end
-		end)
-	end
-	task.delay(total - 0.4, function()
-		finish()
-		if state.Life ~= life or not alive(S, player) then
-			return
-		end
-		Moves.aoe(S, player, center, u.BurstRadius, { Damage = u.BurstDamage, Stun = u.Stun, Knockback = u.Knockback, Launch = u.Launch, Source = "TuskDimensionalStorm" }, 8)
-		S.fx("Ultimate", { Character = character, Act = 2, Phase = "Burst", Position = center, Radius = u.BurstRadius })
-		task.delay(0.35, function()
-			if state.Life == life then
-				S.finishUltimate(player, state) -- evolves to Act 3
-			end
-		end)
-	end)
-	task.delay(total + 1, finish)
+	return Awakening.use(S, player, state, aim)
 end
 
 function Act2.Cleanup(S, player, state)

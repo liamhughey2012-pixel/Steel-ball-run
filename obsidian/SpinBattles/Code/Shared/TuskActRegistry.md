@@ -48,7 +48,7 @@ TuskActRegistry.Acts = {
 		M1 = "NAIL COMBO",
 		Abilities = { "NAIL SHOT", "NAIL BARRAGE", "SPINNING NAIL" },
 		AbilityKinds = { "Press", "Press", "Hold" }, -- Hold = charge on press, fire on release
-		Ultimate = "TUSK AWAKENING",
+		Ultimate = "AWAKEN: INFINITE ROTATION",
 		Next = 2, -- the ultimate awakens Tusk to this Act
 	},
 	[2] = {
@@ -60,7 +60,7 @@ TuskActRegistry.Acts = {
 		Abilities = { "GOLDEN RATIO NAIL", "UNDERGROUND PURSUIT", "GOLDEN SPIRAL" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Next = 3,
-		Ultimate = "GOLDEN RATIO STORM",
+		Ultimate = "AWAKEN: INFINITE ROTATION",
 	},
 	[3] = {
 		Name = "TUSK ACT 3",
@@ -70,7 +70,7 @@ TuskActRegistry.Acts = {
 		M1 = "WORMHOLE STRIKES",
 		Abilities = { "DIMENSIONAL STEP", "SPATIAL PURSUIT", "DIMENSIONAL BREAK" },
 		AbilityKinds = { "Press", "Press", "Press" },
-		Ultimate = "INFINITE DIMENSION",
+		Ultimate = "AWAKEN: INFINITE ROTATION",
 		Next = 4,
 	},
 	[4] = {

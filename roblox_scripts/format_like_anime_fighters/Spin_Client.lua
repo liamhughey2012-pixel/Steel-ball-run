@@ -1275,10 +1275,19 @@ local function corpseRelic(partId)
 end
 
 local function corpseHolder(partId)
+	local function holds(model)
+		local parts = model and model:GetAttribute("CorpseParts")
+		return parts and string.find("," .. parts .. ",", "," .. partId .. ",", 1, true)
+	end
 	for _, p in ipairs(Players:GetPlayers()) do
-		local parts = p.Character and p.Character:GetAttribute("CorpseParts")
-		if parts and string.find("," .. parts .. ",", "," .. partId .. ",", 1, true) then
+		if holds(p.Character) then
 			return p.Character
+		end
+	end
+	-- Stand-user NPCs pick parts up too.
+	for _, m in ipairs(game:GetService("CollectionService"):GetTagged("SpinFighter")) do
+		if m.Parent and holds(m) then
+			return m
 		end
 	end
 	return nil
@@ -4723,7 +4732,7 @@ TuskActRegistry.Acts = {
 		M1 = "NAIL COMBO",
 		Abilities = { "NAIL SHOT", "NAIL BARRAGE", "SPINNING NAIL" },
 		AbilityKinds = { "Press", "Press", "Hold" }, -- Hold = charge on press, fire on release
-		Ultimate = "TUSK AWAKENING",
+		Ultimate = "AWAKEN: INFINITE ROTATION",
 		Next = 2, -- the ultimate awakens Tusk to this Act
 	},
 	[2] = {
@@ -4735,7 +4744,7 @@ TuskActRegistry.Acts = {
 		Abilities = { "GOLDEN RATIO NAIL", "UNDERGROUND PURSUIT", "GOLDEN SPIRAL" },
 		AbilityKinds = { "Press", "Press", "Press" },
 		Next = 3,
-		Ultimate = "GOLDEN RATIO STORM",
+		Ultimate = "AWAKEN: INFINITE ROTATION",
 	},
 	[3] = {
 		Name = "TUSK ACT 3",
@@ -4745,7 +4754,7 @@ TuskActRegistry.Acts = {
 		M1 = "WORMHOLE STRIKES",
 		Abilities = { "DIMENSIONAL STEP", "SPATIAL PURSUIT", "DIMENSIONAL BREAK" },
 		AbilityKinds = { "Press", "Press", "Press" },
-		Ultimate = "INFINITE DIMENSION",
+		Ultimate = "AWAKEN: INFINITE ROTATION",
 		Next = 4,
 	},
 	[4] = {

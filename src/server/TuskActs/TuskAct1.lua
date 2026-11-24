@@ -18,6 +18,7 @@
 local Shared = game:GetService("ReplicatedStorage").SpinShared
 local TuskConfig = require(Shared.TuskConfig)
 
+local Awakening = require(script.Parent.Parent.TuskAwakening)
 local Act1 = {}
 local cfg = TuskConfig.Act1
 
@@ -287,59 +288,9 @@ local function endAwakening(S, player, state)
 	S.tell(player, "AwakenEnded", {})
 end
 
+-- G: AWAKENING. Infinite Rotation (TuskAwakening), then Tusk awakens to Act 2.
 function Act1.Ultimate(S, player, state, aim)
-	local u = cfg.Ultimate
-	if S.isBusy(state) or state.Charging or state.Awakened then
-		return
-	end
-	if not S.spendUlt(player) then
-		return
-	end
-	local character = alive(S, player)
-	local life = state.Life
-	S.lock(state, u.Windup + 0.4)
-	character:SetAttribute("Armored", true)
-	S.fx("Ultimate", { Character = character, Act = 1, Phase = "Start", Windup = u.Windup })
-
-	task.delay(u.Windup, function()
-		if character.Parent then
-			character:SetAttribute("Armored", nil)
-		end
-		if not S.stillValid(player, state, life, true) then
-			return
-		end
-		local char, _, root = alive(S, player)
-		for _, target in ipairs(S.Hitbox.inRadius(char, root.Position, u.Radius, 8)) do
-			local targetRoot = target:FindFirstChild("HumanoidRootPart")
-			if targetRoot and S.Hitbox.lineOfSight(root.Position, targetRoot.Position, { char, target }) then
-				S.hit(player, target, {
-					Damage = u.Damage,
-					Stun = u.Stun,
-					Knockback = u.Knockback,
-					Launch = u.Launch,
-					Direction = targetRoot.Position - root.Position,
-					Position = targetRoot.Position,
-					Source = "TuskAwakening",
-				})
-			end
-		end
-		S.fx("Ultimate", { Character = char, Act = 1, Phase = "Burst", Position = root.Position, Radius = u.Radius })
-
-		if TuskConfig.Progression.Mode == "Awaken" then
-			S.finishUltimate(player, state) -- awakens Tusk to Act 2
-			return
-		end
-		state.Awakened = true
-		local token = {}
-		state.AwakenToken = token
-		char:SetAttribute("TuskAwakened", true)
-		S.tell(player, "Awakened", { Duration = u.Duration })
-		task.delay(u.Duration, function()
-			if state.AwakenToken == token then
-				endAwakening(S, player, state)
-			end
-		end)
-	end)
+	return Awakening.use(S, player, state, aim)
 end
 
 function Act1.Cleanup(S, player, state)

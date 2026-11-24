@@ -56,12 +56,27 @@ TuskConfig.Progression = {
 	--           Point IsUnlocked at your existing unlock / quest system.
 	Mode = "Awaken",
 	ResetOnDeath = true, -- Awaken mode: dying sends you back to Act 1
-	StudioMenu = true, -- the Act menu (T) still works inside Studio for testing
+	StudioMenu = false, -- true: the Act menu (T) works inside Studio for testing (off: awakening is the only way up)
 	DefaultAct = 1,
 	AutoEquip = true, -- players spawn as Tusk (set false if your game picks movesets elsewhere)
 	ShowSelectionMenu = true,
 	IsUnlocked = nil, -- function(player, actNumber) -> boolean
 	SwitchCooldown = 3, -- seconds between Act switches
+}
+
+---------------------------------------------------------------------------
+-- AWAKENING (G on Tusk Acts 1-3): INFINITE ROTATION. A golden spinning nail
+-- (stronger each Act) that blasts where it lands; then Tusk awakens one Act
+-- higher. One value per Act 1, 2, 3. (Act 4's G is the full Infinite Rotation.)
+---------------------------------------------------------------------------
+TuskConfig.Awakening = {
+	Windup = { 1.4, 1.6, 1.8 },
+	Damage = { 14, 19, 24 },
+	ProjectileRadius = { 2, 2.6, 3.2 },
+	BlastRadius = { 10, 13, 16 },
+	BlastDamage = { 6, 8, 11 },
+	Speed = 110, Range = 180,
+	Stun = 0.7, Knockback = 55, Launch = 25,
 }
 
 ---------------------------------------------------------------------------
@@ -148,6 +163,8 @@ TuskConfig.StandBots = {
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
 	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine" },
+	CorpseSeekRange = 90, -- idle bots pick up corpse parts lying this close to their camp
+	CorpseMoveChance = 0.12, -- per think tick in a fight, if they hold a part and it's ready
 	RainWalkChance = 0.05, -- Blackmore NPCs: chance per think tick to start a rain walk while it rains
 	Health = 200,
 	WalkSpeed = 15,

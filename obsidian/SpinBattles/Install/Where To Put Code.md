@@ -86,26 +86,27 @@ Damage, cooldowns, projectiles, Tusk, Sneak, NPCs. Players can't see or change t
 | 18 | [[StandAssetLoader]] | ModuleScript | `ServerScriptService › SpinServer` |
 | 19 | [[StandBots]] | ModuleScript | `ServerScriptService › SpinServer` |
 | 20 | [[TestDummies]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 21 | [[TuskHitbox]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 22 | [[TuskMoves]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 23 | [[TuskService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 24 | [[TuskSneakService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 25 | [[ValentineOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 26 | [[WeatherService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 27 | [[SpinServer]] | Script | `ServerScriptService` |
-| 28 | [[Axl]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 29 | [[Blackmore]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 30 | [[DiegoBrando]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 31 | [[GyroZeppeli]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 32 | [[HotPants]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 33 | [[MountainTim]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 34 | [[PorkPieHatKid]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 35 | [[Sandman]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 36 | [[TuskAct1]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 37 | [[TuskAct2]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 38 | [[TuskAct3]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 39 | [[TuskAct4]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 40 | [[Valentine]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 21 | [[TuskAwakening]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 22 | [[TuskHitbox]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 23 | [[TuskMoves]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 24 | [[TuskService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 25 | [[TuskSneakService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 26 | [[ValentineOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 27 | [[WeatherService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 28 | [[SpinServer]] | Script | `ServerScriptService` |
+| 29 | [[Axl]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 30 | [[Blackmore]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 31 | [[DiegoBrando]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 32 | [[GyroZeppeli]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 33 | [[HotPants]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 34 | [[MountainTim]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 35 | [[PorkPieHatKid]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 36 | [[Sandman]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 37 | [[TuskAct1]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 38 | [[TuskAct2]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 39 | [[TuskAct3]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 40 | [[TuskAct4]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 41 | [[Valentine]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
 
 ## Client: StarterPlayer › StarterPlayerScripts › SpinClient
 Controls, effects, the Tusk Stand, HUD, NPC speech bubbles.

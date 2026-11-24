@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `CorpseService` (capitals matter) |
 
-**What it does:** SAINT'S CORPSE. Eight parts (TuskConfig.Corpse.Parts), each existing once, lie around the map: a mummified relic glowing gold with a beam of light you can see from far away. Hold E by one to take it. each part gives its own boost until you die (Damage, Resist, Cooldown, UltGain, Speed, MaxHealth), stacking with any others you hold when you die your parts drop where you fell for anyone to grab; one nobody takes moves to a new random spot after a while holding any part unlocks your character's CORPSE MOVE (V), see CorpseMoves holders are worth more on the bounty board (BountyService) Boosts are character attributes the combat code reads: CorpseDamage, CorpseResist, CorpseCooldown, CorpseUltGain (multipliers) CorpseParts ("Heart,Spine") for the HUD and the bounty board Clients are told about pickups and drops over WorldFX ("Corpse...").
+**What it does:** SAINT'S CORPSE. Eight parts (TuskConfig.Corpse.Parts), each existing once, lie around the map: a mummified relic glowing gold with a beam of light you can see from far away. Hold E by one to take it. each part gives its own boost until you die (Damage, Resist, Cooldown, UltGain, Speed, MaxHealth), stacking with any others you hold when you die your parts drop where you fell for anyone to grab; one nobody takes moves to a new random spot after a while holding any part unlocks your character's CORPSE MOVE (V), see CorpseMoves holders are worth more on the bounty board (BountyService) Stand-user NPCs pick parts up too, use their corpse move, and drop their parts when they die (StandBots uses take / dropFor) Boosts are character attributes the combat code reads: CorpseDamage, CorpseResist, CorpseCooldown, CorpseUltGain (multipliers) CorpseParts ("Heart,Spine") for the HUD and the bounty board Clients are told about pickups and drops over WorldFX ("Corpse...").
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -37,6 +37,8 @@ Back to [[Where To Put Code]]
 	  * holding any part unlocks your character's CORPSE MOVE (V), see
 	    CorpseMoves
 	  * holders are worth more on the bounty board (BountyService)
+	  * Stand-user NPCs pick parts up too, use their corpse move, and drop
+	    their parts when they die (StandBots uses take / dropFor)
 	Boosts are character attributes the combat code reads:
 	  CorpseDamage, CorpseResist, CorpseCooldown, CorpseUltGain (multipliers)
 	  CorpseParts ("Heart,Spine") for the HUD and the bounty board
@@ -112,52 +114,126 @@ local function piece(model, size, cf, color, shape)
 	return p
 end
 
--- A mummified part, blocky, built round `at` (the floating centre).
+local WRAP_DARK = Color3.fromRGB(184, 164, 124)
+local BONE = Color3.fromRGB(226, 214, 186)
+local SINEW = Color3.fromRGB(96, 52, 40)
+local GOLD = Color3.fromRGB(226, 182, 70)
+
+-- A bandage band round a box-shaped piece.
+local function band(model, cf, w, d)
+	piece(model, Vector3.new(w + 0.06, 0.14, d + 0.06), cf, WRAP)
+	piece(model, Vector3.new(w + 0.07, 0.04, d + 0.07), cf * CFrame.new(0, 0.05, 0), WRAP_DARK)
+end
+
+-- A mummified part, blocky but detailed, built round `at` (the floating centre).
 local function shape(model, id, at)
 	local c = CFrame.new(at)
 	if id == "Heart" then
-		piece(model, Vector3.new(1.3, 1.5, 1.1), c * CFrame.Angles(0, 0, 0.3), MUMMY)
-		piece(model, Vector3.new(0.3, 0.6, 0.3), c * CFrame.new(-0.3, 0.9, 0), MUMMY_DARK)
-		piece(model, Vector3.new(0.3, 0.5, 0.3), c * CFrame.new(0.25, 0.85, 0.1), MUMMY_DARK)
-		piece(model, Vector3.new(1.36, 0.16, 1.16), c * CFrame.new(0, -0.2, 0) * CFrame.Angles(0, 0, 0.3), WRAP)
+		local h = c * CFrame.Angles(0, 0, 0.25)
+		piece(model, Vector3.new(1.2, 1.4, 1.0), h, MUMMY)
+		piece(model, Vector3.new(0.7, 0.8, 0.9), h * CFrame.new(-0.45, 0.25, 0), MUMMY) -- left lobe
+		piece(model, Vector3.new(0.6, 0.7, 0.8), h * CFrame.new(0.42, 0.3, 0.05), MUMMY_DARK) -- right lobe
+		piece(model, Vector3.new(0.5, 0.5, 0.6), h * CFrame.new(0.05, -0.75, 0) * CFrame.Angles(0, 0, 0.6), MUMMY_DARK) -- apex
+		-- The aorta arching over the top, and two vessels.
+		piece(model, Vector3.new(0.28, 0.5, 0.28), h * CFrame.new(-0.15, 0.9, 0), SINEW)
+		piece(model, Vector3.new(0.5, 0.24, 0.24), h * CFrame.new(0.05, 1.15, 0) * CFrame.Angles(0, 0, -0.2), SINEW)
+		piece(model, Vector3.new(0.22, 0.4, 0.22), h * CFrame.new(0.32, 0.95, 0), SINEW)
+		piece(model, Vector3.new(0.2, 0.35, 0.2), h * CFrame.new(-0.45, 0.8, 0.15), SINEW)
+		-- Veins over the front.
+		for i = -1, 1 do
+			piece(model, Vector3.new(0.05, 0.7, 0.04), h * CFrame.new(i * 0.25, 0, -0.52) * CFrame.Angles(0, 0, i * 0.4), SINEW)
+		end
+		-- Crossed bandages.
+		piece(model, Vector3.new(1.5, 0.16, 1.1), h * CFrame.new(0, -0.1, 0) * CFrame.Angles(0, 0, 0.5), WRAP)
+		piece(model, Vector3.new(1.4, 0.14, 1.08), h * CFrame.new(0, 0.2, 0) * CFrame.Angles(0, 0, -0.6), WRAP_DARK)
 	elseif id == "Head" then
-		piece(model, Vector3.new(1.3, 1.4, 1.3), c, MUMMY)
+		piece(model, Vector3.new(1.3, 1.3, 1.35), c * CFrame.new(0, 0.1, 0), BONE) -- cranium
+		piece(model, Vector3.new(1.36, 0.16, 0.3), c * CFrame.new(0, 0.32, -0.6), MUMMY) -- brow ridge
 		for _, x in ipairs({ -0.3, 0.3 }) do
-			piece(model, Vector3.new(0.3, 0.3, 0.05), c * CFrame.new(x, 0.15, -0.66), MUMMY_DARK)
+			piece(model, Vector3.new(0.34, 0.34, 0.12), c * CFrame.new(x, 0.08, -0.66), MUMMY_DARK) -- eye socket
+			piece(model, Vector3.new(0.16, 0.16, 0.06), c * CFrame.new(x, 0.08, -0.7), Color3.fromRGB(30, 20, 16))
+			piece(model, Vector3.new(0.3, 0.2, 0.2), c * CFrame.new(x * 1.7, -0.15, -0.5), MUMMY) -- cheekbones
 		end
-		piece(model, Vector3.new(0.6, 0.12, 0.05), c * CFrame.new(0, -0.35, -0.66), MUMMY_DARK)
-		piece(model, Vector3.new(1.36, 0.16, 1.36), c * CFrame.new(0, 0.45, 0), WRAP)
+		piece(model, Vector3.new(0.2, 0.3, 0.1), c * CFrame.new(0, -0.15, -0.68), MUMMY_DARK) -- nose
+		-- Jaw hanging slightly open, a row of teeth.
+		piece(model, Vector3.new(1.0, 0.3, 0.9), c * CFrame.new(0, -0.68, -0.15) * CFrame.Angles(0.2, 0, 0), MUMMY)
+		for i = -2, 2 do
+			piece(model, Vector3.new(0.12, 0.16, 0.08), c * CFrame.new(i * 0.16, -0.48, -0.62), BONE)
+		end
+		-- Bandages wound round the top and under the chin.
+		band(model, c * CFrame.new(0, 0.55, 0), 1.3, 1.35)
+		piece(model, Vector3.new(0.18, 1.5, 1.4), c * CFrame.new(0.55, -0.05, 0) * CFrame.Angles(0, 0, 0.15), WRAP)
+		piece(model, Vector3.new(0.5, 0.12, 0.08), c * CFrame.new(0.6, -0.9, -0.3) * CFrame.Angles(0, 0, -0.8), WRAP_DARK) -- loose end
 	elseif id == "Spine" then
-		for i = 0, 5 do
-			piece(model, Vector3.new(0.5 + (i % 2) * 0.2, 0.32, 0.4), c * CFrame.new(0, -1 + i * 0.4, 0), i % 2 == 0 and MUMMY or WRAP)
+		for i = 0, 6 do
+			local v = c * CFrame.new(math.sin(i * 0.7) * 0.08, -1.3 + i * 0.43, 0)
+			piece(model, Vector3.new(0.5, 0.3, 0.45), v, BONE) -- vertebra
+			piece(model, Vector3.new(1.0, 0.12, 0.2), v * CFrame.new(0, 0, 0.12), MUMMY) -- side wings
+			piece(model, Vector3.new(0.14, 0.2, 0.4), v * CFrame.new(0, -0.05, 0.35) * CFrame.Angles(-0.5, 0, 0), MUMMY_DARK) -- spike
+			if i < 6 then
+				piece(model, Vector3.new(0.42, 0.12, 0.38), v * CFrame.new(0, 0.22, 0), SINEW) -- disc
+			end
 		end
+		band(model, c * CFrame.new(0, 0.1, 0), 0.5, 0.45)
+		band(model, c * CFrame.new(0, -0.8, 0), 0.5, 0.45)
 	elseif id == "Eyes" then
-		piece(model, Vector3.new(1.6, 0.35, 0.3), c, WRAP)
-		for _, x in ipairs({ -0.4, 0.4 }) do
-			piece(model, Vector3.new(0.45, 0.45, 0.45), c * CFrame.new(x, 0, -0.2), Color3.fromRGB(236, 228, 214), Enum.PartType.Ball)
-			piece(model, Vector3.new(0.2, 0.2, 0.2), c * CFrame.new(x, 0, -0.4), Color3.fromRGB(40, 30, 30), Enum.PartType.Ball)
+		piece(model, Vector3.new(1.9, 0.45, 0.4), c * CFrame.new(0, 0, 0.1), WRAP) -- cloth band
+		piece(model, Vector3.new(1.92, 0.06, 0.42), c * CFrame.new(0, 0.12, 0.1), WRAP_DARK)
+		for _, x in ipairs({ -0.45, 0.45 }) do
+			piece(model, Vector3.new(0.5, 0.5, 0.5), c * CFrame.new(x, 0, -0.2), Color3.fromRGB(236, 228, 214), Enum.PartType.Ball)
+			piece(model, Vector3.new(0.24, 0.24, 0.24), c * CFrame.new(x, 0, -0.42), Color3.fromRGB(70, 110, 140), Enum.PartType.Ball) -- iris
+			piece(model, Vector3.new(0.12, 0.12, 0.12), c * CFrame.new(x, 0, -0.52), Color3.fromRGB(20, 16, 16), Enum.PartType.Ball) -- pupil
+			-- Nerves trailing back.
+			piece(model, Vector3.new(0.08, 0.08, 0.7), c * CFrame.new(x * 0.8, -0.05, 0.4) * CFrame.Angles(0, x * 0.6, 0), SINEW)
 		end
 	elseif id == "Ears" then
-		for _, x in ipairs({ -0.45, 0.45 }) do
-			piece(model, Vector3.new(0.2, 1.0, 0.7), c * CFrame.new(x, 0, 0) * CFrame.Angles(0, 0, x * 0.4), MUMMY)
+		for _, side in ipairs({ -1, 1 }) do
+			local e = c * CFrame.new(side * 0.5, 0, 0) * CFrame.Angles(0, side * 0.3, 0)
+			-- The outer rim: a C of blocks.
+			piece(model, Vector3.new(0.2, 0.25, 0.6), e * CFrame.new(0, 0.5, 0), MUMMY)
+			piece(model, Vector3.new(0.2, 0.8, 0.25), e * CFrame.new(0, 0.1, 0.28), MUMMY)
+			piece(model, Vector3.new(0.2, 0.25, 0.45), e * CFrame.new(0, -0.35, 0.05), MUMMY)
+			piece(model, Vector3.new(0.18, 0.3, 0.3), e * CFrame.new(0, -0.55, -0.1), MUMMY_DARK) -- lobe
+			piece(model, Vector3.new(0.16, 0.45, 0.3), e * CFrame.new(0.02, 0.1, 0.02), MUMMY_DARK) -- inner fold
 		end
-		piece(model, Vector3.new(1.2, 0.18, 0.3), c * CFrame.new(0, -0.3, 0), WRAP)
+		piece(model, Vector3.new(1.4, 0.14, 0.3), c * CFrame.new(0, -0.75, 0), WRAP) -- tied together
 	elseif id == "Legs" then
-		for _, x in ipairs({ -0.35, 0.35 }) do
-			piece(model, Vector3.new(0.5, 2.4, 0.5), c * CFrame.new(x, 0, 0), MUMMY)
-			piece(model, Vector3.new(0.56, 0.2, 0.56), c * CFrame.new(x, 0.4, 0), WRAP)
-			piece(model, Vector3.new(0.5, 0.3, 0.8), c * CFrame.new(x, -1.2, -0.15), MUMMY_DARK)
+		for _, side in ipairs({ -1, 1 }) do
+			local l = c * CFrame.new(side * 0.38, 0, 0) * CFrame.Angles(0, 0, side * 0.06)
+			piece(model, Vector3.new(0.55, 1.2, 0.55), l * CFrame.new(0, 0.7, 0), MUMMY) -- thigh
+			piece(model, Vector3.new(0.5, 0.3, 0.55), l * CFrame.new(0, 0.05, -0.05), BONE) -- knee
+			piece(model, Vector3.new(0.45, 1.2, 0.45), l * CFrame.new(0, -0.65, 0), MUMMY) -- shin
+			piece(model, Vector3.new(0.5, 0.25, 0.85), l * CFrame.new(0, -1.35, -0.2), MUMMY_DARK) -- foot
+			for t = -1.5, 1.5 do
+				piece(model, Vector3.new(0.1, 0.12, 0.16), l * CFrame.new(t * 0.11, -1.38, -0.68), MUMMY_DARK) -- toes
+			end
+			band(model, l * CFrame.new(0, 0.9, 0), 0.55, 0.55)
+			band(model, l * CFrame.new(0, -0.4, 0), 0.45, 0.45)
 		end
-	else -- LeftArm / RightArm
+	else -- LeftArm / RightArm: bent at the elbow
 		local side = id == "LeftArm" and -1 or 1
-		local arm = c * CFrame.Angles(0, 0, side * 0.3)
-		piece(model, Vector3.new(0.5, 2.2, 0.5), arm, MUMMY)
-		piece(model, Vector3.new(0.56, 0.2, 0.56), arm * CFrame.new(0, 0.5, 0), WRAP)
-		piece(model, Vector3.new(0.6, 0.5, 0.35), arm * CFrame.new(0, -1.3, 0), MUMMY_DARK)
+		local upper = c * CFrame.new(0, 0.6, 0) * CFrame.Angles(0, 0, side * 0.3)
+		piece(model, Vector3.new(0.5, 1.2, 0.5), upper, MUMMY)
+		local elbow = upper * CFrame.new(0, -0.65, 0)
+		piece(model, Vector3.new(0.45, 0.3, 0.45), elbow, BONE)
+		local fore = elbow * CFrame.Angles(0, 0, side * -0.7) * CFrame.new(0, -0.6, 0)
+		piece(model, Vector3.new(0.42, 1.1, 0.42), fore, MUMMY)
+		local hand = fore * CFrame.new(0, -0.7, 0)
+		piece(model, Vector3.new(0.55, 0.45, 0.25), hand, MUMMY_DARK)
 		for f = -1.5, 1.5 do
-			piece(model, Vector3.new(0.1, 0.4, 0.1), arm * CFrame.new(f * 0.13, -1.7, 0), MUMMY_DARK)
+			piece(model, Vector3.new(0.09, 0.42, 0.09), hand * CFrame.new(f * 0.13, -0.4, 0) * CFrame.Angles(0.25, 0, 0), MUMMY_DARK)
 		end
+		piece(model, Vector3.new(0.09, 0.3, 0.09), hand * CFrame.new(side * -0.32, -0.1, -0.05) * CFrame.Angles(0, 0, side * 0.6), MUMMY_DARK) -- thumb
+		band(model, upper * CFrame.new(0, 0.3, 0), 0.5, 0.5)
+		band(model, fore * CFrame.new(0, 0.2, 0), 0.42, 0.42)
+		piece(model, Vector3.new(0.1, 0.8, 0.06), fore * CFrame.new(0.2, -0.2, 0.22) * CFrame.Angles(0.2, 0, 0.2), WRAP) -- loose strip
 	end
+	-- A floating gold halo over every relic.
+	local halo = piece(model, Vector3.new(0.12, 2.2, 2.2), CFrame.new(at + Vector3.new(0, 1.9, 0)) * CFrame.Angles(0, 0, math.pi / 2), GOLD, Enum.PartType.Cylinder)
+	halo.Name = "Halo"
+	halo.Material = Enum.Material.Neon
+	halo.Transparency = 0.3
+	piece(model, Vector3.new(0.14, 1.7, 1.7), CFrame.new(at + Vector3.new(0, 1.9, 0)) * CFrame.Angles(0, 0, math.pi / 2), GLOW, Enum.PartType.Cylinder).Transparency = 1
 end
 
 local collect -- (defined below)
@@ -186,6 +262,18 @@ local function placeRelic(id, position, dropped)
 	light.Range = 14
 	light.Brightness = 1.5
 	light.Parent = holder
+	-- Golden motes drifting up from it.
+	local motes = Instance.new("ParticleEmitter")
+	motes.Color = ColorSequence.new(GLOW)
+	motes.LightEmission = 1
+	motes.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 0) })
+	motes.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+	motes.Lifetime = NumberRange.new(1, 1.8)
+	motes.Speed = NumberRange.new(1, 2.5)
+	motes.SpreadAngle = Vector2.new(40, 40)
+	motes.EmissionDirection = Enum.NormalId.Top
+	motes.Rate = 8
+	motes.Parent = holder
 	local highlight = Instance.new("Highlight")
 	highlight.FillColor = GLOW
 	highlight.FillTransparency = 0.7
@@ -335,6 +423,15 @@ local function dropAll(player, position)
 			CorpseService.scatter(id)
 		end
 	end
+end
+
+-- For Stand-user NPCs (StandBots): take a part, and drop theirs when they die.
+function CorpseService.take(botPlayer, id)
+	collect(botPlayer, id)
+end
+
+function CorpseService.dropFor(botPlayer, position)
+	dropAll(botPlayer, position)
 end
 
 function CorpseService.holding(player)
