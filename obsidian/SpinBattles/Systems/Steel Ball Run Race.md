@@ -196,3 +196,11 @@ The race now has **its own giant world** (`RaceMap`, `TuskConfig.Race.Map`). The
   - plains: cattle and hay bales;
   - lake: a pebble beach and cabins.
 - Small decorations don't cast shadows (cheaper to draw). About 5,500 parts in all.
+
+### Jockey speed guard (2026-11-24)
+Reported: after stage 1 every jockey went "super speed" and finished in about 5 s. The logic checks out in tests (their speed is normal at every stage start), so the likely cause is physics. Being anchored at each stage start and then released hands a jockey's physics to whichever player is nearest. Now:
+- The server takes back each jockey's physics (`SetNetworkOwner(nil)`) when it's released, and every 2 s after.
+- Every tick the server sets each jockey's WalkSpeed from scratch: horse × skill × gallop × carrot × catch-up × stumble × water × stun.
+- If a jockey is ever moving faster than 125% of that (+8), its velocity is cut back.
+- A jockey that moved more than 40 studs in one tick (a teleport) can't count a gate that tick.
+- Tested: forcing every jockey to WalkSpeed 500 mid-race is corrected within 0.15 s, and a 400 studs/s shove is capped straight away.

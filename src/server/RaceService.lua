@@ -776,7 +776,8 @@ local function stepRider(key, r, dt, t)
 			end
 		end
 		local behind = (lead - (r.ProgressNow or 0)) * (course.StageLength or 600)
-		setMod(r, "CatchUp", behind > (jc.CatchUpBehind or 110) and (jc.CatchUp or 1.08) or nil)
+		r.CatchUpOn = behind > (jc.CatchUpBehind or 110)
+		setMod(r, "CatchUp", r.CatchUpOn and (jc.CatchUp or 1.08) or nil)
 		-- Fighting: from the 2nd stage on, brawlers go for whoever's close.
 		r.FightTarget = nil
 		if r.Brawler and stageIndex >= (jc.FightFromStage or 2) and not character:GetAttribute("RaceAnchored") then
@@ -852,6 +853,47 @@ local function stepRider(key, r, dt, t)
 		r.Wet = wet
 		setMod(r, "Water", wet and ((cfg.Map and cfg.Map.WaterSlow) or 0.45) or nil)
 	end
+	-- Jockeys: the server sets their speed from scratch every tick (horse,
+	-- gallop, carrots, catch-up, stumble, water, stun), keeps their physics on
+	-- the server, and slows them down if they're ever moving faster than they
+	-- should, so nothing can ever send them flying round the course.
+	if r.Jockey then
+		local mult = (cfg.HorseSpeed or 3.2) * (r.Skill or 1)
+		if galloping then
+			mult = mult * (gcfg.Speed or 1.35)
+		end
+		if (r.CarrotUntil or 0) > t then
+			mult = mult * (ccfg.Boost or 1.2)
+		end
+		if r.CatchUpOn then
+			mult = mult * ((cfg.Jockey or {}).CatchUp or 1.08)
+		end
+		if (r.StumbleUntil or 0) > t then
+			mult = mult * (hucfg.StumbleSlow or 0.4)
+		end
+		if r.Wet then
+			mult = mult * ((cfg.Map and cfg.Map.WaterSlow) or 0.45)
+		end
+		if Adapter.isStunned and Adapter.isStunned(character) then
+			mult = mult * ((Adapter.Settings and Adapter.Settings.StunWalkSpeedMultiplier) or 0.15)
+		end
+		local want = 16 * mult
+		if math.abs(hum.WalkSpeed - want) > 0.5 then
+			hum.WalkSpeed = want
+		end
+		local v = root.AssemblyLinearVelocity
+		local fv = flat(v)
+		if fv.Magnitude > want * 1.25 + 8 then
+			local capped = fv.Unit * want
+			root.AssemblyLinearVelocity = Vector3.new(capped.X, v.Y, capped.Z)
+		end
+		if t >= (r.NextOwner or 0) and not root.Anchored then
+			r.NextOwner = t + 2
+			pcall(function()
+				root:SetNetworkOwner(nil)
+			end)
+		end
+	end
 	character:SetAttribute("Galloping", galloping or nil)
 	character:SetAttribute("HorseStamina", math.floor(r.Stamina + 0.5))
 	character:SetAttribute("HorseWinded", r.Winded or nil)
@@ -876,6 +918,7 @@ local function stepRider(key, r, dt, t)
 			local token = {}
 			r.CarrotToken = token
 			setMod(r, "Carrot", ccfg.Boost or 1.2)
+			r.CarrotUntil = t + (ccfg.BoostTime or 1.5)
 			task.delay(ccfg.BoostTime or 1.5, function()
 				if r.CarrotToken == token then
 					setMod(r, "Carrot", nil)
@@ -908,6 +951,7 @@ local function stepRider(key, r, dt, t)
 					local token = {}
 					r.StumbleToken = token
 					setMod(r, "Stumble", hucfg.StumbleSlow or 0.4)
+					r.StumbleUntil = t + (hucfg.StumbleTime or 1.2)
 					task.delay(hucfg.StumbleTime or 1.2, function()
 						if r.StumbleToken == token then
 							setMod(r, "Stumble", nil)
@@ -1353,6 +1397,13 @@ startStage = function(index)
 				character:SetAttribute("RaceAnchored", nil)
 			end
 			if r.Jockey then
+				-- Keep the jockey's physics on the server (being held and let go
+				-- hands it to whoever's nearest otherwise).
+				if root then
+					pcall(function()
+						root:SetNetworkOwner(nil)
+					end)
+				end
 				task.spawn(runJockey, key, r)
 			end
 		end
@@ -1548,7 +1599,14 @@ local function tick()
 					activePlayers = activePlayers + 1
 				end
 				local d = (Vector3.new(gate.X, 0, gate.Z) - Vector3.new(root.Position.X, 0, root.Position.Z)).Magnitude
-				if d <= (cfg.PassRadius or 20) and math.abs(root.Position.Y - gate.Y) < 40 then
+				-- A jockey that's jumped further than it could ride since last tick
+				-- (teleported) doesn't get to count a gate this tick.
+				local jumped = false
+				if r.Jockey then
+					jumped = r.GatePos ~= nil and (root.Position - r.GatePos).Magnitude > 40
+					r.GatePos = root.Position
+				end
+				if not jumped and d <= (cfg.PassRadius or 20) and math.abs(root.Position.Y - gate.Y) < 40 then
 					r.Next = r.Next + 1
 					if r.Next > total then
 						finish(r)
