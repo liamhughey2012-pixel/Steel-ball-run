@@ -2327,8 +2327,33 @@ function CorpseService.scatter(id)
 			table.insert(free, i)
 		end
 	end
-	local i = #free > 0 and free[rng:NextInteger(1, #free)] or rng:NextInteger(1, #cfg.Spots)
-	local model = placeRelic(id, origin() + cfg.Spots[i], false)
+	-- Never up a mountain or on top of a mesa: a spot whose ground is well
+	-- above the desert floor is skipped (try the others first).
+	local o = origin()
+	local function flatEnough(index)
+		return groundAt(o + cfg.Spots[index]).Y - o.Y <= (cfg.MaxSpotHeight or 8)
+	end
+	local tries = {}
+	for k = #free, 1, -1 do
+		table.insert(tries, table.remove(free, rng:NextInteger(1, k)))
+	end
+	local i
+	for _, index in ipairs(tries) do
+		if flatEnough(index) then
+			i = index
+			break
+		end
+	end
+	if not i then
+		for index = 1, #cfg.Spots do
+			if flatEnough(index) then
+				i = index
+				break
+			end
+		end
+	end
+	i = i or rng:NextInteger(1, #cfg.Spots)
+	local model = placeRelic(id, o + cfg.Spots[i], false)
 	model:SetAttribute("Spot", i)
 end
 
@@ -4092,9 +4117,14 @@ __modules["RaceService"] = function()
 	    behind its START arch, on their own horse (coat and blanket from the
 	    STABLE) with its hooves on the ground, held for the countdown.
 	    NPC JOCKEYS (Race.NPCRacers) line up with them.
-	  * THE RACE: down the track, out past its end, round the open desert
-	    to the east and back to the FINISH by the spawn, through the gates in
-	    order. You can fight, dash, block and use your Stand on horseback.
+	  * THE RACE is run in STAGES like the real Steel Ball Run (TuskConfig.
+	    Race.Stages): 1 San Diego Beach, 2 Arizona Desert, 3 Rocky Mountains,
+	    4 Great Plains, 5 Mississippi River, 6 Lake Michigan, 7 Philadelphia,
+	    8 New Jersey, 9 New York. Each stage is its own race: everyone lines
+	    up where the last stage ended, 3-2-1-GO, ride its gates in order to
+	    its finish. Placings score points (StagePoints); after the last stage
+	    the most points wins (ties: less total time). Between stages there's
+	    a short rest with the stage results and the overall points. You can fight, dash, block and use your Stand on horseback.
 	    Going down puts you out. Jockeys find their way with pathfinding (and
 	    hop free if they get stuck).
 	  * GALLOP (hold Shift): faster, but it uses your horse's stamina; run
@@ -4137,7 +4167,8 @@ local cfg = TuskConfig.Race or {}
 local Remote
 local rng = Random.new()
 
-local phase = nil -- nil (idle) | "Entry" | "Countdown" | "Racing"
+local phase = nil -- nil (idle) | "Entry" | "Countdown" | "Racing" | "Rest" (between stages)
+local stageIndex = 0
 local nextEntryAt = 0
 local entryEnds = 0
 local raceStart = 0
@@ -4274,7 +4305,7 @@ local function buildGate(parent, position, facing, text, kind)
 			end
 		end
 		local sign = block(gate, "Sign", Vector3.new(12, 3, 0.4), cf * CFrame.new(0, 17.2, 0), Color3.fromRGB(20, 20, 20))
-		bannerText(sign, "FINISH", Color3.fromRGB(255, 220, 90), Color3.fromRGB(20, 20, 20))
+		bannerText(sign, text, Color3.fromRGB(255, 220, 90), Color3.fromRGB(20, 20, 20))
 	else
 		bannerText(banner, text, RED, CREAM)
 	end
@@ -4286,7 +4317,12 @@ local function buildGate(parent, position, facing, text, kind)
 end
 
 -- The course gates (the start is the map's own fenced track and arch).
-local function buildCourse()
+local function stageCount()
+	return cfg.Stages and #cfg.Stages or 1
+end
+
+local function buildCourse(stage)
+	stage = stage or 1
 	if courseFolder then
 		courseFolder:Destroy()
 	end
@@ -4294,17 +4330,26 @@ local function buildCourse()
 	courseFolder.Name = "SteelBallRunCourse"
 	courseFolder.Parent = workspace
 	local o = origin()
-	local start = groundAt(o + (cfg.Start or Vector3.new(0, 0, 118)))
-	local facing = cfg.StartFacing or Vector3.new(0, 0, -1)
+	local st = cfg.Stages and cfg.Stages[stage]
+	local start = groundAt(o + (st and st.Start or cfg.Start or Vector3.new(0, 0, 118)))
+	local offsets = st and st.Gates or cfg.Checkpoints or {}
+	local facing
+	if st and offsets[1] then
+		facing = (o + offsets[1]) - start
+	else
+		facing = cfg.StartFacing or Vector3.new(0, 0, -1)
+	end
 	facing = Vector3.new(facing.X, 0, facing.Z).Unit
 	local gates = {}
 	local points = { start }
-	for _, offset in ipairs(cfg.Checkpoints or {}) do
+	for _, offset in ipairs(offsets) do
 		table.insert(points, groundAt(o + offset))
 	end
+	local lastStage = stage >= stageCount()
 	for i = 2, #points do
 		local isFinish = i == #points
-		local _, ground = buildGate(courseFolder, points[i], points[i] - points[i - 1], isFinish and "FINISH" or tostring(i - 1), isFinish and "Finish" or "Gate")
+		local finishText = lastStage and "FINISH" or ("STAGE " .. stage)
+		local _, ground = buildGate(courseFolder, points[i], points[i] - points[i - 1], isFinish and finishText or tostring(i - 1), isFinish and "Finish" or "Gate")
 		table.insert(gates, ground)
 	end
 	-- The starting grid: a painted line across the track, and the entry
@@ -4325,7 +4370,7 @@ local function buildCourse()
 	startPrompt.Triggered:Connect(function(player)
 		RaceService.join(player)
 	end)
-	course = { Start = start, StartFacing = facing, Right = right, Gates = gates }
+	course = { Start = start, StartFacing = facing, Right = right, Gates = gates, Stage = stage, StageName = st and st.Name or "THE STEEL BALL RUN", Tagline = st and st.Tagline }
 	RaceService.buildExtras(points)
 	return course
 end
@@ -4617,7 +4662,9 @@ function RaceService.buildExtras(points)
 	course.LegLength = {}
 	course.Carrots = {}
 	course.Hurdles = {}
+	course.StageLength = 0
 	for i = 2, #points do
+		course.StageLength = course.StageLength + flat(points[i] - points[i - 1]).Magnitude
 		local a, b = points[i - 1], points[i]
 		local len = flat(b - a).Magnitude
 		course.LegLength[i - 1] = math.max(len, 1)
@@ -4656,6 +4703,7 @@ local function clearExtras(r)
 	setMod(r, "Gallop", nil)
 	setMod(r, "Stumble", nil)
 	setMod(r, "Carrot", nil)
+	setMod(r, "CatchUp", nil)
 	local c = charOf(r)
 	if c then
 		c:SetAttribute("HorseStamina", nil)
@@ -4715,6 +4763,17 @@ function RaceService.returnToGate(player)
 	end)
 end
 
+-- How far round the course a rider is (0 at the start, 1 at the finish).
+local function progressOf(r, dist)
+	local total = #course.Gates
+	if r.Finished then
+		return 1
+	end
+	local legLen = course.LegLength and course.LegLength[r.Next] or 1
+	local frac = math.clamp(1 - dist / legLen, 0, 1)
+	return math.clamp(((r.Next - 1) + frac) / math.max(total, 1), 0, 1)
+end
+
 -- Stamina, gallop, carrots and hurdles for one rider (every tick, dt seconds).
 local function stepRider(key, r, dt, t)
 	local hum, character = humanoidOf(r)
@@ -4723,13 +4782,48 @@ local function stepRider(key, r, dt, t)
 		return
 	end
 	local speed = flat(root.AssemblyLinearVelocity).Magnitude
-	-- Jockeys gallop sensibly: when they've got the breath for it.
+	-- Jockeys ride smart: save their horse's breath, sprint the last
+	-- stretch of a stage, turn aside for carrots when tired, and dig in when
+	-- they've fallen far behind.
 	if r.Jockey then
-		if r.Galloping and r.Stamina < 20 then
+		local jc = cfg.Jockey or {}
+		local total = math.max(#course.Gates, 1)
+		local stretch = (r.Next - 1) / total
+		if stretch >= (jc.SprintFrom or 0.75) then
+			r.Galloping = r.Stamina > 3 -- the final sprint: everything left
+		elseif r.Galloping and r.Stamina < (jc.StopBelow or 18) then
 			r.Galloping = false
-		elseif not r.Galloping and r.Stamina > 65 then
+		elseif not r.Galloping and r.Stamina > (jc.GallopAbove or 55) then
 			r.Galloping = true
 		end
+		-- Tired? A carrot crate close by and roughly on the way.
+		r.CarrotTarget = nil
+		if r.Stamina < (jc.CarrotBelow or 55) then
+			local gate = course.Gates[r.Next]
+			local ahead = gate and flat(gate - root.Position)
+			local best, bestD
+			for _, carrot in ipairs(course.Carrots or {}) do
+				if t >= carrot.ReadyAt then
+					local off = flat(carrot.Pos - root.Position)
+					local d = off.Magnitude
+					if d <= (jc.CarrotReach or 35) and (not ahead or ahead.Magnitude < 1 or off:Dot(ahead) > 0) and (not bestD or d < bestD) then
+						best, bestD = carrot, d
+					end
+				end
+			end
+			r.CarrotTarget = best and best.Pos or nil
+		end
+		-- Far behind the leader? Dig in.
+		local lead = 0
+		for _, other in pairs(racers) do
+			if other ~= r and not other.Finished then
+				lead = math.max(lead, other.ProgressNow or 0)
+			elseif other.Finished then
+				lead = 1
+			end
+		end
+		local behind = (lead - (r.ProgressNow or 0)) * (course.StageLength or 600)
+		setMod(r, "CatchUp", behind > (jc.CatchUpBehind or 110) and (jc.CatchUp or 1.08) or nil)
 	end
 	local galloping = r.Galloping and not r.Winded and r.Stamina > 0 and speed > 4 and not character:GetAttribute("RaceAnchored")
 	if galloping then
@@ -4827,17 +4921,10 @@ local function stepRider(key, r, dt, t)
 		end
 	end
 	r.LastPos = pos
-end
-
--- How far round the course a rider is (0 at the start, 1 at the finish).
-local function progressOf(r, dist)
-	local total = #course.Gates
-	if r.Finished then
-		return 1
+	local gate = course.Gates[r.Next]
+	if gate then
+		r.ProgressNow = progressOf(r, flat(gate - pos).Magnitude)
 	end
-	local legLen = course.LegLength and course.LegLength[r.Next] or 1
-	local frac = math.clamp(1 - dist / legLen, 0, 1)
-	return math.clamp(((r.Next - 1) + frac) / math.max(total, 1), 0, 1)
 end
 
 -- Records: best time and wins, saved by DataService.
@@ -4991,6 +5078,12 @@ local function runJockey(key, r)
 			end
 		end
 		local target = gate
+		if r.CarrotTarget then
+			-- Off the line for a carrot crate.
+			humanoid:MoveTo(r.CarrotTarget)
+			task.delay(0.25, step)
+			return
+		end
 		if waypoints and waypoints[wi] then
 			target = waypoints[wi].Position
 			local flat = Vector3.new(target.X - root.Position.X, 0, target.Z - root.Position.Z)
@@ -5006,9 +5099,9 @@ local function runJockey(key, r)
 		-- Stuck? Jump; still stuck? Hop free towards the gate.
 		if (root.Position - lastPos).Magnitude > 4 then
 			lastPos, lastProgress = root.Position, now()
-		elseif now() - lastProgress > 2 then
+		elseif now() - lastProgress > 1.5 then
 			humanoid.Jump = true
-			if now() - lastProgress > 5 then
+			if now() - lastProgress > 3.5 then
 				local dir = Vector3.new(gate.X - root.Position.X, 0, gate.Z - root.Position.Z)
 				dir = dir.Magnitude > 0.1 and dir.Unit or course.StartFacing
 				standAt(model, root.Position + dir * 12, dir)
@@ -5027,7 +5120,7 @@ end
 local function openEntry()
 	phase = "Entry"
 	racers, finishOrder, winnerAt = {}, {}, nil
-	buildCourse()
+	buildCourse(1)
 	entryEnds = now() + (cfg.EntryTime or 45)
 	nextEntryAt = now() + (cfg.Every or 600)
 	if startPrompt then
@@ -5071,11 +5164,60 @@ local function cleanup()
 	setAttr("SpinRacePhase", nil)
 	setAttr("SpinRaceGoAt", nil)
 	setAttr("SpinRaceStart", nil)
+	setAttr("SpinRaceStage", nil)
+	setAttr("SpinRaceStageName", nil)
+	setAttr("SpinRaceNextStageAt", nil)
+	stageIndex = 0
 	if courseFolder then
 		courseFolder:Destroy()
 		courseFolder = nil
 	end
 	startPrompt = nil
+end
+
+local startStage -- (below)
+
+-- Everyone lines up at the stage start, 4 abreast, on their horses, held for the countdown.
+local function lineUp()
+	local list = {}
+	for key, r in pairs(racers) do
+		table.insert(list, { Key = key, R = r })
+	end
+	-- Players at the front; then by points (the leaders start up front, like the real race).
+	table.sort(list, function(a, b)
+		local pa, pb = a.R.Player and 0 or 1, b.R.Player and 0 or 1
+		if pa ~= pb then
+			return pa < pb
+		end
+		return (a.R.Points or 0) > (b.R.Points or 0)
+	end)
+	local facing, right = course.StartFacing, course.Right
+	local cols = cfg.GridColumns or 4
+	for i, e in ipairs(list) do
+		local col = (i - 1) % cols
+		local row = math.floor((i - 1) / cols)
+		local spot = course.Start - facing * (row * (cfg.GridRowGap or 7) + 3) + right * ((col - (cols - 1) / 2) * (cfg.GridSpacing or 4.5))
+		local character = charOf(e.R)
+		if character then
+			if not character:FindFirstChild("RaceHorse") or character:GetAttribute("Riding") ~= "Race" then
+				local look = e.R.Player and lookFor(e.R.Player) or e.R.Look or randomLook()
+				e.R.Look = e.R.Look or look
+				mount(character, look, (cfg.HorseSpeed or 3.2) * (e.R.Skill or 1), "Race")
+			else
+				local hum = character:FindFirstChildOfClass("Humanoid")
+				if hum then
+					Adapter.setMoveModifier(hum, "Horse", (cfg.HorseSpeed or 3.2) * (e.R.Skill or 1))
+				end
+			end
+			standAt(character, spot, facing)
+			local root = character:FindFirstChild("HumanoidRootPart")
+			if root then
+				root.Anchored = true
+				character:SetAttribute("RaceAnchored", true)
+			end
+		end
+	end
+	return #list
 end
 
 local function startRace()
@@ -5105,39 +5247,41 @@ local function startRace()
 			racers[r] = r
 		end
 	end
+	for _, r in pairs(racers) do
+		r.Points = 0
+		r.TotalTime = 0
+		r.StagesDone = 0
+		r.StageWins = 0
+	end
+	startStage(1)
+end
+
+startStage = function(index)
+	stageIndex = index
+	if index > 1 then
+		buildCourse(index)
+	end
+	finishOrder, winnerAt = {}, nil
+	for _, r in pairs(racers) do
+		r.Next = 1
+		r.Finished = false
+		r.Place = nil
+		r.Time = nil
+		local keepPoints, keepTime, keepDone, keepWins, keepLook = r.Points, r.TotalTime, r.StagesDone, r.StageWins, r.Look
+		initRacer(r)
+		r.Points, r.TotalTime, r.StagesDone, r.StageWins, r.Look = keepPoints, keepTime, keepDone, keepWins, keepLook
+	end
 	phase = "Countdown"
 	setAttr("SpinRacePhase", "Countdown")
+	setAttr("SpinRaceStage", index)
+	setAttr("SpinRaceStageName", course.StageName)
 	local goAt = now() + (cfg.Countdown or 4)
 	setAttr("SpinRaceGoAt", goAt)
-	-- Line everyone up inside the track, 4 abreast, on their horses, hooves on the ground.
-	local list = {}
-	for key, r in pairs(racers) do
-		table.insert(list, { Key = key, R = r })
-	end
-	table.sort(list, function(a, b)
-		return (a.R.Player and 0 or 1) < (b.R.Player and 0 or 1) -- players at the front
-	end)
-	local facing, right = course.StartFacing, course.Right
-	local cols = cfg.GridColumns or 4
-	for i, e in ipairs(list) do
-		local col = (i - 1) % cols
-		local row = math.floor((i - 1) / cols)
-		local spot = course.Start - facing * (row * (cfg.GridRowGap or 7) + 3) + right * ((col - (cols - 1) / 2) * (cfg.GridSpacing or 4.5))
-		local character = charOf(e.R)
-		if character then
-			local look = e.R.Player and lookFor(e.R.Player) or randomLook()
-			mount(character, look, (cfg.HorseSpeed or 3.2) * (e.R.Skill or 1), "Race")
-			standAt(character, spot, facing)
-			local root = character:FindFirstChild("HumanoidRootPart")
-			if root then
-				root.Anchored = true
-				character:SetAttribute("RaceAnchored", true)
-			end
-		end
-	end
-	broadcast("Countdown", { GoAt = goAt, Riders = #list, Total = #course.Gates })
+	local riders = lineUp()
+	broadcast("Countdown", { GoAt = goAt, Riders = riders, Total = #course.Gates })
+	broadcast("Stage", { Index = index, Count = stageCount(), Name = course.StageName, Tagline = course.Tagline, Gates = #course.Gates })
 	task.delay(cfg.Countdown or 4, function()
-		if phase ~= "Countdown" then
+		if phase ~= "Countdown" or stageIndex ~= index then
 			return
 		end
 		phase = "Racing"
@@ -5155,17 +5299,100 @@ local function startRace()
 				task.spawn(runJockey, key, r)
 			end
 		end
-		broadcast("Go", { Total = #course.Gates })
+		broadcast("Go", { Total = #course.Gates, Stage = index })
 	end)
 end
 
-local function endRace(reason)
-	local results = {}
-	for _, r in ipairs(finishOrder) do
-		table.insert(results, { Name = r.Name, Place = r.Place, Time = r.Time, Jockey = r.Jockey })
+-- Overall standings: most points, then least total time.
+local function overall()
+	local list = {}
+	for _, r in pairs(racers) do
+		table.insert(list, r)
 	end
-	broadcast("Results", { List = results, Reason = reason })
+	table.sort(list, function(a, b)
+		if (a.Points or 0) ~= (b.Points or 0) then
+			return (a.Points or 0) > (b.Points or 0)
+		end
+		return (a.TotalTime or 1e9) < (b.TotalTime or 1e9)
+	end)
+	local rows = {}
+	for i, r in ipairs(list) do
+		rows[i] = { Name = r.Name, UserId = r.UserId, Place = i, Points = r.Points or 0, Time = r.TotalTime or 0, Stages = r.StagesDone or 0, Jockey = r.Jockey }
+	end
+	return rows, list
+end
+
+local function endRace(reason)
+	local rows, list = overall()
+	-- Prizes go by overall place among the players; the overall winner (if a
+	-- player) gets a Saint's Corpse part at the finish.
+	local playerPlace = 0
+	for i, r in ipairs(list) do
+		if r.Player and (r.StagesDone or 0) > 0 then
+			playerPlace = playerPlace + 1
+			local prizes = cfg.Prizes or { 500, 250, 150 }
+			local prize = prizes[playerPlace] or cfg.FinishPrize or 50
+			pay(r.Player, prize)
+			rows[i].Prize = prize
+			if i == 1 then
+				r.Player:SetAttribute("RaceWins", (r.Player:GetAttribute("RaceWins") or 0) + 1)
+				if cfg.WinnerCorpsePart ~= false then
+					local ok, C = pcall(function()
+						return __require("CorpseService")
+					end)
+					local root = r.Player.Character and r.Player.Character:FindFirstChild("HumanoidRootPart")
+					if ok and C and C.summon and root then
+						local _, name = C.summon(root.Position + root.CFrame.LookVector * 6)
+						rows[i].Part = name
+					end
+				end
+			end
+			-- Best total time: only for riding every stage.
+			local newRecord, oldBest = false, r.Player:GetAttribute("RaceBest")
+			if (r.StagesDone or 0) >= stageCount() then
+				newRecord = typeof(oldBest) ~= "number" or r.TotalTime < oldBest
+				if newRecord then
+					r.Player:SetAttribute("RaceBest", math.floor(r.TotalTime * 10 + 0.5) / 10)
+				end
+			end
+			send(r.Player, "Record", { Time = r.TotalTime, NewRecord = newRecord, OldBest = oldBest, Wins = r.Player:GetAttribute("RaceWins") or 0, Place = i, Points = r.Points, Prize = prize, Part = rows[i].Part, AllStages = (r.StagesDone or 0) >= stageCount() })
+		end
+	end
+	broadcast("Results", { List = rows, Reason = reason, Final = true })
 	cleanup()
+end
+
+-- A stage is over: points by placing, the stage results, then the next stage (or the end).
+local function endStage(reason)
+	if phase ~= "Racing" then
+		return
+	end
+	local pts = cfg.StagePoints or { 100, 70, 50, 40, 30, 25, 20, 15, 10, 5 }
+	local stageRows = {}
+	for i, r in ipairs(finishOrder) do
+		local got = pts[i] or 0
+		r.Points = (r.Points or 0) + got
+		table.insert(stageRows, { Name = r.Name, UserId = r.UserId, Place = i, Time = r.Time, Points = got, Jockey = r.Jockey })
+	end
+	local rows = overall()
+	broadcast("StageResults", { Index = stageIndex, Count = stageCount(), Name = course.StageName, List = stageRows, Overall = rows, Reason = reason })
+	if stageIndex >= stageCount() or racerCount(true) == 0 then
+		phase = "Rest"
+		setAttr("SpinRacePhase", "Rest")
+		task.delay(2.5, function()
+			endRace(racerCount(true) == 0 and "Every rider dropped out." or "The Steel Ball Run is over!")
+		end)
+		return
+	end
+	phase = "Rest"
+	setAttr("SpinRacePhase", "Rest")
+	setAttr("SpinRaceNextStageAt", now() + (cfg.StageRest or 6))
+	local nextIndex = stageIndex + 1
+	task.delay(cfg.StageRest or 6, function()
+		if phase == "Rest" and stageIndex == nextIndex - 1 then
+			startStage(nextIndex)
+		end
+	end)
 end
 
 local function finish(r)
@@ -5173,46 +5400,28 @@ local function finish(r)
 	r.Finished = true
 	r.Place = #finishOrder
 	r.Time = now() - raceStart
-	local prize, partName = 0, nil
+	r.TotalTime = (r.TotalTime or 0) + r.Time
+	r.StagesDone = (r.StagesDone or 0) + 1
+	local pts = (cfg.StagePoints or {})[r.Place] or 0
+	local prize = 0
+	if r.Place == 1 then
+		winnerAt = now()
+		r.StageWins = (r.StageWins or 0) + 1
+		if r.Player then
+			prize = cfg.StageWinnerCash or 50
+			pay(r.Player, prize)
+		end
+	end
+	clearExtras(r)
 	if r.Player then
-		-- Prizes go by place among the players.
-		local playerPlace = 0
-		for _, f in ipairs(finishOrder) do
-			if f.Player then
-				playerPlace = playerPlace + 1
-			end
-		end
-		local prizes = cfg.Prizes or { 500, 250, 150 }
-		prize = prizes[playerPlace] or cfg.FinishPrize or 50
-		pay(r.Player, prize)
-		if r.Place == 1 and cfg.WinnerCorpsePart ~= false then
-			-- A Saint's Corpse part appears at the finish for the winner.
-			local ok, C = pcall(function()
-				return __require("CorpseService")
-			end)
-			local root = r.Player.Character and r.Player.Character:FindFirstChild("HumanoidRootPart")
-			if ok and C and C.summon and root then
-				local _, name = C.summon(root.Position + course.StartFacing * 6)
-				partName = name
-			end
-		end
-		-- Finished: their horse is theirs to ride around now.
+		-- Done with this stage: ride around while the rest come in.
 		local character = r.Player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		if humanoid and character:FindFirstChild("RaceHorse") then
 			Adapter.setMoveModifier(humanoid, "Horse", hcfg.RideSpeed or 2.8)
-			character:SetAttribute("Riding", "Ride")
 		end
 	end
-	if r.Place == 1 then
-		winnerAt = now()
-	end
-	clearExtras(r)
-	local newRecord, oldBest = recordFinish(r)
-	broadcast("Finished", { Name = r.Name, UserId = r.UserId, Place = r.Place, Time = r.Time, Prize = prize, Part = partName, Jockey = r.Jockey })
-	if r.Player then
-		send(r.Player, "Record", { Time = r.Time, NewRecord = newRecord, OldBest = oldBest, Wins = r.Player:GetAttribute("RaceWins") or 0 })
-	end
+	broadcast("Finished", { Name = r.Name, UserId = r.UserId, Place = r.Place, Time = r.Time, Prize = prize, Points = pts, Stage = stageIndex, StageName = course.StageName, Jockey = r.Jockey })
 end
 
 local function standings()
@@ -5222,7 +5431,7 @@ local function standings()
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local gate = course.Gates[r.Next]
 		local dist = (root and gate) and (Vector3.new(gate.X, 0, gate.Z) - Vector3.new(root.Position.X, 0, root.Position.Z)).Magnitude or 1e6
-		table.insert(list, { Name = r.Name, UserId = r.UserId, Next = r.Next, Place = r.Place, Dist = dist, Jockey = r.Jockey, Progress = progressOf(r, dist) })
+		table.insert(list, { Name = r.Name, UserId = r.UserId, Next = r.Next, Place = r.Place, Dist = dist, Jockey = r.Jockey, Progress = progressOf(r, dist), Points = r.Points or 0 })
 	end
 	table.sort(list, function(a, b)
 		if a.Place or b.Place then
@@ -5235,7 +5444,7 @@ local function standings()
 	end)
 	local rows = {}
 	for i, e in ipairs(list) do
-		table.insert(rows, { Name = e.Name, UserId = e.UserId, Position = i, Next = e.Next, Finished = e.Place ~= nil, Dist = math.floor(e.Dist), Jockey = e.Jockey, Progress = e.Progress })
+		table.insert(rows, { Name = e.Name, UserId = e.UserId, Position = i, Next = e.Next, Finished = e.Place ~= nil, Dist = math.floor(e.Dist), Jockey = e.Jockey, Progress = e.Progress, Points = e.Points })
 	end
 	return rows
 end
@@ -5293,17 +5502,18 @@ local function tick()
 		local list = standings()
 		for _, r in pairs(racers) do
 			if r.Player then
-				send(r.Player, "Standings", { List = list, Total = total, Elapsed = t - raceStart })
+				send(r.Player, "Standings", { List = list, Total = total, Elapsed = t - raceStart, Stage = stageIndex, Points = r.Points or 0 })
 			end
 		end
 	end
-	-- Ends when no player is still racing, FinishGrace after the winner, or at the time limit.
+	-- A stage ends when no player is still riding it, StageGrace after its
+	-- winner, or at the stage time limit.
 	if activePlayers == 0 then
-		endRace(#finishOrder > 0 and "Everyone's crossed the line." or "Nobody finished.")
-	elseif winnerAt and t - winnerAt >= (cfg.FinishGrace or 25) then
-		endRace("Time's up for the stragglers.")
-	elseif t - raceStart >= (cfg.TimeLimit or 240) then
-		endRace("Time's up.")
+		endStage(#finishOrder > 0 and "Everyone's in." or "Nobody finished the stage.")
+	elseif winnerAt and t - winnerAt >= (cfg.StageGrace or cfg.FinishGrace or 15) then
+		endStage("Time's up for the stragglers.")
+	elseif t - raceStart >= (cfg.StageTimeLimit or cfg.TimeLimit or 75) then
+		endStage("Time's up.")
 	end
 end
 

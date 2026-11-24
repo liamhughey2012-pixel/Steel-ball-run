@@ -296,8 +296,33 @@ function CorpseService.scatter(id)
 			table.insert(free, i)
 		end
 	end
-	local i = #free > 0 and free[rng:NextInteger(1, #free)] or rng:NextInteger(1, #cfg.Spots)
-	local model = placeRelic(id, origin() + cfg.Spots[i], false)
+	-- Never up a mountain or on top of a mesa: a spot whose ground is well
+	-- above the desert floor is skipped (try the others first).
+	local o = origin()
+	local function flatEnough(index)
+		return groundAt(o + cfg.Spots[index]).Y - o.Y <= (cfg.MaxSpotHeight or 8)
+	end
+	local tries = {}
+	for k = #free, 1, -1 do
+		table.insert(tries, table.remove(free, rng:NextInteger(1, k)))
+	end
+	local i
+	for _, index in ipairs(tries) do
+		if flatEnough(index) then
+			i = index
+			break
+		end
+	end
+	if not i then
+		for index = 1, #cfg.Spots do
+			if flatEnough(index) then
+				i = index
+				break
+			end
+		end
+	end
+	i = i or rng:NextInteger(1, #cfg.Spots)
+	local model = placeRelic(id, o + cfg.Spots[i], false)
 	model:SetAttribute("Spot", i)
 end
 

@@ -1,6 +1,11 @@
 --[[
 	RaceClient  (StarterPlayerScripts.SpinClient.RaceClient)
 
+	STAGES: a big "STAGE 3: ROCKY MOUNTAINS" banner (with its tagline) at
+	each stage start; the race card shows the stage, your points and, between
+	stages, the countdown to the next; a STAGE RESULTS board (placings,
+	times, points scored, then the overall points) between stages and a
+	FINAL STANDINGS board (points, total time, prizes) at the end.
 	RACING EXTRAS: hold Shift (L3 / GALLOP button) to gallop; a STAMINA meter
 	(WINDED! when it runs dry); a PROGRESS STRIP across the top with every
 	rider on it (you in gold); "JUMP!" when a log hurdle is ahead; H (D-pad
@@ -61,6 +66,8 @@ local GOLD = C.GOLD
 local gui, entryPanel, entryTitle, entryInfo, entryButton, soonChip, countdownLabel, card, cardRows, banner
 local staminaPanel, staminaFill, staminaText, raceStrip, stripTrack, stripDots, jumpLabel, resultsBoard
 local controlsBound = false
+local cfgStageRest = (TuskConfig.Race or {}).StageRest
+local stageIndex, stageCount, stageName, myPoints = 0, 0, "", 0
 local entered = false
 local nextGate = 1
 local totalGates = 0
@@ -170,7 +177,7 @@ local function buildUI()
 	-- Race card (top right): a framed board with a parchment standings sheet.
 	card = new("Frame", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 64), Size = UDim2.fromOffset(230, 200), Visible = false }, gui)
 	UITheme.wood(card, { Planks = 4, Border = 5, Brackets = true, BracketSize = 14 })
-	label(card, { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -84, 0, 22), Text = "STEEL BALL RUN", Font = UITheme.Font.Title, TextColor3 = C.GOLD, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 })
+	label(card, { Name = "Title", Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -84, 0, 22), Text = "STEEL BALL RUN", Font = UITheme.Font.Title, TextColor3 = C.GOLD, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 })
 	local sheet = new("Frame", { Name = "Sheet", Position = UDim2.fromOffset(9, 32), Size = UDim2.new(1, -18, 1, -46), ZIndex = 2 }, card)
 	UITheme.paper(sheet, { Radius = 3 })
 	label(card, { Name = "Pos", Position = UDim2.fromOffset(16, 34), Size = UDim2.fromOffset(90, 38), Text = "-", Font = UITheme.Font.Title, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 })
@@ -206,15 +213,16 @@ local function buildUI()
 	inkOutline(jumpLabel, 3)
 end
 
--- The results board at the end: a wooden board with a parchment list.
-local function showResults(list, reason)
+-- A results board: a wooden board with a parchment list. mode "stage"
+-- (time and points scored this stage) or "final" (total points and time).
+local function showResults(list, reason, title, subtitle, mode, seconds)
 	if resultsBoard then
 		resultsBoard:Destroy()
 	end
 	local rows = math.min(#list, 8)
-	resultsBoard = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromOffset(340, 96 + math.max(rows, 1) * 24) }, gui)
+	resultsBoard = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromOffset(380, 96 + math.max(rows, 1) * 24) }, gui)
 	UITheme.wood(resultsBoard, { Planks = 4, Border = 6, Brackets = true, BracketSize = 16 })
-	UITheme.sign(resultsBoard, "STEEL BALL RUN", "RESULTS", { Position = UDim2.new(0.5, 0, 0, 8), Size = UDim2.fromOffset(240, 46), ZIndex = 3 })
+	UITheme.sign(resultsBoard, title or "STEEL BALL RUN", subtitle or "RESULTS", { Position = UDim2.new(0.5, 0, 0, 8), Size = UDim2.fromOffset(300, 46), ZIndex = 3 })
 	local sheet = new("Frame", { Position = UDim2.fromOffset(14, 60), Size = UDim2.new(1, -28, 1, -74), ZIndex = 3 }, resultsBoard)
 	UITheme.paper(sheet, { Radius = 3 })
 	if rows == 0 then
@@ -224,17 +232,25 @@ local function showResults(list, reason)
 		local r = list[i]
 		local color = i == 1 and C.GOLD or (i == 2 and Color3.fromRGB(200, 200, 210) or (i == 3 and Color3.fromRGB(205, 130, 70) or nil))
 		local y = 4 + (i - 1) * 24
+		local me = r.UserId == player.UserId
+		if me then
+			local hl = new("Frame", { Position = UDim2.fromOffset(2, y), Size = UDim2.new(1, -4, 0, 22), BackgroundColor3 = C.GOLD, BackgroundTransparency = 0.6, BorderSizePixel = 0, ZIndex = 4 }, sheet)
+			corner(hl, 4)
+		end
 		if color then
-			local medal = new("Frame", { Position = UDim2.fromOffset(6, y + 3), Size = UDim2.fromOffset(18, 18), BackgroundColor3 = color, ZIndex = 4 }, sheet)
+			local medal = new("Frame", { Position = UDim2.fromOffset(6, y + 3), Size = UDim2.fromOffset(18, 18), BackgroundColor3 = color, ZIndex = 5 }, sheet)
 			corner(medal, 99)
 			UITheme.stroke(medal, C.WOOD_EDGE, 1.5)
 		end
-		label(sheet, { Position = UDim2.fromOffset(30, y), Size = UDim2.new(0.68, -30, 0, 22), Text = ordinal(r.Place or i) .. "  " .. string.upper(r.Name or "?"), Font = i <= 3 and UITheme.Font.Title or UITheme.Font.Body, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, TextColor3 = i == 1 and C.RED or INK, ZIndex = 4 })
-		label(sheet, { Position = UDim2.new(0.68, 0, 0, y), Size = UDim2.new(0.32, -8, 0, 22), Text = mmss(r.Time or 0) .. string.format(".%d", math.floor(((r.Time or 0) % 1) * 10)), Font = UITheme.Font.Body, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+		label(sheet, { Position = UDim2.fromOffset(30, y), Size = UDim2.new(0.56, -30, 0, 22), Text = ordinal(r.Place or i) .. "  " .. string.upper(r.Name or "?"), Font = i <= 3 and UITheme.Font.Title or UITheme.Font.Body, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, TextColor3 = i == 1 and C.RED or INK, ZIndex = 5 })
+		local t = r.Time or 0
+		label(sheet, { Position = UDim2.new(0.56, 0, 0, y), Size = UDim2.new(0.22, -4, 0, 22), Text = mmss(t) .. string.format(".%d", math.floor((t % 1) * 10)), Font = UITheme.Font.Body, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 })
+		local pts = mode == "stage" and ("+" .. tostring(r.Points or 0)) or (tostring(r.Points or 0) .. " PTS")
+		label(sheet, { Position = UDim2.new(0.78, 0, 0, y), Size = UDim2.new(0.22, -8, 0, 22), Text = pts, Font = UITheme.Font.Title, TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = mode == "stage" and C.GREEN or C.RED, ZIndex = 5 })
 	end
 	UITheme.pop(resultsBoard, 0.5)
 	local board = resultsBoard
-	task.delay(9, function()
+	task.delay(seconds or 9, function()
 		if board.Parent then
 			board:Destroy()
 		end
@@ -664,9 +680,17 @@ local function stepUI()
 		end
 	end
 	-- Race card.
-	card.Visible = entered and (phase == "Countdown" or phase == "Racing")
+	card.Visible = entered and (phase == "Countdown" or phase == "Racing" or phase == "Rest")
 	if card.Visible then
-		card:FindFirstChild("Gate").Text = nextGate > totalGates and "FINISHED" or ("GATE " .. nextGate .. " / " .. totalGates)
+		card:FindFirstChild("Title").Text = stageIndex > 0 and ("STAGE " .. stageIndex .. "/" .. stageCount .. ": " .. stageName) or "STEEL BALL RUN"
+		local hint = card:FindFirstChild("Hint")
+		if phase == "Rest" then
+			local at = ReplicatedStorage:GetAttribute("SpinRaceNextStageAt")
+			hint.Text = (at and at > t) and ("NEXT STAGE IN " .. mmss(at - t) .. "  ·  " .. myPoints .. " PTS") or ("TOTAL: " .. myPoints .. " PTS")
+		else
+			hint.Text = "POINTS: " .. myPoints .. "  ·  SHIFT GALLOP  ·  H LAST GATE"
+		end
+		card:FindFirstChild("Gate").Text = (nextGate > totalGates or phase == "Rest") and "STAGE DONE" or ("GATE " .. nextGate .. " / " .. totalGates)
 		local start = ReplicatedStorage:GetAttribute("SpinRaceStart")
 		card:FindFirstChild("Time").Text = start and mmss(t - start) or "0:00"
 	end
@@ -709,6 +733,27 @@ function RaceClient.init()
 		elseif kind == "Cancelled" then
 			setEntered(false)
 			showBanner(string.upper(data.Reason or "RACE CANCELLED"), PAPER, 3)
+		elseif kind == "Stage" then
+			stageIndex, stageCount, stageName = data.Index or 1, data.Count or 1, string.upper(data.Name or "")
+			nextGate, totalGates = 1, data.Gates or totalGates
+			if resultsBoard then
+				resultsBoard:Destroy()
+				resultsBoard = nil
+			end
+			if entered then
+				showBanner("STAGE " .. stageIndex .. ": " .. stageName .. (data.Tagline and ("  ·  " .. string.upper(data.Tagline)) or ""), GOLD, 3.5)
+			end
+		elseif kind == "StageResults" then
+			for _, row in ipairs(data.Overall or {}) do
+				if row.UserId == player.UserId then
+					myPoints = row.Points or myPoints
+				end
+			end
+			if entered then
+				clearGuide()
+				local last = (data.Index or 1) >= (data.Count or 1)
+				showResults(data.List or {}, data.Reason, "STAGE " .. tostring(data.Index) .. ": " .. string.upper(data.Name or ""), last and "STAGE RESULTS" or ("RESULTS  ·  NEXT STAGE SOON"), "stage", (cfgStageRest or 6) - 0.3)
+			end
 		elseif kind == "Countdown" then
 			nextGate, totalGates, standings = 1, data.Total or 0, {}
 		elseif kind == "Go" then
@@ -721,17 +766,16 @@ function RaceClient.init()
 		elseif kind == "Standings" then
 			standings = data.List or {}
 			totalGates = data.Total or totalGates
+			myPoints = data.Points or myPoints
 			fillStandings()
 			fillStrip()
 		elseif kind == "Finished" then
 			if data.UserId == player.UserId then
 				nextGate = totalGates + 1
 				clearGuide()
-				showBanner("YOU FINISHED " .. ordinal(data.Place or 0) .. "!  +$" .. tostring(data.Prize or 0) .. (data.Part and ("  +  " .. data.Part) or ""), GOLD, 4)
+				showBanner("STAGE " .. tostring(data.Stage or stageIndex) .. ": YOU CAME " .. ordinal(data.Place or 0) .. "!  +" .. tostring(data.Points or 0) .. " PTS" .. ((data.Prize or 0) > 0 and ("  +$" .. data.Prize) or ""), GOLD, 3.5)
 			elseif data.Place == 1 and entered then
-				showBanner(string.upper(data.Name or "SOMEONE") .. " WINS THE STEEL BALL RUN!", GOLD, 3.5)
-			elseif data.Place == 1 and not data.Jockey then
-				showBanner(string.upper(data.Name or "SOMEONE") .. " WINS THE STEEL BALL RUN!", GOLD, 3.5)
+				showBanner(string.upper(data.Name or "SOMEONE") .. " WINS STAGE " .. tostring(data.Stage or stageIndex) .. "!", GOLD, 2.5)
 			end
 		elseif kind == "Winded" then
 			showBanner("YOUR HORSE IS WINDED!", RED, 1.6)
@@ -752,12 +796,16 @@ function RaceClient.init()
 		elseif kind == "Returned" then
 			showBanner("BACK AT " .. ((data.Gate or 0) >= 1 and ("GATE " .. data.Gate) or "THE START") .. "  (-" .. tostring(data.Penalty or 3) .. "s)", PAPER, 2)
 		elseif kind == "Record" then
-			task.delay(4.2, function()
-				if data.NewRecord then
-					showBanner("NEW RECORD!  " .. mmss(data.Time or 0) .. "   ·   WINS: " .. tostring(data.Wins or 0), GOLD, 3.5)
-				else
-					showBanner("BEST: " .. mmss(data.OldBest or 0) .. "   ·   WINS: " .. tostring(data.Wins or 0), PAPER, 3)
-				end
+			task.delay(4.5, function()
+				local line = "OVERALL " .. ordinal(data.Place or 0) .. "  ·  " .. tostring(data.Points or 0) .. " PTS" .. ((data.Prize or 0) > 0 and ("  ·  +$" .. data.Prize) or "") .. (data.Part and ("  ·  " .. data.Part) or "")
+				showBanner(line, GOLD, 3.5)
+				task.delay(3.6, function()
+					if data.NewRecord then
+						showBanner("NEW RECORD!  " .. mmss(data.Time or 0) .. " FOR ALL 9 STAGES   ·   WINS: " .. tostring(data.Wins or 0), GOLD, 3.5)
+					elseif data.OldBest then
+						showBanner("BEST: " .. mmss(data.OldBest) .. "   ·   WINS: " .. tostring(data.Wins or 0), PAPER, 3)
+					end
+				end)
 			end)
 		elseif kind == "Horse" then
 			showBanner(data.Riding and "YOUR HORSE  (M TO GET OFF)" or "SENT YOUR HORSE AWAY", PAPER, 1.6)
@@ -767,8 +815,9 @@ function RaceClient.init()
 			local wasIn = entered
 			setEntered(false)
 			clearGuide()
+			stageIndex, myPoints = 0, 0
 			if wasIn then
-				showResults(data.List or {}, data.Reason)
+				showResults(data.List or {}, data.Reason, "THE STEEL BALL RUN", "FINAL STANDINGS", "final", 9)
 			else
 				local first = (data.List or {})[1]
 				showBanner(first and (string.upper(first.Name or "?") .. " WON THE STEEL BALL RUN!") or "THE STEEL BALL RUN IS OVER", GOLD, 3.5)

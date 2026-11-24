@@ -1110,9 +1110,11 @@ TuskConfig.Corpse = {
 	},
 	-- Where parts can lie (offsets from the map's origin; snapped to the ground).
 	Spots = {
-		Vector3.new(-150, 0, -30), Vector3.new(-290, 0, -300), Vector3.new(-190, 0, 245), Vector3.new(150, 0, 232),
-		Vector3.new(300, 0, 20), Vector3.new(40, 0, -262), Vector3.new(-20, 0, -395), Vector3.new(210, 0, -190),
-		Vector3.new(370, 0, -370), Vector3.new(-410, 0, 10), Vector3.new(100, 0, -120), Vector3.new(-120, 0, 120),
+		-- All on flat open ground: none on the mountain ring round the map, the
+		-- mesas, Headquarters hill, the mine hill or in the river.
+		Vector3.new(-150, 0, -30), Vector3.new(-230, 0, -210), Vector3.new(-190, 0, 245), Vector3.new(150, 0, 232),
+		Vector3.new(300, 0, 20), Vector3.new(40, 0, -262), Vector3.new(150, 0, -290), Vector3.new(210, 0, -190),
+		Vector3.new(310, 0, -110), Vector3.new(-330, 0, 0), Vector3.new(100, 0, -120), Vector3.new(-120, 0, 120),
 	},
 	-- Bounties: holders are worth more; these parts most of all.
 	PartBounty = 40, -- each part adds this to their price
@@ -1153,7 +1155,7 @@ TuskConfig.Race = {
 	FirstAfter = 120, -- the first race opens this long after the server starts
 	StudioFirstAfter = 20, -- in Studio the first race opens quickly so you can test it
 	EntryTime = 45, -- seconds entry stays open
-	Countdown = 4, -- seconds on the start line (3, 2, 1, GO!)
+	Countdown = 4, -- seconds on the start line before each stage (3, 2, 1, GO!)
 	TimeLimit = 420, -- the race ends after this long no matter what (7 minutes)
 	FinishGrace = 40, -- ...or this long after the winner crosses the line
 	-- The course (offsets from the map's origin; snapped to the ground):
@@ -1186,6 +1188,29 @@ TuskConfig.Race = {
 		Vector3.new(130, 0, 165), -- 19: the home stretch
 		Vector3.new(45, 0, 175), -- FINISH, by the spawn
 	},
+	-- THE STAGES, like the real Steel Ball Run: nine stages from San Diego to
+	-- New York, each its own race with a mass start where the last one ended.
+	-- Placings score points (StagePoints); most points after the last stage
+	-- wins. Our desert map stands in for America: each stage is a stretch of
+	-- it, routed round every building, mesa, hill and the mountains, and it
+	-- only crosses the river by the covered bridge. (Offsets from the map's
+	-- origin; snapped to the ground.)
+	Stages = {
+		{ Name = "SAN DIEGO BEACH", Tagline = "The 15 km sprint off the beach", Start = Vector3.new(0, 0, 118), Gates = { Vector3.new(0, 0, -52), Vector3.new(0, 0, -260) } }, -- 1
+		{ Name = "ARIZONA DESERT", Tagline = "Across the desert to Monument Valley", Start = Vector3.new(0, 0, -262), Gates = { Vector3.new(48, 0, -268), Vector3.new(148, 0, -332), Vector3.new(204, 0, -228), Vector3.new(236, 0, -204), Vector3.new(312, 0, -184), Vector3.new(332, 0, -40) } }, -- 2
+		{ Name = "ROCKY MOUNTAINS", Tagline = "Up through the Rockies", Start = Vector3.new(330, 0, -40), Gates = { Vector3.new(308, 0, -80), Vector3.new(252, 0, -104), Vector3.new(180, 0, -120), Vector3.new(96, 0, -204), Vector3.new(52, 0, -208), Vector3.new(32, 0, -252), Vector3.new(-148, 0, -280), Vector3.new(-180, 0, -236), Vector3.new(-228, 0, -172) } }, -- 3
+		{ Name = "GREAT PLAINS", Tagline = "The long flat run across the prairie", Start = Vector3.new(-230, 0, -170), Gates = { Vector3.new(-324, 0, -60), Vector3.new(-332, 0, 132), Vector3.new(-200, 0, 180) } }, -- 4
+		{ Name = "MISSISSIPPI RIVER", Tagline = "Over the bridge and up the far bank", Start = Vector3.new(-200, 0, 180), Gates = { Vector3.new(-60, 0, 228), Vector3.new(-8, 0, 252), Vector3.new(0, 0, 332), Vector3.new(-180, 0, 332) } }, -- 5
+		{ Name = "LAKE MICHIGAN", Tagline = "Along the northern shore", Start = Vector3.new(-180, 0, 330), Gates = { Vector3.new(-60, 0, 348), Vector3.new(60, 0, 356), Vector3.new(172, 0, 344) } }, -- 6
+		{ Name = "PHILADELPHIA", Tagline = "Back over the river and east", Start = Vector3.new(170, 0, 345), Gates = { Vector3.new(0, 0, 336), Vector3.new(0, 0, 252), Vector3.new(120, 0, 184), Vector3.new(348, 0, 140) } }, -- 7
+		{ Name = "NEW JERSEY", Tagline = "Down the east side, almost home", Start = Vector3.new(350, 0, 140), Gates = { Vector3.new(348, 0, -28), Vector3.new(332, 0, -160), Vector3.new(172, 0, -108), Vector3.new(136, 0, -52), Vector3.new(100, 0, 20) } }, -- 8
+		{ Name = "NEW YORK", Tagline = "The final stage: to the finish line", Start = Vector3.new(100, 0, 20), Gates = { Vector3.new(172, 0, 60), Vector3.new(228, 0, 104), Vector3.new(120, 0, 148), Vector3.new(44, 0, 176) } }, -- 9
+	},
+	StagePoints = { 100, 70, 50, 40, 30, 25, 20, 15, 10, 5 }, -- by stage placing (riders who don't finish a stage score 0)
+	StageWinnerCash = 50, -- a player who wins a stage
+	StageRest = 6, -- seconds between stages (results, then line up again)
+	StageTimeLimit = 75, -- a stage ends after this long no matter what...
+	StageGrace = 15, -- ...or this long after its winner crosses the line
 	GateWidth = 34, -- studs between a gate's posts (wide enough to stand outside the track's fences)
 	PassRadius = 20, -- get this close to the next gate to pass it
 	-- Horses
@@ -1201,7 +1226,7 @@ TuskConfig.Race = {
 	-- NPC JOCKEYS ride too (they find their way round with pathfinding).
 	NPCRacers = 3,
 	NPCNames = { "Dusty Pete", "Sandstorm Sally", "Iron Hoof Ike", "Lucky Lou", "Prairie Pat", "Cactus Jack" },
-	NPCSkill = { 0.78, 0.95 }, -- their horse speed is HorseSpeed times this (random per jockey)
+	NPCSkill = { 0.92, 1.04 }, -- their horse speed is HorseSpeed times this (random per jockey): a real race
 	NPCHealth = 120,
 	Prizes = { 500, 250, 150 },
 	FinishPrize = 50,
@@ -1221,11 +1246,15 @@ TuskConfig.Race = {
 	Carrots = { PerLeg = 1, Radius = 7, Refill = 45, Boost = 1.2, BoostTime = 1.5, Respawn = 10 },
 	-- HURDLES: log jumps across the course. Jump them (Space / A); hit one and
 	-- your horse stumbles (slowed, loses stamina).
-	Hurdles = { Every = 2, MinLeg = 70, Width = 30, Clearance = 4.2, StumbleSlow = 0.4, StumbleTime = 1.2, StumbleStamina = 20, ClearStamina = 5, JockeyMiss = 0.15 },
+	Hurdles = { Every = 2, MinLeg = 70, Width = 30, Clearance = 4.2, StumbleSlow = 0.4, StumbleTime = 1.2, StumbleStamina = 20, ClearStamina = 5, JockeyMiss = 0.05 },
 	-- LOST? Press H (D-pad up) to go back to the last gate you passed; you're
 	-- held there ReturnPenalty seconds.
 	ReturnPenalty = 3, ReturnCooldown = 8,
-	-- RECORDS: your best time and your wins are saved (DataService).
+	-- JOCKEY smarts: they save stamina, sprint the last stretch of a stage,
+	-- turn aside for carrots when they're tired, and a jockey who's fallen
+	-- far behind digs in (CatchUp speed) so the field stays close.
+	Jockey = { GallopAbove = 55, StopBelow = 18, SprintFrom = 0.75, CarrotBelow = 55, CarrotReach = 35, CatchUpBehind = 110, CatchUp = 1.08 },
+	-- RECORDS: your best total time (all 9 stages) and your wins are saved (DataService).
 }
 
 ---------------------------------------------------------------------------
