@@ -1,6 +1,8 @@
 """Packs the modular source into the owner's preferred format:
-  Spin_Server.lua  -> Script in ServerScriptService            (core: combat, projectiles, NPCs, dummies)
-  Spin_Client.lua  -> LocalScript in StarterPlayerScripts       (core: input, HUD, shared VFX)
+  Spin_Server.lua  -> Script in ServerScriptService            (small: loads the core parts, starts it all)
+  Spin_Client.lua  -> LocalScript in StarterPlayerScripts       (small: loads the core parts, starts it all)
+  core/SpinCore_Server_N.lua -> ModuleScripts in ServerScriptService > SpinCore (the server core, ~100 KB each)
+  core/SpinCore_Client_N.lua -> ModuleScripts in ReplicatedStorage > SpinCore (the client core, ~100 KB each)
   SpinConfig.lua, TuskConfig.lua -> ModuleScripts in ReplicatedStorage (settings, shared by both)
   characters/<Name>_Server.lua -> ModuleScript in ServerScriptService > SpinCharacters
   characters/<Name>_Client.lua -> ModuleScript in ReplicatedStorage > SpinCharacters
@@ -394,14 +396,108 @@ def split(side, allmods, main):
 
 server_core = split("server", server, SERVER_MAIN)
 client_core = split("client", client, CLIENT_MAIN)
-open(f"{out}/Spin_Server.lua", "w").write(bundle("server", SERVER_HEADER, server_core, SERVER_MAIN))
-open(f"{out}/Spin_Client.lua", "w").write(bundle("client", CLIENT_HEADER, client_core, CLIENT_MAIN))
+
+# The core is too big to paste as one script (Studio freezes for minutes on
+# 400-600 KB). It's split into ModuleScript parts of about PART_LIMIT bytes
+# (SpinCore_Server_1, 2, ... / SpinCore_Client_1, 2, ...), and Spin_Server /
+# Spin_Client are now small: they load the parts, then start everything.
+PART_LIMIT = 100_000
+os.makedirs(f"{out}/core", exist_ok=True)
+for f in os.listdir(f"{out}/core"):
+    os.remove(os.path.join(f"{out}/core", f))
+
+def write_parts(side, mods):
+    blocks = [(n, module_block(n, mods[n])) for n in sorted(mods)]
+    parts, current, size = [], [], 0
+    for n, b in blocks:
+        if current and size + len(b) > PART_LIMIT:
+            parts.append(current)
+            current, size = [], 0
+        current.append(b)
+        size += len(b)
+    if current:
+        parts.append(current)
+    names = []
+    where = "ServerScriptService > SpinCore" if side == "server" else "ReplicatedStorage > SpinCore"
+    for i, chunk in enumerate(parts, 1):
+        name = f"SpinCore_{side.capitalize()}_{i}"
+        names.append(name)
+        head = f'''--[[
+	{name}  (ModuleScript)  -- part {i} of {len(parts)}
+	PUT IT IN: {where}   (make a Folder named SpinCore there if it doesn't exist)
+
+	Part of the Spin Battlegrounds {side} core, split up so pasting is quick.
+	Loaded by Spin_{side.capitalize()}: don't put any code in front of this.
+]]
+
+return function(__modules, __require, __hasModule)
+'''
+        open(f"{out}/core/{name}.lua", "w").write(head + "".join(chunk) + "end\n")
+    return names
+
+def core_loader(side, names):
+    roots = ('{ game:GetService("ServerScriptService"), game:GetService("ServerStorage") }' if side == "server"
+             else '{ game:GetService("ReplicatedStorage"), game:GetService("ReplicatedFirst") }')
+    where = "ServerScriptService > SpinCore" if side == "server" else "ReplicatedStorage > SpinCore"
+    listed = ", ".join(f'"{n}"' for n in names)
+    return f'''
+-- The core is split into ModuleScripts ({len(names)} parts) so it pastes quickly.
+-- They're found by name ({where} is the tidy place for them).
+local __coreParts = {{ {listed} }}
+local function __findPart(name)
+	for _, root in ipairs({roots}) do
+		local found = root:FindFirstChild(name, true)
+		if found then
+			return found
+		end
+	end
+	return nil
+end
+local __coreOk = true
+for _, partName in ipairs(__coreParts) do
+	local part = __findPart(partName)
+	local waited = 0
+	while not part and waited < 15 do
+		task.wait(0.5)
+		waited = waited + 0.5
+		part = __findPart(partName)
+	end
+	if not part then
+		__coreOk = false
+		warn("[Spin] Missing " .. partName .. ": make a ModuleScript named " .. partName .. " in {where} and paste " .. partName .. ".lua into it.")
+	elseif not part:IsA("ModuleScript") then
+		__coreOk = false
+		warn("[Spin] " .. part:GetFullName() .. " is a " .. part.ClassName .. ". It must be a ModuleScript: delete it, insert a ModuleScript with the same name, and paste the code into that.")
+	else
+		local ok, install = pcall(require, part)
+		if ok and type(install) == "function" then
+			local ok2, err = pcall(install, __modules, __require, __hasModule)
+			if not ok2 then
+				__coreOk = false
+				warn("[Spin] " .. partName .. " failed: " .. tostring(err))
+			end
+		else
+			__coreOk = false
+			warn("[Spin] " .. partName .. " didn't load (was the whole file pasted in?): " .. tostring(install))
+		end
+	end
+end
+if not __coreOk then
+	warn("[Spin] Some core parts are missing or broken (see above), so Spin can't start. Every SpinCore_{side.capitalize()}_N part has to be there.")
+	return
+end
+'''
+
+server_parts = write_parts("server", server_core)
+client_parts = write_parts("client", client_core)
+open(f"{out}/Spin_Server.lua", "w").write(bundle("server", SERVER_HEADER, {}, core_loader("server", server_parts) + SERVER_MAIN))
+open(f"{out}/Spin_Client.lua", "w").write(bundle("client", CLIENT_HEADER, {}, core_loader("client", client_parts) + CLIENT_MAIN))
 for name, where in (("SpinConfig", "src/shared/SpinConfig.lua"), ("TuskConfig", "src/shared/TuskConfig.lua")):
     code = open(where).read()
     code = code.replace(f"({name}  (ReplicatedStorage.SpinShared.{name})", f"{name}  (ModuleScript in ReplicatedStorage)")
     code = code.replace(f"	{name}  (ReplicatedStorage.SpinShared.{name})", f"	{name}  (ModuleScript)\n	PUT IT IN: ReplicatedStorage")
     open(f"{out}/{name}.lua", "w").write(code)
-for d in (out, f"{out}/characters"):
+for d in (out, f"{out}/core", f"{out}/characters"):
     for f in sorted(os.listdir(d)):
         if f.endswith(".lua"):
             print(os.path.relpath(os.path.join(d, f), out), os.path.getsize(os.path.join(d, f)) // 1024, "KB")

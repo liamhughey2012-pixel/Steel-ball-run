@@ -1000,7 +1000,7 @@ TuskConfig.Race = {
 -- YOUR HORSE: press M (controller D-pad left) to call your horse and ride it
 -- anywhere; press again to get off. Customise it in the STABLE (bounty
 -- board > SHOP): coat, mane & tail, saddle blanket, saddle leather, face
--- marking, socks, extras (saddlebags, plume, bells...) and its name. You
+-- marking, socks and its name. You
 -- race on it too. (Saved with your Cash: TuskConfig.Save.)
 ---------------------------------------------------------------------------
 TuskConfig.Horses = {
@@ -1064,19 +1064,6 @@ TuskConfig.Horses = {
 		{ Id = "Front", Name = "FRONT", Price = 30, Style = "Front" },
 		{ Id = "Back", Name = "BACK", Price = 30, Style = "Back" },
 		{ Id = "Four", Name = "ALL FOUR", Price = 50, Style = "Four" },
-	},
-	-- Extras: buy once, then switch each on or off.
-	Extras = {
-		{ Id = "Saddlebags", Name = "SADDLEBAGS", Price = 80 },
-		{ Id = "Bedroll", Name = "BEDROLL", Price = 60 },
-		{ Id = "Plume", Name = "HEAD PLUME", Price = 120, Color = Color3.fromRGB(200, 40, 50) },
-		{ Id = "BraidedMane", Name = "BRAIDED MANE", Price = 100 },
-		{ Id = "FlowingTail", Name = "FLOWING TAIL", Price = 80 },
-		{ Id = "GoldShoes", Name = "GOLD HORSESHOES", Price = 200 },
-		{ Id = "Bells", Name = "SLEIGH BELLS", Price = 90 },
-		{ Id = "Lantern", Name = "LANTERN", Price = 110 },
-		{ Id = "Rosette", Name = "WINNER'S ROSETTES", Price = 70 },
-		{ Id = "WarPaint", Name = "WAR PAINT", Price = 150 },
 	},
 	NameMaxLength = 20, -- name your horse (filtered); it's shown above it
 }

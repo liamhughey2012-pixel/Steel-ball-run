@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `DataService` (capitals matter) |
 
-**What it does:** Saves each player's progress with DataStoreService, so it's still there next time they play: Cash and Bounties (leaderstats) the STABLE: every horse item they've bought (HorseOwned) and what they have on (coat, mane, blanket, saddle, marking, socks, extras) and their horse's name When: it loads when they join; it saves every AutosaveEvery seconds, when they leave, and when the server shuts down (BindToClose). Safety: if their data can't be loaded (DataStore down, or Studio without API access), nothing is saved for them that session, so a failed load can never wipe what they had. Saves use UpdateAsync, retried a few times. Studio: turn on Game Settings > Security > "Enable Studio Access to API Services" (the place must be published) to test saving in Studio. Settings: TuskConfig.Save.
+**What it does:** Saves each player's progress with DataStoreService, so it's still there next time they play: Cash and Bounties (leaderstats) the STABLE: every horse item they've bought (HorseOwned) and what they have on (coat, mane, blanket, saddle, marking, socks) and their horse's name When: it loads when they join; it saves every AutosaveEvery seconds, when they leave, and when the server shuts down (BindToClose). Safety: if their data can't be loaded (DataStore down, or Studio without API access), nothing is saved for them that session, so a failed load can never wipe what they had. Saves use UpdateAsync, retried a few times. Studio: turn on Game Settings > Security > "Enable Studio Access to API Services" (the place must be published) to test saving in Studio. Settings: TuskConfig.Save.
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -31,7 +31,7 @@ Back to [[Where To Put Code]]
 	next time they play:
 	  * Cash and Bounties (leaderstats)
 	  * the STABLE: every horse item they've bought (HorseOwned) and what
-	    they have on (coat, mane, blanket, saddle, marking, socks, extras)
+	    they have on (coat, mane, blanket, saddle, marking, socks)
 	    and their horse's name
 	When: it loads when they join; it saves every AutosaveEvery seconds,
 	when they leave, and when the server shuts down (BindToClose).
@@ -56,7 +56,7 @@ local loaded = {} -- [player] = true once their data has loaded (only then do we
 local VERSION = 1
 
 -- Player attributes that make up the stable.
-local HORSE_ATTRS = { "HorseOwned", "HorseCoat", "HorseMane", "HorseBlanket", "HorseSaddle", "HorseMarking", "HorseSocks", "HorseExtras", "HorseName" }
+local HORSE_ATTRS = { "HorseOwned", "HorseCoat", "HorseMane", "HorseBlanket", "HorseSaddle", "HorseMarking", "HorseSocks", "HorseName" }
 
 local function keyFor(player)
 	return "Player_" .. player.UserId

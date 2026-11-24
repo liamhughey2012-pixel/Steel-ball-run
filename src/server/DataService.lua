@@ -5,7 +5,7 @@
 	next time they play:
 	  * Cash and Bounties (leaderstats)
 	  * the STABLE: every horse item they've bought (HorseOwned) and what
-	    they have on (coat, mane, blanket, saddle, marking, socks, extras)
+	    they have on (coat, mane, blanket, saddle, marking, socks)
 	    and their horse's name
 	When: it loads when they join; it saves every AutosaveEvery seconds,
 	when they leave, and when the server shuts down (BindToClose).
@@ -30,7 +30,7 @@ local loaded = {} -- [player] = true once their data has loaded (only then do we
 local VERSION = 1
 
 -- Player attributes that make up the stable.
-local HORSE_ATTRS = { "HorseOwned", "HorseCoat", "HorseMane", "HorseBlanket", "HorseSaddle", "HorseMarking", "HorseSocks", "HorseExtras", "HorseName" }
+local HORSE_ATTRS = { "HorseOwned", "HorseCoat", "HorseMane", "HorseBlanket", "HorseSaddle", "HorseMarking", "HorseSocks", "HorseName" }
 
 local function keyFor(player)
 	return "Player_" .. player.UserId

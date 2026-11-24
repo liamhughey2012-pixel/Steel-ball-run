@@ -493,7 +493,7 @@ local function showJobs()
 end
 
 -- STABLE: customise your horse (ride it with M): coat, mane & tail,
--- blanket, saddle, marking, socks, extras (on / off) and its name.
+-- blanket, saddle, marking, socks and its name.
 local STABLE_SECTIONS = {
 	{ List = "Coats", Kind = "Coat", Title = "COAT" },
 	{ List = "Manes", Kind = "Mane", Title = "MANE & TAIL" },
@@ -501,19 +501,14 @@ local STABLE_SECTIONS = {
 	{ List = "Saddles", Kind = "Saddle", Title = "SADDLE & BRIDLE" },
 	{ List = "Markings", Kind = "Marking", Title = "FACE MARKING" },
 	{ List = "Socks", Kind = "Socks", Title = "WHITE SOCKS" },
-	{ List = "Extras", Kind = "Extra", Title = "EXTRAS (SWITCH ON / OFF)", Multi = true },
 }
 
 local function stableSelection()
-	local sel = { Extras = {} }
+	local sel = {}
 	for _, sec in ipairs(STABLE_SECTIONS) do
 		for _, item in ipairs(lastStable[sec.List] or {}) do
 			if item.Equipped then
-				if sec.Multi then
-					sel.Extras[item.Id] = true
-				else
-					sel[sec.Kind] = item.Id
-				end
+				sel[sec.Kind] = item.Id
 			end
 		end
 	end
@@ -577,7 +572,7 @@ showStable = function(y, cash)
 		if item.Mane then
 			new("Frame", { Position = UDim2.fromOffset(13, 0), Size = UDim2.fromOffset(6, 32), BackgroundColor3 = item.Mane, BorderSizePixel = 0 }, sw)
 		end
-		local icon = (sec.Kind == "Marking" and MARK_ICONS[item.Style or ""]) or (sec.Kind == "Socks" and SOCK_ICONS[item.Style or ""]) or (sec.Multi and "+") or (sec.Kind == "Mane" and not colorA and "~")
+		local icon = (sec.Kind == "Marking" and MARK_ICONS[item.Style or ""]) or (sec.Kind == "Socks" and SOCK_ICONS[item.Style or ""]) or (sec.Kind == "Mane" and not colorA and "~")
 		if icon then
 			label(sw, { Size = UDim2.fromScale(1, 1), Text = icon, Font = Enum.Font.GothamBlack, TextColor3 = colorA and INK or GOLD })
 		end
@@ -586,18 +581,16 @@ showStable = function(y, cash)
 		local state
 		if not item.Owned then
 			state = "$" .. item.Price
-		elseif sec.Multi then
-			state = item.Equipped and "ON" or "OFF"
 		else
 			state = item.Equipped and "EQUIPPED" or "EQUIP"
 		end
 		local afford = item.Owned or cash >= item.Price
 		local color = item.Equipped and GOLD or (item.Owned and WOOD_DARK or (afford and GREEN or Color3.fromRGB(130, 120, 110)))
-		local btn = new("TextButton", { Position = UDim2.fromOffset(46, 30), Size = UDim2.fromOffset(80, 24), BackgroundColor3 = color, Text = state, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = item.Equipped and INK or Color3.new(1, 1, 1), AutoButtonColor = sec.Multi or not item.Equipped }, card)
+		local btn = new("TextButton", { Position = UDim2.fromOffset(46, 30), Size = UDim2.fromOffset(80, 24), BackgroundColor3 = color, Text = state, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = item.Equipped and INK or Color3.new(1, 1, 1), AutoButtonColor = not item.Equipped }, card)
 		corner(btn, 6)
 		new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) }, btn)
 		btn.Activated:Connect(function()
-			if sec.Multi or not item.Equipped then
+			if not item.Equipped then
 				Remote:FireServer("BuyHorse", key)
 			end
 		end)

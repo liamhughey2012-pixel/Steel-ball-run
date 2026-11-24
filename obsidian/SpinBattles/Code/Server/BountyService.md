@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `BountyService` (capitals matter) |
 
-**What it does:** The BOUNTY BOARD by the spawn (owner's design): a blocky board: two brown posts with grass at their feet, a brown plank back, and parchment wanted posters pinned on it. The posters on the board show the faces of the current top bounties. walk up and press E ("View Bounties"): the client opens the board UI with a wanted poster for every other player and every Stand-user NPC accept one: you get a bounty tracker and a TARGET marker on them. Land the killing blow (your hit within KillCreditTime) and you're paid in Cash (leaderstats). Players are worth more the longer their kill streak. Bounties run out after Duration seconds. JOBS tab: a few paid tasks (the same for everyone, new ones every 10 minutes): take down NPCs, deal damage, perfect blocks / dodges, claim bounties, take a corpse part... Progress counts on its own; you're paid the moment one's done SHOP tab: spend Cash on bandages, a speed tonic, a lucky horseshoe (faster ultimate), a corpse compass, or CLEAR YOUR NAME (wipes your streak and any price on your head) STABLE (in the SHOP): customise your horse: coat, mane & tail, saddle blanket, saddle leather, face marking, socks, extras you can switch on and off (saddlebags, plume, bells, lantern...) and its name (filtered). You ride it with M and race on it PUT A PRICE ON THEIR HEAD: from a player's contract, pay to raise their bounty. Whoever takes them down next is paid it Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
+**What it does:** The BOUNTY BOARD by the spawn (owner's design): a blocky board: two brown posts with grass at their feet, a brown plank back, and parchment wanted posters pinned on it. The posters on the board show the faces of the current top bounties. walk up and press E ("View Bounties"): the client opens the board UI with a wanted poster for every other player and every Stand-user NPC accept one: you get a bounty tracker and a TARGET marker on them. Land the killing blow (your hit within KillCreditTime) and you're paid in Cash (leaderstats). Players are worth more the longer their kill streak. Bounties run out after Duration seconds. JOBS tab: a few paid tasks (the same for everyone, new ones every 10 minutes): take down NPCs, deal damage, perfect blocks / dodges, claim bounties, take a corpse part... Progress counts on its own; you're paid the moment one's done SHOP tab: spend Cash on bandages, a speed tonic, a lucky horseshoe (faster ultimate), a corpse compass, or CLEAR YOUR NAME (wipes your streak and any price on your head) STABLE (in the SHOP): customise your horse: coat, mane & tail, saddle blanket, saddle leather, face marking, socks and its name (filtered). You ride it with M and race on it PUT A PRICE ON THEIR HEAD: from a player's contract, pay to raise their bounty. Whoever takes them down next is paid it Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -45,9 +45,8 @@ Back to [[Where To Put Code]]
 	    (faster ultimate), a corpse compass, or CLEAR YOUR NAME (wipes your
 	    streak and any price on your head)
 	  * STABLE (in the SHOP): customise your horse: coat, mane & tail,
-	    saddle blanket, saddle leather, face marking, socks, extras you can
-	    switch on and off (saddlebags, plume, bells, lantern...) and its
-	    name (filtered). You ride it with M and race on it
+	    saddle blanket, saddle leather, face marking, socks and its name
+	    (filtered). You ride it with M and race on it
 	  * PUT A PRICE ON THEIR HEAD: from a player's contract, pay to raise
 	    their bounty. Whoever takes them down next is paid it
 	Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
@@ -535,7 +534,7 @@ local function owned(player)
 end
 
 -- Every stable category: its config list, the player attribute holding the
--- equipped one, and whether several can be on at once (extras).
+-- equipped one.
 local KINDS = {
 	{ Kind = "Coat", List = "Coats", Attr = "HorseCoat" },
 	{ Kind = "Mane", List = "Manes", Attr = "HorseMane" },
@@ -543,25 +542,15 @@ local KINDS = {
 	{ Kind = "Saddle", List = "Saddles", Attr = "HorseSaddle" },
 	{ Kind = "Marking", List = "Markings", Attr = "HorseMarking" },
 	{ Kind = "Socks", List = "Socks", Attr = "HorseSocks" },
-	{ Kind = "Extra", List = "Extras", Attr = "HorseExtras", Multi = true },
 }
 local KIND = {}
 for _, k in ipairs(KINDS) do
 	KIND[k.Kind] = k
 end
 
-local function extrasOn(player)
-	local set = {}
-	for id in string.gmatch(player:GetAttribute("HorseExtras") or "", "[^,]+") do
-		set[id] = true
-	end
-	return set
-end
-
 local function stableFor(player)
 	local have = owned(player)
 	local out = { Name = player:GetAttribute("HorseName"), NameMax = hcfg.NameMaxLength or 20 }
-	local on = extrasOn(player)
 	for _, k in ipairs(KINDS) do
 		local list = hcfg[k.List] or {}
 		local current = player:GetAttribute(k.Attr) or (list[1] or {}).Id
@@ -571,7 +560,7 @@ local function stableFor(player)
 				Id = item.Id, Name = item.Name, Price = item.Price,
 				Body = item.Body, Mane = item.Mane, Color = item.Color, Material = item.Material, Socks = item.Socks, Style = item.Style,
 				Owned = item.Price <= 0 or have[k.Kind .. ":" .. item.Id] == true,
-				Equipped = k.Multi and on[item.Id] == true or (not k.Multi and item.Id == current),
+				Equipped = item.Id == current,
 			})
 		end
 		out[k.List] = items
@@ -614,33 +603,8 @@ local function buyHorse(player, key)
 		local list = player:GetAttribute("HorseOwned")
 		player:SetAttribute("HorseOwned", (list and list ~= "" and (list .. ",") or "") .. k.Kind .. ":" .. item.Id)
 		send(player, "Bought", { Name = item.Name .. " (" .. string.upper(k.Kind) .. ")", Price = item.Price })
-		if k.Multi then
-			-- A new extra goes straight on.
-			local on = extrasOn(player)
-			on[item.Id] = true
-			local ids = {}
-			for id in pairs(on) do
-				table.insert(ids, id)
-			end
-			table.sort(ids)
-			player:SetAttribute(k.Attr, table.concat(ids, ","))
-			refreshRide(player)
-			return
-		end
 	end
-	if k.Multi then
-		-- Owned extras switch on and off.
-		local on = extrasOn(player)
-		on[item.Id] = not on[item.Id] or nil
-		local ids = {}
-		for id in pairs(on) do
-			table.insert(ids, id)
-		end
-		table.sort(ids)
-		player:SetAttribute(k.Attr, #ids > 0 and table.concat(ids, ",") or nil)
-	else
-		player:SetAttribute(k.Attr, item.Id)
-	end
+	player:SetAttribute(k.Attr, item.Id)
 	refreshRide(player)
 end
 
