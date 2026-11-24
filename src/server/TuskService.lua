@@ -308,6 +308,26 @@ function TuskService.fireKnife(player, state, spec)
 	})
 end
 
+-- Server projectile with a plunder-bubble visual (Josuke: Soft & Wet).
+function TuskService.fireBubble(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "PlunderBubble",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Bubble" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Soft & Wet's PLUNDER: SOUND (and anything like it): no abilities for a while.
+function TuskService.isSilenced(character)
+	return character ~= nil and (character:GetAttribute("SilencedUntil") or 0) > workspace:GetServerTimeNow()
+end
+
 -- Some characters walk faster or slower (Registry WalkSpeed, e.g. Sandman).
 function TuskService.applyCharacterSpeed(state)
 	local character = state and state.Character
@@ -584,11 +604,19 @@ local function onRequest(player, action, a, b, c)
 		if typeof(a) ~= "number" or (a ~= 1 and a ~= 2 and a ~= 3) then
 			return
 		end
+		if TuskService.isSilenced(state.Character) then
+			TuskService.tell(player, "Denied", { Reason = "Silenced" })
+			return
+		end
 		if state.Sneaking then
 			Sneak.ambush(player, state)
 		end
 		module.Ability(TuskService, player, state, a, "Press", c)
 	elseif action == "Ultimate" then
+		if TuskService.isSilenced(state.Character) then
+			TuskService.tell(player, "Denied", { Reason = "Silenced" })
+			return
+		end
 		if state.Sneaking then
 			Sneak.exit(player, state, true)
 		end

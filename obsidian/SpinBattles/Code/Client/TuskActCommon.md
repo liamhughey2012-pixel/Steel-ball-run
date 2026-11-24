@@ -70,6 +70,7 @@ Common.Palettes = {
 	[12] = { Main = Color3.fromRGB(214, 60, 70), Second = Color3.fromRGB(226, 196, 110), Light = Color3.fromRGB(255, 200, 200) }, -- Axl RO (Civil War red)
 	[13] = { Main = Color3.fromRGB(120, 170, 255), Second = Color3.fromRGB(236, 120, 170), Light = Color3.fromRGB(240, 246, 255) }, -- Funny Valentine (D4C blue + pink)
 	[14] = { Main = Color3.fromRGB(236, 196, 70), Second = Color3.fromRGB(70, 170, 160), Light = Color3.fromRGB(255, 244, 200) }, -- Diego from another world (The World gold + teal)
+	[15] = { Main = Color3.fromRGB(120, 190, 240), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(235, 248, 255) }, -- Josuke (Soft & Wet bubble blue + gold)
 }
 
 function Common.palette(act)

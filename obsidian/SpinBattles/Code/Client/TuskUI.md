@@ -161,7 +161,9 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("KNIFE") then
+	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
+		return "bubble"
+	elseif has("KNIFE") then
 		return "knife"
 	elseif has("TIME STOP") then
 		return "clock"
@@ -415,6 +417,13 @@ local function drawIcon(icon, kind)
 		for i = -1, 1 do
 			bar(icon, 0.5 + i * 0.24, 0.5 + (i == 0 and -0.04 or 0.04), 0.18, 0.34, i * 8)
 		end
+	elseif kind == "bubble" then
+		-- Bubbles: a big one and two small, with shine spots.
+		ring(icon, 0.6, 3, UDim2.fromScale(0.42, 0.55))
+		ring(icon, 0.3, 2, UDim2.fromScale(0.75, 0.3))
+		ring(icon, 0.2, 2, UDim2.fromScale(0.78, 0.72))
+		local shine = bar(icon, 0.32, 0.42, 0.1, 0.1)
+		corner(shine, 999)
 	elseif kind == "knife" then
 		-- Three knives fanned out: blades and handles.
 		for i = -1, 1 do
@@ -1190,6 +1199,7 @@ local DENY_TEXT = {
 	Blocked = "NO ROOM TO MOVE THERE",
 	TooSoon = "TUSK ISN'T READY TO AWAKEN YET",
 	NeedCorpse = "FIND A SAINT'S CORPSE PART FIRST",
+	Silenced = "SILENCED: YOUR SOUND WAS PLUNDERED",
 }
 
 -- Wobble a card (denied input).

@@ -271,6 +271,23 @@ TuskActRegistry.Acts = {
 			{ Slot = 2, Attribute = "WorldBarrageUntil", Text = "MUDA" },
 		},
 	},
+	-- Josuke Higashikata (JoJolion): SOFT & WET (plunder bubbles that steal
+	-- things from what they touch: friction, sight, sound...).
+	[15] = {
+		Name = "SOFT & WET",
+		Character = "Josuke",
+		Tagline = "Plunder bubbles",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(120, 190, 240), Secondary = Color3.fromRGB(240, 200, 90) },
+		M1 = "SOFT & WET COMBO",
+		Abilities = { "PLUNDER: FRICTION", "PLUNDER: SIGHT", "BUBBLE MINES" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "GO BEYOND",
+		Next = nil,
+		Module = "Josuke", -- server moves
+		ClientModule = "JosukeVFX", -- client visuals (TuskActVFX.JosukeVFX)
+		CardTitle = "STAND  ·  SOFT & WET",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -280,7 +297,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

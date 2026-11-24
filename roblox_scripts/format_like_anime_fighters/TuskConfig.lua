@@ -146,6 +146,7 @@ TuskConfig.Roster = {
 	{ Id = "Axl", Name = "AXL RO", Stand = "CIVIL WAR", Available = true, Color = Color3.fromRGB(214, 60, 70) },
 	{ Id = "Valentine", Name = "FUNNY VALENTINE", Stand = "D4C", Available = true, Color = Color3.fromRGB(120, 170, 255) },
 	{ Id = "DiegoAU", Name = "DIEGO BRANDO (AU)", Stand = "THE WORLD", Available = true, Color = Color3.fromRGB(236, 196, 70) },
+	{ Id = "Josuke", Name = "JOSUKE HIGASHIKATA (8)", Stand = "SOFT & WET", Available = true, Color = Color3.fromRGB(120, 190, 240) },
 }
 
 ---------------------------------------------------------------------------
@@ -197,10 +198,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 11, -- how many at once (each takes a free spot below)
+	Count = 12, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine", "DiegoAU" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine", "DiegoAU", "Josuke" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -229,6 +230,7 @@ TuskConfig.StandBots = {
 		Vector3.new(-40, 0, -420), -- outside Fort Dust
 		Vector3.new(-100, 0, -180), -- western desert
 		Vector3.new(215, 0, -185), -- south-east desert
+		Vector3.new(-230, 0, -230), -- south-west desert
 	},
 	Distance = 70, -- (no map) studs from the spawn to their camp
 	Spacing = 14, -- (no map) studs between them at the camp
@@ -852,6 +854,47 @@ TuskConfig.DiegoAU = {
 	},
 }
 
+---------------------------------------------------------------------------
+-- Josuke Higashikata (JoJolion): SOFT & WET
+---------------------------------------------------------------------------
+TuskConfig.Josuke = {
+	M1 = { -- SOFT & WET COMBO
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.5, Knockback = 40, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	PlunderFriction = { -- 1: a bubble steals their friction: they slide about like on ice
+		Cooldown = 8, Windup = 0.2,
+		Speed = 75, Radius = 1.3, Range = 85,
+		Damage = 5, Stun = 0.3, Knockback = 28, -- the pop shoves them, and they keep sliding
+		Time = 3.5, -- seconds without friction
+		Grip = 0.8, -- how quickly a frictionless body can change direction (lower = more slippery)
+	},
+	PlunderSight = { -- 2: a bubble steals their sight: their screen goes dark (NPCs lose you)
+		Cooldown = 14, Windup = 0.2,
+		Speed = 60, Radius = 1.3, Range = 70,
+		Damage = 4, Stun = 0.3,
+		Time = 3,
+	},
+	BubbleMines = { -- 3: bubbles drift out round him and float there; touch one and it pops
+		Cooldown = 12, Windup = 0.25,
+		Count = 6, Spread = 9, -- studs out from him
+		Life = 8, Trigger = 3.5,
+		Damage = 6, Stun = 0.6, Knockback = 20,
+	},
+	Ultimate = { -- GO BEYOND: a tiny bubble spinning infinitely: it can't be blocked
+		Windup = 1.0,
+		Speed = 55, Radius = 1.6, Range = 150,
+		Damage = 30, Stun = 1.0, Knockback = 45, Launch = 15,
+	},
+	CorpseSilence = { Radius = 20, Time = 3.5, Damage = 5 }, -- corpse move PLUNDER: SOUND: no abilities for a while
+}
+
 TuskConfig.Gyro = {
 	M1 = {
 		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,
@@ -936,7 +979,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }

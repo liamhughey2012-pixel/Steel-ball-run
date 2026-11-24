@@ -300,7 +300,8 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 		return false
 	end
 	local humanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
-	local blocked = Adapter.isBlocking(targetCharacter) and Adapter.isFrontal(attackerPlayer, targetCharacter, info)
+	-- (info.Unblockable: e.g. Soft & Wet's Go Beyond goes straight through a guard.)
+	local blocked = not info.Unblockable and Adapter.isBlocking(targetCharacter) and Adapter.isFrontal(attackerPlayer, targetCharacter, info)
 	local s = Adapter.Settings
 	local d = TuskConfig.Defense or {}
 	local guardBreak = false

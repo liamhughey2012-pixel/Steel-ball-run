@@ -204,6 +204,13 @@ TuskAnimation.Poses = {
 	DWAim = { Root = { 0, -20, 0, 0 }, Waist = { 0, -20, 0 }, Neck = { 0, 20, 0 }, RightArm = { 90, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 82, 0, -34 }, LeftElbow = { 40, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { -8, 0, 0 } },
 	DWFan = { Root = { 0, -20, 0, 0 }, Waist = { 0, -20, 0 }, Neck = { 0, 20, 0 }, RightArm = { 96, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 70, 0, -30 }, LeftElbow = { 56, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { -8, 0, 0 } },
 	DWTwirl = { Root = { 0, -6, 0, 0 }, Waist = { 0, -6, 0 }, Neck = { 4, 10, 0 }, RightArm = { 40, 0, 50 }, RightElbow = { 70, 0, 0 }, LeftArm = { -4, 0, -16 }, LeftElbow = { 24, 0, 0 } },
+	-- JOSUKE (JoJolion): relaxed, hands behind his head; Soft & Wet does the fighting.
+	JStance = { Root = { 0, 4, 0, 0 }, Waist = { -4, 4, 0 }, Neck = { -6, -6, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 130, 0, 0 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 }, LeftHip = { 4, 0, 0 } },
+	JPoint = { Root = { 0, -16, 0, -0.02 }, Waist = { 0, -16, 0 }, Neck = { 4, 16, 0 }, RightArm = { 90, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 } },
+	JBlow = { Root = { 0, -10, 0, 0 }, Waist = { 4, -10, 0 }, Neck = { 10, 10, 0 }, RightArm = { 80, 0, 40 }, RightElbow = { 90, 0, 0 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 } },
+	JFlick = { Root = { -2, -22, 0, -0.04, 0.3 }, Waist = { -4, -24, 0 }, Neck = { 0, 22, 0 }, RightArm = { 95, 0, 10 }, RightElbow = { 0, 0, 0 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 }, LeftHip = { 14, 0, 0 } },
+	JSpread = { Root = { 2, 0, 0, 0.04 }, Waist = { 6, 0, 0 }, Neck = { 10, 0, 0 }, RightArm = { 60, 0, 70 }, RightElbow = { 30, 0, 0 }, LeftArm = { 60, 0, -70 }, LeftElbow = { 30, 0, 0 } },
+	JCharge = { Root = { 6, -20, 0, -0.1 }, Waist = { 10, -20, 0 }, Neck = { 14, 20, 0 }, RightArm = { 70, 0, -10 }, RightElbow = { 100, 0, 0 }, LeftArm = { 60, 0, 10 }, LeftElbow = { 100, 0, 0 }, RightKnee = { -16, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightHip = { 12, 0, 0 }, LeftHip = { 12, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -376,6 +383,13 @@ TuskAnimation.Actions = {
 	VLoveTrain = { { 0, "VStance" }, { 0.3, "VPledge", "Back", 3 }, { 0.9, "VPledge", "Linear", 3 }, { 1.2, "VStance", "Sine" } },
 
 	-- DIEGO (AU)
+	J_M1_1 = { { 0, "JStance" }, { 0.07, "JPoint", "Back", 3 }, { 0.3, "JStance", "Sine" } },
+	J_M1_2 = { { 0, "JStance" }, { 0.07, "JPoint", "Back", 3 }, { 0.3, "JStance", "Sine" } },
+	J_M1_3 = { { 0, "JStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "JStance", "Sine" } },
+	J_M1_4 = { { 0, "JStance" }, { 0.1, "JFlick", "Snap", 6 }, { 0.25, "JFlick", "Linear" }, { 0.42, "JStance", "Sine" } },
+	JBubble = { { 0, "JStance" }, { 0.12, "JBlow", "Out" }, { 0.2, "JFlick", "Snap", 4 }, { 0.4, "JFlick", "Linear" }, { 0.6, "JStance", "Sine" } },
+	JMines = { { 0, "JStance" }, { 0.15, "JSpread", "Back", 3 }, { 0.5, "JSpread", "Linear" }, { 0.75, "JStance", "Sine" } },
+	JGoBeyond = { { 0, "JStance" }, { 0.2, "JCharge", "In" }, { 0.95, "JCharge", "Linear", 1 }, { 1.05, "JFlick", "Snap", 7 }, { 1.35, "JFlick", "Linear" }, { 1.6, "JStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },

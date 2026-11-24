@@ -1386,7 +1386,8 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 		return false
 	end
 	local humanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
-	local blocked = Adapter.isBlocking(targetCharacter) and Adapter.isFrontal(attackerPlayer, targetCharacter, info)
+	-- (info.Unblockable: e.g. Soft & Wet's Go Beyond goes straight through a guard.)
+	local blocked = not info.Unblockable and Adapter.isBlocking(targetCharacter) and Adapter.isFrontal(attackerPlayer, targetCharacter, info)
 	local s = Adapter.Settings
 	local d = TuskConfig.Defense or {}
 	local guardBreak = false
@@ -1559,6 +1560,7 @@ __modules["CorpseMoves"] = function()
 	  Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit
 	  Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse
 	  Diego (AU)   REVOLVER: draws a six-shooter, fans six shots where he aims
+	  Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -1844,6 +1846,26 @@ USE.DiegoAU = function(S, player, state, character, root, aim)
 			fx({ Character = char, Who = "DiegoAU", Phase = "Shot", Index = i, Position = muzzle, Direction = dir, Last = last })
 		end)
 	end
+end
+
+-- PLUNDER: SOUND: Soft & Wet's bubbles steal the sound from everyone round
+-- him: for a few seconds they can't use their abilities or ultimate.
+USE.Josuke = function(S, player, state, character, root)
+	local c = TuskConfig.Josuke and TuskConfig.Josuke.CorpseSilence or { Radius = 20, Time = 3.5, Damage = 5 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Josuke", Phase = "Silence", Position = root.Position, Radius = c.Radius, Time = c.Time })
+	task.delay(0.3, function()
+		local char, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, c.Radius, 12)) do
+			local tr = target:FindFirstChild("HumanoidRootPart")
+			if tr and S.hit(player, target, { Damage = c.Damage, Stun = 0.4, Knockback = 6, Direction = tr.Position - r.Position, Position = tr.Position, Source = "JosukeSound" }) then
+				target:SetAttribute("SilencedUntil", workspace:GetServerTimeNow() + c.Time)
+			end
+		end
+	end)
 end
 
 -- THE SAINT'S MIRACLE: only with the complete corpse (all 8 parts).
@@ -7064,7 +7086,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU):
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8):
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -7118,6 +7140,7 @@ local LOOKS = {
 	Valentine = { Skin = Color3.fromRGB(240, 210, 190), Torso = Color3.fromRGB(236, 230, 220), Legs = Color3.fromRGB(40, 44, 70) },
 	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 	DiegoAU = { Skin = Color3.fromRGB(240, 205, 170), Torso = Color3.fromRGB(110, 200, 185), Legs = Color3.fromRGB(196, 170, 110) },
+	Josuke = { Skin = Color3.fromRGB(214, 168, 130), Torso = Color3.fromRGB(240, 240, 236), Legs = Color3.fromRGB(236, 236, 232) },
 }
 
 local usedSpots = {} -- [spot index] = slot using it
@@ -7459,6 +7482,10 @@ end
 
 -- Nearest player in range (that the bot has noticed).
 local function findTarget(bot, root)
+	-- Sight plundered (Soft & Wet): they can't see anyone.
+	if bot.Model and (bot.Model:GetAttribute("BlindUntil") or 0) > workspace:GetServerTimeNow() then
+		return nil
+	end
 	local best, bestDist
 	for _, player in ipairs(Players:GetPlayers()) do
 		local character = player.Character
@@ -7656,7 +7683,8 @@ local function think(bot, now)
 		root.CFrame = CFrame.lookAt(root.Position, flatTarget)
 	end
 	local aim = (tr.Position - root.Position).Unit
-	if bot.Player:GetAttribute("TuskUlt") and bot.Player:GetAttribute("TuskUlt") >= TuskConfig.Ultimate.MaxMeter and dist < 22 and now >= bot.NextUlt then
+	local silenced = S.isSilenced and S.isSilenced(model)
+	if not silenced and bot.Player:GetAttribute("TuskUlt") and bot.Player:GetAttribute("TuskUlt") >= TuskConfig.Ultimate.MaxMeter and dist < 22 and now >= bot.NextUlt then
 		bot.NextUlt = now + 5
 		module.Ultimate(S, bot.Player, state, aim)
 		return
@@ -7668,7 +7696,9 @@ local function think(bot, now)
 	end
 	if now >= bot.NextAbility and dist < (cfg.AbilityRange or 35) then
 		bot.NextAbility = now + (cfg.AbilityEvery or 2.5) * (0.7 + math.random() * 0.6)
-		useAbility(bot, module, math.random(1, 3), aim)
+		if not silenced then
+			useAbility(bot, module, math.random(1, 3), aim)
+		end
 		return
 	end
 	if dist <= reach then
@@ -9089,6 +9119,23 @@ TuskActRegistry.Acts = {
 			{ Slot = 2, Attribute = "WorldBarrageUntil", Text = "MUDA" },
 		},
 	},
+	-- Josuke Higashikata (JoJolion): SOFT & WET (plunder bubbles that steal
+	-- things from what they touch: friction, sight, sound...).
+	[15] = {
+		Name = "SOFT & WET",
+		Character = "Josuke",
+		Tagline = "Plunder bubbles",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(120, 190, 240), Secondary = Color3.fromRGB(240, 200, 90) },
+		M1 = "SOFT & WET COMBO",
+		Abilities = { "PLUNDER: FRICTION", "PLUNDER: SIGHT", "BUBBLE MINES" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "GO BEYOND",
+		Next = nil,
+		Module = "Josuke", -- server moves
+		ClientModule = "JosukeVFX", -- client visuals (TuskActVFX.JosukeVFX)
+		CardTitle = "STAND  ·  SOFT & WET",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -9098,7 +9145,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -9855,6 +9902,26 @@ function TuskService.fireKnife(player, state, spec)
 	})
 end
 
+-- Server projectile with a plunder-bubble visual (Josuke: Soft & Wet).
+function TuskService.fireBubble(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "PlunderBubble",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Bubble" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Soft & Wet's PLUNDER: SOUND (and anything like it): no abilities for a while.
+function TuskService.isSilenced(character)
+	return character ~= nil and (character:GetAttribute("SilencedUntil") or 0) > workspace:GetServerTimeNow()
+end
+
 -- Some characters walk faster or slower (Registry WalkSpeed, e.g. Sandman).
 function TuskService.applyCharacterSpeed(state)
 	local character = state and state.Character
@@ -10131,11 +10198,19 @@ local function onRequest(player, action, a, b, c)
 		if typeof(a) ~= "number" or (a ~= 1 and a ~= 2 and a ~= 3) then
 			return
 		end
+		if TuskService.isSilenced(state.Character) then
+			TuskService.tell(player, "Denied", { Reason = "Silenced" })
+			return
+		end
 		if state.Sneaking then
 			Sneak.ambush(player, state)
 		end
 		module.Ability(TuskService, player, state, a, "Press", c)
 	elseif action == "Ultimate" then
+		if TuskService.isSilenced(state.Character) then
+			TuskService.tell(player, "Denied", { Reason = "Silenced" })
+			return
+		end
 		if state.Sneaking then
 			Sneak.exit(player, state, true)
 		end
@@ -10745,7 +10820,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

@@ -648,6 +648,21 @@ local function onMove(data)
 		if local_ then
 			CameraFX.shake(data.Last and 0.3 or 0.15, 0.06)
 		end
+	elseif who == "Josuke" and data.Phase == "Silence" and data.Position then
+		-- A ring of bubbles bursts out; the sound goes with them.
+		ring(data.Position, data.Radius or 20, Color3.fromRGB(170, 220, 255), 0.5)
+		for k = 1, 16 do
+			local a = k / 16 * math.pi * 2
+			local b = VFXLib.part({ Shape = Enum.PartType.Ball, Size = Vector3.new(1.2, 1.2, 1.2), Color = Color3.fromRGB(200, 235, 255), Material = Enum.Material.Glass, Transparency = 0.4 })
+			local from = data.Position + Vector3.new(0, 2, 0)
+			local to = from + Vector3.new(math.cos(a), 0.2, math.sin(a)) * (data.Radius or 20)
+			VFXLib.animate(0.5, function(t)
+				b.CFrame = CFrame.new(from:Lerp(to, t))
+				b.Transparency = 0.4 + 0.6 * t
+			end, function()
+				b:Destroy()
+			end)
+		end
 	elseif who == "Valentine" then
 		if data.Phase == "Bless" then
 			shell(character, Color3.fromRGB(255, 250, 225), Enum.Material.ForceField, data.Time or 2.5)

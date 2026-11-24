@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `StandBots` (capitals matter) |
 
-**What it does:** Enemy NPCs that fight you with a Stand. Each one plays a real character (Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU): whichever are installed) through exactly the same move code as players, so their M1s, abilities and ultimates hit, stun and look the same. they're scattered round the map (TuskConfig.StandBots.Spots), chase any player who comes within AggroRange and walk back to their spot when the player gets away each respawn picks a new free spot, so they move around over time M1 combo up close, abilities on cooldown, ultimate when their meter is full hold abilities are charged and released automatically they block now and then, dash in to close the gap, and dash away when hurt a sneaking player isn't noticed until they're close (TuskConfig.Sneak NoticeRange), or they hit the bot; a bot that saw them keeps track for a few seconds every installed character has an NPC out: a new NPC is whichever character has the fewest right now (TuskConfig.StandBots.Characters) Blackmore NPCs rain walk while it rains: they step up onto frozen raindrops (an invisible step only NPCs collide with) and climb toward players above them idle bots walk over and pick up Saint's Corpse parts lying near their camp; bots holding parts use their corpse move and drop them on death they respawn RespawnTime seconds after dying, as whoever is missing Settings: TuskConfig.StandBots (Enabled = false turns them off). Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
+**What it does:** Enemy NPCs that fight you with a Stand. Each one plays a real character (Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8): whichever are installed) through exactly the same move code as players, so their M1s, abilities and ultimates hit, stun and look the same. they're scattered round the map (TuskConfig.StandBots.Spots), chase any player who comes within AggroRange and walk back to their spot when the player gets away each respawn picks a new free spot, so they move around over time M1 combo up close, abilities on cooldown, ultimate when their meter is full hold abilities are charged and released automatically they block now and then, dash in to close the gap, and dash away when hurt a sneaking player isn't noticed until they're close (TuskConfig.Sneak NoticeRange), or they hit the bot; a bot that saw them keeps track for a few seconds every installed character has an NPC out: a new NPC is whichever character has the fewest right now (TuskConfig.StandBots.Characters) Blackmore NPCs rain walk while it rains: they step up onto frozen raindrops (an invisible step only NPCs collide with) and climb toward players above them idle bots walk over and pick up Saint's Corpse parts lying near their camp; bots holding parts use their corpse move and drop them on death they respawn RespawnTime seconds after dying, as whoever is missing Settings: TuskConfig.StandBots (Enabled = false turns them off). Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -28,7 +28,7 @@ Back to [[Where To Put Code]]
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU):
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8):
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -82,6 +82,7 @@ local LOOKS = {
 	Valentine = { Skin = Color3.fromRGB(240, 210, 190), Torso = Color3.fromRGB(236, 230, 220), Legs = Color3.fromRGB(40, 44, 70) },
 	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 	DiegoAU = { Skin = Color3.fromRGB(240, 205, 170), Torso = Color3.fromRGB(110, 200, 185), Legs = Color3.fromRGB(196, 170, 110) },
+	Josuke = { Skin = Color3.fromRGB(214, 168, 130), Torso = Color3.fromRGB(240, 240, 236), Legs = Color3.fromRGB(236, 236, 232) },
 }
 
 local usedSpots = {} -- [spot index] = slot using it
@@ -423,6 +424,10 @@ end
 
 -- Nearest player in range (that the bot has noticed).
 local function findTarget(bot, root)
+	-- Sight plundered (Soft & Wet): they can't see anyone.
+	if bot.Model and (bot.Model:GetAttribute("BlindUntil") or 0) > workspace:GetServerTimeNow() then
+		return nil
+	end
 	local best, bestDist
 	for _, player in ipairs(Players:GetPlayers()) do
 		local character = player.Character
@@ -620,7 +625,8 @@ local function think(bot, now)
 		root.CFrame = CFrame.lookAt(root.Position, flatTarget)
 	end
 	local aim = (tr.Position - root.Position).Unit
-	if bot.Player:GetAttribute("TuskUlt") and bot.Player:GetAttribute("TuskUlt") >= TuskConfig.Ultimate.MaxMeter and dist < 22 and now >= bot.NextUlt then
+	local silenced = S.isSilenced and S.isSilenced(model)
+	if not silenced and bot.Player:GetAttribute("TuskUlt") and bot.Player:GetAttribute("TuskUlt") >= TuskConfig.Ultimate.MaxMeter and dist < 22 and now >= bot.NextUlt then
 		bot.NextUlt = now + 5
 		module.Ultimate(S, bot.Player, state, aim)
 		return
@@ -632,7 +638,9 @@ local function think(bot, now)
 	end
 	if now >= bot.NextAbility and dist < (cfg.AbilityRange or 35) then
 		bot.NextAbility = now + (cfg.AbilityEvery or 2.5) * (0.7 + math.random() * 0.6)
-		useAbility(bot, module, math.random(1, 3), aim)
+		if not silenced then
+			useAbility(bot, module, math.random(1, 3), aim)
+		end
 		return
 	end
 	if dist <= reach then

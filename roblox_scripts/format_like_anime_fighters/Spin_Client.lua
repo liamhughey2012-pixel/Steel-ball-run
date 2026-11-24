@@ -4037,6 +4037,21 @@ local function onMove(data)
 		if local_ then
 			CameraFX.shake(data.Last and 0.3 or 0.15, 0.06)
 		end
+	elseif who == "Josuke" and data.Phase == "Silence" and data.Position then
+		-- A ring of bubbles bursts out; the sound goes with them.
+		ring(data.Position, data.Radius or 20, Color3.fromRGB(170, 220, 255), 0.5)
+		for k = 1, 16 do
+			local a = k / 16 * math.pi * 2
+			local b = VFXLib.part({ Shape = Enum.PartType.Ball, Size = Vector3.new(1.2, 1.2, 1.2), Color = Color3.fromRGB(200, 235, 255), Material = Enum.Material.Glass, Transparency = 0.4 })
+			local from = data.Position + Vector3.new(0, 2, 0)
+			local to = from + Vector3.new(math.cos(a), 0.2, math.sin(a)) * (data.Radius or 20)
+			VFXLib.animate(0.5, function(t)
+				b.CFrame = CFrame.new(from:Lerp(to, t))
+				b.Transparency = 0.4 + 0.6 * t
+			end, function()
+				b:Destroy()
+			end)
+		end
 	elseif who == "Valentine" then
 		if data.Phase == "Bless" then
 			shell(character, Color3.fromRGB(255, 250, 225), Enum.Material.ForceField, data.Time or 2.5)
@@ -4865,6 +4880,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 6) == "Josuke" then
+		starColor = Color3.fromRGB(120, 190, 240)
 	elseif source:sub(1, 7) == "DiegoAU" then
 		starColor = Color3.fromRGB(236, 196, 70)
 	elseif source:sub(1, 5) == "Diego" then
@@ -6092,6 +6109,7 @@ Common.Palettes = {
 	[12] = { Main = Color3.fromRGB(214, 60, 70), Second = Color3.fromRGB(226, 196, 110), Light = Color3.fromRGB(255, 200, 200) }, -- Axl RO (Civil War red)
 	[13] = { Main = Color3.fromRGB(120, 170, 255), Second = Color3.fromRGB(236, 120, 170), Light = Color3.fromRGB(240, 246, 255) }, -- Funny Valentine (D4C blue + pink)
 	[14] = { Main = Color3.fromRGB(236, 196, 70), Second = Color3.fromRGB(70, 170, 160), Light = Color3.fromRGB(255, 244, 200) }, -- Diego from another world (The World gold + teal)
+	[15] = { Main = Color3.fromRGB(120, 190, 240), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(235, 248, 255) }, -- Josuke (Soft & Wet bubble blue + gold)
 }
 
 function Common.palette(act)
@@ -6549,6 +6567,23 @@ TuskActRegistry.Acts = {
 			{ Slot = 2, Attribute = "WorldBarrageUntil", Text = "MUDA" },
 		},
 	},
+	-- Josuke Higashikata (JoJolion): SOFT & WET (plunder bubbles that steal
+	-- things from what they touch: friction, sight, sound...).
+	[15] = {
+		Name = "SOFT & WET",
+		Character = "Josuke",
+		Tagline = "Plunder bubbles",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(120, 190, 240), Secondary = Color3.fromRGB(240, 200, 90) },
+		M1 = "SOFT & WET COMBO",
+		Abilities = { "PLUNDER: FRICTION", "PLUNDER: SIGHT", "BUBBLE MINES" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "GO BEYOND",
+		Next = nil,
+		Module = "Josuke", -- server moves
+		ClientModule = "JosukeVFX", -- client visuals (TuskActVFX.JosukeVFX)
+		CardTitle = "STAND  ·  SOFT & WET",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -6558,7 +6593,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -6782,6 +6817,13 @@ TuskAnimation.Poses = {
 	DWAim = { Root = { 0, -20, 0, 0 }, Waist = { 0, -20, 0 }, Neck = { 0, 20, 0 }, RightArm = { 90, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 82, 0, -34 }, LeftElbow = { 40, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { -8, 0, 0 } },
 	DWFan = { Root = { 0, -20, 0, 0 }, Waist = { 0, -20, 0 }, Neck = { 0, 20, 0 }, RightArm = { 96, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 70, 0, -30 }, LeftElbow = { 56, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { -8, 0, 0 } },
 	DWTwirl = { Root = { 0, -6, 0, 0 }, Waist = { 0, -6, 0 }, Neck = { 4, 10, 0 }, RightArm = { 40, 0, 50 }, RightElbow = { 70, 0, 0 }, LeftArm = { -4, 0, -16 }, LeftElbow = { 24, 0, 0 } },
+	-- JOSUKE (JoJolion): relaxed, hands behind his head; Soft & Wet does the fighting.
+	JStance = { Root = { 0, 4, 0, 0 }, Waist = { -4, 4, 0 }, Neck = { -6, -6, 0 }, RightArm = { 160, 0, 40 }, RightElbow = { 130, 0, 0 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 }, LeftHip = { 4, 0, 0 } },
+	JPoint = { Root = { 0, -16, 0, -0.02 }, Waist = { 0, -16, 0 }, Neck = { 4, 16, 0 }, RightArm = { 90, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 } },
+	JBlow = { Root = { 0, -10, 0, 0 }, Waist = { 4, -10, 0 }, Neck = { 10, 10, 0 }, RightArm = { 80, 0, 40 }, RightElbow = { 90, 0, 0 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 } },
+	JFlick = { Root = { -2, -22, 0, -0.04, 0.3 }, Waist = { -4, -24, 0 }, Neck = { 0, 22, 0 }, RightArm = { 95, 0, 10 }, RightElbow = { 0, 0, 0 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 }, LeftHip = { 14, 0, 0 } },
+	JSpread = { Root = { 2, 0, 0, 0.04 }, Waist = { 6, 0, 0 }, Neck = { 10, 0, 0 }, RightArm = { 60, 0, 70 }, RightElbow = { 30, 0, 0 }, LeftArm = { 60, 0, -70 }, LeftElbow = { 30, 0, 0 } },
+	JCharge = { Root = { 6, -20, 0, -0.1 }, Waist = { 10, -20, 0 }, Neck = { 14, 20, 0 }, RightArm = { 70, 0, -10 }, RightElbow = { 100, 0, 0 }, LeftArm = { 60, 0, 10 }, LeftElbow = { 100, 0, 0 }, RightKnee = { -16, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightHip = { 12, 0, 0 }, LeftHip = { 12, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -6954,6 +6996,13 @@ TuskAnimation.Actions = {
 	VLoveTrain = { { 0, "VStance" }, { 0.3, "VPledge", "Back", 3 }, { 0.9, "VPledge", "Linear", 3 }, { 1.2, "VStance", "Sine" } },
 
 	-- DIEGO (AU)
+	J_M1_1 = { { 0, "JStance" }, { 0.07, "JPoint", "Back", 3 }, { 0.3, "JStance", "Sine" } },
+	J_M1_2 = { { 0, "JStance" }, { 0.07, "JPoint", "Back", 3 }, { 0.3, "JStance", "Sine" } },
+	J_M1_3 = { { 0, "JStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "JStance", "Sine" } },
+	J_M1_4 = { { 0, "JStance" }, { 0.1, "JFlick", "Snap", 6 }, { 0.25, "JFlick", "Linear" }, { 0.42, "JStance", "Sine" } },
+	JBubble = { { 0, "JStance" }, { 0.12, "JBlow", "Out" }, { 0.2, "JFlick", "Snap", 4 }, { 0.4, "JFlick", "Linear" }, { 0.6, "JStance", "Sine" } },
+	JMines = { { 0, "JStance" }, { 0.15, "JSpread", "Back", 3 }, { 0.5, "JSpread", "Linear" }, { 0.75, "JStance", "Sine" } },
+	JGoBeyond = { { 0, "JStance" }, { 0.2, "JCharge", "In" }, { 0.95, "JCharge", "Linear", 1 }, { 1.05, "JFlick", "Snap", 7 }, { 1.35, "JFlick", "Linear" }, { 1.6, "JStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },
@@ -9932,7 +9981,9 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("KNIFE") then
+	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
+		return "bubble"
+	elseif has("KNIFE") then
 		return "knife"
 	elseif has("TIME STOP") then
 		return "clock"
@@ -10186,6 +10237,13 @@ local function drawIcon(icon, kind)
 		for i = -1, 1 do
 			bar(icon, 0.5 + i * 0.24, 0.5 + (i == 0 and -0.04 or 0.04), 0.18, 0.34, i * 8)
 		end
+	elseif kind == "bubble" then
+		-- Bubbles: a big one and two small, with shine spots.
+		ring(icon, 0.6, 3, UDim2.fromScale(0.42, 0.55))
+		ring(icon, 0.3, 2, UDim2.fromScale(0.75, 0.3))
+		ring(icon, 0.2, 2, UDim2.fromScale(0.78, 0.72))
+		local shine = bar(icon, 0.32, 0.42, 0.1, 0.1)
+		corner(shine, 999)
 	elseif kind == "knife" then
 		-- Three knives fanned out: blades and handles.
 		for i = -1, 1 do
@@ -10961,6 +11019,7 @@ local DENY_TEXT = {
 	Blocked = "NO ROOM TO MOVE THERE",
 	TooSoon = "TUSK ISN'T READY TO AWAKEN YET",
 	NeedCorpse = "FIND A SAINT'S CORPSE PART FIRST",
+	Silenced = "SILENCED: YOUR SOUND WAS PLUNDERED",
 }
 
 -- Wobble a card (denied input).
