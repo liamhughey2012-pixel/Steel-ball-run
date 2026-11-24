@@ -153,3 +153,23 @@ The race is now run in **nine stages like the real Steel Ball Run**, San Diego t
   - one that's fallen 110+ studs behind the leader digs in (8% faster);
   - they get unstuck sooner.
 - The stage names follow the real race's route from San Diego to New York, but our desert map stands in for the whole country. Change the names or taglines in `TuskConfig.Race.Stages`.
+
+
+## The race map (2026-11-24)
+![[race_map_top.png]]
+The race now has **its own giant world** (`RaceMap`, `TuskConfig.Race.Map`). The server builds it when it starts, far from the main map (6,000 studs east), in batches so it never hitches. It's about **12,800 studs of trail**, roughly 2.5 times the old course, with 54 gates and about 2,800 parts.
+- **The trip:** you still JOIN on the main map (button, or E at the start of the main map's race track). When the race starts, everyone is taken to the San Diego beach start. When it ends, or you go out or leave, you're brought back to the spawn. The overall winner's corpse part waits by the spawn.
+- **The stages and their scenery:**
+  1. Beach: ocean, palms, umbrellas, grandstands at the start.
+  2. Desert: layered mesas, cacti, red rocks.
+  3. Rockies: a pass between snow-capped terrain peaks, with pines and boulders.
+  4. Plains: wheat fields, farmhouses, red barns, windmills.
+  5. Mississippi: a wide river across the trail, a covered bridge, a paddle steamer.
+  6. Lake Michigan: a great lake, a lighthouse, docks, sailboats.
+  7. Philadelphia: a cobbled street lined with brick rows and lamps, and the clock tower.
+  8. New Jersey: deep forest and log cabins.
+  9. New York: an avenue of skyscrapers to the church and grandstands at the finish.
+- **How it's laid out:** the trail (a dirt road on a band of each stage's ground) was laid first, and every bit of scenery is kept at least ~25 studs back from it (tested: nothing solid within reach of the road). A sign marks each stage start.
+- **Water** (ocean, river, lake) slows riders to 45%; take the bridge. Invisible walls round the edge stop anyone riding off the map.
+- **Longer legs:** more carrot crates (one per ~320 studs) and more hurdles (one per ~220 studs on hurdle legs). Stages allow 150 s (`StageTimeLimit`) and 25 s after the winner (`StageGrace`).
+- With `Map.Enabled = false` the race runs on the main-map stages instead (also used while the map is still building).

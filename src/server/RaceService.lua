@@ -10,6 +10,11 @@
 	    behind its START arch, on their own horse (coat and blanket from the
 	    STABLE) with its hooves on the ground, held for the countdown.
 	    NPC JOCKEYS (Race.NPCRacers) line up with them.
+	  * THE RACE MAP (RaceMap, TuskConfig.Race.Map): a whole separate giant
+	    world for the race, built when the server starts. When the race
+	    starts everyone is taken there; afterwards they're brought back to
+	    the main map's spawn. You still JOIN on the main map (button, or E at
+	    the start of the main map's race track).
 	  * THE RACE is run in STAGES like the real Steel Ball Run (TuskConfig.
 	    Race.Stages): 1 San Diego Beach, 2 Arizona Desert, 3 Rocky Mountains,
 	    4 Great Plains, 5 Mississippi River, 6 Lake Michigan, 7 Philadelphia,
@@ -53,6 +58,7 @@ local TuskConfig = require(Shared.TuskConfig)
 local Net = require(Shared.Net)
 local Adapter = require(script.Parent.CombatAdapter)
 local HorseModel = require(Shared.HorseModel)
+local RaceMap = require(script.Parent.RaceMap)
 local PathfindingService = game:GetService("PathfindingService")
 
 local RaceService = {}
@@ -210,8 +216,52 @@ local function buildGate(parent, position, facing, text, kind)
 end
 
 -- The course gates (the start is the map's own fenced track and arch).
+-- The entry prompt (E: "Enter the Race") always sits on the MAIN map, at the
+-- start of its race track, on an invisible marker (nothing to bump into).
+local entryFolder
+function RaceService.makeEntryPrompt()
+	if entryFolder and entryFolder.Parent then
+		if startPrompt then
+			startPrompt.Enabled = phase == "Entry"
+		end
+		return
+	end
+	entryFolder = Instance.new("Folder")
+	entryFolder.Name = "SteelBallRunEntry"
+	entryFolder.Parent = workspace
+	local o = origin()
+	local at = groundAt(o + (cfg.Start or Vector3.new(0, 0, 118)))
+	local marker = block(entryFolder, "EntryMarker", Vector3.new(4, 4, 4), CFrame.new(at + Vector3.new(0, 3, 0)), CREAM)
+	marker.Transparency = 1
+	startPrompt = Instance.new("ProximityPrompt")
+	startPrompt.ActionText = "Enter the Race"
+	startPrompt.ObjectText = "STEEL BALL RUN"
+	startPrompt.HoldDuration = 0
+	startPrompt.MaxActivationDistance = 16
+	startPrompt.RequiresLineOfSight = false
+	startPrompt.Enabled = phase == "Entry"
+	startPrompt.Parent = marker
+	startPrompt.Triggered:Connect(function(player)
+		RaceService.join(player)
+	end)
+end
+
+local function useMap()
+	return cfg.Map and cfg.Map.Enabled ~= false and RaceMap.ready
+end
+
+local mapStages
+local function stageList()
+	if useMap() then
+		mapStages = mapStages or RaceMap.stages()
+		return mapStages
+	end
+	return cfg.Stages
+end
+
 local function stageCount()
-	return cfg.Stages and #cfg.Stages or 1
+	local list = stageList()
+	return list and #list or 1
 end
 
 local function buildCourse(stage)
@@ -222,8 +272,9 @@ local function buildCourse(stage)
 	courseFolder = Instance.new("Folder")
 	courseFolder.Name = "SteelBallRunCourse"
 	courseFolder.Parent = workspace
-	local o = origin()
-	local st = cfg.Stages and cfg.Stages[stage]
+	local o = useMap() and RaceMap.origin() or origin()
+	local list = stageList()
+	local st = list and list[stage]
 	local start = groundAt(o + (st and st.Start or cfg.Start or Vector3.new(0, 0, 118)))
 	local offsets = st and st.Gates or cfg.Checkpoints or {}
 	local facing
@@ -245,24 +296,11 @@ local function buildCourse(stage)
 		local _, ground = buildGate(courseFolder, points[i], points[i] - points[i - 1], isFinish and finishText or tostring(i - 1), isFinish and "Finish" or "Gate")
 		table.insert(gates, ground)
 	end
-	-- The starting grid: a painted line across the track, and the entry
-	-- prompt on an invisible marker in the middle of it (nothing to bump into).
+	-- The starting grid: a painted line across the start.
 	local right = facing:Cross(Vector3.new(0, 1, 0)).Unit
 	local lineCf = CFrame.lookAt(start, start + facing)
 	block(courseFolder, "StartLine", Vector3.new(24, 0.2, 0.8), lineCf * CFrame.new(0, 0.1, 0), CREAM, Enum.Material.SmoothPlastic)
-	local marker = block(courseFolder, "EntryMarker", Vector3.new(4, 4, 4), lineCf * CFrame.new(0, 3, 8), CREAM)
-	marker.Transparency = 1
-	startPrompt = Instance.new("ProximityPrompt")
-	startPrompt.ActionText = "Enter the Race"
-	startPrompt.ObjectText = "STEEL BALL RUN"
-	startPrompt.HoldDuration = 0
-	startPrompt.MaxActivationDistance = 16
-	startPrompt.RequiresLineOfSight = false
-	startPrompt.Enabled = phase == "Entry"
-	startPrompt.Parent = marker
-	startPrompt.Triggered:Connect(function(player)
-		RaceService.join(player)
-	end)
+	RaceService.makeEntryPrompt()
 	course = { Start = start, StartFacing = facing, Right = right, Gates = gates, Stage = stage, StageName = st and st.Name or "THE STEEL BALL RUN", Tagline = st and st.Tagline }
 	RaceService.buildExtras(points)
 	return course
@@ -429,6 +467,22 @@ local function standAt(character, position, facing)
 	character:PivotTo(CFrame.lookAt(at, at + facing))
 end
 
+-- Bring a rider back from the race map to the main map's spawn.
+local function bringHome(character)
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not RaceMap.contains(root.Position) then
+		return
+	end
+	if character:GetAttribute("RaceAnchored") then
+		root.Anchored = false
+		character:SetAttribute("RaceAnchored", nil)
+	end
+	local spawn = workspace:FindFirstChild("SBRSpawn", true) or workspace:FindFirstChildWhichIsA("SpawnLocation", true)
+	local at = spawn and spawn.Position + Vector3.new(rng:NextNumber(-6, 6), 0, rng:NextNumber(-6, 6)) or origin() + Vector3.new(0, 0, 150)
+	standAt(character, at, Vector3.new(0, 0, -1))
+end
+RaceService.bringHome = bringHome
+
 -- M: call your horse / send it away.
 function RaceService.toggleHorse(player)
 	if hcfg.Enabled == false then
@@ -564,17 +618,21 @@ function RaceService.buildExtras(points)
 		local dir = len > 0.1 and flat(b - a).Unit or course.StartFacing
 		local right = dir:Cross(Vector3.new(0, 1, 0)).Unit
 		-- Carrots, a little off the line, alternating sides.
-		for k = 1, ccfg.PerLeg or 1 do
-			local t = (k / ((ccfg.PerLeg or 1) + 1)) * 0.6 + 0.3
+		local carrotsHere = math.max(ccfg.PerLeg or 1, math.floor(len / (ccfg.Every or 320)))
+		for k = 1, carrotsHere do
+			local t = (k / (carrotsHere + 1)) * 0.6 + 0.3
 			local at = groundAt(a + (b - a) * t + right * ((i % 2 == 0) and 7 or -7))
 			local model, parts = buildCarrots(courseFolder, at)
 			table.insert(course.Carrots, { Pos = at, Model = model, Parts = parts, ReadyAt = 0 })
 		end
 		-- A hurdle on every other long leg (never on the first: the start's crowded).
-		if i > 2 and (i % (hucfg.Every or 2) == 0) and len >= (hucfg.MinLeg or 70) then
-			local at = groundAt(a + (b - a) * 0.5)
-			local model = buildHurdle(courseFolder, at, dir)
-			table.insert(course.Hurdles, { Pos = at, Dir = dir, Right = right, Half = (hucfg.Width or 30) / 2, Model = model, Leg = i - 1 })
+		if (i > 2 or (course.Stage or 1) > 1) and (i % (hucfg.Every or 2) == 0) and len >= (hucfg.MinLeg or 70) then
+			local count = math.max(1, math.floor(len / (hucfg.Spacing or 220)))
+			for k = 1, count do
+				local at = groundAt(a + (b - a) * (k / (count + 1)))
+				local model = buildHurdle(courseFolder, at, dir)
+				table.insert(course.Hurdles, { Pos = at, Dir = dir, Right = right, Half = (hucfg.Width or 30) / 2, Model = model, Leg = i - 1 })
+			end
 		end
 	end
 end
@@ -597,6 +655,8 @@ local function clearExtras(r)
 	setMod(r, "Stumble", nil)
 	setMod(r, "Carrot", nil)
 	setMod(r, "CatchUp", nil)
+	setMod(r, "Water", nil)
+	r.Wet = nil
 	local c = charOf(r)
 	if c then
 		c:SetAttribute("HorseStamina", nil)
@@ -739,6 +799,12 @@ local function stepRider(key, r, dt, t)
 		end
 	end
 	setMod(r, "Gallop", galloping and (gcfg.Speed or 1.35) or nil)
+	-- Water (the ocean, the river, the lake) slows you: take the bridge.
+	local wet = RaceMap.inWater(root.Position)
+	if wet ~= (r.Wet or false) then
+		r.Wet = wet
+		setMod(r, "Water", wet and ((cfg.Map and cfg.Map.WaterSlow) or 0.45) or nil)
+	end
 	character:SetAttribute("Galloping", galloping or nil)
 	character:SetAttribute("HorseStamina", math.floor(r.Stamina + 0.5))
 	character:SetAttribute("HorseWinded", r.Winded or nil)
@@ -863,6 +929,7 @@ local function out(key, reason)
 	if r.Player then
 		r.Player:SetAttribute("RaceEntered", nil)
 		dismount(r.Player.Character)
+		bringHome(r.Player.Character)
 		send(r.Player, "Out", { Reason = reason })
 		broadcast("Entrants", { Count = racerCount(true) })
 	elseif r.Model then
@@ -1011,6 +1078,10 @@ end
 -- Entry, start, race, results
 ---------------------------------------------------------------------------
 local function openEntry()
+	if cfg.Map and cfg.Map.Enabled ~= false and RaceMap.building then
+		nextEntryAt = now() + 5 -- the race map's still being built
+		return
+	end
 	phase = "Entry"
 	racers, finishOrder, winnerAt = {}, {}, nil
 	buildCourse(1)
@@ -1025,10 +1096,16 @@ local function openEntry()
 	broadcast("EntryOpen", { Ends = entryEnds })
 end
 
+
 local function cleanup()
 	for key, r in pairs(racers) do
 		clearExtras(r)
 		if r.Player then
+			task.delay(4, function()
+				if r.Player.Parent then
+					bringHome(r.Player.Character)
+				end
+			end)
 			r.Player:SetAttribute("RaceEntered", nil)
 			local character = r.Player.Character
 			-- Riders keep their horse (now theirs to ride around).
@@ -1065,7 +1142,9 @@ local function cleanup()
 		courseFolder:Destroy()
 		courseFolder = nil
 	end
-	startPrompt = nil
+	if startPrompt then
+		startPrompt.Enabled = false
+	end
 end
 
 local startStage -- (below)
@@ -1235,7 +1314,14 @@ local function endRace(reason)
 					end)
 					local root = r.Player.Character and r.Player.Character:FindFirstChild("HumanoidRootPart")
 					if ok and C and C.summon and root then
-						local _, name = C.summon(root.Position + root.CFrame.LookVector * 6)
+						-- On the race map they're about to be taken home: the part
+						-- waits for them by the main map's spawn instead.
+						local at = root.Position + root.CFrame.LookVector * 6
+						if RaceMap.contains(root.Position) then
+							local spawn = workspace:FindFirstChild("SBRSpawn", true) or workspace:FindFirstChildWhichIsA("SpawnLocation", true)
+							at = (spawn and spawn.Position or origin() + Vector3.new(0, 0, 150)) + Vector3.new(0, 0, -10)
+						end
+						local _, name = C.summon(at)
 						rows[i].Part = name
 					end
 				end
@@ -1458,6 +1544,10 @@ function RaceService.init()
 	if cfg.Enabled == false then
 		return -- horses only, no races
 	end
+	if cfg.Map and cfg.Map.Enabled ~= false then
+		task.spawn(RaceMap.build)
+	end
+	RaceService.makeEntryPrompt()
 	local first = RunService:IsStudio() and (cfg.StudioFirstAfter or 20) or (cfg.FirstAfter or 120)
 	nextEntryAt = now() + first
 	setAttr("SpinRaceNext", nextEntryAt)

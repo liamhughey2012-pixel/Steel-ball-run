@@ -1206,11 +1206,17 @@ TuskConfig.Race = {
 		{ Name = "NEW JERSEY", Tagline = "Down the east side, almost home", Start = Vector3.new(350, 0, 140), Gates = { Vector3.new(348, 0, -28), Vector3.new(332, 0, -160), Vector3.new(172, 0, -108), Vector3.new(136, 0, -52), Vector3.new(100, 0, 20) } }, -- 8
 		{ Name = "NEW YORK", Tagline = "The final stage: to the finish line", Start = Vector3.new(100, 0, 20), Gates = { Vector3.new(172, 0, 60), Vector3.new(228, 0, 104), Vector3.new(120, 0, 148), Vector3.new(44, 0, 176) } }, -- 9
 	},
+	-- THE RACE MAP: a whole separate, giant world just for the race (RaceMap),
+	-- built far from the main map when the server starts: about 12,000 studs of
+	-- trail through the nine stages, each with its own scenery. Riders are
+	-- taken there for the race and brought back to the spawn after. With it
+	-- off, the stages above are run round the main map instead.
+	Map = { Enabled = true, Origin = Vector3.new(6000, 0, 0), GateEvery = 260, WaterSlow = 0.45 },
 	StagePoints = { 100, 70, 50, 40, 30, 25, 20, 15, 10, 5 }, -- by stage placing (riders who don't finish a stage score 0)
 	StageWinnerCash = 50, -- a player who wins a stage
 	StageRest = 6, -- seconds between stages (results, then line up again)
-	StageTimeLimit = 75, -- a stage ends after this long no matter what...
-	StageGrace = 15, -- ...or this long after its winner crosses the line
+	StageTimeLimit = 150, -- a stage ends after this long no matter what...
+	StageGrace = 25, -- ...or this long after its winner crosses the line
 	GateWidth = 34, -- studs between a gate's posts (wide enough to stand outside the track's fences)
 	PassRadius = 20, -- get this close to the next gate to pass it
 	-- Horses
@@ -1243,10 +1249,10 @@ TuskConfig.Race = {
 	},
 	-- CARROTS: a crate of carrots on each leg of the course; ride through it
 	-- for stamina and a little burst of speed. It comes back after a while.
-	Carrots = { PerLeg = 1, Radius = 7, Refill = 45, Boost = 1.2, BoostTime = 1.5, Respawn = 10 },
+	Carrots = { PerLeg = 1, Every = 320, Radius = 7, Refill = 45, Boost = 1.2, BoostTime = 1.5, Respawn = 10 }, -- PerLeg at least, or one per Every studs of a long leg
 	-- HURDLES: log jumps across the course. Jump them (Space / A); hit one and
 	-- your horse stumbles (slowed, loses stamina).
-	Hurdles = { Every = 2, MinLeg = 70, Width = 30, Clearance = 4.2, StumbleSlow = 0.4, StumbleTime = 1.2, StumbleStamina = 20, ClearStamina = 5, JockeyMiss = 0.05 },
+	Hurdles = { Every = 2, MinLeg = 70, Spacing = 220, Width = 30, Clearance = 4.2, StumbleSlow = 0.4, StumbleTime = 1.2, StumbleStamina = 20, ClearStamina = 5, JockeyMiss = 0.05 },
 	-- LOST? Press H (D-pad up) to go back to the last gate you passed; you're
 	-- held there ReturnPenalty seconds.
 	ReturnPenalty = 3, ReturnCooldown = 8,
