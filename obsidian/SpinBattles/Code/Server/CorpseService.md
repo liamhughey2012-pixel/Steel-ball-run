@@ -291,6 +291,7 @@ local function placeRelic(id, position, dropped)
 	end)
 	model:SetAttribute("PartId", id)
 	model:SetAttribute("Dropped", dropped == true)
+	model:SetAttribute("LaidAt", workspace:GetServerTimeNow())
 	model.Parent = folder
 	CollectionService:AddTag(model, "SpinCorpse")
 	relics[id] = model

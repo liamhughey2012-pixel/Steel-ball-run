@@ -165,7 +165,14 @@ TuskConfig.StandBots = {
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
 	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine", "DiegoAU" },
-	CorpseSeekRange = 90, -- idle bots pick up corpse parts lying this close to their camp
+	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
+	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
+	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
+	CorpseSeekEvery = 15, -- seconds between an idle NPC's looks for a part...
+	CorpseSeekChance = 0.3, -- ...and the chance it bothers each time
+	CorpseMaxPerBot = 1, -- an NPC holding this many parts stops collecting
+	CorpseMaxForBots = 3, -- NPCs together never hold more than this many parts
+	CorpsePickupTime = 2.5, -- an NPC kneels by a part this long before it has it (grab it first!)
 	CorpseMoveChance = 0.12, -- per think tick in a fight, if they hold a part and it's ready
 	RainWalkChance = 0.05, -- Blackmore NPCs: chance per think tick to start a rain walk while it rains
 	Health = 200,

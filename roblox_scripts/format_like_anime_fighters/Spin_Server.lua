@@ -1759,6 +1759,7 @@ local function placeRelic(id, position, dropped)
 	end)
 	model:SetAttribute("PartId", id)
 	model:SetAttribute("Dropped", dropped == true)
+	model:SetAttribute("LaidAt", workspace:GetServerTimeNow())
 	model.Parent = folder
 	CollectionService:AddTag(model, "SpinCorpse")
 	relics[id] = model
@@ -5163,7 +5164,7 @@ function spawnBot(slot)
 		end)
 	end
 	local botPlayer = newBotPlayer(name, model)
-	local bot = { Slot = slot, Spot = spot, Player = botPlayer, Model = model, Humanoid = humanoid, Home = home, Who = pick.Who, NextThink = 0, NextAbility = os.clock() + 2, NextUlt = 0 }
+	local bot = { Slot = slot, Spot = spot, Player = botPlayer, Model = model, Humanoid = humanoid, Home = home, Who = pick.Who, NextThink = 0, NextAbility = os.clock() + 2, NextUlt = 0, SpawnedAt = os.clock() }
 	bots[slot] = bot
 	bot.State = S.addBot(botPlayer, pick.Act)
 	CollectionService:AddTag(model, "SpinFighter")
@@ -5383,28 +5384,62 @@ corpseService = function()
 	return Corpse or nil
 end
 
+-- How many parts a model holds (CorpseParts is a comma list of ids).
+local function partsHeld(model)
+	local list = model and model:GetAttribute("CorpseParts")
+	if type(list) ~= "string" or list == "" then
+		return 0
+	end
+	local n = 0
+	for _ in string.gmatch(list, "[^,]+") do
+		n = n + 1
+	end
+	return n
+end
+
+local function botsHolding()
+	local n = 0
+	for _, other in pairs(bots) do
+		n = n + partsHeld(other.Model)
+	end
+	return n
+end
+
 local function seekCorpse(bot, root)
 	local C = corpseService()
-	local range = cfg.CorpseSeekRange or 90
 	if not C then
+		return false
+	end
+	local now = os.clock()
+	local serverNow = workspace:GetServerTimeNow()
+	-- Not straight after spawning, not when already holding enough, and NPCs
+	-- together never hoard the corpse.
+	if now - (bot.SpawnedAt or 0) < (cfg.CorpseSeekDelay or 120)
+		or partsHeld(bot.Model) >= (cfg.CorpseMaxPerBot or 1)
+		or botsHolding() >= (cfg.CorpseMaxForBots or 3) then
+		bot.CorpseGoal, bot.PickupStart = nil, nil
 		return false
 	end
 	local goal = bot.CorpseGoal
 	if not (goal and goal.Parent) then
 		goal = nil
-		if os.clock() >= (bot.NextCorpseLook or 0) then
-			bot.NextCorpseLook = os.clock() + 2
-			local best, bestD
-			for _, relic in ipairs(CollectionService:GetTagged("SpinCorpse")) do
-				local at = relic.Parent and relic:GetPivot().Position
-				if at and (at - bot.Home).Magnitude <= range then
-					local d = (at - root.Position).Magnitude
-					if not bestD or d < bestD then
-						best, bestD = relic, d
+		bot.PickupStart = nil
+		if now >= (bot.NextCorpseLook or 0) then
+			bot.NextCorpseLook = now + (cfg.CorpseSeekEvery or 15) * (0.7 + math.random() * 0.6)
+			if math.random() < (cfg.CorpseSeekChance or 0.3) then
+				local best, bestD
+				for _, relic in ipairs(CollectionService:GetTagged("SpinCorpse")) do
+					local at = relic.Parent and relic:GetPivot().Position
+					local fresh = serverNow - (relic:GetAttribute("LaidAt") or 0) < (cfg.CorpseFreshTime or 90)
+					if at and not fresh and (at - bot.Home).Magnitude <= (cfg.CorpseSeekRange or 60) then
+						local d = (at - root.Position).Magnitude
+						if not bestD or d < bestD then
+							best, bestD = relic, d
+						end
 					end
 				end
+				goal = best
 			end
-			goal = best
 		end
 		bot.CorpseGoal = goal
 	end
@@ -5413,9 +5448,15 @@ local function seekCorpse(bot, root)
 	end
 	local at = goal:GetPivot().Position
 	if (at - root.Position).Magnitude <= 7 then
-		C.take(bot.Player, goal:GetAttribute("PartId"))
-		bot.CorpseGoal = nil
+		-- Kneel by it for a moment: a player can still snatch it first.
+		bot.Humanoid:MoveTo(root.Position)
+		bot.PickupStart = bot.PickupStart or now
+		if now - bot.PickupStart >= (cfg.CorpsePickupTime or 2.5) then
+			C.take(bot.Player, goal:GetAttribute("PartId"))
+			bot.CorpseGoal, bot.PickupStart = nil, nil
+		end
 	else
+		bot.PickupStart = nil
 		bot.Humanoid:MoveTo(at)
 	end
 	return true
@@ -5447,6 +5488,9 @@ local function think(bot, now)
 		return
 	end
 	local target, dist = findTarget(bot, root)
+	if target then
+		bot.PickupStart = nil -- a fight interrupts picking up a part
+	end
 	if not target then
 		if bot.RainWalk then
 			endRainWalk(bot, false)
