@@ -12,6 +12,9 @@
 	  * M1 combo up close, abilities on cooldown, ultimate when their meter is full
 	  * hold abilities are charged and released automatically
 	  * they block now and then, dash in to close the gap, and dash away when hurt
+	  * a sneaking player isn't noticed until they're close (TuskConfig.Sneak
+	    NoticeRange), or they hit the bot; a bot that saw them keeps track for
+	    a few seconds
 	  * every installed character has an NPC out: a new NPC is whichever
 	    character has the fewest right now (TuskConfig.StandBots.Characters)
 	  * Blackmore NPCs rain walk while it rains: they step up onto frozen
@@ -369,7 +372,21 @@ local function thinkRainWalk(bot, root, target)
 	end
 end
 
--- Nearest player in range.
+-- Can this bot see `player`? Sneaking players are only noticed up close,
+-- or if they just hit the bot, or the bot saw them a moment ago.
+local function notices(bot, player, character, d)
+	local sneak = TuskConfig.Sneak or {}
+	bot.Noticed = bot.Noticed or {}
+	local now = os.clock()
+	local hitMe = bot.Model and bot.Model:GetAttribute("LastAttackerId") == player.UserId
+		and workspace:GetServerTimeNow() - (bot.Model:GetAttribute("LastAttackTime") or -math.huge) < 4
+	if not character:GetAttribute("TuskSneaking") or d <= (sneak.NoticeRange or 12) or hitMe then
+		bot.Noticed[player] = now + (sneak.NoticeMemory or 3)
+	end
+	return (bot.Noticed[player] or 0) > now
+end
+
+-- Nearest player in range (that the bot has noticed).
 local function findTarget(bot, root)
 	local best, bestDist
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -379,10 +396,14 @@ local function findTarget(bot, root)
 		if tr and hum and hum.Health > 0 and S.Adapter.canBeHit(bot.Player, character) then
 			local d = (tr.Position - root.Position).Magnitude
 			local fromHome = (tr.Position - bot.Home).Magnitude
-			if d <= (cfg.AggroRange or 70) and fromHome <= (cfg.LeashRange or 120) and (not bestDist or d < bestDist) then
+			if d <= (cfg.AggroRange or 70) and fromHome <= (cfg.LeashRange or 120) and notices(bot, player, character, d) and (not bestDist or d < bestDist) then
 				best, bestDist = character, d
 			end
 		end
+	end
+	-- Tell a sneaking target they've been spotted (the HUD shows it).
+	if best and best:GetAttribute("TuskSneaking") then
+		best:SetAttribute("SpottedUntil", workspace:GetServerTimeNow() + 1)
 	end
 	return best, bestDist
 end

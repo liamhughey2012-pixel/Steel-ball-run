@@ -1308,7 +1308,7 @@ end
 return TuskActRegistry
 </pre></details></section><section class="card" id="s10">
 <div class="head"><span class="num">10</span><div><h2>TuskConfig <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="10">Copy code</button><details><summary>Show code (858 lines)</summary><pre id="c10">--[[
+<p class="loc">Put it in: <b>ReplicatedStorage › SpinShared</b></p></div></div><button class="copy" data-i="10">Copy code</button><details><summary>Show code (869 lines)</summary><pre id="c10">--[[
 	TuskConfig  (ReplicatedStorage.SpinShared.TuskConfig)
 
 	Every tunable number for Tusk. The server uses it for damage, timing,
@@ -1504,8 +1504,19 @@ TuskConfig.Character = {
 -- Tusk Sneak (shared by every Act)
 ---------------------------------------------------------------------------
 TuskConfig.Sneak = {
+	-- SNEAK (C, every character): crouched and slow, but hard to notice.
+	--   * NPCs don&#x27;t notice you unless you&#x27;re this close (or you just hit them)
+	--   * other players see you fade out with distance; your name and health bar are hidden
+	--   * bounty hunters&#x27; marker and distance read HIDDEN past HiddenFromBounty studs
+	--   * attacking out of sneak: Johnny&#x27;s Tusk burrows (Sneak Attack, below);
+	--     everyone else AMBUSHES: the first hit within AmbushWindow does extra damage
+	NoticeRange = 12,
+	NoticeMemory = 3, -- seconds an NPC keeps tracking you after it last saw you
+	AmbushMultiplier = 1.5, AmbushWindow = 1.0,
+	FadeStart = 12, FadeEnd = 40, MaxFade = 0.85, -- how see-through you look to others (by distance)
+	HiddenFromBounty = 30,
 	WalkSpeedMultiplier = 0.45,
-	MaxDuration = 8, -- auto-exit after this long
+	MaxDuration = 15, -- auto-exit after this long
 	Cooldown = 4, -- after leaving sneak
 	CameraDrop = 1.4, -- studs the camera lowers
 	Attack = { -- press M1 while sneaking
@@ -4653,7 +4664,7 @@ end
 return BountyService
 </pre></details></section><section class="card" id="s18">
 <div class="head"><span class="num">18</span><div><h2>CombatAdapter <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="18">Copy code</button><details><summary>Show code (331 lines)</summary><pre id="c18">--[[
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="18">Copy code</button><details><summary>Show code (337 lines)</summary><pre id="c18">--[[
 	CombatAdapter  (ServerScriptService.SpinServer.CombatAdapter)
 
 	THE ONE PLACE the Spin system touches combat. If SPIN BATTLEGROUNDS
@@ -4939,6 +4950,12 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	local attackerCharacter = attackerPlayer and attackerPlayer.Character
 	if attackerCharacter then
 		damage = damage * (attackerCharacter:GetAttribute(&quot;CorpseDamage&quot;) or 1)
+		-- Ambush out of sneak: the first hit lands harder (used up).
+		if (attackerCharacter:GetAttribute(&quot;AmbushUntil&quot;) or 0) &gt; workspace:GetServerTimeNow() then
+			attackerCharacter:SetAttribute(&quot;AmbushUntil&quot;, nil)
+			damage = damage * ((TuskConfig.Sneak and TuskConfig.Sneak.AmbushMultiplier) or 1.5)
+			info.Ambush = true
+		end
 	end
 	damage = damage * (targetCharacter:GetAttribute(&quot;CorpseResist&quot;) or 1)
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
@@ -8165,7 +8182,7 @@ end
 return StandAssetLoader
 </pre></details></section><section class="card" id="s33">
 <div class="head"><span class="num">33</span><div><h2>StandBots <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="33">Copy code</button><details><summary>Show code (515 lines)</summary><pre id="c33">--[[
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="33">Copy code</button><details><summary>Show code (536 lines)</summary><pre id="c33">--[[
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
@@ -8179,6 +8196,9 @@ return StandAssetLoader
 	  * M1 combo up close, abilities on cooldown, ultimate when their meter is full
 	  * hold abilities are charged and released automatically
 	  * they block now and then, dash in to close the gap, and dash away when hurt
+	  * a sneaking player isn&#x27;t noticed until they&#x27;re close (TuskConfig.Sneak
+	    NoticeRange), or they hit the bot; a bot that saw them keeps track for
+	    a few seconds
 	  * every installed character has an NPC out: a new NPC is whichever
 	    character has the fewest right now (TuskConfig.StandBots.Characters)
 	  * Blackmore NPCs rain walk while it rains: they step up onto frozen
@@ -8536,7 +8556,21 @@ local function thinkRainWalk(bot, root, target)
 	end
 end
 
--- Nearest player in range.
+-- Can this bot see `player`? Sneaking players are only noticed up close,
+-- or if they just hit the bot, or the bot saw them a moment ago.
+local function notices(bot, player, character, d)
+	local sneak = TuskConfig.Sneak or {}
+	bot.Noticed = bot.Noticed or {}
+	local now = os.clock()
+	local hitMe = bot.Model and bot.Model:GetAttribute(&quot;LastAttackerId&quot;) == player.UserId
+		and workspace:GetServerTimeNow() - (bot.Model:GetAttribute(&quot;LastAttackTime&quot;) or -math.huge) &lt; 4
+	if not character:GetAttribute(&quot;TuskSneaking&quot;) or d &lt;= (sneak.NoticeRange or 12) or hitMe then
+		bot.Noticed[player] = now + (sneak.NoticeMemory or 3)
+	end
+	return (bot.Noticed[player] or 0) &gt; now
+end
+
+-- Nearest player in range (that the bot has noticed).
 local function findTarget(bot, root)
 	local best, bestDist
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -8546,10 +8580,14 @@ local function findTarget(bot, root)
 		if tr and hum and hum.Health &gt; 0 and S.Adapter.canBeHit(bot.Player, character) then
 			local d = (tr.Position - root.Position).Magnitude
 			local fromHome = (tr.Position - bot.Home).Magnitude
-			if d &lt;= (cfg.AggroRange or 70) and fromHome &lt;= (cfg.LeashRange or 120) and (not bestDist or d &lt; bestDist) then
+			if d &lt;= (cfg.AggroRange or 70) and fromHome &lt;= (cfg.LeashRange or 120) and notices(bot, player, character, d) and (not bestDist or d &lt; bestDist) then
 				best, bestDist = character, d
 			end
 		end
+	end
+	-- Tell a sneaking target they&#x27;ve been spotted (the HUD shows it).
+	if best and best:GetAttribute(&quot;TuskSneaking&quot;) then
+		best:SetAttribute(&quot;SpottedUntil&quot;, workspace:GetServerTimeNow() + 1)
 	end
 	return best, bestDist
 end
@@ -13625,7 +13663,7 @@ TuskMoves.Config = TuskConfig
 return TuskMoves
 </pre></details></section><section class="card" id="s51">
 <div class="head"><span class="num">51</span><div><h2>TuskService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="51">Copy code</button><details><summary>Show code (745 lines)</summary><pre id="c51">--[[
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="51">Copy code</button><details><summary>Show code (748 lines)</summary><pre id="c51">--[[
 	TuskService  (ServerScriptService.SpinServer.TuskService)
 
 	Server brain for Tusk (the &quot;TuskController&quot; of the design doc):
@@ -14145,9 +14183,8 @@ local function onRequest(player, action, a, b, c)
 
 	local isJohnny = Registry.characterOf(state.Act) == &quot;Johnny&quot;
 	if action == &quot;Sneak&quot; then
-		if isJohnny then -- Tusk Sneak is Johnny&#x27;s
-			Sneak.toggle(player, state, a == true)
-		end
+		-- Every character can sneak (only Johnny&#x27;s Tusk can burrow out of it).
+		Sneak.toggle(player, state, a == true)
 		return
 	end
 	if state.Burrowed then
@@ -14178,8 +14215,12 @@ local function onRequest(player, action, a, b, c)
 	end
 
 	if action == &quot;M1&quot; then
-		if state.Sneaking then
+		if state.Sneaking and isJohnny then
 			Sneak.attack(player, state)
+		elseif state.Sneaking then
+			-- Everyone else ambushes: out of sneak, the first hit does extra damage.
+			Sneak.ambush(player, state)
+			module.M1(TuskService, player, state, a)
 		else
 			module.M1(TuskService, player, state, a)
 		end
@@ -14188,7 +14229,7 @@ local function onRequest(player, action, a, b, c)
 			return
 		end
 		if state.Sneaking then
-			Sneak.exit(player, state, true)
+			Sneak.ambush(player, state)
 		end
 		module.Ability(TuskService, player, state, a, &quot;Press&quot;, c)
 	elseif action == &quot;Ultimate&quot; then
@@ -14371,7 +14412,7 @@ end
 return TuskService
 </pre></details></section><section class="card" id="s52">
 <div class="head"><span class="num">52</span><div><h2>TuskSneakService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="52">Copy code</button><details><summary>Show code (258 lines)</summary><pre id="c52">--[[
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="52">Copy code</button><details><summary>Show code (281 lines)</summary><pre id="c52">--[[
 	TuskSneakService  (ServerScriptService.SpinServer.TuskSneakService)
 
 	Tusk Sneak (every Act): a crouched, slowed stalking state, plus the
@@ -14385,7 +14426,13 @@ return TuskService
 	MaxTargetDrift studs away is missed, getting hit breaks sneak, and both
 	sneak and the attack have cooldowns.
 
-	Character attributes: TuskSneaking, TuskBurrowed.
+	Every character can sneak: NPCs don&#x27;t notice a sneaking player until
+	they&#x27;re close (StandBots), other players see them fade with distance and
+	can&#x27;t see their name (TuskSneakController), and bounty hunters lose
+	track of them (BountyUI). Attacking out of sneak as anyone but Johnny is
+	an AMBUSH: the first hit within a moment does extra damage (CombatAdapter).
+
+	Character attributes: TuskSneaking, TuskBurrowed, AmbushUntil, SpottedUntil.
 ]]
 
 local Shared = game:GetService(&quot;ReplicatedStorage&quot;).SpinShared
@@ -14415,11 +14462,25 @@ function TuskSneakService.exit(player, state, applyCooldown)
 		local humanoid = character:FindFirstChildOfClass(&quot;Humanoid&quot;)
 		if humanoid then
 			Adapter.setMoveModifier(humanoid, &quot;TuskSneak&quot;, nil)
+			if state.SneakDisplay then
+				humanoid.DisplayDistanceType = state.SneakDisplay
+				state.SneakDisplay = nil
+			end
 		end
 	end
 	if applyCooldown then
 		Cooldowns.start(player, &quot;TuskSneak&quot;, cfg.Cooldown)
 		S.tell(player, &quot;SneakCooldown&quot;, { Duration = cfg.Cooldown })
+	end
+end
+
+-- Attacking out of sneak (anyone but Johnny): leave sneak, and the first
+-- hit in the next moment is an ambush (extra damage; CombatAdapter).
+function TuskSneakService.ambush(player, state)
+	local character = state.Character
+	TuskSneakService.exit(player, state, true)
+	if character then
+		character:SetAttribute(&quot;AmbushUntil&quot;, workspace:GetServerTimeNow() + (cfg.AmbushWindow or 1))
 	end
 end
 
@@ -14442,6 +14503,9 @@ function TuskSneakService.toggle(player, state, on)
 	state.SneakToken = token
 	character:SetAttribute(&quot;TuskSneaking&quot;, true)
 	Adapter.setMoveModifier(humanoid, &quot;TuskSneak&quot;, cfg.WalkSpeedMultiplier)
+	-- Your name and health bar disappear while you sneak.
+	state.SneakDisplay = humanoid.DisplayDistanceType
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	task.delay(cfg.MaxDuration, function()
 		if state.SneakToken == token then
 			TuskSneakService.exit(player, state, true)
@@ -25851,7 +25915,7 @@ end
 return TuskProjectiles
 </pre></details></section><section class="card" id="s83">
 <div class="head"><span class="num">83</span><div><h2>TuskSneakController <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="83">Copy code</button><details><summary>Show code (280 lines)</summary><pre id="c83">--[[
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><button class="copy" data-i="83">Copy code</button><details><summary>Show code (328 lines)</summary><pre id="c83">--[[
 	TuskSneakController  (StarterPlayerScripts.SpinClient.TuskSneakController)
 
 	Client side of Tusk Sneak and the Sneak Attack, for every Act.
@@ -25862,6 +25926,9 @@ return TuskProjectiles
 	                 (the HUD chip lives in TuskUI).
 	Server state comes from the TuskSneaking / TuskBurrowed attributes and
 	&quot;SneakAttack&quot; TuskFX events.
+	Other players who sneak fade out with distance (TuskConfig.Sneak
+	FadeStart..FadeEnd, up to MaxFade), their Stand too, and their ground
+	ripples only show up close.
 ]]
 
 local Players = game:GetService(&quot;Players&quot;)
@@ -26076,6 +26143,36 @@ function TuskSneakController.handle(name, data)
 	end
 end
 
+-- Other players who sneak fade out with distance (their Stand too).
+local faded = {} -- [character] = true while we&#x27;ve changed it
+local function setFade(character, alpha)
+	for _, d in ipairs(character:GetDescendants()) do
+		if d:IsA(&quot;BasePart&quot;) or d:IsA(&quot;Decal&quot;) then
+			d.LocalTransparencyModifier = alpha
+		end
+	end
+	local stand = TuskStand.get and TuskStand.get(character)
+	if stand and stand.Model then
+		for _, d in ipairs(stand.Model:GetDescendants()) do
+			if d:IsA(&quot;BasePart&quot;) then
+				d.LocalTransparencyModifier = alpha
+			end
+		end
+	end
+end
+
+local function fadeFor(character)
+	local mine = localPlayer.Character and localPlayer.Character:FindFirstChild(&quot;HumanoidRootPart&quot;)
+	local theirs = character:FindFirstChild(&quot;HumanoidRootPart&quot;)
+	if not mine or not theirs then
+		return 0, math.huge
+	end
+	local cfg = TuskConfig.Sneak
+	local d = (theirs.Position - mine.Position).Magnitude
+	local a = math.clamp((d - (cfg.FadeStart or 12)) / math.max((cfg.FadeEnd or 40) - (cfg.FadeStart or 12), 1), 0, 1)
+	return a * (cfg.MaxFade or 0.85), d
+end
+
 function TuskSneakController.init()
 	buildVignette()
 	local localSneaking = false
@@ -26092,8 +26189,15 @@ function TuskSneakController.init()
 						fx = startSneakFX(character)
 						sneakers[character] = fx or {}
 					end
-					-- Subtle ground ripple every so often.
-					if fx and fx.Attachment and now &gt;= fx.NextRipple then
+					-- Someone else sneaking: they fade out the further away they are.
+					local alpha, dist = 0, 0
+					if player ~= localPlayer then
+						alpha, dist = fadeFor(character)
+						setFade(character, alpha)
+						faded[character] = true
+					end
+					-- Subtle ground ripple every so often (only close up: it&#x27;d give them away).
+					if fx and fx.Attachment and now &gt;= fx.NextRipple and dist &lt;= (TuskConfig.Sneak.FadeStart or 12) then
 						fx.NextRipple = now + 0.8
 						VFXLib.shockwave(CFrame.new(fx.Attachment.WorldPosition), { StartRadius = 0.8, Radius = 3, Width = 0.12, Duration = 0.6, Color = colors.Cyan })
 					end
@@ -26104,6 +26208,14 @@ function TuskSneakController.init()
 						hidden[character] = true
 						setHidden(character, true)
 					end
+				end
+			end
+		end
+		for character in pairs(faded) do
+			if not seenSneak[character] then
+				faded[character] = nil
+				if character.Parent then
+					setFade(character, 0)
 				end
 			end
 		end
@@ -27741,7 +27853,7 @@ return TuskVFX
 <div class="head"><span class="num">86</span><div><h2>UI <span class="badge folder">Folder</span></h2>
 <p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s87">
 <div class="head"><span class="num">87</span><div><h2>BountyUI <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="87">Copy code</button><details><summary>Show code (656 lines)</summary><pre id="c87">--[[
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="87">Copy code</button><details><summary>Show code (662 lines)</summary><pre id="c87">--[[
 	BountyUI  (StarterPlayerScripts.SpinClient.UI.BountyUI)
 
 	The bounty board screen (owner&#x27;s design):
@@ -28364,6 +28476,12 @@ function BountyUI.step()
 	local theirs = model and model:FindFirstChild(&quot;HumanoidRootPart&quot;)
 	local left = math.max(0, (current.Expires or 0) - workspace:GetServerTimeNow())
 	local where = (mine and theirs) and (math.floor((theirs.Position - mine.Position).Magnitude) .. &quot; studs&quot;) or &quot;respawning...&quot;
+	-- A target sneaking far away is lost: no distance, no marker.
+	local sneak = TuskConfig.Sneak or {}
+	if model and model:GetAttribute(&quot;TuskSneaking&quot;) and mine and theirs and (theirs.Position - mine.Position).Magnitude &gt; (sneak.HiddenFromBounty or 30) then
+		where = &quot;HIDDEN&quot;
+		marker.Enabled = false
+	end
 	tracker:FindFirstChild(&quot;Info&quot;).Text = string.format(&quot;%s  ·  %d:%02d&quot;, where, math.floor(left / 60), math.floor(left % 60))
 	if marker.Enabled then
 		marker:FindFirstChild(&quot;Arrow&quot;).Position = UDim2.new(0.5, 0, 0, 26 + math.sin(os.clock() * 5) * 4)
@@ -29427,7 +29545,7 @@ end
 return SettingsUI
 </pre></details></section><section class="card" id="s91">
 <div class="head"><span class="num">91</span><div><h2>TuskUI <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="91">Copy code</button><details><summary>Show code (1188 lines)</summary><pre id="c91">--[[
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="91">Copy code</button><details><summary>Show code (1192 lines)</summary><pre id="c91">--[[
 	TuskUI  (StarterPlayerScripts.SpinClient.UI.TuskUI)
 
 	Battlegrounds-style move HUD (shown while Johnny or Gyro is equipped):
@@ -30127,7 +30245,7 @@ function TuskUI.init(cb)
 	actGradient = gradient(actLabel, WHITE, theme.Primary, 90)
 	taglineLabel = text(header, { Position = UDim2.fromOffset(8, 32), Size = UDim2.fromOffset(320, 12), TextSize = 11, TextColor3 = Color3.fromRGB(190, 210, 235), TextXAlignment = Enum.TextXAlignment.Left, Text = &quot;&quot;, ZIndex = 2 })
 
-	-- Sneak chip (Johnny only), right side of the header.
+	-- Sneak chip (every character), right side of the header.
 	sneakChip = Instance.new(&quot;TextButton&quot;)
 	sneakChip.Name = &quot;Sneak&quot;
 	sneakChip.AnchorPoint = Vector2.new(1, 0)
@@ -30526,15 +30644,19 @@ function TuskUI.step(act)
 	-- Sneak chip.
 	local sneaking = character and character:GetAttribute(&quot;TuskSneaking&quot;) == true
 	local sp = slots.SneakParts
-	sneakChip.Visible = Registry.characterOf(act) == &quot;Johnny&quot;
+	-- Every character can sneak. While sneaking: HIDDEN, or SPOTTED! when an NPC has seen you.
+	sneakChip.Visible = act ~= nil
+	local spotted = sneaking and (character:GetAttribute(&quot;SpottedUntil&quot;) or 0) &gt; workspace:GetServerTimeNow()
+	local SPOT = Color3.fromRGB(255, 90, 80)
 	sp.KeyText.Text = keyName(&quot;Sneak&quot;) ~= &quot;&quot; and keyName(&quot;Sneak&quot;) or &quot;C&quot;
-	sp.Stroke.Color = sneaking and theme.Primary or Color3.fromRGB(60, 80, 120)
-	sp.Key.BackgroundColor3 = sneaking and theme.Primary or Color3.fromRGB(60, 80, 120)
-	sp.Text.TextColor3 = sneaking and theme.Primary or Color3.fromRGB(150, 170, 200)
-	sp.Text.Text = sneaking and &quot;SNEAKING&quot; or &quot;SNEAK&quot;
+	local tint = spotted and SPOT or theme.Primary
+	sp.Stroke.Color = sneaking and tint or Color3.fromRGB(60, 80, 120)
+	sp.Key.BackgroundColor3 = sneaking and tint or Color3.fromRGB(60, 80, 120)
+	sp.Text.TextColor3 = sneaking and tint or Color3.fromRGB(150, 170, 200)
+	sp.Text.Text = spotted and &quot;SPOTTED!&quot; or (sneaking and &quot;HIDDEN&quot; or &quot;SNEAK&quot;)
 	sneakChip.BackgroundColor3 = sneaking and DARK2 or DARK
 	sneakHint.Visible = sneaking and sneakChip.Visible
-	sneakHint.Text = &quot;M1 / TAP: SNEAK ATTACK&quot;
+	sneakHint.Text = Registry.characterOf(act) == &quot;Johnny&quot; and &quot;M1 / TAP: SNEAK ATTACK&quot; or &quot;ATTACK: AMBUSH (+50% FIRST HIT)&quot;
 end
 
 local function cooldown(slot, duration)

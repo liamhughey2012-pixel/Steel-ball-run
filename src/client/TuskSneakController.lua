@@ -9,6 +9,9 @@
 	                 (the HUD chip lives in TuskUI).
 	Server state comes from the TuskSneaking / TuskBurrowed attributes and
 	"SneakAttack" TuskFX events.
+	Other players who sneak fade out with distance (TuskConfig.Sneak
+	FadeStart..FadeEnd, up to MaxFade), their Stand too, and their ground
+	ripples only show up close.
 ]]
 
 local Players = game:GetService("Players")
@@ -223,6 +226,36 @@ function TuskSneakController.handle(name, data)
 	end
 end
 
+-- Other players who sneak fade out with distance (their Stand too).
+local faded = {} -- [character] = true while we've changed it
+local function setFade(character, alpha)
+	for _, d in ipairs(character:GetDescendants()) do
+		if d:IsA("BasePart") or d:IsA("Decal") then
+			d.LocalTransparencyModifier = alpha
+		end
+	end
+	local stand = TuskStand.get and TuskStand.get(character)
+	if stand and stand.Model then
+		for _, d in ipairs(stand.Model:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.LocalTransparencyModifier = alpha
+			end
+		end
+	end
+end
+
+local function fadeFor(character)
+	local mine = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+	local theirs = character:FindFirstChild("HumanoidRootPart")
+	if not mine or not theirs then
+		return 0, math.huge
+	end
+	local cfg = TuskConfig.Sneak
+	local d = (theirs.Position - mine.Position).Magnitude
+	local a = math.clamp((d - (cfg.FadeStart or 12)) / math.max((cfg.FadeEnd or 40) - (cfg.FadeStart or 12), 1), 0, 1)
+	return a * (cfg.MaxFade or 0.85), d
+end
+
 function TuskSneakController.init()
 	buildVignette()
 	local localSneaking = false
@@ -239,8 +272,15 @@ function TuskSneakController.init()
 						fx = startSneakFX(character)
 						sneakers[character] = fx or {}
 					end
-					-- Subtle ground ripple every so often.
-					if fx and fx.Attachment and now >= fx.NextRipple then
+					-- Someone else sneaking: they fade out the further away they are.
+					local alpha, dist = 0, 0
+					if player ~= localPlayer then
+						alpha, dist = fadeFor(character)
+						setFade(character, alpha)
+						faded[character] = true
+					end
+					-- Subtle ground ripple every so often (only close up: it'd give them away).
+					if fx and fx.Attachment and now >= fx.NextRipple and dist <= (TuskConfig.Sneak.FadeStart or 12) then
 						fx.NextRipple = now + 0.8
 						VFXLib.shockwave(CFrame.new(fx.Attachment.WorldPosition), { StartRadius = 0.8, Radius = 3, Width = 0.12, Duration = 0.6, Color = colors.Cyan })
 					end
@@ -251,6 +291,14 @@ function TuskSneakController.init()
 						hidden[character] = true
 						setHidden(character, true)
 					end
+				end
+			end
+		end
+		for character in pairs(faded) do
+			if not seenSneak[character] then
+				faded[character] = nil
+				if character.Parent then
+					setFade(character, 0)
 				end
 			end
 		end

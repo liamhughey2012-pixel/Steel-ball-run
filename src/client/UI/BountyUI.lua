@@ -621,6 +621,12 @@ function BountyUI.step()
 	local theirs = model and model:FindFirstChild("HumanoidRootPart")
 	local left = math.max(0, (current.Expires or 0) - workspace:GetServerTimeNow())
 	local where = (mine and theirs) and (math.floor((theirs.Position - mine.Position).Magnitude) .. " studs") or "respawning..."
+	-- A target sneaking far away is lost: no distance, no marker.
+	local sneak = TuskConfig.Sneak or {}
+	if model and model:GetAttribute("TuskSneaking") and mine and theirs and (theirs.Position - mine.Position).Magnitude > (sneak.HiddenFromBounty or 30) then
+		where = "HIDDEN"
+		marker.Enabled = false
+	end
 	tracker:FindFirstChild("Info").Text = string.format("%s  ·  %d:%02d", where, math.floor(left / 60), math.floor(left % 60))
 	if marker.Enabled then
 		marker:FindFirstChild("Arrow").Position = UDim2.new(0.5, 0, 0, 26 + math.sin(os.clock() * 5) * 4)

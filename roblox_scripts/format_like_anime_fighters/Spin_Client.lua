@@ -1782,6 +1782,12 @@ function BountyUI.step()
 	local theirs = model and model:FindFirstChild("HumanoidRootPart")
 	local left = math.max(0, (current.Expires or 0) - workspace:GetServerTimeNow())
 	local where = (mine and theirs) and (math.floor((theirs.Position - mine.Position).Magnitude) .. " studs") or "respawning..."
+	-- A target sneaking far away is lost: no distance, no marker.
+	local sneak = TuskConfig.Sneak or {}
+	if model and model:GetAttribute("TuskSneaking") and mine and theirs and (theirs.Position - mine.Position).Magnitude > (sneak.HiddenFromBounty or 30) then
+		where = "HIDDEN"
+		marker.Enabled = false
+	end
 	tracker:FindFirstChild("Info").Text = string.format("%s  ·  %d:%02d", where, math.floor(left / 60), math.floor(left % 60))
 	if marker.Enabled then
 		marker:FindFirstChild("Arrow").Position = UDim2.new(0.5, 0, 0, 26 + math.sin(os.clock() * 5) * 4)
@@ -6000,6 +6006,9 @@ __modules["TuskSneakController"] = function()
 	                 (the HUD chip lives in TuskUI).
 	Server state comes from the TuskSneaking / TuskBurrowed attributes and
 	"SneakAttack" TuskFX events.
+	Other players who sneak fade out with distance (TuskConfig.Sneak
+	FadeStart..FadeEnd, up to MaxFade), their Stand too, and their ground
+	ripples only show up close.
 ]]
 
 local Players = game:GetService("Players")
@@ -6214,6 +6223,36 @@ function TuskSneakController.handle(name, data)
 	end
 end
 
+-- Other players who sneak fade out with distance (their Stand too).
+local faded = {} -- [character] = true while we've changed it
+local function setFade(character, alpha)
+	for _, d in ipairs(character:GetDescendants()) do
+		if d:IsA("BasePart") or d:IsA("Decal") then
+			d.LocalTransparencyModifier = alpha
+		end
+	end
+	local stand = TuskStand.get and TuskStand.get(character)
+	if stand and stand.Model then
+		for _, d in ipairs(stand.Model:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.LocalTransparencyModifier = alpha
+			end
+		end
+	end
+end
+
+local function fadeFor(character)
+	local mine = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+	local theirs = character:FindFirstChild("HumanoidRootPart")
+	if not mine or not theirs then
+		return 0, math.huge
+	end
+	local cfg = TuskConfig.Sneak
+	local d = (theirs.Position - mine.Position).Magnitude
+	local a = math.clamp((d - (cfg.FadeStart or 12)) / math.max((cfg.FadeEnd or 40) - (cfg.FadeStart or 12), 1), 0, 1)
+	return a * (cfg.MaxFade or 0.85), d
+end
+
 function TuskSneakController.init()
 	buildVignette()
 	local localSneaking = false
@@ -6230,8 +6269,15 @@ function TuskSneakController.init()
 						fx = startSneakFX(character)
 						sneakers[character] = fx or {}
 					end
-					-- Subtle ground ripple every so often.
-					if fx and fx.Attachment and now >= fx.NextRipple then
+					-- Someone else sneaking: they fade out the further away they are.
+					local alpha, dist = 0, 0
+					if player ~= localPlayer then
+						alpha, dist = fadeFor(character)
+						setFade(character, alpha)
+						faded[character] = true
+					end
+					-- Subtle ground ripple every so often (only close up: it'd give them away).
+					if fx and fx.Attachment and now >= fx.NextRipple and dist <= (TuskConfig.Sneak.FadeStart or 12) then
 						fx.NextRipple = now + 0.8
 						VFXLib.shockwave(CFrame.new(fx.Attachment.WorldPosition), { StartRadius = 0.8, Radius = 3, Width = 0.12, Duration = 0.6, Color = colors.Cyan })
 					end
@@ -6242,6 +6288,14 @@ function TuskSneakController.init()
 						hidden[character] = true
 						setHidden(character, true)
 					end
+				end
+			end
+		end
+		for character in pairs(faded) do
+			if not seenSneak[character] then
+				faded[character] = nil
+				if character.Parent then
+					setFade(character, 0)
 				end
 			end
 		end
@@ -8512,7 +8566,7 @@ function TuskUI.init(cb)
 	actGradient = gradient(actLabel, WHITE, theme.Primary, 90)
 	taglineLabel = text(header, { Position = UDim2.fromOffset(8, 32), Size = UDim2.fromOffset(320, 12), TextSize = 11, TextColor3 = Color3.fromRGB(190, 210, 235), TextXAlignment = Enum.TextXAlignment.Left, Text = "", ZIndex = 2 })
 
-	-- Sneak chip (Johnny only), right side of the header.
+	-- Sneak chip (every character), right side of the header.
 	sneakChip = Instance.new("TextButton")
 	sneakChip.Name = "Sneak"
 	sneakChip.AnchorPoint = Vector2.new(1, 0)
@@ -8911,15 +8965,19 @@ function TuskUI.step(act)
 	-- Sneak chip.
 	local sneaking = character and character:GetAttribute("TuskSneaking") == true
 	local sp = slots.SneakParts
-	sneakChip.Visible = Registry.characterOf(act) == "Johnny"
+	-- Every character can sneak. While sneaking: HIDDEN, or SPOTTED! when an NPC has seen you.
+	sneakChip.Visible = act ~= nil
+	local spotted = sneaking and (character:GetAttribute("SpottedUntil") or 0) > workspace:GetServerTimeNow()
+	local SPOT = Color3.fromRGB(255, 90, 80)
 	sp.KeyText.Text = keyName("Sneak") ~= "" and keyName("Sneak") or "C"
-	sp.Stroke.Color = sneaking and theme.Primary or Color3.fromRGB(60, 80, 120)
-	sp.Key.BackgroundColor3 = sneaking and theme.Primary or Color3.fromRGB(60, 80, 120)
-	sp.Text.TextColor3 = sneaking and theme.Primary or Color3.fromRGB(150, 170, 200)
-	sp.Text.Text = sneaking and "SNEAKING" or "SNEAK"
+	local tint = spotted and SPOT or theme.Primary
+	sp.Stroke.Color = sneaking and tint or Color3.fromRGB(60, 80, 120)
+	sp.Key.BackgroundColor3 = sneaking and tint or Color3.fromRGB(60, 80, 120)
+	sp.Text.TextColor3 = sneaking and tint or Color3.fromRGB(150, 170, 200)
+	sp.Text.Text = spotted and "SPOTTED!" or (sneaking and "HIDDEN" or "SNEAK")
 	sneakChip.BackgroundColor3 = sneaking and DARK2 or DARK
 	sneakHint.Visible = sneaking and sneakChip.Visible
-	sneakHint.Text = "M1 / TAP: SNEAK ATTACK"
+	sneakHint.Text = Registry.characterOf(act) == "Johnny" and "M1 / TAP: SNEAK ATTACK" or "ATTACK: AMBUSH (+50% FIRST HIT)"
 end
 
 local function cooldown(slot, duration)

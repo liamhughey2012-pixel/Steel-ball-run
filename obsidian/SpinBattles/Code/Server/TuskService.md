@@ -544,9 +544,8 @@ local function onRequest(player, action, a, b, c)
 
 	local isJohnny = Registry.characterOf(state.Act) == "Johnny"
 	if action == "Sneak" then
-		if isJohnny then -- Tusk Sneak is Johnny's
-			Sneak.toggle(player, state, a == true)
-		end
+		-- Every character can sneak (only Johnny's Tusk can burrow out of it).
+		Sneak.toggle(player, state, a == true)
 		return
 	end
 	if state.Burrowed then
@@ -577,8 +576,12 @@ local function onRequest(player, action, a, b, c)
 	end
 
 	if action == "M1" then
-		if state.Sneaking then
+		if state.Sneaking and isJohnny then
 			Sneak.attack(player, state)
+		elseif state.Sneaking then
+			-- Everyone else ambushes: out of sneak, the first hit does extra damage.
+			Sneak.ambush(player, state)
+			module.M1(TuskService, player, state, a)
 		else
 			module.M1(TuskService, player, state, a)
 		end
@@ -587,7 +590,7 @@ local function onRequest(player, action, a, b, c)
 			return
 		end
 		if state.Sneaking then
-			Sneak.exit(player, state, true)
+			Sneak.ambush(player, state)
 		end
 		module.Ability(TuskService, player, state, a, "Press", c)
 	elseif action == "Ultimate" then

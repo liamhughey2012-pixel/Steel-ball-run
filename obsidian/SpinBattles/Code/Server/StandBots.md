@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `StandBots` (capitals matter) |
 
-**What it does:** Enemy NPCs that fight you with a Stand. Each one plays a real character (Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine: whichever are installed) through exactly the same move code as players, so their M1s, abilities and ultimates hit, stun and look the same. they're scattered round the map (TuskConfig.StandBots.Spots), chase any player who comes within AggroRange and walk back to their spot when the player gets away each respawn picks a new free spot, so they move around over time M1 combo up close, abilities on cooldown, ultimate when their meter is full hold abilities are charged and released automatically they block now and then, dash in to close the gap, and dash away when hurt every installed character has an NPC out: a new NPC is whichever character has the fewest right now (TuskConfig.StandBots.Characters) Blackmore NPCs rain walk while it rains: they step up onto frozen raindrops (an invisible step only NPCs collide with) and climb toward players above them they respawn RespawnTime seconds after dying, as whoever is missing Settings: TuskConfig.StandBots (Enabled = false turns them off). Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
+**What it does:** Enemy NPCs that fight you with a Stand. Each one plays a real character (Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine: whichever are installed) through exactly the same move code as players, so their M1s, abilities and ultimates hit, stun and look the same. they're scattered round the map (TuskConfig.StandBots.Spots), chase any player who comes within AggroRange and walk back to their spot when the player gets away each respawn picks a new free spot, so they move around over time M1 combo up close, abilities on cooldown, ultimate when their meter is full hold abilities are charged and released automatically they block now and then, dash in to close the gap, and dash away when hurt a sneaking player isn't noticed until they're close (TuskConfig.Sneak NoticeRange), or they hit the bot; a bot that saw them keeps track for a few seconds every installed character has an NPC out: a new NPC is whichever character has the fewest right now (TuskConfig.StandBots.Characters) Blackmore NPCs rain walk while it rains: they step up onto frozen raindrops (an invisible step only NPCs collide with) and climb toward players above them they respawn RespawnTime seconds after dying, as whoever is missing Settings: TuskConfig.StandBots (Enabled = false turns them off). Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -38,6 +38,9 @@ Back to [[Where To Put Code]]
 	  * M1 combo up close, abilities on cooldown, ultimate when their meter is full
 	  * hold abilities are charged and released automatically
 	  * they block now and then, dash in to close the gap, and dash away when hurt
+	  * a sneaking player isn't noticed until they're close (TuskConfig.Sneak
+	    NoticeRange), or they hit the bot; a bot that saw them keeps track for
+	    a few seconds
 	  * every installed character has an NPC out: a new NPC is whichever
 	    character has the fewest right now (TuskConfig.StandBots.Characters)
 	  * Blackmore NPCs rain walk while it rains: they step up onto frozen
@@ -395,7 +398,21 @@ local function thinkRainWalk(bot, root, target)
 	end
 end
 
--- Nearest player in range.
+-- Can this bot see `player`? Sneaking players are only noticed up close,
+-- or if they just hit the bot, or the bot saw them a moment ago.
+local function notices(bot, player, character, d)
+	local sneak = TuskConfig.Sneak or {}
+	bot.Noticed = bot.Noticed or {}
+	local now = os.clock()
+	local hitMe = bot.Model and bot.Model:GetAttribute("LastAttackerId") == player.UserId
+		and workspace:GetServerTimeNow() - (bot.Model:GetAttribute("LastAttackTime") or -math.huge) < 4
+	if not character:GetAttribute("TuskSneaking") or d <= (sneak.NoticeRange or 12) or hitMe then
+		bot.Noticed[player] = now + (sneak.NoticeMemory or 3)
+	end
+	return (bot.Noticed[player] or 0) > now
+end
+
+-- Nearest player in range (that the bot has noticed).
 local function findTarget(bot, root)
 	local best, bestDist
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -405,10 +422,14 @@ local function findTarget(bot, root)
 		if tr and hum and hum.Health > 0 and S.Adapter.canBeHit(bot.Player, character) then
 			local d = (tr.Position - root.Position).Magnitude
 			local fromHome = (tr.Position - bot.Home).Magnitude
-			if d <= (cfg.AggroRange or 70) and fromHome <= (cfg.LeashRange or 120) and (not bestDist or d < bestDist) then
+			if d <= (cfg.AggroRange or 70) and fromHome <= (cfg.LeashRange or 120) and notices(bot, player, character, d) and (not bestDist or d < bestDist) then
 				best, bestDist = character, d
 			end
 		end
+	end
+	-- Tell a sneaking target they've been spotted (the HUD shows it).
+	if best and best:GetAttribute("TuskSneaking") then
+		best:SetAttribute("SpottedUntil", workspace:GetServerTimeNow() + 1)
 	end
 	return best, bestDist
 end

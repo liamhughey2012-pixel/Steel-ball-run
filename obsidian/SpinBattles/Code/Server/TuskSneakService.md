@@ -38,7 +38,13 @@ Back to [[Where To Put Code]]
 	MaxTargetDrift studs away is missed, getting hit breaks sneak, and both
 	sneak and the attack have cooldowns.
 
-	Character attributes: TuskSneaking, TuskBurrowed.
+	Every character can sneak: NPCs don't notice a sneaking player until
+	they're close (StandBots), other players see them fade with distance and
+	can't see their name (TuskSneakController), and bounty hunters lose
+	track of them (BountyUI). Attacking out of sneak as anyone but Johnny is
+	an AMBUSH: the first hit within a moment does extra damage (CombatAdapter).
+
+	Character attributes: TuskSneaking, TuskBurrowed, AmbushUntil, SpottedUntil.
 ]]
 
 local Shared = game:GetService("ReplicatedStorage").SpinShared
@@ -68,11 +74,25 @@ function TuskSneakService.exit(player, state, applyCooldown)
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
 		if humanoid then
 			Adapter.setMoveModifier(humanoid, "TuskSneak", nil)
+			if state.SneakDisplay then
+				humanoid.DisplayDistanceType = state.SneakDisplay
+				state.SneakDisplay = nil
+			end
 		end
 	end
 	if applyCooldown then
 		Cooldowns.start(player, "TuskSneak", cfg.Cooldown)
 		S.tell(player, "SneakCooldown", { Duration = cfg.Cooldown })
+	end
+end
+
+-- Attacking out of sneak (anyone but Johnny): leave sneak, and the first
+-- hit in the next moment is an ambush (extra damage; CombatAdapter).
+function TuskSneakService.ambush(player, state)
+	local character = state.Character
+	TuskSneakService.exit(player, state, true)
+	if character then
+		character:SetAttribute("AmbushUntil", workspace:GetServerTimeNow() + (cfg.AmbushWindow or 1))
 	end
 end
 
@@ -95,6 +115,9 @@ function TuskSneakService.toggle(player, state, on)
 	state.SneakToken = token
 	character:SetAttribute("TuskSneaking", true)
 	Adapter.setMoveModifier(humanoid, "TuskSneak", cfg.WalkSpeedMultiplier)
+	-- Your name and health bar disappear while you sneak.
+	state.SneakDisplay = humanoid.DisplayDistanceType
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	task.delay(cfg.MaxDuration, function()
 		if state.SneakToken == token then
 			TuskSneakService.exit(player, state, true)

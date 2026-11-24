@@ -724,7 +724,7 @@ function TuskUI.init(cb)
 	actGradient = gradient(actLabel, WHITE, theme.Primary, 90)
 	taglineLabel = text(header, { Position = UDim2.fromOffset(8, 32), Size = UDim2.fromOffset(320, 12), TextSize = 11, TextColor3 = Color3.fromRGB(190, 210, 235), TextXAlignment = Enum.TextXAlignment.Left, Text = "", ZIndex = 2 })
 
-	-- Sneak chip (Johnny only), right side of the header.
+	-- Sneak chip (every character), right side of the header.
 	sneakChip = Instance.new("TextButton")
 	sneakChip.Name = "Sneak"
 	sneakChip.AnchorPoint = Vector2.new(1, 0)
@@ -1123,15 +1123,19 @@ function TuskUI.step(act)
 	-- Sneak chip.
 	local sneaking = character and character:GetAttribute("TuskSneaking") == true
 	local sp = slots.SneakParts
-	sneakChip.Visible = Registry.characterOf(act) == "Johnny"
+	-- Every character can sneak. While sneaking: HIDDEN, or SPOTTED! when an NPC has seen you.
+	sneakChip.Visible = act ~= nil
+	local spotted = sneaking and (character:GetAttribute("SpottedUntil") or 0) > workspace:GetServerTimeNow()
+	local SPOT = Color3.fromRGB(255, 90, 80)
 	sp.KeyText.Text = keyName("Sneak") ~= "" and keyName("Sneak") or "C"
-	sp.Stroke.Color = sneaking and theme.Primary or Color3.fromRGB(60, 80, 120)
-	sp.Key.BackgroundColor3 = sneaking and theme.Primary or Color3.fromRGB(60, 80, 120)
-	sp.Text.TextColor3 = sneaking and theme.Primary or Color3.fromRGB(150, 170, 200)
-	sp.Text.Text = sneaking and "SNEAKING" or "SNEAK"
+	local tint = spotted and SPOT or theme.Primary
+	sp.Stroke.Color = sneaking and tint or Color3.fromRGB(60, 80, 120)
+	sp.Key.BackgroundColor3 = sneaking and tint or Color3.fromRGB(60, 80, 120)
+	sp.Text.TextColor3 = sneaking and tint or Color3.fromRGB(150, 170, 200)
+	sp.Text.Text = spotted and "SPOTTED!" or (sneaking and "HIDDEN" or "SNEAK")
 	sneakChip.BackgroundColor3 = sneaking and DARK2 or DARK
 	sneakHint.Visible = sneaking and sneakChip.Visible
-	sneakHint.Text = "M1 / TAP: SNEAK ATTACK"
+	sneakHint.Text = Registry.characterOf(act) == "Johnny" and "M1 / TAP: SNEAK ATTACK" or "ATTACK: AMBUSH (+50% FIRST HIT)"
 end
 
 local function cooldown(slot, duration)

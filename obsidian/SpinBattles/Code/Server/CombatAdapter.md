@@ -310,6 +310,12 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	local attackerCharacter = attackerPlayer and attackerPlayer.Character
 	if attackerCharacter then
 		damage = damage * (attackerCharacter:GetAttribute("CorpseDamage") or 1)
+		-- Ambush out of sneak: the first hit lands harder (used up).
+		if (attackerCharacter:GetAttribute("AmbushUntil") or 0) > workspace:GetServerTimeNow() then
+			attackerCharacter:SetAttribute("AmbushUntil", nil)
+			damage = damage * ((TuskConfig.Sneak and TuskConfig.Sneak.AmbushMultiplier) or 1.5)
+			info.Ambush = true
+		end
 	end
 	damage = damage * (targetCharacter:GetAttribute("CorpseResist") or 1)
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)

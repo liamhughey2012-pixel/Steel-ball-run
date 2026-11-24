@@ -220,8 +220,19 @@ TuskConfig.Character = {
 -- Tusk Sneak (shared by every Act)
 ---------------------------------------------------------------------------
 TuskConfig.Sneak = {
+	-- SNEAK (C, every character): crouched and slow, but hard to notice.
+	--   * NPCs don't notice you unless you're this close (or you just hit them)
+	--   * other players see you fade out with distance; your name and health bar are hidden
+	--   * bounty hunters' marker and distance read HIDDEN past HiddenFromBounty studs
+	--   * attacking out of sneak: Johnny's Tusk burrows (Sneak Attack, below);
+	--     everyone else AMBUSHES: the first hit within AmbushWindow does extra damage
+	NoticeRange = 12,
+	NoticeMemory = 3, -- seconds an NPC keeps tracking you after it last saw you
+	AmbushMultiplier = 1.5, AmbushWindow = 1.0,
+	FadeStart = 12, FadeEnd = 40, MaxFade = 0.85, -- how see-through you look to others (by distance)
+	HiddenFromBounty = 30,
 	WalkSpeedMultiplier = 0.45,
-	MaxDuration = 8, -- auto-exit after this long
+	MaxDuration = 15, -- auto-exit after this long
 	Cooldown = 4, -- after leaving sneak
 	CameraDrop = 1.4, -- studs the camera lowers
 	Attack = { -- press M1 while sneaking

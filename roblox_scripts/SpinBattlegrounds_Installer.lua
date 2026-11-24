@@ -1504,8 +1504,19 @@ TuskConfig.Character = {
 -- Tusk Sneak (shared by every Act)
 ---------------------------------------------------------------------------
 TuskConfig.Sneak = {
+	-- SNEAK (C, every character): crouched and slow, but hard to notice.
+	--   * NPCs don't notice you unless you're this close (or you just hit them)
+	--   * other players see you fade out with distance; your name and health bar are hidden
+	--   * bounty hunters' marker and distance read HIDDEN past HiddenFromBounty studs
+	--   * attacking out of sneak: Johnny's Tusk burrows (Sneak Attack, below);
+	--     everyone else AMBUSHES: the first hit within AmbushWindow does extra damage
+	NoticeRange = 12,
+	NoticeMemory = 3, -- seconds an NPC keeps tracking you after it last saw you
+	AmbushMultiplier = 1.5, AmbushWindow = 1.0,
+	FadeStart = 12, FadeEnd = 40, MaxFade = 0.85, -- how see-through you look to others (by distance)
+	HiddenFromBounty = 30,
 	WalkSpeedMultiplier = 0.45,
-	MaxDuration = 8, -- auto-exit after this long
+	MaxDuration = 15, -- auto-exit after this long
 	Cooldown = 4, -- after leaving sneak
 	CameraDrop = 1.4, -- studs the camera lowers
 	Attack = { -- press M1 while sneaking
@@ -4939,6 +4950,12 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	local attackerCharacter = attackerPlayer and attackerPlayer.Character
 	if attackerCharacter then
 		damage = damage * (attackerCharacter:GetAttribute("CorpseDamage") or 1)
+		-- Ambush out of sneak: the first hit lands harder (used up).
+		if (attackerCharacter:GetAttribute("AmbushUntil") or 0) > workspace:GetServerTimeNow() then
+			attackerCharacter:SetAttribute("AmbushUntil", nil)
+			damage = damage * ((TuskConfig.Sneak and TuskConfig.Sneak.AmbushMultiplier) or 1.5)
+			info.Ambush = true
+		end
 	end
 	damage = damage * (targetCharacter:GetAttribute("CorpseResist") or 1)
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
@@ -8179,6 +8196,9 @@ return StandAssetLoader
 	  * M1 combo up close, abilities on cooldown, ultimate when their meter is full
 	  * hold abilities are charged and released automatically
 	  * they block now and then, dash in to close the gap, and dash away when hurt
+	  * a sneaking player isn't noticed until they're close (TuskConfig.Sneak
+	    NoticeRange), or they hit the bot; a bot that saw them keeps track for
+	    a few seconds
 	  * every installed character has an NPC out: a new NPC is whichever
 	    character has the fewest right now (TuskConfig.StandBots.Characters)
 	  * Blackmore NPCs rain walk while it rains: they step up onto frozen
@@ -8536,7 +8556,21 @@ local function thinkRainWalk(bot, root, target)
 	end
 end
 
--- Nearest player in range.
+-- Can this bot see `player`? Sneaking players are only noticed up close,
+-- or if they just hit the bot, or the bot saw them a moment ago.
+local function notices(bot, player, character, d)
+	local sneak = TuskConfig.Sneak or {}
+	bot.Noticed = bot.Noticed or {}
+	local now = os.clock()
+	local hitMe = bot.Model and bot.Model:GetAttribute("LastAttackerId") == player.UserId
+		and workspace:GetServerTimeNow() - (bot.Model:GetAttribute("LastAttackTime") or -math.huge) < 4
+	if not character:GetAttribute("TuskSneaking") or d <= (sneak.NoticeRange or 12) or hitMe then
+		bot.Noticed[player] = now + (sneak.NoticeMemory or 3)
+	end
+	return (bot.Noticed[player] or 0) > now
+end
+
+-- Nearest player in range (that the bot has noticed).
 local function findTarget(bot, root)
 	local best, bestDist
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -8546,10 +8580,14 @@ local function findTarget(bot, root)
 		if tr and hum and hum.Health > 0 and S.Adapter.canBeHit(bot.Player, character) then
 			local d = (tr.Position - root.Position).Magnitude
 			local fromHome = (tr.Position - bot.Home).Magnitude
-			if d <= (cfg.AggroRange or 70) and fromHome <= (cfg.LeashRange or 120) and (not bestDist or d < bestDist) then
+			if d <= (cfg.AggroRange or 70) and fromHome <= (cfg.LeashRange or 120) and notices(bot, player, character, d) and (not bestDist or d < bestDist) then
 				best, bestDist = character, d
 			end
 		end
+	end
+	-- Tell a sneaking target they've been spotted (the HUD shows it).
+	if best and best:GetAttribute("TuskSneaking") then
+		best:SetAttribute("SpottedUntil", workspace:GetServerTimeNow() + 1)
 	end
 	return best, bestDist
 end
@@ -14144,9 +14182,8 @@ local function onRequest(player, action, a, b, c)
 
 	local isJohnny = Registry.characterOf(state.Act) == "Johnny"
 	if action == "Sneak" then
-		if isJohnny then -- Tusk Sneak is Johnny's
-			Sneak.toggle(player, state, a == true)
-		end
+		-- Every character can sneak (only Johnny's Tusk can burrow out of it).
+		Sneak.toggle(player, state, a == true)
 		return
 	end
 	if state.Burrowed then
@@ -14177,8 +14214,12 @@ local function onRequest(player, action, a, b, c)
 	end
 
 	if action == "M1" then
-		if state.Sneaking then
+		if state.Sneaking and isJohnny then
 			Sneak.attack(player, state)
+		elseif state.Sneaking then
+			-- Everyone else ambushes: out of sneak, the first hit does extra damage.
+			Sneak.ambush(player, state)
+			module.M1(TuskService, player, state, a)
 		else
 			module.M1(TuskService, player, state, a)
 		end
@@ -14187,7 +14228,7 @@ local function onRequest(player, action, a, b, c)
 			return
 		end
 		if state.Sneaking then
-			Sneak.exit(player, state, true)
+			Sneak.ambush(player, state)
 		end
 		module.Ability(TuskService, player, state, a, "Press", c)
 	elseif action == "Ultimate" then
@@ -14384,7 +14425,13 @@ return TuskService
 	MaxTargetDrift studs away is missed, getting hit breaks sneak, and both
 	sneak and the attack have cooldowns.
 
-	Character attributes: TuskSneaking, TuskBurrowed.
+	Every character can sneak: NPCs don't notice a sneaking player until
+	they're close (StandBots), other players see them fade with distance and
+	can't see their name (TuskSneakController), and bounty hunters lose
+	track of them (BountyUI). Attacking out of sneak as anyone but Johnny is
+	an AMBUSH: the first hit within a moment does extra damage (CombatAdapter).
+
+	Character attributes: TuskSneaking, TuskBurrowed, AmbushUntil, SpottedUntil.
 ]]
 
 local Shared = game:GetService("ReplicatedStorage").SpinShared
@@ -14414,11 +14461,25 @@ function TuskSneakService.exit(player, state, applyCooldown)
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
 		if humanoid then
 			Adapter.setMoveModifier(humanoid, "TuskSneak", nil)
+			if state.SneakDisplay then
+				humanoid.DisplayDistanceType = state.SneakDisplay
+				state.SneakDisplay = nil
+			end
 		end
 	end
 	if applyCooldown then
 		Cooldowns.start(player, "TuskSneak", cfg.Cooldown)
 		S.tell(player, "SneakCooldown", { Duration = cfg.Cooldown })
+	end
+end
+
+-- Attacking out of sneak (anyone but Johnny): leave sneak, and the first
+-- hit in the next moment is an ambush (extra damage; CombatAdapter).
+function TuskSneakService.ambush(player, state)
+	local character = state.Character
+	TuskSneakService.exit(player, state, true)
+	if character then
+		character:SetAttribute("AmbushUntil", workspace:GetServerTimeNow() + (cfg.AmbushWindow or 1))
 	end
 end
 
@@ -14441,6 +14502,9 @@ function TuskSneakService.toggle(player, state, on)
 	state.SneakToken = token
 	character:SetAttribute("TuskSneaking", true)
 	Adapter.setMoveModifier(humanoid, "TuskSneak", cfg.WalkSpeedMultiplier)
+	-- Your name and health bar disappear while you sneak.
+	state.SneakDisplay = humanoid.DisplayDistanceType
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	task.delay(cfg.MaxDuration, function()
 		if state.SneakToken == token then
 			TuskSneakService.exit(player, state, true)
@@ -25860,6 +25924,9 @@ return TuskProjectiles
 	                 (the HUD chip lives in TuskUI).
 	Server state comes from the TuskSneaking / TuskBurrowed attributes and
 	"SneakAttack" TuskFX events.
+	Other players who sneak fade out with distance (TuskConfig.Sneak
+	FadeStart..FadeEnd, up to MaxFade), their Stand too, and their ground
+	ripples only show up close.
 ]]
 
 local Players = game:GetService("Players")
@@ -26074,6 +26141,36 @@ function TuskSneakController.handle(name, data)
 	end
 end
 
+-- Other players who sneak fade out with distance (their Stand too).
+local faded = {} -- [character] = true while we've changed it
+local function setFade(character, alpha)
+	for _, d in ipairs(character:GetDescendants()) do
+		if d:IsA("BasePart") or d:IsA("Decal") then
+			d.LocalTransparencyModifier = alpha
+		end
+	end
+	local stand = TuskStand.get and TuskStand.get(character)
+	if stand and stand.Model then
+		for _, d in ipairs(stand.Model:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.LocalTransparencyModifier = alpha
+			end
+		end
+	end
+end
+
+local function fadeFor(character)
+	local mine = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+	local theirs = character:FindFirstChild("HumanoidRootPart")
+	if not mine or not theirs then
+		return 0, math.huge
+	end
+	local cfg = TuskConfig.Sneak
+	local d = (theirs.Position - mine.Position).Magnitude
+	local a = math.clamp((d - (cfg.FadeStart or 12)) / math.max((cfg.FadeEnd or 40) - (cfg.FadeStart or 12), 1), 0, 1)
+	return a * (cfg.MaxFade or 0.85), d
+end
+
 function TuskSneakController.init()
 	buildVignette()
 	local localSneaking = false
@@ -26090,8 +26187,15 @@ function TuskSneakController.init()
 						fx = startSneakFX(character)
 						sneakers[character] = fx or {}
 					end
-					-- Subtle ground ripple every so often.
-					if fx and fx.Attachment and now >= fx.NextRipple then
+					-- Someone else sneaking: they fade out the further away they are.
+					local alpha, dist = 0, 0
+					if player ~= localPlayer then
+						alpha, dist = fadeFor(character)
+						setFade(character, alpha)
+						faded[character] = true
+					end
+					-- Subtle ground ripple every so often (only close up: it'd give them away).
+					if fx and fx.Attachment and now >= fx.NextRipple and dist <= (TuskConfig.Sneak.FadeStart or 12) then
 						fx.NextRipple = now + 0.8
 						VFXLib.shockwave(CFrame.new(fx.Attachment.WorldPosition), { StartRadius = 0.8, Radius = 3, Width = 0.12, Duration = 0.6, Color = colors.Cyan })
 					end
@@ -26102,6 +26206,14 @@ function TuskSneakController.init()
 						hidden[character] = true
 						setHidden(character, true)
 					end
+				end
+			end
+		end
+		for character in pairs(faded) do
+			if not seenSneak[character] then
+				faded[character] = nil
+				if character.Parent then
+					setFade(character, 0)
 				end
 			end
 		end
@@ -28361,6 +28473,12 @@ function BountyUI.step()
 	local theirs = model and model:FindFirstChild("HumanoidRootPart")
 	local left = math.max(0, (current.Expires or 0) - workspace:GetServerTimeNow())
 	local where = (mine and theirs) and (math.floor((theirs.Position - mine.Position).Magnitude) .. " studs") or "respawning..."
+	-- A target sneaking far away is lost: no distance, no marker.
+	local sneak = TuskConfig.Sneak or {}
+	if model and model:GetAttribute("TuskSneaking") and mine and theirs and (theirs.Position - mine.Position).Magnitude > (sneak.HiddenFromBounty or 30) then
+		where = "HIDDEN"
+		marker.Enabled = false
+	end
 	tracker:FindFirstChild("Info").Text = string.format("%s  ·  %d:%02d", where, math.floor(left / 60), math.floor(left % 60))
 	if marker.Enabled then
 		marker:FindFirstChild("Arrow").Position = UDim2.new(0.5, 0, 0, 26 + math.sin(os.clock() * 5) * 4)
@@ -30124,7 +30242,7 @@ function TuskUI.init(cb)
 	actGradient = gradient(actLabel, WHITE, theme.Primary, 90)
 	taglineLabel = text(header, { Position = UDim2.fromOffset(8, 32), Size = UDim2.fromOffset(320, 12), TextSize = 11, TextColor3 = Color3.fromRGB(190, 210, 235), TextXAlignment = Enum.TextXAlignment.Left, Text = "", ZIndex = 2 })
 
-	-- Sneak chip (Johnny only), right side of the header.
+	-- Sneak chip (every character), right side of the header.
 	sneakChip = Instance.new("TextButton")
 	sneakChip.Name = "Sneak"
 	sneakChip.AnchorPoint = Vector2.new(1, 0)
@@ -30523,15 +30641,19 @@ function TuskUI.step(act)
 	-- Sneak chip.
 	local sneaking = character and character:GetAttribute("TuskSneaking") == true
 	local sp = slots.SneakParts
-	sneakChip.Visible = Registry.characterOf(act) == "Johnny"
+	-- Every character can sneak. While sneaking: HIDDEN, or SPOTTED! when an NPC has seen you.
+	sneakChip.Visible = act ~= nil
+	local spotted = sneaking and (character:GetAttribute("SpottedUntil") or 0) > workspace:GetServerTimeNow()
+	local SPOT = Color3.fromRGB(255, 90, 80)
 	sp.KeyText.Text = keyName("Sneak") ~= "" and keyName("Sneak") or "C"
-	sp.Stroke.Color = sneaking and theme.Primary or Color3.fromRGB(60, 80, 120)
-	sp.Key.BackgroundColor3 = sneaking and theme.Primary or Color3.fromRGB(60, 80, 120)
-	sp.Text.TextColor3 = sneaking and theme.Primary or Color3.fromRGB(150, 170, 200)
-	sp.Text.Text = sneaking and "SNEAKING" or "SNEAK"
+	local tint = spotted and SPOT or theme.Primary
+	sp.Stroke.Color = sneaking and tint or Color3.fromRGB(60, 80, 120)
+	sp.Key.BackgroundColor3 = sneaking and tint or Color3.fromRGB(60, 80, 120)
+	sp.Text.TextColor3 = sneaking and tint or Color3.fromRGB(150, 170, 200)
+	sp.Text.Text = spotted and "SPOTTED!" or (sneaking and "HIDDEN" or "SNEAK")
 	sneakChip.BackgroundColor3 = sneaking and DARK2 or DARK
 	sneakHint.Visible = sneaking and sneakChip.Visible
-	sneakHint.Text = "M1 / TAP: SNEAK ATTACK"
+	sneakHint.Text = Registry.characterOf(act) == "Johnny" and "M1 / TAP: SNEAK ATTACK" or "ATTACK: AMBUSH (+50% FIRST HIT)"
 end
 
 local function cooldown(slot, duration)
