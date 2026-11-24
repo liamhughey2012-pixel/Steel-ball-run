@@ -663,6 +663,8 @@ local function onMove(data)
 				b:Destroy()
 			end)
 		end
+	elseif who == "Jodio" then
+		-- (November Rain's cloud and crush are drawn by JodioVFX.)
 	elseif who == "Tooru" and data.Phase == "Calamity" and data.Position then
 		-- A dark maroon ring sweeps out: misfortune finds everyone in it.
 		ring(data.Position, data.Radius or 24, Color3.fromRGB(150, 40, 50), 0.6)

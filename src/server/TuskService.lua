@@ -323,6 +323,21 @@ function TuskService.fireBubble(player, state, spec)
 	})
 end
 
+-- Server projectile with a heavy-raindrop visual (Jodio: November Rain).
+function TuskService.fireRain(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "RainDrop",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Heavy" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
 -- Soft & Wet's PLUNDER: SOUND (and anything like it): no abilities for a while.
 function TuskService.isSilenced(character)
 	return character ~= nil and (character:GetAttribute("SilencedUntil") or 0) > workspace:GetServerTimeNow()

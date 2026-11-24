@@ -147,6 +147,7 @@ TuskConfig.Roster = {
 	{ Id = "DiegoAU", Name = "DIEGO BRANDO (AU)", Stand = "THE WORLD", Available = true, Color = Color3.fromRGB(236, 196, 70) },
 	{ Id = "Josuke", Name = "JOSUKE HIGASHIKATA (8)", Stand = "SOFT & WET", Available = true, Color = Color3.fromRGB(120, 190, 240) },
 	{ Id = "Tooru", Name = "TOORU", Stand = "WONDER OF U", Available = true, Color = Color3.fromRGB(150, 70, 190) },
+	{ Id = "Jodio", Name = "JODIO JOESTAR", Stand = "NOVEMBER RAIN", Available = true, Color = Color3.fromRGB(90, 170, 240) },
 }
 
 ---------------------------------------------------------------------------
@@ -198,10 +199,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 13, -- how many at once (each takes a free spot below)
+	Count = 14, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine", "DiegoAU", "Josuke", "Tooru" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -233,6 +234,7 @@ TuskConfig.StandBots = {
 		Vector3.new(-300, 0, 380), -- north-west corner
 		Vector3.new(-380, 0, 220), -- west edge
 		Vector3.new(-190, 0, -380), -- far south-west
+		Vector3.new(110, 0, 380), -- far north
 	},
 	Distance = 70, -- (no map) studs from the spawn to their camp
 	Spacing = 14, -- (no map) studs between them at the camp
@@ -956,6 +958,49 @@ TuskConfig.Tooru = {
 	CorpseCalamity = { Radius = 24, Delay = 0.6, Damage = 8, Stun = 0.7, Knockback = 12 }, -- corpse move: debris on everyone round him
 }
 
+---------------------------------------------------------------------------
+-- Jodio Joestar (The JOJOLands): NOVEMBER RAIN. Heavy, crushing rain.
+---------------------------------------------------------------------------
+TuskConfig.Jodio = {
+	-- PASSIVE: SOAKED. His rain soaks whoever it hits for SoakTime seconds;
+	-- his rain hits a soaked enemy SoakBonus times harder.
+	SoakTime = 5, SoakBonus = 1.25,
+	M1 = { -- NOVEMBER RAIN COMBO
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.5, Knockback = 36, Launch = 10, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	HeavyRain = { -- 1: a storm cloud over them; the rain under it pins and pounds
+		Cooldown = 11, Windup = 0.25,
+		Range = 55, Cone = 100, -- who it's put over (else a spot ahead of him)
+		Radius = 10, Time = 3, Tick = 0.3,
+		Damage = 1.2, Stun = 0, -- per tick, to everyone under it (no stun: the pressure slows them instead)
+		Pressure = 0.5, -- they walk at 50% under it (the rain presses them down)
+	},
+	RainBullets = { -- 2: a burst of heavy raindrops fired like bullets
+		Cooldown = 7, Windup = 0.15,
+		Count = 6, Gap = 0.07, Spread = 4, -- degrees
+		Speed = 160, Radius = 0.9, Range = 90,
+		Damage = 3, Stun = 0.25, Knockback = 3,
+	},
+	RainJet = { -- 3: November Rain blasts him forward on a jet of rain
+		Cooldown = 9, Windup = 0.12,
+		Distance = 30, Travel = 0.3, Width = 7,
+		Damage = 6, Stun = 0.6, Knockback = 24,
+	},
+	Ultimate = { -- NOVEMBER RAIN: TORRENT: a huge storm that follows him, then crushes
+		Windup = 0.8, Duration = 6, Radius = 35, Tick = 0.4,
+		Damage = 2, Stun = 0, Pressure = 0.6,
+		CrushDamage = 14, CrushStun = 1.2, CrushKnockback = 6, -- when it ends: everyone under it
+	},
+	CorpseRain = { Radius = 20, Delay = 0.5, Damage = 9, Stun = 0.8 }, -- corpse move: a crushing burst of rain round him
+}
+
 TuskConfig.Gyro = {
 	M1 = {
 		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,
@@ -1040,7 +1085,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }

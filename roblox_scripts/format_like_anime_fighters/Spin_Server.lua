@@ -1562,6 +1562,7 @@ __modules["CorpseMoves"] = function()
 	  Diego (AU)   REVOLVER: draws a six-shooter, fans six shots where he aims
 	  Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while
 	  Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him
+	  Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -1896,6 +1897,30 @@ USE.Tooru = function(S, player, state, character, root)
 			end)
 		end
 	end
+end
+
+-- HEAVY RAINFALL: November Rain drops a storm cloud over him; a moment
+-- later the rain comes down all at once on everyone round him.
+USE.Jodio = function(S, player, state, character, root)
+	local c = TuskConfig.Jodio and TuskConfig.Jodio.CorpseRain or { Radius = 20, Delay = 0.5, Damage = 9, Stun = 0.8 }
+	S.lock(state, 0.4)
+	local center = root.Position
+	S.fx("Ability", { Character = character, Act = 17, Move = "HeavyRain", Phase = "Cloud", Position = center - Vector3.new(0, 3, 0), Radius = c.Radius, Time = c.Delay + 0.4, Windup = c.Delay })
+	task.delay(c.Delay, function()
+		local char, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		local hits = {}
+		for _, target in ipairs(S.Hitbox.inRadius(char, center, c.Radius, 12)) do
+			local tr = target:FindFirstChild("HumanoidRootPart")
+			if tr and S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 4, Direction = Vector3.new(0, -1, 0), Position = tr.Position, Source = "JodioCorpse" }) then
+				target:SetAttribute("SoakedUntil", workspace:GetServerTimeNow() + 5)
+				table.insert(hits, tr.Position)
+			end
+		end
+		S.fx("Ultimate", { Character = char, Act = 17, Phase = "Crush", Position = center, Radius = c.Radius, Hits = hits })
+	end)
 end
 
 -- THE SAINT'S MIRACLE: only with the complete corpse (all 8 parts).
@@ -7116,7 +7141,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -7173,6 +7198,7 @@ local LOOKS = {
 	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 	DiegoAU = { Skin = Color3.fromRGB(240, 205, 170), Torso = Color3.fromRGB(110, 200, 185), Legs = Color3.fromRGB(196, 170, 110) },
 	Josuke = { Skin = Color3.fromRGB(214, 168, 130), Torso = Color3.fromRGB(240, 240, 236), Legs = Color3.fromRGB(236, 236, 232) },
+	Jodio = { Skin = Color3.fromRGB(236, 200, 166), Torso = Color3.fromRGB(34, 34, 64), Legs = Color3.fromRGB(36, 42, 84) },
 	Tooru = { Skin = Color3.fromRGB(232, 196, 166), Torso = Color3.fromRGB(120, 60, 170), Legs = Color3.fromRGB(222, 190, 70) },
 }
 
@@ -9187,6 +9213,23 @@ TuskActRegistry.Acts = {
 		ClientModule = "TooruVFX", -- client visuals (TuskActVFX.TooruVFX)
 		CardTitle = "STAND  ·  WONDER OF U",
 	},
+	-- Jodio Joestar (The JOJOLands): NOVEMBER RAIN. Heavy raindrops that
+	-- strike with crushing pressure.
+	[17] = {
+		Name = "NOVEMBER RAIN",
+		Character = "Jodio",
+		Tagline = "Crushing rain",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(90, 170, 240), Secondary = Color3.fromRGB(240, 120, 190) },
+		M1 = "NOVEMBER RAIN COMBO",
+		Abilities = { "HEAVY RAIN", "RAIN BULLETS", "RAIN JET" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "NOVEMBER RAIN: TORRENT",
+		Next = nil,
+		Module = "Jodio", -- server moves
+		ClientModule = "JodioVFX", -- client visuals (TuskActVFX.JodioVFX)
+		CardTitle = "STAND  ·  NOVEMBER RAIN",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -9196,7 +9239,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -9963,6 +10006,21 @@ function TuskService.fireBubble(player, state, spec)
 		Radius = spec.Radius,
 		Range = spec.Range,
 		Visual = { Style = spec.Style or "Bubble" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Server projectile with a heavy-raindrop visual (Jodio: November Rain).
+function TuskService.fireRain(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "RainDrop",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Heavy" },
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd,
 	})
@@ -10880,7 +10938,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

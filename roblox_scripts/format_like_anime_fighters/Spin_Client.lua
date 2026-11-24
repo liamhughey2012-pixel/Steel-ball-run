@@ -4052,6 +4052,8 @@ local function onMove(data)
 				b:Destroy()
 			end)
 		end
+	elseif who == "Jodio" then
+		-- (November Rain's cloud and crush are drawn by JodioVFX.)
 	elseif who == "Tooru" and data.Phase == "Calamity" and data.Position then
 		-- A dark maroon ring sweeps out: misfortune finds everyone in it.
 		ring(data.Position, data.Radius or 24, Color3.fromRGB(150, 40, 50), 0.6)
@@ -4884,6 +4886,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 5) == "Jodio" then
+		starColor = Color3.fromRGB(110, 190, 250)
 	elseif source:sub(1, 5) == "Tooru" then
 		starColor = Color3.fromRGB(240, 196, 60)
 	elseif source:sub(1, 6) == "Josuke" then
@@ -6117,6 +6121,7 @@ Common.Palettes = {
 	[14] = { Main = Color3.fromRGB(236, 196, 70), Second = Color3.fromRGB(70, 170, 160), Light = Color3.fromRGB(255, 244, 200) }, -- Diego from another world (The World gold + teal)
 	[15] = { Main = Color3.fromRGB(120, 190, 240), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(235, 248, 255) }, -- Josuke (Soft & Wet bubble blue + gold)
 	[16] = { Main = Color3.fromRGB(150, 40, 50), Second = Color3.fromRGB(240, 196, 60), Light = Color3.fromRGB(255, 236, 200) }, -- Tooru (Wonder of U maroon + scarf gold)
+	[17] = { Main = Color3.fromRGB(90, 170, 240), Second = Color3.fromRGB(240, 120, 190), Light = Color3.fromRGB(225, 240, 255) }, -- Jodio (November Rain blue + strap pink)
 }
 
 function Common.palette(act)
@@ -6608,6 +6613,23 @@ TuskActRegistry.Acts = {
 		ClientModule = "TooruVFX", -- client visuals (TuskActVFX.TooruVFX)
 		CardTitle = "STAND  ·  WONDER OF U",
 	},
+	-- Jodio Joestar (The JOJOLands): NOVEMBER RAIN. Heavy raindrops that
+	-- strike with crushing pressure.
+	[17] = {
+		Name = "NOVEMBER RAIN",
+		Character = "Jodio",
+		Tagline = "Crushing rain",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(90, 170, 240), Secondary = Color3.fromRGB(240, 120, 190) },
+		M1 = "NOVEMBER RAIN COMBO",
+		Abilities = { "HEAVY RAIN", "RAIN BULLETS", "RAIN JET" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "NOVEMBER RAIN: TORRENT",
+		Next = nil,
+		Module = "Jodio", -- server moves
+		ClientModule = "JodioVFX", -- client visuals (TuskActVFX.JodioVFX)
+		CardTitle = "STAND  ·  NOVEMBER RAIN",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -6617,7 +6639,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -6856,6 +6878,11 @@ TuskAnimation.Poses = {
 	TFlick = { Root = { 0, -10, 0, 0 }, Waist = { 0, -12, 0 }, Neck = { -4, 12, 6 }, RightArm = { 50, 0, 64 }, RightElbow = { 40, 0, 0 }, LeftArm = { -6, 0, -12 }, LeftElbow = { 30, 0, 0 } },
 	TPoint = { Root = { 0, -16, 0, -0.02 }, Waist = { 0, -16, 0 }, Neck = { 4, 16, 4 }, RightArm = { 90, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { -8, 0, -12 }, LeftElbow = { 30, 0, 0 } },
 	TOpen = { Root = { -4, 0, 0, 0.04 }, Waist = { -10, 0, 0 }, Neck = { -26, 0, 8 }, RightArm = { 30, 0, 72 }, RightElbow = { 30, 0, 0 }, LeftArm = { 30, 0, -72 }, LeftElbow = { 30, 0, 0 } },
+	-- JODIO: slouched and cocky, one hand behind his head.
+	JDStance = { Root = { -3, 6, 0, -0.02 }, Waist = { -6, 6, 0 }, Neck = { 4, -10, 6 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 }, RightArm = { -6, 0, 10 }, RightElbow = { 24, 0, 0 }, RightHip = { 4, 0, 0 }, LeftKnee = { -6, 0, 0 } },
+	JDPoint = { Root = { 0, -14, 0, -0.02 }, Waist = { 0, -14, 0 }, Neck = { 4, 14, 4 }, RightArm = { 90, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 } },
+	JDRaise = { Root = { -4, 0, 0, 0.02 }, Waist = { -8, 0, 0 }, Neck = { -20, 0, 0 }, RightArm = { 170, 0, 10 }, RightElbow = { 10, 0, 0 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 } },
+	JDSurf = { Root = { 18, -30, 0, -0.2 }, Waist = { 14, -20, 0 }, Neck = { -10, 20, 0 }, RightArm = { 40, 0, 70 }, RightElbow = { 20, 0, 0 }, LeftArm = { 40, 0, -70 }, LeftElbow = { 20, 0, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -40, 0, 0 }, LeftHip = { -10, 0, 0 }, LeftKnee = { -20, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -7042,6 +7069,14 @@ TuskAnimation.Actions = {
 	TCast = { { 0, "TStance" }, { 0.12, "TFlick", "Back", 3 }, { 0.5, "TFlick", "Linear" }, { 0.75, "TStance", "Sine" } },
 	TCurse = { { 0, "TStance" }, { 0.15, "TPoint", "Back", 3 }, { 0.6, "TPoint", "Linear" }, { 0.85, "TStance", "Sine" } },
 	TUlt = { { 0, "TStance" }, { 0.3, "TOpen", "Out" }, { 1.2, "TOpen", "Linear", 1 }, { 1.6, "TStance", "Sine" } },
+	JD_M1_1 = { { 0, "JDStance" }, { 0.07, "JDPoint", "Back", 3 }, { 0.3, "JDStance", "Sine" } },
+	JD_M1_2 = { { 0, "JDStance" }, { 0.07, "JDPoint", "Back", 3 }, { 0.3, "JDStance", "Sine" } },
+	JD_M1_3 = { { 0, "JDStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "JDStance", "Sine" } },
+	JD_M1_4 = { { 0, "JDStance" }, { 0.1, "JDPoint", "Snap", 6 }, { 0.3, "JDPoint", "Linear" }, { 0.46, "JDStance", "Sine" } },
+	JDCall = { { 0, "JDStance" }, { 0.15, "JDRaise", "Back", 3 }, { 0.6, "JDRaise", "Linear" }, { 0.85, "JDStance", "Sine" } },
+	JDShoot = { { 0, "JDStance" }, { 0.12, "JDPoint", "Back", 3 }, { 0.6, "JDPoint", "Linear" }, { 0.8, "JDStance", "Sine" } },
+	JDJet = { { 0, "JDStance" }, { 0.1, "JDSurf", "Out" }, { 0.42, "JDSurf", "Linear" }, { 0.65, "JDStance", "Sine" } },
+	JDTorrent = { { 0, "JDStance" }, { 0.25, "JDRaise", "Out" }, { 1.0, "JDRaise", "Linear", 1 }, { 1.3, "JDStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },
@@ -10038,6 +10073,12 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("HEAVY RAIN") or has("TORRENT") then
+		return "rain"
+	elseif has("RAIN BULLETS") then
+		return "spray"
+	elseif has("RAIN JET") then
+		return "dash"
 	elseif has("CALAMITY") then
 		return "calamity"
 	elseif has("PURSUER") then

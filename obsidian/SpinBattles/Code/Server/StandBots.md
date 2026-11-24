@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `StandBots` (capitals matter) |
 
-**What it does:** Enemy NPCs that fight you with a Stand. Each one plays a real character (Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru: whichever are installed) through exactly the same move code as players, so their M1s, abilities and ultimates hit, stun and look the same. they're scattered round the map (TuskConfig.StandBots.Spots), chase any player who comes within AggroRange and walk back to their spot when the player gets away each NPC has its OWN fixed camp (slot 1 always camps at Spots[1], and so on) and respawns there; camps are kept well away from the Saint's Corpse spots and the race course M1 combo up close, abilities on cooldown, ultimate when their meter is full hold abilities are charged and released automatically they block now and then, dash in to close the gap, and dash away when hurt a sneaking player isn't noticed until they're close (TuskConfig.Sneak NoticeRange), or they hit the bot; a bot that saw them keeps track for a few seconds every installed character has an NPC out: a new NPC is whichever character has the fewest right now (TuskConfig.StandBots.Characters) Blackmore NPCs rain walk while it rains: they step up onto frozen raindrops (an invisible step only NPCs collide with) and climb toward players above them idle bots walk over and pick up Saint's Corpse parts lying near their camp; bots holding parts use their corpse move and drop them on death they respawn RespawnTime seconds after dying, as whoever is missing Settings: TuskConfig.StandBots (Enabled = false turns them off). Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
+**What it does:** Enemy NPCs that fight you with a Stand. Each one plays a real character (Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio: whichever are installed) through exactly the same move code as players, so their M1s, abilities and ultimates hit, stun and look the same. they're scattered round the map (TuskConfig.StandBots.Spots), chase any player who comes within AggroRange and walk back to their spot when the player gets away each NPC has its OWN fixed camp (slot 1 always camps at Spots[1], and so on) and respawns there; camps are kept well away from the Saint's Corpse spots and the race course M1 combo up close, abilities on cooldown, ultimate when their meter is full hold abilities are charged and released automatically they block now and then, dash in to close the gap, and dash away when hurt a sneaking player isn't noticed until they're close (TuskConfig.Sneak NoticeRange), or they hit the bot; a bot that saw them keeps track for a few seconds every installed character has an NPC out: a new NPC is whichever character has the fewest right now (TuskConfig.StandBots.Characters) Blackmore NPCs rain walk while it rains: they step up onto frozen raindrops (an invisible step only NPCs collide with) and climb toward players above them idle bots walk over and pick up Saint's Corpse parts lying near their camp; bots holding parts use their corpse move and drop them on death they respawn RespawnTime seconds after dying, as whoever is missing Settings: TuskConfig.StandBots (Enabled = false turns them off). Tagged "SpinFighter" so every client draws their Stand, outfit and effects.
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -28,7 +28,7 @@ Back to [[Where To Put Code]]
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -85,6 +85,7 @@ local LOOKS = {
 	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 	DiegoAU = { Skin = Color3.fromRGB(240, 205, 170), Torso = Color3.fromRGB(110, 200, 185), Legs = Color3.fromRGB(196, 170, 110) },
 	Josuke = { Skin = Color3.fromRGB(214, 168, 130), Torso = Color3.fromRGB(240, 240, 236), Legs = Color3.fromRGB(236, 236, 232) },
+	Jodio = { Skin = Color3.fromRGB(236, 200, 166), Torso = Color3.fromRGB(34, 34, 64), Legs = Color3.fromRGB(36, 42, 84) },
 	Tooru = { Skin = Color3.fromRGB(232, 196, 166), Torso = Color3.fromRGB(120, 60, 170), Legs = Color3.fromRGB(222, 190, 70) },
 }
 

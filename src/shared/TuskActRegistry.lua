@@ -279,6 +279,23 @@ TuskActRegistry.Acts = {
 		ClientModule = "TooruVFX", -- client visuals (TuskActVFX.TooruVFX)
 		CardTitle = "STAND  ·  WONDER OF U",
 	},
+	-- Jodio Joestar (The JOJOLands): NOVEMBER RAIN. Heavy raindrops that
+	-- strike with crushing pressure.
+	[17] = {
+		Name = "NOVEMBER RAIN",
+		Character = "Jodio",
+		Tagline = "Crushing rain",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(90, 170, 240), Secondary = Color3.fromRGB(240, 120, 190) },
+		M1 = "NOVEMBER RAIN COMBO",
+		Abilities = { "HEAVY RAIN", "RAIN BULLETS", "RAIN JET" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "NOVEMBER RAIN: TORRENT",
+		Next = nil,
+		Module = "Jodio", -- server moves
+		ClientModule = "JodioVFX", -- client visuals (TuskActVFX.JodioVFX)
+		CardTitle = "STAND  ·  NOVEMBER RAIN",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -288,7 +305,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
