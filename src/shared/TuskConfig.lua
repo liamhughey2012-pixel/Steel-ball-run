@@ -147,6 +147,7 @@ TuskConfig.Roster = {
 	{ Id = "DiegoAU", Name = "DIEGO BRANDO (AU)", Stand = "THE WORLD", Available = true, Color = Color3.fromRGB(236, 196, 70) },
 	{ Id = "Josuke", Name = "JOSUKE HIGASHIKATA (8)", Stand = "SOFT & WET", Available = true, Color = Color3.fromRGB(120, 190, 240) },
 	{ Id = "Tooru", Name = "TOORU", Stand = "WONDER OF U", Available = true, Color = Color3.fromRGB(150, 70, 190) },
+	{ Id = "JohnRod", Name = "JOHN ROD", Stand = "JOHN ROD", Available = true, Color = Color3.fromRGB(200, 215, 235) },
 	{ Id = "Jodio", Name = "JODIO JOESTAR", Stand = "NOVEMBER RAIN", Available = true, Color = Color3.fromRGB(90, 170, 240) },
 }
 
@@ -199,10 +200,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 14, -- how many at once (each takes a free spot below)
+	Count = 15, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -235,6 +236,7 @@ TuskConfig.StandBots = {
 		Vector3.new(-380, 0, 220), -- west edge
 		Vector3.new(-190, 0, -380), -- far south-west
 		Vector3.new(110, 0, 380), -- far north
+		Vector3.new(380, 0, 290), -- north-east edge
 	},
 	Distance = 70, -- (no map) studs from the spawn to their camp
 	Spacing = 14, -- (no map) studs between them at the camp
@@ -1001,6 +1003,51 @@ TuskConfig.Jodio = {
 	CorpseRain = { Radius = 20, Delay = 0.5, Damage = 9, Stun = 0.8 }, -- corpse move: a crushing burst of rain round him
 }
 
+---------------------------------------------------------------------------
+-- JOHN ROD: a bent metal rod in the outline of a man, steered from afar.
+---------------------------------------------------------------------------
+TuskConfig.JohnRod = {
+	-- REMOTE CONTROL (ability 1): send John Rod off and steer it (WASD /
+	-- thumbstick) while you stand still; your camera follows it. Its moves
+	-- come from wherever it is. Press 1 again to bring it back.
+	Pilot = {
+		Range = 100, -- how far from you it can go (studs)
+		Speed = 30, -- how fast it moves while you steer it
+		MaxTime = 25, -- seconds before it comes back on its own
+		Cooldown = 4, -- after it comes back
+		HitBreaks = true, -- if YOU are hit while steering it, it snaps back (and you're stunned a moment)
+		FeedbackStun = 0.6,
+	},
+	M1 = { -- ROD STRIKES: from John Rod, wherever it is
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.85,
+		Reach = 5, Size = Vector3.new(6, 6, 7),
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.55, Knockback = 36, Launch = 10 },
+		},
+	},
+	Lash = { -- 2: the rod whips out straight ahead of John Rod
+		Cooldown = 6, Windup = 0.15,
+		Length = 16, Width = 4,
+		Damage = 8, Stun = 0.6, Knockback = 22,
+	},
+	Snare = { -- 3: the rod wraps round the nearest enemy near John Rod: they can't move
+		Cooldown = 11, Windup = 0.2,
+		Range = 16, -- from John Rod
+		Time = 1.6, Damage = 5, Stun = 0.3,
+	},
+	Ultimate = { -- OUTLINE CAGE: the rod bends into a cage round everyone near it, then squeezes
+		Windup = 0.6, Radius = 14, Time = 3, Tick = 0.5,
+		TickDamage = 2, Slow = 0.15,
+		SqueezeDamage = 13, SqueezeStun = 1.1, SqueezeKnockback = 8,
+	},
+	-- NPCs can't steer: their John Rod flies at their target on its own.
+	BotAuto = { Time = 5, StrikeRange = 6 },
+	CorpseSnap = { Radius = 18, Damage = 8, Stun = 0.7 }, -- corpse move ROD SNAP: lashes everyone round John Rod
+}
+
 TuskConfig.Gyro = {
 	M1 = {
 		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,
@@ -1085,7 +1132,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }

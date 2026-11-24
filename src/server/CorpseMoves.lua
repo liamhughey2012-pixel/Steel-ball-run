@@ -19,6 +19,7 @@
 	  Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while
 	  Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him
 	  Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him
+	  John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is)
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -377,6 +378,23 @@ USE.Jodio = function(S, player, state, character, root)
 		end
 		S.fx("Ultimate", { Character = char, Act = 17, Phase = "Crush", Position = center, Radius = c.Radius, Hits = hits })
 	end)
+end
+
+-- ROD SNAP: John Rod's rod lashes out in every direction at once, from
+-- wherever John Rod is (even far away while it's being steered).
+USE.JohnRod = function(S, player, state, character, root)
+	local c = TuskConfig.JohnRod and TuskConfig.JohnRod.CorpseSnap or { Radius = 18, Damage = 8, Stun = 0.7 }
+	S.lock(state, 0.4)
+	local remote = character:GetAttribute("StandRemotePos")
+	local center = typeof(remote) == "Vector3" and remote or root.Position
+	S.fx("Ultimate", { Character = character, Act = 18, Phase = "Snap", Position = center, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, center, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local away = Vector3.new(tr.Position.X - center.X, 0, tr.Position.Z - center.Z)
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 18, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JohnRodSnap" })
+		end
+	end
 end
 
 -- THE SAINT'S MIRACLE: only with the complete corpse (all 8 parts).

@@ -5116,6 +5116,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 7) == "JohnRod" then
+		starColor = Color3.fromRGB(220, 230, 250)
 	elseif source:sub(1, 5) == "Jodio" then
 		starColor = Color3.fromRGB(110, 190, 250)
 	elseif source:sub(1, 5) == "Tooru" then
@@ -6412,6 +6414,7 @@ Common.Palettes = {
 	[15] = { Main = Color3.fromRGB(120, 190, 240), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(235, 248, 255) }, -- Josuke (Soft & Wet bubble blue + gold)
 	[16] = { Main = Color3.fromRGB(150, 40, 50), Second = Color3.fromRGB(240, 196, 60), Light = Color3.fromRGB(255, 236, 200) }, -- Tooru (Wonder of U maroon + scarf gold)
 	[17] = { Main = Color3.fromRGB(90, 170, 240), Second = Color3.fromRGB(240, 120, 190), Light = Color3.fromRGB(225, 240, 255) }, -- Jodio (November Rain blue + strap pink)
+	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
 }
 
 function Common.palette(act)
@@ -6920,6 +6923,23 @@ TuskActRegistry.Acts = {
 		ClientModule = "JodioVFX", -- client visuals (TuskActVFX.JodioVFX)
 		CardTitle = "STAND  ·  NOVEMBER RAIN",
 	},
+	-- JOHN ROD: a Stand that is a single bent metal rod tracing the outline
+	-- of a man. Its user can send it off and steer it from far away.
+	[18] = {
+		Name = "JOHN ROD",
+		Character = "JohnRod",
+		Tagline = "Remote-control rod",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(220, 228, 240), Secondary = Color3.fromRGB(120, 200, 255) },
+		M1 = "ROD STRIKES",
+		Abilities = { "REMOTE CONTROL", "ROD LASH", "WIRE SNARE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "OUTLINE CAGE",
+		Next = nil,
+		Module = "JohnRod", -- server moves
+		ClientModule = "JohnRodVFX", -- client visuals (TuskActVFX.JohnRodVFX)
+		CardTitle = "STAND  ·  JOHN ROD",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -6929,7 +6949,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -7173,6 +7193,10 @@ TuskAnimation.Poses = {
 	JDPoint = { Root = { 0, -14, 0, -0.02 }, Waist = { 0, -14, 0 }, Neck = { 4, 14, 4 }, RightArm = { 90, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 } },
 	JDRaise = { Root = { -4, 0, 0, 0.02 }, Waist = { -8, 0, 0 }, Neck = { -20, 0, 0 }, RightArm = { 170, 0, 10 }, RightElbow = { 10, 0, 0 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 } },
 	JDSurf = { Root = { 18, -30, 0, -0.2 }, Waist = { 14, -20, 0 }, Neck = { -10, 20, 0 }, RightArm = { 40, 0, 70 }, RightElbow = { 20, 0, 0 }, LeftArm = { 40, 0, -70 }, LeftElbow = { 20, 0, 0 }, RightHip = { 30, 0, 0 }, RightKnee = { -40, 0, 0 }, LeftHip = { -10, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	-- JOHN ROD's user: hands on hips (like the rod itself); steering it, two fingers at the temple.
+	JRStance = { Root = { 0, 0, 0, 0 }, Waist = { -2, 0, 0 }, Neck = { 2, 0, 0 }, RightArm = { -14, 0, 42 }, RightElbow = { 80, 0, 0 }, LeftArm = { -14, 0, -42 }, LeftElbow = { 80, 0, 0 } },
+	JRFocus = { Root = { 0, -6, 0, 0 }, Waist = { 2, -6, 0 }, Neck = { 8, 8, -4 }, RightArm = { 100, 0, 30 }, RightElbow = { 135, 0, 0 }, LeftArm = { -6, 0, -14 }, LeftElbow = { 20, 0, 0 } },
+	JRFling = { Root = { 0, -18, 0, -0.03 }, Waist = { 0, -18, 0 }, Neck = { 4, 18, 0 }, RightArm = { 92, 0, 10 }, RightElbow = { 0, 0, 0 }, LeftArm = { -14, 0, -42 }, LeftElbow = { 80, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -7367,6 +7391,8 @@ TuskAnimation.Actions = {
 	JDShoot = { { 0, "JDStance" }, { 0.12, "JDPoint", "Back", 3 }, { 0.6, "JDPoint", "Linear" }, { 0.8, "JDStance", "Sine" } },
 	JDJet = { { 0, "JDStance" }, { 0.1, "JDSurf", "Out" }, { 0.42, "JDSurf", "Linear" }, { 0.65, "JDStance", "Sine" } },
 	JDTorrent = { { 0, "JDStance" }, { 0.25, "JDRaise", "Out" }, { 1.0, "JDRaise", "Linear", 1 }, { 1.3, "JDStance", "Sine" } },
+	JRFlick = { { 0, "JRStance" }, { 0.08, "JRFling", "Back", 3 }, { 0.3, "JRStance", "Sine" } },
+	JRCage = { { 0, "JRStance" }, { 0.2, "JRFling", "Back", 3 }, { 0.8, "JRFling", "Linear" }, { 1.0, "JRStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },
@@ -7866,6 +7892,11 @@ local function aim()
 	local hit = workspace:Raycast(ray.Origin, ray.Direction * 600, params)
 	local target = hit and hit.Position or ray.Origin + ray.Direction * 600
 	local origin = (root.CFrame * CFrame.new(0.9, 0.55, -1.5)).Position
+	-- Steering a remote Stand (John Rod): aim from it, not from you.
+	local remote = character:GetAttribute("StandRemotePos")
+	if typeof(remote) == "Vector3" then
+		origin = remote
+	end
 	local dir = target - origin
 	return dir.Magnitude > 1 and dir.Unit or root.CFrame.LookVector
 end
@@ -8912,6 +8943,14 @@ local function update(stand, root, dt, now)
 		desired = desired * CFrame.new(driftX, bounce, driftZ) * CFrame.Angles(0, wobble, wobble * 0.4)
 	end
 	local snap = 12
+	-- A remote Stand (John Rod) being steered away from its user: it stands
+	-- where the server says (StandRemotePos / StandRemoteYaw).
+	local remote = character:GetAttribute("StandRemotePos")
+	if typeof(remote) == "Vector3" then
+		desired = CFrame.new(remote) * CFrame.Angles(0, character:GetAttribute("StandRemoteYaw") or 0, 0) * CFrame.new(0, bob * 0.5, 0)
+		snap = 14
+		stand.Action = nil
+	end
 
 	local action = stand.Action
 	if action then
@@ -10375,6 +10414,12 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("REMOTE CONTROL") then
+		return "portal"
+	elseif has("ROD LASH") then
+		return "dash"
+	elseif has("WIRE SNARE") or has("OUTLINE CAGE") then
+		return "lasso"
 	elseif has("HEAVY RAIN") or has("TORRENT") then
 		return "rain"
 	elseif has("RAIN BULLETS") then

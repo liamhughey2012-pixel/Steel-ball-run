@@ -322,6 +322,23 @@ TuskActRegistry.Acts = {
 		ClientModule = "JodioVFX", -- client visuals (TuskActVFX.JodioVFX)
 		CardTitle = "STAND  ·  NOVEMBER RAIN",
 	},
+	-- JOHN ROD: a Stand that is a single bent metal rod tracing the outline
+	-- of a man. Its user can send it off and steer it from far away.
+	[18] = {
+		Name = "JOHN ROD",
+		Character = "JohnRod",
+		Tagline = "Remote-control rod",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(220, 228, 240), Secondary = Color3.fromRGB(120, 200, 255) },
+		M1 = "ROD STRIKES",
+		Abilities = { "REMOTE CONTROL", "ROD LASH", "WIRE SNARE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "OUTLINE CAGE",
+		Next = nil,
+		Module = "JohnRod", -- server moves
+		ClientModule = "JohnRodVFX", -- client visuals (TuskActVFX.JohnRodVFX)
+		CardTitle = "STAND  ·  JOHN ROD",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -331,7 +348,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

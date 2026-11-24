@@ -142,6 +142,8 @@ PACKS = [
      "Tooru (JoJolion): Wonder of U."),
     ("Jodio", {"server": ["Jodio", "JodioOutfit"], "client": ["JodioVFX", "NovemberRainStand"]},
      "Jodio Joestar (The JOJOLands): November Rain."),
+    ("JohnRod", {"server": ["JohnRod"], "client": ["JohnRodVFX", "JohnRodStand"]},
+     "John Rod: a remote-control Stand."),
 ]
 
 def deps(code):

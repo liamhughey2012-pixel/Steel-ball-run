@@ -240,6 +240,14 @@ local function update(stand, root, dt, now)
 		desired = desired * CFrame.new(driftX, bounce, driftZ) * CFrame.Angles(0, wobble, wobble * 0.4)
 	end
 	local snap = 12
+	-- A remote Stand (John Rod) being steered away from its user: it stands
+	-- where the server says (StandRemotePos / StandRemoteYaw).
+	local remote = character:GetAttribute("StandRemotePos")
+	if typeof(remote) == "Vector3" then
+		desired = CFrame.new(remote) * CFrame.Angles(0, character:GetAttribute("StandRemoteYaw") or 0, 0) * CFrame.new(0, bob * 0.5, 0)
+		snap = 14
+		stand.Action = nil
+	end
 
 	local action = stand.Action
 	if action then

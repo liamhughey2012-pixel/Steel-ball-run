@@ -149,6 +149,12 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("REMOTE CONTROL") then
+		return "portal"
+	elseif has("ROD LASH") then
+		return "dash"
+	elseif has("WIRE SNARE") or has("OUTLINE CAGE") then
+		return "lasso"
 	elseif has("HEAVY RAIN") or has("TORRENT") then
 		return "rain"
 	elseif has("RAIN BULLETS") then

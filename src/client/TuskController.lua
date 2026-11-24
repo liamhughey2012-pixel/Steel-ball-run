@@ -56,6 +56,11 @@ local function aim()
 	local hit = workspace:Raycast(ray.Origin, ray.Direction * 600, params)
 	local target = hit and hit.Position or ray.Origin + ray.Direction * 600
 	local origin = (root.CFrame * CFrame.new(0.9, 0.55, -1.5)).Position
+	-- Steering a remote Stand (John Rod): aim from it, not from you.
+	local remote = character:GetAttribute("StandRemotePos")
+	if typeof(remote) == "Vector3" then
+		origin = remote
+	end
 	local dir = target - origin
 	return dir.Magnitude > 1 and dir.Unit or root.CFrame.LookVector
 end

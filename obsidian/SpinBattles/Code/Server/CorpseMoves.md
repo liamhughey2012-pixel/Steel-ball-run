@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `CorpseMoves` (capitals matter) |
 
-**What it does:** Every character's CORPSE MOVE (V), unlocked while holding a Saint's Corpse part. One shared cooldown (TuskConfig.Corpse.Move.Cooldown); the ready time is the character attribute CorpseReadyAt (server time) for the HUD. Visuals: CorpseClient, from WorldFX "CorpseMove". Johnny       GOLDEN SPIN NAIL: a huge golden spinning nail Gyro         GOLDEN RECTANGLE: a spinning shockwave straight ahead Diego        DINOSAUR CRASH: leaps to the aim point and slams down Pork Pie     HOOK HARVEST: hooks yank everyone round him in Sandman      SOUND BARRIER: dashes through enemies, then a blast Mountain Tim LASSO CYCLONE: a spinning lasso pulls everyone in Hot Pants    FLESH COCOON: heals and armours herself, then a burst Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse Diego (AU)   REVOLVER: draws a six-shooter, fans six shots where he aims Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead (TuskConfig.Corpse.Miracle), and afterwards every part scatters. All damage goes through S.hit (CombatAdapter).
+**What it does:** Every character's CORPSE MOVE (V), unlocked while holding a Saint's Corpse part. One shared cooldown (TuskConfig.Corpse.Move.Cooldown); the ready time is the character attribute CorpseReadyAt (server time) for the HUD. Visuals: CorpseClient, from WorldFX "CorpseMove". Johnny       GOLDEN SPIN NAIL: a huge golden spinning nail Gyro         GOLDEN RECTANGLE: a spinning shockwave straight ahead Diego        DINOSAUR CRASH: leaps to the aim point and slams down Pork Pie     HOOK HARVEST: hooks yank everyone round him in Sandman      SOUND BARRIER: dashes through enemies, then a blast Mountain Tim LASSO CYCLONE: a spinning lasso pulls everyone in Hot Pants    FLESH COCOON: heals and armours herself, then a burst Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse Diego (AU)   REVOLVER: draws a six-shooter, fans six shots where he aims Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is) With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead (TuskConfig.Corpse.Miracle), and afterwards every part scatters. All damage goes through S.hit (CombatAdapter).
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -45,6 +45,7 @@ Back to [[Where To Put Code]]
 	  Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while
 	  Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him
 	  Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him
+	  John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is)
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -403,6 +404,23 @@ USE.Jodio = function(S, player, state, character, root)
 		end
 		S.fx("Ultimate", { Character = char, Act = 17, Phase = "Crush", Position = center, Radius = c.Radius, Hits = hits })
 	end)
+end
+
+-- ROD SNAP: John Rod's rod lashes out in every direction at once, from
+-- wherever John Rod is (even far away while it's being steered).
+USE.JohnRod = function(S, player, state, character, root)
+	local c = TuskConfig.JohnRod and TuskConfig.JohnRod.CorpseSnap or { Radius = 18, Damage = 8, Stun = 0.7 }
+	S.lock(state, 0.4)
+	local remote = character:GetAttribute("StandRemotePos")
+	local center = typeof(remote) == "Vector3" and remote or root.Position
+	S.fx("Ultimate", { Character = character, Act = 18, Phase = "Snap", Position = center, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, center, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local away = Vector3.new(tr.Position.X - center.X, 0, tr.Position.Z - center.Z)
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 18, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JohnRodSnap" })
+		end
+	end
 end
 
 -- THE SAINT'S MIRACLE: only with the complete corpse (all 8 parts).

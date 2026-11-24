@@ -581,6 +581,13 @@ local function onRequest(player, action, a, b, c)
 	if state.Burrowed then
 		return
 	end
+	-- Steering a remote Stand (John Rod): movement input, sent many times a second.
+	if action == "Steer" then
+		if module and module.Steer then
+			module.Steer(TuskService, player, state, a)
+		end
+		return
+	end
 	-- Block and Dash work for every character.
 	if action == "Block" then
 		Defense.block(player, state, a == true)

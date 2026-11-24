@@ -1563,6 +1563,7 @@ __modules["CorpseMoves"] = function()
 	  Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while
 	  Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him
 	  Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him
+	  John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is)
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -1921,6 +1922,23 @@ USE.Jodio = function(S, player, state, character, root)
 		end
 		S.fx("Ultimate", { Character = char, Act = 17, Phase = "Crush", Position = center, Radius = c.Radius, Hits = hits })
 	end)
+end
+
+-- ROD SNAP: John Rod's rod lashes out in every direction at once, from
+-- wherever John Rod is (even far away while it's being steered).
+USE.JohnRod = function(S, player, state, character, root)
+	local c = TuskConfig.JohnRod and TuskConfig.JohnRod.CorpseSnap or { Radius = 18, Damage = 8, Stun = 0.7 }
+	S.lock(state, 0.4)
+	local remote = character:GetAttribute("StandRemotePos")
+	local center = typeof(remote) == "Vector3" and remote or root.Position
+	S.fx("Ultimate", { Character = character, Act = 18, Phase = "Snap", Position = center, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, center, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local away = Vector3.new(tr.Position.X - center.X, 0, tr.Position.Z - center.Z)
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 18, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JohnRodSnap" })
+		end
+	end
 end
 
 -- THE SAINT'S MIRACLE: only with the complete corpse (all 8 parts).
@@ -7141,7 +7159,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -7198,6 +7216,7 @@ local LOOKS = {
 	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 	DiegoAU = { Skin = Color3.fromRGB(240, 205, 170), Torso = Color3.fromRGB(110, 200, 185), Legs = Color3.fromRGB(196, 170, 110) },
 	Josuke = { Skin = Color3.fromRGB(214, 168, 130), Torso = Color3.fromRGB(240, 240, 236), Legs = Color3.fromRGB(236, 236, 232) },
+	JohnRod = { Skin = Color3.fromRGB(226, 190, 160), Torso = Color3.fromRGB(90, 96, 110), Legs = Color3.fromRGB(52, 54, 64) },
 	Jodio = { Skin = Color3.fromRGB(236, 200, 166), Torso = Color3.fromRGB(34, 34, 64), Legs = Color3.fromRGB(36, 42, 84) },
 	Tooru = { Skin = Color3.fromRGB(232, 196, 166), Torso = Color3.fromRGB(120, 60, 170), Legs = Color3.fromRGB(222, 190, 70) },
 }
@@ -9230,6 +9249,23 @@ TuskActRegistry.Acts = {
 		ClientModule = "JodioVFX", -- client visuals (TuskActVFX.JodioVFX)
 		CardTitle = "STAND  ·  NOVEMBER RAIN",
 	},
+	-- JOHN ROD: a Stand that is a single bent metal rod tracing the outline
+	-- of a man. Its user can send it off and steer it from far away.
+	[18] = {
+		Name = "JOHN ROD",
+		Character = "JohnRod",
+		Tagline = "Remote-control rod",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(220, 228, 240), Secondary = Color3.fromRGB(120, 200, 255) },
+		M1 = "ROD STRIKES",
+		Abilities = { "REMOTE CONTROL", "ROD LASH", "WIRE SNARE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "OUTLINE CAGE",
+		Next = nil,
+		Module = "JohnRod", -- server moves
+		ClientModule = "JohnRodVFX", -- client visuals (TuskActVFX.JohnRodVFX)
+		CardTitle = "STAND  ·  JOHN ROD",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -9239,7 +9275,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -10267,6 +10303,13 @@ local function onRequest(player, action, a, b, c)
 		return
 	end
 	if state.Burrowed then
+		return
+	end
+	-- Steering a remote Stand (John Rod): movement input, sent many times a second.
+	if action == "Steer" then
+		if module and module.Steer then
+			module.Steer(TuskService, player, state, a)
+		end
 		return
 	end
 	-- Block and Dash work for every character.
