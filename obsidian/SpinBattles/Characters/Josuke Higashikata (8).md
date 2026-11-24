@@ -12,7 +12,7 @@ Matched to the reference art the user sent (2026-11-24).
 **Look:** a white sailor cap with navy stripes and a gold capsule, dark curly hair, a cropped white sailor top with a striped collar and cuffs, a green neckerchief with a pink ring, a teal anchor patch, an orange badge with a green star, a light-blue belt with a gold buckle, white trousers, and the star birthmark on his neck. He stands relaxed with his hands behind his head.
 
 ![[soft_and_wet_preview.png]]
-**Soft & Wet:** a sleek pale-gold body, a round head with big blue domes on each side (a white star in each), dark bead rings round the neck and wrists, an anchor on the chest, stars on the shoulders, a magenta hip band. It floats behind him with a soft blue aura and throws his punches.
+**Soft & Wet** (remodelled from the user's second set of art): glossy icy white-teal and slim like a jointed doll. A tall capsule head with a narrow chin, a striped purple line down the face, round slit eyes and a horn out of each side (a yellow star on one tip). A big heart-shaped chest with the ring and anchor/trident emblem (two arms curving up to arrowheads). Purple ball joints, green springs at elbows, wrists and knees, pointed fins on shoulders and hips, a maroon waist with a blue band, blue shoes with lime soles, and star bubbles floating round it.
 
 | Input | Move | What it does |
 |---|---|---|
