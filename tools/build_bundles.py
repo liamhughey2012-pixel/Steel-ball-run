@@ -281,7 +281,16 @@ local BUILD_MAP_ON_START = true -- false = don't build the SBR map
 local MAP_ORIGIN = Vector3.new(0, 0, 0) -- move the map away from an existing one, e.g. Vector3.new(1500, 0, 0)
 
 '''
-SERVER_MAIN = LOAD_PACKS + '''
+SERVER_MAIN = '''
+-- Only ONE Spin_Server may run. A second copy (an old one left in the game)
+-- would spawn every NPC twice (stacked on the same camp: one NPC with two
+-- Stands) and double all the work (lag).
+if _G.__SpinServerRunning then
+	warn("[Spin] Another Spin_Server is already running (" .. tostring(_G.__SpinServerRunning) .. "). This copy (" .. script:GetFullName() .. ") is NOT starting. Delete the extra copy: two copies spawn every NPC twice and lag the game.")
+	return
+end
+_G.__SpinServerRunning = script:GetFullName()
+''' + LOAD_PACKS + '''
 __loadPacks("server")
 local ProjectileService = __require("ProjectileService")
 local TuskService = __require("TuskService")
@@ -342,7 +351,15 @@ if game:GetService("RunService"):IsServer() then
 end
 
 '''
-CLIENT_MAIN = LOAD_PACKS + '''
+CLIENT_MAIN = '''
+-- Only ONE Spin_Client may run (a second copy draws every Stand and effect
+-- twice and lags the game).
+if _G.__SpinClientRunning then
+	warn("[Spin] Another Spin_Client is already running (" .. tostring(_G.__SpinClientRunning) .. "). This copy (" .. script:GetFullName() .. ") is NOT starting. Delete the extra copy.")
+	return
+end
+_G.__SpinClientRunning = script:GetFullName()
+''' + LOAD_PACKS + '''
 -- No waiting on the folder (it's optional): just make sure the game has loaded.
 if not game:IsLoaded() then
 	game.Loaded:Wait()

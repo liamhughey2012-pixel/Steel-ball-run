@@ -140,6 +140,11 @@ local function addAura(model, rig, AURA, AURA_LIGHT)
 	return { Emitters = emitters, Light = light }
 end
 
+-- Distance culling (studs from the camera).
+local FAR = 260 -- beyond this a Stand is hidden and not animated
+local MID = 110 -- beyond this it's animated ~10 times a second instead of every frame
+local GLOW_RANGE = 90 -- only Stands this close keep their Highlight outline
+
 local function setVisible(stand, visible)
 	if stand.Visible == visible then
 		return
@@ -377,12 +382,23 @@ function TuskStand.init()
 	RunService.RenderStepped:Connect(function(dt)
 		local now = os.clock()
 		local seen = {}
+		local camera = workspace.CurrentCamera
 		for _, player in ipairs(Fighters.list()) do
 			local character = player.Character
 			local act = character and character:GetAttribute("TuskAct")
 			local root = character and character:FindFirstChild("HumanoidRootPart")
 			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-			if act and root and humanoid and humanoid.Health > 0 then
+			-- How far from the camera: far Stands are hidden and not animated,
+			-- mid-range ones are animated a few times a second (big savings with
+			-- lots of NPCs: each Stand is a model of 70-140 parts).
+			local dist = root and camera and (root.Position - camera.CFrame.Position).Magnitude or 0
+			if act and root and humanoid and humanoid.Health > 0 and dist > FAR then
+				seen[character] = true
+				local stand = stands[character]
+				if stand then
+					setVisible(stand, false)
+				end
+			elseif act and root and humanoid and humanoid.Health > 0 then
 				seen[character] = true
 				local stand = stands[character]
 				if stand and stand.Act ~= act then
@@ -397,7 +413,16 @@ function TuskStand.init()
 					end
 				end
 				if stand then
-					update(stand, root, dt, now)
+					stand.Skip = (stand.Skip or 0) + dt
+					if dist <= MID or stand.Skip >= 0.1 then
+						update(stand, root, stand.Skip, now)
+						stand.Skip = 0
+					end
+					-- Only nearby Stands keep the outline glow (Highlights are costly to draw).
+					local glow = stand.Visible and dist <= GLOW_RANGE
+					if stand.Highlight.Enabled ~= glow then
+						stand.Highlight.Enabled = glow
+					end
 				end
 			end
 		end

@@ -7742,6 +7742,7 @@ __modules["StandBots"] = function()
 	  * M1 combo up close, abilities on cooldown, ultimate when their meter is full
 	  * hold abilities are charged and released automatically
 	  * they block now and then, dash in to close the gap, and dash away when hurt
+	  * a remote Stand (John Rod) steered near them sends them after its USER
 	  * a sneaking player isn't noticed until they're close (TuskConfig.Sneak
 	    NoticeRange), or they hit the bot; a bot that saw them keeps track for
 	    a few seconds
@@ -8147,6 +8148,22 @@ local function findTarget(bot, root)
 			if d <= (cfg.AggroRange or 70) and fromHome <= (cfg.LeashRange or 120) and notices(bot, player, character, d) and (not bestDist or d < bestDist) then
 				best, bestDist = character, d
 			end
+			-- A remote Stand (John Rod) being steered near them: they go after
+			-- its USER, wherever they're standing (within the Stand's range).
+			local remote = character:GetAttribute("RodPiloting") and character:GetAttribute("StandRemotePos")
+			if typeof(remote) == "Vector3" and (remote - root.Position).Magnitude <= (cfg.AggroRange or 70) then
+				local pilotRange = (TuskConfig.JohnRod and TuskConfig.JohnRod.Pilot and TuskConfig.JohnRod.Pilot.Range) or 100
+				if fromHome <= (cfg.LeashRange or 120) + pilotRange and (not bestDist or d < bestDist or best ~= character) then
+					best, bestDist = character, d
+					bot.HuntUntil = os.clock() + 6
+				end
+			elseif bot.HuntUntil and os.clock() < bot.HuntUntil and best == nil then
+				-- Keep hunting the user a few seconds after the Stand's gone.
+				local pilotRange = (TuskConfig.JohnRod and TuskConfig.JohnRod.Pilot and TuskConfig.JohnRod.Pilot.Range) or 100
+				if fromHome <= (cfg.LeashRange or 120) + pilotRange and character == bot.LastTarget then
+					best, bestDist = character, d
+				end
+			end
 		end
 	end
 	-- Tell a sneaking target they've been spotted (the HUD shows it).
@@ -8276,6 +8293,7 @@ local function think(bot, now)
 		return
 	end
 	local target, dist = findTarget(bot, root)
+	bot.LastTarget = target or (bot.HuntUntil and os.clock() < bot.HuntUntil and bot.LastTarget) or nil
 	if target then
 		bot.PickupStart = nil -- a fight interrupts picking up a part
 	end
@@ -11478,6 +11496,15 @@ end
 -- ======================================================================
 -- START
 -- ======================================================================
+
+-- Only ONE Spin_Server may run. A second copy (an old one left in the game)
+-- would spawn every NPC twice (stacked on the same camp: one NPC with two
+-- Stands) and double all the work (lag).
+if _G.__SpinServerRunning then
+	warn("[Spin] Another Spin_Server is already running (" .. tostring(_G.__SpinServerRunning) .. "). This copy (" .. script:GetFullName() .. ") is NOT starting. Delete the extra copy: two copies spawn every NPC twice and lag the game.")
+	return
+end
+_G.__SpinServerRunning = script:GetFullName()
 
 -- Character scripts: each character is its own ModuleScript named like
 -- "Gyro_Server" / "Gyro_Client". They're found by name anywhere in the usual

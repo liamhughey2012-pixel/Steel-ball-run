@@ -3674,9 +3674,13 @@ end
 ---------------------------------------------------------------------------
 -- The panel (left side, while you hold parts)
 ---------------------------------------------------------------------------
+local PANEL_W = 200
+local HINT_TEXT = "Hover a part for its boost"
+local panelHint
+
 local function rebuildPanel(parts)
 	for _, c in ipairs(list:GetChildren()) do
-		if c:IsA("Frame") then
+		if c:IsA("GuiObject") then
 			c:Destroy()
 		end
 	end
@@ -3686,17 +3690,34 @@ local function rebuildPanel(parts)
 	end
 	for i, id in ipairs(ids) do
 		local info = partInfo[id]
-		-- Each part: a strip of parchment with a brass relic diamond.
-		local row = new("Frame", { LayoutOrder = i, Size = UDim2.new(1, 0, 0, 30), ZIndex = 3 }, list)
+		-- Each part: a small parchment tag with a brass relic diamond (two
+		-- columns). Hover / tap it to see its boost on the line under the title.
+		local row = new("TextButton", { LayoutOrder = i, Text = "", AutoButtonColor = false, ZIndex = 3 }, list)
 		UITheme.paper(row, { Radius = 3, Stroke = 1.5 })
-		local icon = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(16, 15), Size = UDim2.fromOffset(16, 16), BackgroundColor3 = T.BRASS, Rotation = 45, ZIndex = 4 }, row)
-		corner(icon, 3)
-		new("UIStroke", { Color = T.INK, Thickness = 1.5 }, icon)
-		new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(6, 6), BackgroundColor3 = GOLD, BorderSizePixel = 0, ZIndex = 4 }, icon)
-		label(row, { Position = UDim2.fromOffset(32, 2), Size = UDim2.new(1, -38, 0, 15), Text = info and info.Name or id, Font = UITheme.Font.Title, TextColor3 = T.INK, ZIndex = 4 })
-		label(row, { Position = UDim2.fromOffset(32, 17), Size = UDim2.new(1, -38, 0, 11), Text = info and info.Text or "", Font = Enum.Font.GothamBold, TextColor3 = T.RED:Lerp(T.INK, 0.35), ZIndex = 4 })
+		local icon = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(10, 10), Size = UDim2.fromOffset(9, 9), BackgroundColor3 = T.BRASS, Rotation = 45, ZIndex = 4 }, row)
+		new("UIStroke", { Color = T.INK, Thickness = 1 }, icon)
+		label(row, { Position = UDim2.fromOffset(19, 1), Size = UDim2.new(1, -22, 1, -2), Text = info and info.Name or id, Font = UITheme.Font.Title, TextColor3 = T.INK, ZIndex = 4 })
+		local boost = (info and info.Name or id) .. ": " .. (info and info.Text or "")
+		local function showBoost()
+			panelHint.Text = boost
+			panelHint.TextColor3 = GOLD
+		end
+		local function hideBoost()
+			panelHint.Text = HINT_TEXT
+			panelHint.TextColor3 = T.PAPER_DARK
+		end
+		row.MouseEnter:Connect(showBoost)
+		row.MouseLeave:Connect(hideBoost)
+		row.Activated:Connect(function()
+			if panelHint.Text == boost then
+				hideBoost()
+			else
+				showBoost()
+			end
+		end)
 	end
-	panel.Size = UDim2.fromOffset(240, 44 + #ids * 34 + 52)
+	local rows = math.ceil(#ids / 2)
+	panel.Size = UDim2.fromOffset(PANEL_W, 40 + rows * 22 + 42)
 	local who = myCharacterName()
 	local complete = #ids >= #cfg.Parts
 	if complete then
@@ -3719,15 +3740,15 @@ local function buildUI()
 	-- Bottom-left corner (lifted above the thumbstick on touch screens): a
 	-- framed wooden board, a parchment strip per part, the move button.
 	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-	panel = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, touch and -230 or -12), Size = UDim2.fromOffset(240, 120), Visible = false }, gui)
-	UITheme.wood(panel, { Planks = 4, Border = 5, Brackets = true, BracketSize = 14 })
-	panelTitle = label(panel, { Position = UDim2.fromOffset(14, 7), Size = UDim2.new(1, -28, 0, 21), Text = "SAINT'S CORPSE", Font = UITheme.Font.Title, TextColor3 = GOLD, TextStrokeColor3 = T.WOOD_EDGE, TextStrokeTransparency = 0.4, ZIndex = 3 })
-	label(panel, { Position = UDim2.fromOffset(14, 27), Size = UDim2.new(1, -28, 0, 11), Text = "Boosts last until you die", Font = Enum.Font.GothamBold, TextColor3 = T.PAPER_DARK, ZIndex = 3 })
-	list = new("Frame", { Name = "List", Position = UDim2.fromOffset(9, 42), Size = UDim2.new(1, -18, 1, -96), BackgroundTransparency = 1, ZIndex = 3 }, panel)
-	new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, list)
+	panel = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, touch and -230 or -12), Size = UDim2.fromOffset(PANEL_W, 104), Visible = false }, gui)
+	UITheme.wood(panel, { Planks = 3, Border = 4, Brackets = true, BracketSize = 11 })
+	panelTitle = label(panel, { Position = UDim2.fromOffset(11, 5), Size = UDim2.new(1, -22, 0, 18), Text = "SAINT'S CORPSE", Font = UITheme.Font.Title, TextColor3 = GOLD, TextStrokeColor3 = T.WOOD_EDGE, TextStrokeTransparency = 0.4, ZIndex = 3 })
+	panelHint = label(panel, { Position = UDim2.fromOffset(11, 23), Size = UDim2.new(1, -22, 0, 11), Text = HINT_TEXT, Font = Enum.Font.GothamBold, TextColor3 = T.PAPER_DARK, ZIndex = 3 })
+	list = new("Frame", { Name = "List", Position = UDim2.fromOffset(8, 38), Size = UDim2.new(1, -16, 1, -82), BackgroundTransparency = 1, ZIndex = 3 }, panel)
+	new("UIGridLayout", { CellSize = UDim2.new(0.5, -2, 0, 19), CellPadding = UDim2.fromOffset(4, 3), SortOrder = Enum.SortOrder.LayoutOrder }, list)
 	-- The corpse move: a chunky button (bounces on hover / press) with a
 	-- cooldown shade sweeping over it.
-	moveButton = new("TextButton", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 14, 1, -10), Size = UDim2.new(1, -28, 0, 40), BackgroundColor3 = MOVE_RED, Text = "", AutoButtonColor = false, ClipsDescendants = false, ZIndex = 3 }, panel)
+	moveButton = new("TextButton", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 10, 1, -8), Size = UDim2.new(1, -20, 0, 32), BackgroundColor3 = MOVE_RED, Text = "", AutoButtonColor = false, ClipsDescendants = false, ZIndex = 3 }, panel)
 	corner(moveButton, 8)
 	new("UIStroke", { Color = MOVE_RED:Lerp(Color3.new(0, 0, 0), 0.45), Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, moveButton)
 	new("UIGradient", { Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(200, 200, 200)), Rotation = 90 }, moveButton)
@@ -3735,13 +3756,13 @@ local function buildUI()
 	moveFill = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Size = UDim2.fromScale(0, 1), BorderSizePixel = 0, ZIndex = 4 }, moveButton)
 	corner(moveFill, 8)
 	-- The key: a little dark plank with a gold V.
-	local key = new("Frame", { Position = UDim2.fromOffset(6, 7), Size = UDim2.fromOffset(26, 26), BackgroundColor3 = T.WOOD_DARK, ZIndex = 5 }, moveButton)
+	local key = new("Frame", { Position = UDim2.fromOffset(5, 5), Size = UDim2.fromOffset(22, 22), BackgroundColor3 = T.WOOD_DARK, ZIndex = 5 }, moveButton)
 	corner(key, 6)
 	new("UIStroke", { Color = GOLD, Thickness = 1.5, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, key)
 	label(key, { Size = UDim2.fromScale(1, 1), Text = "V", Font = UITheme.Font.Title, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 5 })
-	moveName = label(moveButton, { Position = UDim2.fromOffset(40, 6), Size = UDim2.new(1, -86, 0, 28), Text = "", Font = UITheme.Font.Title, TextStrokeColor3 = T.WOOD_EDGE, TextStrokeTransparency = 0.3, ZIndex = 5 })
-	new("UITextSizeConstraint", { MaxTextSize = 22, MinTextSize = 10 }, moveName)
-	moveTime = label(moveButton, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 8), Size = UDim2.fromOffset(40, 24), Text = "", Font = UITheme.Font.Title, TextColor3 = GOLD, TextStrokeColor3 = T.WOOD_EDGE, TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 })
+	moveName = label(moveButton, { Position = UDim2.fromOffset(33, 4), Size = UDim2.new(1, -76, 0, 24), Text = "", Font = UITheme.Font.Title, TextStrokeColor3 = T.WOOD_EDGE, TextStrokeTransparency = 0.3, ZIndex = 5 })
+	new("UITextSizeConstraint", { MaxTextSize = 18, MinTextSize = 9 }, moveName)
+	moveTime = label(moveButton, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 5), Size = UDim2.fromOffset(34, 22), Text = "", Font = UITheme.Font.Title, TextColor3 = GOLD, TextStrokeColor3 = T.WOOD_EDGE, TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 })
 	moveButton.Activated:Connect(useMove)
 	-- Announcements: a parchment ribbon at the top that fits its line...
 	feed = new("Frame", { Name = "Feed", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 118), Size = UDim2.fromOffset(0, 26), AutomaticSize = Enum.AutomaticSize.X, Visible = false }, gui)
@@ -9075,6 +9096,11 @@ local function addAura(model, rig, AURA, AURA_LIGHT)
 	return { Emitters = emitters, Light = light }
 end
 
+-- Distance culling (studs from the camera).
+local FAR = 260 -- beyond this a Stand is hidden and not animated
+local MID = 110 -- beyond this it's animated ~10 times a second instead of every frame
+local GLOW_RANGE = 90 -- only Stands this close keep their Highlight outline
+
 local function setVisible(stand, visible)
 	if stand.Visible == visible then
 		return
@@ -9312,12 +9338,23 @@ function TuskStand.init()
 	RunService.RenderStepped:Connect(function(dt)
 		local now = os.clock()
 		local seen = {}
+		local camera = workspace.CurrentCamera
 		for _, player in ipairs(Fighters.list()) do
 			local character = player.Character
 			local act = character and character:GetAttribute("TuskAct")
 			local root = character and character:FindFirstChild("HumanoidRootPart")
 			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-			if act and root and humanoid and humanoid.Health > 0 then
+			-- How far from the camera: far Stands are hidden and not animated,
+			-- mid-range ones are animated a few times a second (big savings with
+			-- lots of NPCs: each Stand is a model of 70-140 parts).
+			local dist = root and camera and (root.Position - camera.CFrame.Position).Magnitude or 0
+			if act and root and humanoid and humanoid.Health > 0 and dist > FAR then
+				seen[character] = true
+				local stand = stands[character]
+				if stand then
+					setVisible(stand, false)
+				end
+			elseif act and root and humanoid and humanoid.Health > 0 then
 				seen[character] = true
 				local stand = stands[character]
 				if stand and stand.Act ~= act then
@@ -9332,7 +9369,16 @@ function TuskStand.init()
 					end
 				end
 				if stand then
-					update(stand, root, dt, now)
+					stand.Skip = (stand.Skip or 0) + dt
+					if dist <= MID or stand.Skip >= 0.1 then
+						update(stand, root, stand.Skip, now)
+						stand.Skip = 0
+					end
+					-- Only nearby Stands keep the outline glow (Highlights are costly to draw).
+					local glow = stand.Visible and dist <= GLOW_RANGE
+					if stand.Highlight.Enabled ~= glow then
+						stand.Highlight.Enabled = glow
+					end
 				end
 			end
 		end
@@ -14314,6 +14360,14 @@ end
 -- ======================================================================
 -- START
 -- ======================================================================
+
+-- Only ONE Spin_Client may run (a second copy draws every Stand and effect
+-- twice and lags the game).
+if _G.__SpinClientRunning then
+	warn("[Spin] Another Spin_Client is already running (" .. tostring(_G.__SpinClientRunning) .. "). This copy (" .. script:GetFullName() .. ") is NOT starting. Delete the extra copy.")
+	return
+end
+_G.__SpinClientRunning = script:GetFullName()
 
 -- Character scripts: each character is its own ModuleScript named like
 -- "Gyro_Server" / "Gyro_Client". They're found by name anywhere in the usual
