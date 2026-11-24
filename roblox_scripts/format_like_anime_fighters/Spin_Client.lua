@@ -38,11 +38,61 @@ end
 -- START
 -- ======================================================================
 
+-- Setup problems (missing / misplaced scripts) are shown on screen too, so
+-- they can't be missed. The server's come through a ReplicatedStorage attribute.
+local function __showSetupProblem(text)
+	if not text or text == "" then
+		return
+	end
+	local player = game:GetService("Players").LocalPlayer
+	local gui = player:WaitForChild("PlayerGui")
+	local old = gui:FindFirstChild("SpinSetupProblem")
+	local screen = old or Instance.new("ScreenGui")
+	screen.Name = "SpinSetupProblem"
+	screen.ResetOnSpawn = false
+	screen.DisplayOrder = 100
+	screen.IgnoreGuiInset = true
+	local box = screen:FindFirstChild("Box") or Instance.new("TextLabel")
+	box.Name = "Box"
+	box.AnchorPoint = Vector2.new(0.5, 0.5)
+	box.Position = UDim2.fromScale(0.5, 0.5)
+	box.Size = UDim2.fromScale(0.7, 0.6)
+	box.BackgroundColor3 = Color3.fromRGB(40, 20, 20)
+	box.BackgroundTransparency = 0.1
+	box.TextColor3 = Color3.fromRGB(255, 230, 200)
+	box.Font = Enum.Font.GothamBold
+	box.TextScaled = true
+	box.TextWrapped = true
+	local current = box:GetAttribute("Lines") or ""
+	if not current:find(text, 1, true) then
+		current = current .. (current ~= "" and "\n" or "") .. text
+	end
+	box:SetAttribute("Lines", current)
+	box.Text = "SPIN BATTLEGROUNDS ISN'T SET UP RIGHT\n\n" .. current
+	local limit = box:FindFirstChildOfClass("UITextSizeConstraint") or Instance.new("UITextSizeConstraint")
+	limit.MaxTextSize = 22
+	limit.Parent = box
+	box.Parent = screen
+	screen.Parent = gui
+end
+do
+	local RS = game:GetService("ReplicatedStorage")
+	task.spawn(function()
+		__showSetupProblem(RS:GetAttribute("SpinServerSetupProblem"))
+	end)
+	RS:GetAttributeChangedSignal("SpinServerSetupProblem"):Connect(function()
+		__showSetupProblem(RS:GetAttribute("SpinServerSetupProblem"))
+	end)
+end
+
 -- The core is split into ModuleScripts (8 parts) so it pastes quickly.
--- They're found by name (ReplicatedStorage > SpinCore is the tidy place for them).
+-- They're found by name (ReplicatedStorage > SpinCore is the tidy place for them). Anything
+-- missing or wrong is shown ON SCREEN (and in Output), and Spin waits for it.
 local __coreParts = { "SpinCore_Client_1", "SpinCore_Client_2", "SpinCore_Client_3", "SpinCore_Client_4", "SpinCore_Client_5", "SpinCore_Client_6", "SpinCore_Client_7", "SpinCore_Client_8" }
+local __problems = {}
+local __notes = {} -- (not fatal: shown, but Spin still starts)
 local function __findPart(name)
-	for _, root in ipairs({ game:GetService("ReplicatedStorage"), game:GetService("ReplicatedFirst") }) do
+	for _, root in ipairs({ game:GetService("ReplicatedStorage"), game:GetService("ReplicatedFirst"), workspace }) do
 		local found = root:FindFirstChild(name, true)
 		if found then
 			return found
@@ -50,38 +100,51 @@ local function __findPart(name)
 	end
 	return nil
 end
-local __coreOk = true
+local __parts = {}
 for _, partName in ipairs(__coreParts) do
 	local part = __findPart(partName)
 	local waited = 0
-	while not part and waited < 15 do
+	while not part and waited < 10 do
 		task.wait(0.5)
 		waited = waited + 0.5
 		part = __findPart(partName)
 	end
 	if not part then
-		__coreOk = false
-		warn("[Spin] Missing " .. partName .. ": make a ModuleScript named " .. partName .. " in ReplicatedStorage > SpinCore and paste " .. partName .. ".lua into it.")
+		table.insert(__problems, "Missing " .. partName .. ": make a ModuleScript named " .. partName .. " in ReplicatedStorage > SpinCore and paste " .. partName .. ".lua into it.")
 	elseif not part:IsA("ModuleScript") then
-		__coreOk = false
-		warn("[Spin] " .. part:GetFullName() .. " is a " .. part.ClassName .. ". It must be a ModuleScript: delete it, insert a ModuleScript with the same name, and paste the code into that.")
+		table.insert(__problems, part:GetFullName() .. " is a " .. part.ClassName .. ": it must be a ModuleScript (delete it, insert a ModuleScript with the same name, paste the code in).")
 	else
-		local ok, install = pcall(require, part)
+		__parts[partName] = part
+	end
+end
+
+if #__problems == 0 then
+	for _, partName in ipairs(__coreParts) do
+		local ok, install = pcall(require, __parts[partName])
 		if ok and type(install) == "function" then
 			local ok2, err = pcall(install, __modules, __require, __hasModule)
 			if not ok2 then
-				__coreOk = false
-				warn("[Spin] " .. partName .. " failed: " .. tostring(err))
+				table.insert(__problems, partName .. " failed: " .. tostring(err))
 			end
 		else
-			__coreOk = false
-			warn("[Spin] " .. partName .. " didn't load (was the whole file pasted in?): " .. tostring(install))
+			table.insert(__problems, partName .. " didn't load (was the whole file pasted in? is it the right file?): " .. tostring(install))
 		end
 	end
 end
-if not __coreOk then
-	warn("[Spin] Some core parts are missing or broken (see above), so Spin can't start. Every SpinCore_Client_N part has to be there.")
+if #__problems > 0 then
+	for _, p in ipairs(__problems) do
+		warn("[Spin] " .. p)
+	end
+	warn("[Spin] Spin Battlegrounds can't start until the client setup is fixed (see above).")
+	__showSetupProblem(table.concat(__problems, "\n"))
 	return
+end
+if #__notes > 0 then
+	for _, p in ipairs(__notes) do
+		warn("[Spin] " .. p)
+	end
+	__problems = __notes
+	__showSetupProblem(table.concat(__problems, "\n"))
 end
 
 -- Character scripts: each character is its own ModuleScript named like
