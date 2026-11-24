@@ -202,8 +202,10 @@ __modules["BountyService"] = function()
 	  * SHOP tab: spend Cash on bandages, a speed tonic, a lucky horseshoe
 	    (faster ultimate), a corpse compass, or CLEAR YOUR NAME (wipes your
 	    streak and any price on your head)
-	  * STABLE (in the SHOP): buy and pick your horse's coat and saddle
-	    blanket (you ride it with M and race on it)
+	  * STABLE (in the SHOP): customise your horse: coat, mane & tail,
+	    saddle blanket, saddle leather, face marking, socks, extras you can
+	    switch on and off (saddlebags, plume, bells, lantern...) and its
+	    name (filtered). You ride it with M and race on it
 	  * PUT A PRICE ON THEIR HEAD: from a player's contract, pay to raise
 	    their bounty. Whoever takes them down next is paid it
 	Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
@@ -690,47 +692,63 @@ local function owned(player)
 	return set
 end
 
+-- Every stable category: its config list, the player attribute holding the
+-- equipped one, and whether several can be on at once (extras).
+local KINDS = {
+	{ Kind = "Coat", List = "Coats", Attr = "HorseCoat" },
+	{ Kind = "Mane", List = "Manes", Attr = "HorseMane" },
+	{ Kind = "Blanket", List = "Blankets", Attr = "HorseBlanket" },
+	{ Kind = "Saddle", List = "Saddles", Attr = "HorseSaddle" },
+	{ Kind = "Marking", List = "Markings", Attr = "HorseMarking" },
+	{ Kind = "Socks", List = "Socks", Attr = "HorseSocks" },
+	{ Kind = "Extra", List = "Extras", Attr = "HorseExtras", Multi = true },
+}
+local KIND = {}
+for _, k in ipairs(KINDS) do
+	KIND[k.Kind] = k
+end
+
+local function extrasOn(player)
+	local set = {}
+	for id in string.gmatch(player:GetAttribute("HorseExtras") or "", "[^,]+") do
+		set[id] = true
+	end
+	return set
+end
+
 local function stableFor(player)
 	local have = owned(player)
-	local coat = player:GetAttribute("HorseCoat") or ((hcfg.Coats or {})[1] or {}).Id
-	local blanket = player:GetAttribute("HorseBlanket") or ((hcfg.Blankets or {})[1] or {}).Id
-	local coats, blankets = {}, {}
-	for _, c in ipairs(hcfg.Coats or {}) do
-		table.insert(coats, { Id = c.Id, Name = c.Name, Price = c.Price, Body = c.Body, Mane = c.Mane, Material = c.Material, Socks = c.Socks, Owned = c.Price <= 0 or have["Coat:" .. c.Id] == true, Equipped = c.Id == coat })
+	local out = { Name = player:GetAttribute("HorseName"), NameMax = hcfg.NameMaxLength or 20 }
+	local on = extrasOn(player)
+	for _, k in ipairs(KINDS) do
+		local list = hcfg[k.List] or {}
+		local current = player:GetAttribute(k.Attr) or (list[1] or {}).Id
+		local items = {}
+		for _, item in ipairs(list) do
+			table.insert(items, {
+				Id = item.Id, Name = item.Name, Price = item.Price,
+				Body = item.Body, Mane = item.Mane, Color = item.Color, Material = item.Material, Socks = item.Socks, Style = item.Style,
+				Owned = item.Price <= 0 or have[k.Kind .. ":" .. item.Id] == true,
+				Equipped = k.Multi and on[item.Id] == true or (not k.Multi and item.Id == current),
+			})
+		end
+		out[k.List] = items
 	end
-	for _, b in ipairs(hcfg.Blankets or {}) do
-		table.insert(blankets, { Id = b.Id, Name = b.Name, Price = b.Price, Color = b.Color, Owned = b.Price <= 0 or have["Blanket:" .. b.Id] == true, Equipped = b.Id == blanket })
-	end
-	return { Coats = coats, Blankets = blankets }
+	return out
 end
 
 local function stableItem(key)
 	local kind, id = string.match(tostring(key), "^(%a+):(%w+)$")
-	local list = kind == "Coat" and hcfg.Coats or (kind == "Blanket" and hcfg.Blankets or nil)
-	for _, item in ipairs(list or {}) do
+	local k = kind and KIND[kind]
+	for _, item in ipairs(k and hcfg[k.List] or {}) do
 		if item.Id == id then
-			return kind, item
+			return k, item
 		end
 	end
 	return nil
 end
 
-local function buyHorse(player, key)
-	local kind, item = stableItem(key)
-	if not item then
-		return
-	end
-	local have = owned(player)
-	if item.Price > 0 and not have[kind .. ":" .. item.Id] then
-		if not spend(player, item.Price) then
-			send(player, "Denied", { Reason = "Not enough Cash ($" .. item.Price .. ")." })
-			return
-		end
-		local list = player:GetAttribute("HorseOwned")
-		player:SetAttribute("HorseOwned", (list and list ~= "" and (list .. ",") or "") .. kind .. ":" .. item.Id)
-		send(player, "Bought", { Name = item.Name .. (kind == "Coat" and " HORSE" or " BLANKET"), Price = item.Price })
-	end
-	player:SetAttribute(kind == "Coat" and "HorseCoat" or "HorseBlanket", item.Id)
+local function refreshRide(player)
 	-- Riding your horse right now? It changes straight away.
 	local ok, Race = pcall(function()
 		return __require("RaceService")
@@ -738,6 +756,76 @@ local function buyHorse(player, key)
 	if ok and Race and Race.refreshHorse then
 		Race.refreshHorse(player)
 	end
+end
+
+local function buyHorse(player, key)
+	local k, item = stableItem(key)
+	if not item then
+		return
+	end
+	local have = owned(player)
+	if item.Price > 0 and not have[k.Kind .. ":" .. item.Id] then
+		if not spend(player, item.Price) then
+			send(player, "Denied", { Reason = "Not enough Cash ($" .. item.Price .. ")." })
+			return
+		end
+		local list = player:GetAttribute("HorseOwned")
+		player:SetAttribute("HorseOwned", (list and list ~= "" and (list .. ",") or "") .. k.Kind .. ":" .. item.Id)
+		send(player, "Bought", { Name = item.Name .. " (" .. string.upper(k.Kind) .. ")", Price = item.Price })
+		if k.Multi then
+			-- A new extra goes straight on.
+			local on = extrasOn(player)
+			on[item.Id] = true
+			local ids = {}
+			for id in pairs(on) do
+				table.insert(ids, id)
+			end
+			table.sort(ids)
+			player:SetAttribute(k.Attr, table.concat(ids, ","))
+			refreshRide(player)
+			return
+		end
+	end
+	if k.Multi then
+		-- Owned extras switch on and off.
+		local on = extrasOn(player)
+		on[item.Id] = not on[item.Id] or nil
+		local ids = {}
+		for id in pairs(on) do
+			table.insert(ids, id)
+		end
+		table.sort(ids)
+		player:SetAttribute(k.Attr, #ids > 0 and table.concat(ids, ",") or nil)
+	else
+		player:SetAttribute(k.Attr, item.Id)
+	end
+	refreshRide(player)
+end
+
+-- Name your horse (run through Roblox's text filter; shown above the horse).
+local TextService = game:GetService("TextService")
+local function nameHorse(player, name)
+	if typeof(name) ~= "string" then
+		return
+	end
+	name = name:gsub("[%c]", ""):gsub("^%s+", ""):gsub("%s+$", "")
+	name = name:sub(1, hcfg.NameMaxLength or 20)
+	if name == "" then
+		player:SetAttribute("HorseName", nil)
+		refreshRide(player)
+		return
+	end
+	local ok, filtered = pcall(function()
+		local result = TextService:FilterStringAsync(name, player.UserId)
+		return result:GetNonChatStringForBroadcastAsync()
+	end)
+	if not ok or not filtered or filtered == "" then
+		send(player, "Denied", { Reason = "Couldn't use that name right now." })
+		return
+	end
+	player:SetAttribute("HorseName", filtered)
+	send(player, "Bought", { Name = "NAMED: " .. string.upper(filtered), Price = 0 })
+	refreshRide(player)
 end
 
 ---------------------------------------------------------------------------
@@ -989,6 +1077,9 @@ function BountyService.init()
 			send(player, "Refresh", boardData(player))
 		elseif action == "BuyHorse" then
 			buyHorse(player, key)
+			send(player, "Refresh", boardData(player))
+		elseif action == "NameHorse" then
+			nameHorse(player, key)
 			send(player, "Refresh", boardData(player))
 		end
 	end)
@@ -2720,14 +2811,19 @@ function HorseModel.build(coat, mane, opts)
 	opts = opts or {}
 	coat = coat or Color3.fromRGB(120, 76, 44)
 	mane = mane or Color3.fromRGB(40, 26, 18)
+	local extras = opts.Extras or {}
 	local W = opts.Width or 1.9
 	local k = W / 2.2 -- how much narrower than the old 2.2-wide body
 	local shade = coat:Lerp(Color3.new(0, 0, 0), 0.2)
-	local white = opts.Socks == false and coat or (opts.Socks or Color3.fromRGB(240, 238, 232))
-	local hoof = Color3.fromRGB(46, 40, 36)
+	local white = opts.SockColor or (typeof(opts.Socks) == "Color3" and opts.Socks) or Color3.fromRGB(240, 238, 232)
+	local sockStyle = opts.SockStyle or (opts.Socks == false and "None" or "Two")
+	local marking = opts.Marking or "Blaze"
+	local hoof = extras.GoldShoes and Color3.fromRGB(230, 186, 60) or Color3.fromRGB(46, 40, 36)
 	local leather = opts.Saddle or Color3.fromRGB(96, 58, 32)
+	local leatherMaterial = opts.SaddleMaterial
 	local blanket = opts.Blanket or Color3.fromRGB(170, 40, 40)
 	local metal = Color3.fromRGB(180, 182, 188)
+	local gold = Color3.fromRGB(230, 186, 60)
 	local coatMaterial = opts.Material
 
 	local model = Instance.new("Model")
@@ -2747,40 +2843,95 @@ function HorseModel.build(coat, mane, opts)
 		end
 	end
 
-	-- Neck (arched forward), mane along its top, head with a blaze and muzzle.
+	-- Neck (arched forward), mane along its top (or braided knots), head.
 	local neck = jointed(model, body, "Neck", Vector3.new(1.1, 2.6, 1.3), coat, Vector3.new(0, 0.6, -2.6), -1.1, -0.55)
-	weld(model, neck, "Mane", Vector3.new(0.35, 2.6, 0.5), mane, CFrame.new(0, 0.05, 0.6))
+	if extras.BraidedMane then
+		for i = 0, 4 do
+			weld(model, neck, "Braid", Vector3.new(0.32, 0.32, 0.32), mane, CFrame.new(0, -1 + i * 0.5, 0.68))
+		end
+	else
+		weld(model, neck, "Mane", Vector3.new(0.35, 2.6, 0.5), mane, CFrame.new(0, 0.05, 0.6))
+	end
 	local head = weld(model, neck, "Head", Vector3.new(1.0, 1.0, 2.1), coat, CFrame.new(0, 1.35, -0.75) * CFrame.Angles(-0.35, 0, 0))
 	weld(model, head, "Muzzle", Vector3.new(0.92, 0.75, 0.6), shade, CFrame.new(0, -0.12, -1.2))
-	weld(model, head, "Blaze", Vector3.new(0.3, 0.06, 1.6), white, CFrame.new(0, 0.52, -0.3))
+	-- Face marking.
+	local faceWhite = Color3.fromRGB(240, 238, 232)
+	if marking == "Blaze" then
+		weld(model, head, "Blaze", Vector3.new(0.3, 0.06, 1.6), faceWhite, CFrame.new(0, 0.52, -0.3))
+	elseif marking == "Star" then
+		weld(model, head, "Star", Vector3.new(0.32, 0.06, 0.32), faceWhite, CFrame.new(0, 0.52, 0.2) * CFrame.Angles(0, math.pi / 4, 0))
+	elseif marking == "Stripe" then
+		weld(model, head, "Stripe", Vector3.new(0.14, 0.06, 1.7), faceWhite, CFrame.new(0, 0.52, -0.35))
+	elseif marking == "Bald" then
+		weld(model, head, "BaldFace", Vector3.new(0.8, 0.06, 1.9), faceWhite, CFrame.new(0, 0.52, -0.3))
+		weld(model, head, "BaldMuzzle", Vector3.new(0.94, 0.4, 0.62), faceWhite, CFrame.new(0, 0.12, -1.2))
+	end
+	if extras.WarPaint then
+		-- Red handprint-style bars on the neck and rump, a ring round the eye.
+		for i = 0, 2 do
+			weld(model, neck, "Paint", Vector3.new(1.14, 0.12, 0.5), Color3.fromRGB(190, 40, 30), CFrame.new(0, -0.8 + i * 0.35, -0.2))
+		end
+		for _, side in ipairs({ -1, 1 }) do
+			weld(model, body, "Paint", Vector3.new(0.05, 0.5, 0.5), Color3.fromRGB(240, 240, 240), CFrame.new(side * (W / 2 + 0.06), 0.3, 1.8))
+			weld(model, body, "Paint", Vector3.new(0.05, 0.12, 1.2), Color3.fromRGB(190, 40, 30), CFrame.new(side * (W / 2 + 0.06), -0.3, 1.6))
+		end
+	end
 	weld(model, head, "Forelock", Vector3.new(0.5, 0.2, 0.5), mane, CFrame.new(0, 0.6, 0.45))
 	for _, side in ipairs({ -1, 1 }) do
 		weld(model, head, "Ear", Vector3.new(0.2, 0.5, 0.22), coat, CFrame.new(side * 0.32, 0.72, 0.75) * CFrame.Angles(0, 0, side * -0.2))
 		weld(model, head, "Eye", Vector3.new(0.06, 0.16, 0.16), Color3.fromRGB(20, 16, 14), CFrame.new(side * 0.51, 0.18, -0.1))
 		weld(model, head, "Nostril", Vector3.new(0.06, 0.12, 0.12), Color3.fromRGB(30, 22, 18), CFrame.new(side * 0.47, -0.2, -1.42))
 		-- Bridle straps.
-		weld(model, head, "Bridle", Vector3.new(0.04, 0.9, 0.08), leather, CFrame.new(side * 0.52, 0.1, 0.1))
+		weld(model, head, "Bridle", Vector3.new(0.04, 0.9, 0.08), leather, CFrame.new(side * 0.52, 0.1, 0.1), leatherMaterial)
+		if extras.Rosette then
+			local r = weld(model, head, "Rosette", Vector3.new(0.06, 0.4, 0.4), Color3.fromRGB(40, 90, 200), CFrame.new(side * 0.56, 0.35, 0.35))
+			r.Shape = Enum.PartType.Cylinder
+			weld(model, r, "RosetteRibbon", Vector3.new(0.04, 0.5, 0.12), gold, CFrame.new(0, -0.35, 0))
+		end
 	end
-	weld(model, head, "Noseband", Vector3.new(1.0, 0.1, 0.1), leather, CFrame.new(0, -0.05, -0.85))
+	weld(model, head, "Noseband", Vector3.new(1.0, 0.1, 0.1), leather, CFrame.new(0, -0.05, -0.85), leatherMaterial)
+	if extras.Plume then
+		local plume = opts.PlumeColor or Color3.fromRGB(200, 40, 50)
+		weld(model, head, "PlumeBase", Vector3.new(0.2, 0.2, 0.2), gold, CFrame.new(0, 0.62, 0.55), Enum.Material.Metal)
+		for i = 0, 2 do
+			weld(model, head, "Plume", Vector3.new(0.18, 0.55, 0.14), plume, CFrame.new(0, 0.95 + i * 0.35, 0.65 + i * 0.12) * CFrame.Angles(0.3 + i * 0.15, 0, 0), Enum.Material.Fabric)
+		end
+	end
+	if extras.Bells then
+		weld(model, neck, "Collar", Vector3.new(1.2, 0.18, 1.4), leather, CFrame.new(0, -0.9, 0), leatherMaterial)
+		for i = -1, 1 do
+			local b = weld(model, neck, "Bell", Vector3.new(0.24, 0.24, 0.24), gold, CFrame.new(i * 0.35, -1.12, -0.68), Enum.Material.Metal)
+			b.Shape = Enum.PartType.Ball
+		end
+	end
 
-	-- Tail.
-	local tail = jointed(model, body, "Tail", Vector3.new(0.5, 2.3, 0.5), mane, Vector3.new(0, 0.7, 2.85), 1.1, -0.55)
-	weld(model, tail, "TailTip", Vector3.new(0.6, 0.6, 0.6), mane, CFrame.new(0, -1.2, 0.05))
+	-- Tail (longer and flowing with the Flowing Tail extra).
+	local long = extras.FlowingTail
+	local tail = jointed(model, body, "Tail", Vector3.new(0.5, long and 3.2 or 2.3, 0.5), mane, Vector3.new(0, 0.7, 2.85), long and 1.55 or 1.1, -0.55)
+	weld(model, tail, "TailTip", Vector3.new(long and 0.75 or 0.6, 0.7, long and 0.75 or 0.6), mane, CFrame.new(0, long and -1.7 or -1.2, 0.05))
 
-	-- Legs: thigh-to-hoof, white socks on two of them, dark hooves.
+	-- Legs: thigh-to-hoof, socks by style, hooves (gold with Gold Horseshoes).
+	local socksOn = {
+		None = {},
+		Two = { LegFL = true, LegBR = true },
+		Front = { LegFL = true, LegFR = true },
+		Back = { LegBL = true, LegBR = true },
+		Four = { LegFL = true, LegFR = true, LegBL = true, LegBR = true },
+	}
+	local on = socksOn[sockStyle] or socksOn.Two
 	local legs = {
-		{ "LegFL", Vector3.new(-0.6 * k, -0.75, -1.9), true },
-		{ "LegFR", Vector3.new(0.6 * k, -0.75, -1.9), false },
-		{ "LegBL", Vector3.new(-0.6 * k, -0.75, 1.9), false },
-		{ "LegBR", Vector3.new(0.6 * k, -0.75, 1.9), true },
+		{ "LegFL", Vector3.new(-0.6 * k, -0.75, -1.9) },
+		{ "LegFR", Vector3.new(0.6 * k, -0.75, -1.9) },
+		{ "LegBL", Vector3.new(-0.6 * k, -0.75, 1.9) },
+		{ "LegBR", Vector3.new(0.6 * k, -0.75, 1.9) },
 	}
 	for _, l in ipairs(legs) do
 		local leg = jointed(model, body, l[1], Vector3.new(0.55, 2.8, 0.6), coat, l[2], 1.4, 0)
 		weld(model, leg, "Thigh", Vector3.new(0.7, 1.0, 0.75), coat, CFrame.new(0, 0.85, 0))
-		if l[3] and opts.Socks ~= false then
+		if on[l[1]] then
 			weld(model, leg, "Sock", Vector3.new(0.6, 0.7, 0.65), white, CFrame.new(0, -0.95, 0))
 		end
-		weld(model, leg, "Hoof", Vector3.new(0.62, 0.32, 0.7), hoof, CFrame.new(0, -1.5, -0.04))
+		weld(model, leg, "Hoof", Vector3.new(0.62, 0.32, 0.7), hoof, CFrame.new(0, -1.5, -0.04), extras.GoldShoes and Enum.Material.Metal or nil)
 	end
 
 	-- Tack: blanket, saddle with a horn, stirrups, reins.
@@ -2789,15 +2940,101 @@ function HorseModel.build(coat, mane, opts)
 	for _, side in ipairs({ -1, 1 }) do
 		weld(model, body, "BlanketSide", Vector3.new(0.1, 0.8, 2.2), blanket, CFrame.new(side * (W / 2 + 0.06), 0.6, -0.1))
 	end
-	weld(model, body, "Saddle", Vector3.new(W - 0.4, 0.3, 1.7), leather, CFrame.new(0, 1.22, -0.1))
-	weld(model, body, "Cantle", Vector3.new(1.4, 0.35, 0.25), leather, CFrame.new(0, 1.45, 0.65))
-	weld(model, body, "Horn", Vector3.new(0.25, 0.45, 0.25), leather, CFrame.new(0, 1.55, -0.8))
+	weld(model, body, "Saddle", Vector3.new(W - 0.4, 0.3, 1.7), leather, CFrame.new(0, 1.22, -0.1), leatherMaterial)
+	weld(model, body, "Cantle", Vector3.new(1.4, 0.35, 0.25), leather, CFrame.new(0, 1.45, 0.65), leatherMaterial)
+	weld(model, body, "Horn", Vector3.new(0.25, 0.45, 0.25), leather, CFrame.new(0, 1.55, -0.8), leatherMaterial)
 	for _, side in ipairs({ -1, 1 }) do
-		weld(model, body, "Strap", Vector3.new(0.05, 1.3, 0.12), leather, CFrame.new(side * (W / 2 + 0.13), 0.55, -0.1))
+		weld(model, body, "Strap", Vector3.new(0.05, 1.3, 0.12), leather, CFrame.new(side * (W / 2 + 0.13), 0.55, -0.1), leatherMaterial)
 		weld(model, body, "Stirrup", Vector3.new(0.12, 0.12, 0.5), metal, CFrame.new(side * (W / 2 + 0.16), -0.15, -0.1), Enum.Material.Metal)
 		weld(model, body, "Rein", Vector3.new(0.05, 0.05, 3.4), leather, CFrame.new(side * 0.45, 2.0, -2.4) * CFrame.Angles(0.33, 0, 0))
+		if extras.Saddlebags then
+			weld(model, body, "Saddlebag", Vector3.new(0.4, 0.8, 0.9), leather:Lerp(Color3.new(0, 0, 0), 0.15), CFrame.new(side * (W / 2 + 0.22), 0.45, 1.35), leatherMaterial)
+			weld(model, body, "SaddlebagFlap", Vector3.new(0.44, 0.25, 0.94), leather, CFrame.new(side * (W / 2 + 0.24), 0.8, 1.35), leatherMaterial)
+			weld(model, body, "Buckle", Vector3.new(0.46, 0.1, 0.12), gold, CFrame.new(side * (W / 2 + 0.25), 0.65, 1.35), Enum.Material.Metal)
+		end
+		if extras.Lantern then
+			if side == 1 then
+				weld(model, body, "LanternHook", Vector3.new(0.06, 0.4, 0.06), metal, CFrame.new(W / 2 + 0.2, 0.9, 0.7), Enum.Material.Metal)
+				local glass = weld(model, body, "Lantern", Vector3.new(0.35, 0.45, 0.35), Color3.fromRGB(255, 210, 120), CFrame.new(W / 2 + 0.25, 0.5, 0.7), Enum.Material.Neon)
+				glass.Transparency = 0.2
+				local light = Instance.new("PointLight")
+				light.Color = Color3.fromRGB(255, 200, 120)
+				light.Range = 14
+				light.Brightness = 1.2
+				light.Parent = glass
+			end
+		end
+	end
+	if extras.Bedroll then
+		local roll = weld(model, body, "Bedroll", Vector3.new(W + 0.3, 0.55, 0.55), Color3.fromRGB(120, 90, 60), CFrame.new(0, 1.4, 1.0), Enum.Material.Fabric)
+		roll.Shape = Enum.PartType.Cylinder
+		for _, side in ipairs({ -1, 1 }) do
+			weld(model, body, "BedrollTie", Vector3.new(0.1, 0.6, 0.6), leather, CFrame.new(side * 0.5, 1.4, 1.0))
+		end
 	end
 	return model
+end
+
+-- The horse a stable selection describes (used by the server and the shop's
+-- preview, so they always match). cat = TuskConfig.Horses; sel = { Coat,
+-- Mane, Blanket, Saddle, Marking, Socks, Extras = { [id] = true } }.
+-- Returns coat colour, mane colour, opts for HorseModel.build.
+local function pick(list, id)
+	for _, item in ipairs(list or {}) do
+		if item.Id == id then
+			return item
+		end
+	end
+	return (list or {})[1]
+end
+
+-- A player's stable selection, from their attributes (HorseCoat, HorseMane,
+-- HorseBlanket, HorseSaddle, HorseMarking, HorseSocks, HorseExtras).
+function HorseModel.selectionOf(player)
+	local extras = {}
+	for id in string.gmatch(player and player:GetAttribute("HorseExtras") or "", "[^,]+") do
+		extras[id] = true
+	end
+	return {
+		Coat = player and player:GetAttribute("HorseCoat"),
+		Mane = player and player:GetAttribute("HorseMane"),
+		Blanket = player and player:GetAttribute("HorseBlanket"),
+		Saddle = player and player:GetAttribute("HorseSaddle"),
+		Marking = player and player:GetAttribute("HorseMarking"),
+		Socks = player and player:GetAttribute("HorseSocks"),
+		Extras = extras,
+	}
+end
+
+function HorseModel.lookFrom(cat, sel)
+	cat, sel = cat or {}, sel or {}
+	local coat = pick(cat.Coats, sel.Coat) or {}
+	local maneItem = pick(cat.Manes, sel.Mane)
+	local blanket = pick(cat.Blankets, sel.Blanket)
+	local saddle = pick(cat.Saddles, sel.Saddle)
+	local marking = pick(cat.Markings, sel.Marking)
+	local socks = pick(cat.Socks, sel.Socks)
+	local mane = (maneItem and maneItem.Color) or coat.Mane
+	local opts = {
+		Width = 1.9,
+		Material = coat.Material and Enum.Material[coat.Material] or nil,
+		Blanket = blanket and blanket.Color,
+		Saddle = saddle and saddle.Color,
+		SaddleMaterial = saddle and saddle.Material and Enum.Material[saddle.Material] or nil,
+		Marking = marking and marking.Style or "Blaze",
+		SockStyle = coat.Socks == false and (socks and socks.Style == "Two" and "None" or (socks and socks.Style)) or (socks and socks.Style or "Two"),
+		Extras = {},
+	}
+	for id, onFlag in pairs(sel.Extras or {}) do
+		if onFlag then
+			opts.Extras[id] = true
+		end
+	end
+	if opts.Extras.Plume then
+		local plume = pick(cat.Extras, "Plume")
+		opts.PlumeColor = plume and plume.Color
+	end
+	return coat.Body, mane, opts
 end
 
 return HorseModel
@@ -3895,20 +4132,10 @@ local function catalogue(list, id)
 	return (list or {})[1]
 end
 
--- The horse a player set up in the stable.
+-- The horse a player set up in the stable (the same look the shop previews).
 local function lookFor(player)
-	local coat = catalogue(hcfg.Coats, player and player:GetAttribute("HorseCoat"))
-	local blanket = catalogue(hcfg.Blankets, player and player:GetAttribute("HorseBlanket"))
-	local look = { Width = 1.9 }
-	if coat then
-		look.Body, look.Mane = coat.Body, coat.Mane
-		look.Socks = coat.Socks
-		look.Material = coat.Material and Enum.Material[coat.Material] or nil
-	end
-	if blanket then
-		look.Blanket = blanket.Color
-	end
-	return look
+	local body, mane, opts = HorseModel.lookFrom(hcfg, HorseModel.selectionOf(player))
+	return { Body = body, Mane = mane, Opts = opts, Name = player and player:GetAttribute("HorseName") }
 end
 
 local function randomLook()
@@ -3978,8 +4205,11 @@ local function mount(character, look, speed, kind)
 		character:SetAttribute("RaceHipBase", nil)
 	end
 	look = look or {}
-	local horse = HorseModel.build(look.Body, look.Mane, { Width = look.Width or 1.9, Blanket = look.Blanket, Socks = look.Socks, Material = look.Material })
+	local horse = HorseModel.build(look.Body, look.Mane, look.Opts or { Width = look.Width or 1.9, Blanket = look.Blanket, Socks = look.Socks, Material = look.Material })
 	horse.Name = "RaceHorse"
+	if look.Name then
+		horse:SetAttribute("HorseName", look.Name)
+	end
 	for _, d in ipairs(horse:GetDescendants()) do
 		if d:IsA("BasePart") then
 			d.CanCollide = false

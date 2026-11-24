@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `BountyService` (capitals matter) |
 
-**What it does:** The BOUNTY BOARD by the spawn (owner's design): a blocky board: two brown posts with grass at their feet, a brown plank back, and parchment wanted posters pinned on it. The posters on the board show the faces of the current top bounties. walk up and press E ("View Bounties"): the client opens the board UI with a wanted poster for every other player and every Stand-user NPC accept one: you get a bounty tracker and a TARGET marker on them. Land the killing blow (your hit within KillCreditTime) and you're paid in Cash (leaderstats). Players are worth more the longer their kill streak. Bounties run out after Duration seconds. JOBS tab: a few paid tasks (the same for everyone, new ones every 10 minutes): take down NPCs, deal damage, perfect blocks / dodges, claim bounties, take a corpse part... Progress counts on its own; you're paid the moment one's done SHOP tab: spend Cash on bandages, a speed tonic, a lucky horseshoe (faster ultimate), a corpse compass, or CLEAR YOUR NAME (wipes your streak and any price on your head) STABLE (in the SHOP): buy and pick your horse's coat and saddle blanket (you ride it with M and race on it) PUT A PRICE ON THEIR HEAD: from a player's contract, pay to raise their bounty. Whoever takes them down next is paid it Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
+**What it does:** The BOUNTY BOARD by the spawn (owner's design): a blocky board: two brown posts with grass at their feet, a brown plank back, and parchment wanted posters pinned on it. The posters on the board show the faces of the current top bounties. walk up and press E ("View Bounties"): the client opens the board UI with a wanted poster for every other player and every Stand-user NPC accept one: you get a bounty tracker and a TARGET marker on them. Land the killing blow (your hit within KillCreditTime) and you're paid in Cash (leaderstats). Players are worth more the longer their kill streak. Bounties run out after Duration seconds. JOBS tab: a few paid tasks (the same for everyone, new ones every 10 minutes): take down NPCs, deal damage, perfect blocks / dodges, claim bounties, take a corpse part... Progress counts on its own; you're paid the moment one's done SHOP tab: spend Cash on bandages, a speed tonic, a lucky horseshoe (faster ultimate), a corpse compass, or CLEAR YOUR NAME (wipes your streak and any price on your head) STABLE (in the SHOP): customise your horse: coat, mane & tail, saddle blanket, saddle leather, face marking, socks, extras you can switch on and off (saddlebags, plume, bells, lantern...) and its name (filtered). You ride it with M and race on it PUT A PRICE ON THEIR HEAD: from a player's contract, pay to raise their bounty. Whoever takes them down next is paid it Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -44,8 +44,10 @@ Back to [[Where To Put Code]]
 	  * SHOP tab: spend Cash on bandages, a speed tonic, a lucky horseshoe
 	    (faster ultimate), a corpse compass, or CLEAR YOUR NAME (wipes your
 	    streak and any price on your head)
-	  * STABLE (in the SHOP): buy and pick your horse's coat and saddle
-	    blanket (you ride it with M and race on it)
+	  * STABLE (in the SHOP): customise your horse: coat, mane & tail,
+	    saddle blanket, saddle leather, face marking, socks, extras you can
+	    switch on and off (saddlebags, plume, bells, lantern...) and its
+	    name (filtered). You ride it with M and race on it
 	  * PUT A PRICE ON THEIR HEAD: from a player's contract, pay to raise
 	    their bounty. Whoever takes them down next is paid it
 	Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
@@ -532,47 +534,63 @@ local function owned(player)
 	return set
 end
 
+-- Every stable category: its config list, the player attribute holding the
+-- equipped one, and whether several can be on at once (extras).
+local KINDS = {
+	{ Kind = "Coat", List = "Coats", Attr = "HorseCoat" },
+	{ Kind = "Mane", List = "Manes", Attr = "HorseMane" },
+	{ Kind = "Blanket", List = "Blankets", Attr = "HorseBlanket" },
+	{ Kind = "Saddle", List = "Saddles", Attr = "HorseSaddle" },
+	{ Kind = "Marking", List = "Markings", Attr = "HorseMarking" },
+	{ Kind = "Socks", List = "Socks", Attr = "HorseSocks" },
+	{ Kind = "Extra", List = "Extras", Attr = "HorseExtras", Multi = true },
+}
+local KIND = {}
+for _, k in ipairs(KINDS) do
+	KIND[k.Kind] = k
+end
+
+local function extrasOn(player)
+	local set = {}
+	for id in string.gmatch(player:GetAttribute("HorseExtras") or "", "[^,]+") do
+		set[id] = true
+	end
+	return set
+end
+
 local function stableFor(player)
 	local have = owned(player)
-	local coat = player:GetAttribute("HorseCoat") or ((hcfg.Coats or {})[1] or {}).Id
-	local blanket = player:GetAttribute("HorseBlanket") or ((hcfg.Blankets or {})[1] or {}).Id
-	local coats, blankets = {}, {}
-	for _, c in ipairs(hcfg.Coats or {}) do
-		table.insert(coats, { Id = c.Id, Name = c.Name, Price = c.Price, Body = c.Body, Mane = c.Mane, Material = c.Material, Socks = c.Socks, Owned = c.Price <= 0 or have["Coat:" .. c.Id] == true, Equipped = c.Id == coat })
+	local out = { Name = player:GetAttribute("HorseName"), NameMax = hcfg.NameMaxLength or 20 }
+	local on = extrasOn(player)
+	for _, k in ipairs(KINDS) do
+		local list = hcfg[k.List] or {}
+		local current = player:GetAttribute(k.Attr) or (list[1] or {}).Id
+		local items = {}
+		for _, item in ipairs(list) do
+			table.insert(items, {
+				Id = item.Id, Name = item.Name, Price = item.Price,
+				Body = item.Body, Mane = item.Mane, Color = item.Color, Material = item.Material, Socks = item.Socks, Style = item.Style,
+				Owned = item.Price <= 0 or have[k.Kind .. ":" .. item.Id] == true,
+				Equipped = k.Multi and on[item.Id] == true or (not k.Multi and item.Id == current),
+			})
+		end
+		out[k.List] = items
 	end
-	for _, b in ipairs(hcfg.Blankets or {}) do
-		table.insert(blankets, { Id = b.Id, Name = b.Name, Price = b.Price, Color = b.Color, Owned = b.Price <= 0 or have["Blanket:" .. b.Id] == true, Equipped = b.Id == blanket })
-	end
-	return { Coats = coats, Blankets = blankets }
+	return out
 end
 
 local function stableItem(key)
 	local kind, id = string.match(tostring(key), "^(%a+):(%w+)$")
-	local list = kind == "Coat" and hcfg.Coats or (kind == "Blanket" and hcfg.Blankets or nil)
-	for _, item in ipairs(list or {}) do
+	local k = kind and KIND[kind]
+	for _, item in ipairs(k and hcfg[k.List] or {}) do
 		if item.Id == id then
-			return kind, item
+			return k, item
 		end
 	end
 	return nil
 end
 
-local function buyHorse(player, key)
-	local kind, item = stableItem(key)
-	if not item then
-		return
-	end
-	local have = owned(player)
-	if item.Price > 0 and not have[kind .. ":" .. item.Id] then
-		if not spend(player, item.Price) then
-			send(player, "Denied", { Reason = "Not enough Cash ($" .. item.Price .. ")." })
-			return
-		end
-		local list = player:GetAttribute("HorseOwned")
-		player:SetAttribute("HorseOwned", (list and list ~= "" and (list .. ",") or "") .. kind .. ":" .. item.Id)
-		send(player, "Bought", { Name = item.Name .. (kind == "Coat" and " HORSE" or " BLANKET"), Price = item.Price })
-	end
-	player:SetAttribute(kind == "Coat" and "HorseCoat" or "HorseBlanket", item.Id)
+local function refreshRide(player)
 	-- Riding your horse right now? It changes straight away.
 	local ok, Race = pcall(function()
 		return require(script.Parent.RaceService)
@@ -580,6 +598,76 @@ local function buyHorse(player, key)
 	if ok and Race and Race.refreshHorse then
 		Race.refreshHorse(player)
 	end
+end
+
+local function buyHorse(player, key)
+	local k, item = stableItem(key)
+	if not item then
+		return
+	end
+	local have = owned(player)
+	if item.Price > 0 and not have[k.Kind .. ":" .. item.Id] then
+		if not spend(player, item.Price) then
+			send(player, "Denied", { Reason = "Not enough Cash ($" .. item.Price .. ")." })
+			return
+		end
+		local list = player:GetAttribute("HorseOwned")
+		player:SetAttribute("HorseOwned", (list and list ~= "" and (list .. ",") or "") .. k.Kind .. ":" .. item.Id)
+		send(player, "Bought", { Name = item.Name .. " (" .. string.upper(k.Kind) .. ")", Price = item.Price })
+		if k.Multi then
+			-- A new extra goes straight on.
+			local on = extrasOn(player)
+			on[item.Id] = true
+			local ids = {}
+			for id in pairs(on) do
+				table.insert(ids, id)
+			end
+			table.sort(ids)
+			player:SetAttribute(k.Attr, table.concat(ids, ","))
+			refreshRide(player)
+			return
+		end
+	end
+	if k.Multi then
+		-- Owned extras switch on and off.
+		local on = extrasOn(player)
+		on[item.Id] = not on[item.Id] or nil
+		local ids = {}
+		for id in pairs(on) do
+			table.insert(ids, id)
+		end
+		table.sort(ids)
+		player:SetAttribute(k.Attr, #ids > 0 and table.concat(ids, ",") or nil)
+	else
+		player:SetAttribute(k.Attr, item.Id)
+	end
+	refreshRide(player)
+end
+
+-- Name your horse (run through Roblox's text filter; shown above the horse).
+local TextService = game:GetService("TextService")
+local function nameHorse(player, name)
+	if typeof(name) ~= "string" then
+		return
+	end
+	name = name:gsub("[%c]", ""):gsub("^%s+", ""):gsub("%s+$", "")
+	name = name:sub(1, hcfg.NameMaxLength or 20)
+	if name == "" then
+		player:SetAttribute("HorseName", nil)
+		refreshRide(player)
+		return
+	end
+	local ok, filtered = pcall(function()
+		local result = TextService:FilterStringAsync(name, player.UserId)
+		return result:GetNonChatStringForBroadcastAsync()
+	end)
+	if not ok or not filtered or filtered == "" then
+		send(player, "Denied", { Reason = "Couldn't use that name right now." })
+		return
+	end
+	player:SetAttribute("HorseName", filtered)
+	send(player, "Bought", { Name = "NAMED: " .. string.upper(filtered), Price = 0 })
+	refreshRide(player)
 end
 
 ---------------------------------------------------------------------------
@@ -831,6 +919,9 @@ function BountyService.init()
 			send(player, "Refresh", boardData(player))
 		elseif action == "BuyHorse" then
 			buyHorse(player, key)
+			send(player, "Refresh", boardData(player))
+		elseif action == "NameHorse" then
+			nameHorse(player, key)
 			send(player, "Refresh", boardData(player))
 		end
 	end)

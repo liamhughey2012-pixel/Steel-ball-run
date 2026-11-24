@@ -466,22 +466,36 @@ local function showJobs()
 	return #lastJobs
 end
 
--- STABLE: your horse's coat and saddle blanket (ride it with M).
-local function equippedLook()
-	local look = {}
-	for _, c in ipairs(lastStable.Coats or {}) do
-		if c.Equipped then
-			look.Body, look.Mane, look.Socks = c.Body, c.Mane, c.Socks
-			look.Material = c.Material and Enum.Material[c.Material] or nil
+-- STABLE: customise your horse (ride it with M): coat, mane & tail,
+-- blanket, saddle, marking, socks, extras (on / off) and its name.
+local STABLE_SECTIONS = {
+	{ List = "Coats", Kind = "Coat", Title = "COAT" },
+	{ List = "Manes", Kind = "Mane", Title = "MANE & TAIL" },
+	{ List = "Blankets", Kind = "Blanket", Title = "SADDLE BLANKET" },
+	{ List = "Saddles", Kind = "Saddle", Title = "SADDLE & BRIDLE" },
+	{ List = "Markings", Kind = "Marking", Title = "FACE MARKING" },
+	{ List = "Socks", Kind = "Socks", Title = "WHITE SOCKS" },
+	{ List = "Extras", Kind = "Extra", Title = "EXTRAS (SWITCH ON / OFF)", Multi = true },
+}
+
+local function stableSelection()
+	local sel = { Extras = {} }
+	for _, sec in ipairs(STABLE_SECTIONS) do
+		for _, item in ipairs(lastStable[sec.List] or {}) do
+			if item.Equipped then
+				if sec.Multi then
+					sel.Extras[item.Id] = true
+				else
+					sel[sec.Kind] = item.Id
+				end
+			end
 		end
 	end
-	for _, b in ipairs(lastStable.Blankets or {}) do
-		if b.Equipped then
-			look.Blanket = b.Color
-		end
-	end
-	return look
+	return sel
 end
+
+local MARK_ICONS = { Blaze = "|", None = "-", Star = "*", Stripe = "!", Bald = "O" }
+local SOCK_ICONS = { Two = "2", None = "0", Front = "F", Back = "B", Four = "4" }
 
 showStable = function(y, cash)
 	stablePreview = nil
@@ -490,17 +504,29 @@ showStable = function(y, cash)
 	end
 	local head = new("Frame", { Position = UDim2.fromOffset(14, y), Size = UDim2.new(1, -40, 0, 30), BackgroundColor3 = WOOD_DARK }, grid)
 	corner(head, 6)
-	label(head, { Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -20, 1, 0), Text = "STABLE  ·  YOUR HORSE  (PRESS M TO RIDE)", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Left })
+	label(head, { Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -20, 1, 0), Text = "STABLE  ·  CUSTOMISE YOUR HORSE  (PRESS M TO RIDE)", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Left })
 	y = y + 40
-	-- A spinning preview of the horse you've got saddled up.
-	local panel = paperCard(grid, UDim2.fromOffset(14, y), UDim2.fromOffset(200, 200), 0)
-	local vp = new("ViewportFrame", { Position = UDim2.fromOffset(6, 6), Size = UDim2.new(1, -12, 1, -40), BackgroundColor3 = Color3.fromRGB(230, 210, 170), Ambient = Color3.fromRGB(200, 190, 170), LightColor = Color3.new(1, 1, 1) }, panel)
+	-- Left: a spinning preview and the name box.
+	local panel = paperCard(grid, UDim2.fromOffset(14, y), UDim2.fromOffset(200, 290), 0)
+	local vp = new("ViewportFrame", { Position = UDim2.fromOffset(6, 6), Size = UDim2.new(1, -12, 0, 190), BackgroundColor3 = Color3.fromRGB(230, 210, 170), Ambient = Color3.fromRGB(200, 190, 170), LightColor = Color3.new(1, 1, 1) }, panel)
 	corner(vp, 4)
-	label(panel, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -8), Size = UDim2.new(1, -16, 0, 22), Text = "YOUR HORSE", Font = Enum.Font.Bangers })
-	if HorseModel then
-		local look = equippedLook()
+	local nameText = lastStable.Name and string.upper(lastStable.Name) or "YOUR HORSE"
+	label(panel, { Position = UDim2.fromOffset(8, 200), Size = UDim2.new(1, -16, 0, 24), Text = nameText, Font = Enum.Font.Bangers })
+	local box = new("TextBox", { Position = UDim2.fromOffset(8, 228), Size = UDim2.new(1, -78, 0, 28), BackgroundColor3 = Color3.fromRGB(250, 240, 215), Text = "", PlaceholderText = "Name your horse", ClearTextOnFocus = false, Font = Enum.Font.GothamBold, TextScaled = true, TextColor3 = INK, PlaceholderColor3 = INK:Lerp(PAPER, 0.5) }, panel)
+	corner(box, 6)
+	new("UIStroke", { Color = INK, Thickness = 1, Transparency = 0.4 }, box)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6), PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, box)
+	local nameBtn = new("TextButton", { Position = UDim2.new(1, -66, 0, 228), Size = UDim2.fromOffset(58, 28), BackgroundColor3 = GREEN, Text = "NAME", Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, panel)
+	corner(nameBtn, 6)
+	new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }, nameBtn)
+	nameBtn.Activated:Connect(function()
+		Remote:FireServer("NameHorse", string.sub(box.Text or "", 1, lastStable.NameMax or 20))
+	end)
+	label(panel, { Position = UDim2.fromOffset(8, 262), Size = UDim2.new(1, -16, 0, 20), Text = "Shown above your horse", Font = Enum.Font.GothamMedium, TextColor3 = INK:Lerp(PAPER, 0.35) })
+	if HorseModel and HorseModel.lookFrom then
 		local ok, horse = pcall(function()
-			return HorseModel.build(look.Body, look.Mane, { Blanket = look.Blanket, Socks = look.Socks, Material = look.Material })
+			local body, mane, opts = HorseModel.lookFrom(TuskConfig.Horses, stableSelection())
+			return HorseModel.build(body, mane, opts)
 		end)
 		if ok and horse then
 			for _, d in ipairs(horse:GetDescendants()) do
@@ -515,49 +541,56 @@ showStable = function(y, cash)
 			cam.CFrame = CFrame.lookAt(Vector3.new(math.sin(0.6) * 13, 2, math.cos(0.6) * 13), Vector3.new(0, 0.2, -0.6))
 		end
 	end
-	-- Coats, then blankets: small swatch cards, 3 to a row, to the right of the preview.
-	local function swatchCard(x, yy, item, key, colorA, colorB)
+	-- Right: every category as a row of small cards, 3 to a row.
+	local function swatchCard(x, yy, item, key, sec)
 		local card = paperCard(grid, UDim2.fromOffset(x, yy), UDim2.fromOffset(134, 62), 0)
-		local sw = new("Frame", { Position = UDim2.fromOffset(8, 10), Size = UDim2.fromOffset(32, 32), BackgroundColor3 = colorA }, card)
+		local colorA = item.Body or item.Color
+		local sw = new("Frame", { Position = UDim2.fromOffset(8, 10), Size = UDim2.fromOffset(32, 32), BackgroundColor3 = colorA or WOOD_DARK }, card)
 		corner(sw, 99)
 		new("UIStroke", { Color = INK, Thickness = 2 }, sw)
-		if colorB then
-			new("Frame", { Position = UDim2.fromOffset(13, 0), Size = UDim2.fromOffset(6, 32), BackgroundColor3 = colorB, BorderSizePixel = 0 }, sw)
+		if item.Mane then
+			new("Frame", { Position = UDim2.fromOffset(13, 0), Size = UDim2.fromOffset(6, 32), BackgroundColor3 = item.Mane, BorderSizePixel = 0 }, sw)
+		end
+		local icon = (sec.Kind == "Marking" and MARK_ICONS[item.Style or ""]) or (sec.Kind == "Socks" and SOCK_ICONS[item.Style or ""]) or (sec.Multi and "+") or (sec.Kind == "Mane" and not colorA and "~")
+		if icon then
+			label(sw, { Size = UDim2.fromScale(1, 1), Text = icon, Font = Enum.Font.GothamBlack, TextColor3 = colorA and INK or GOLD })
 		end
 		local nameL = label(card, { Position = UDim2.fromOffset(46, 6), Size = UDim2.fromOffset(84, 18), Text = item.Name, Font = Enum.Font.GothamBlack, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left })
 		new("UITextSizeConstraint", { MaxTextSize = 13, MinTextSize = 7 }, nameL)
-		local state = item.Equipped and "EQUIPPED" or (item.Owned and "EQUIP" or ("$" .. item.Price))
+		local state
+		if not item.Owned then
+			state = "$" .. item.Price
+		elseif sec.Multi then
+			state = item.Equipped and "ON" or "OFF"
+		else
+			state = item.Equipped and "EQUIPPED" or "EQUIP"
+		end
 		local afford = item.Owned or cash >= item.Price
-		local btn = new("TextButton", { Position = UDim2.fromOffset(46, 30), Size = UDim2.fromOffset(80, 24), BackgroundColor3 = item.Equipped and GOLD or (item.Owned and WOOD_DARK or (afford and GREEN or Color3.fromRGB(130, 120, 110))), Text = state, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = item.Equipped and INK or Color3.new(1, 1, 1), AutoButtonColor = not item.Equipped }, card)
+		local color = item.Equipped and GOLD or (item.Owned and WOOD_DARK or (afford and GREEN or Color3.fromRGB(130, 120, 110)))
+		local btn = new("TextButton", { Position = UDim2.fromOffset(46, 30), Size = UDim2.fromOffset(80, 24), BackgroundColor3 = color, Text = state, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = item.Equipped and INK or Color3.new(1, 1, 1), AutoButtonColor = sec.Multi or not item.Equipped }, card)
 		corner(btn, 6)
 		new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) }, btn)
 		btn.Activated:Connect(function()
-			if not item.Equipped then
+			if sec.Multi or not item.Equipped then
 				Remote:FireServer("BuyHorse", key)
 			end
 		end)
 	end
 	local x0 = 226
 	local rowY = y
-	local i = 0
-	label(grid, { Position = UDim2.fromOffset(x0, rowY - 4), Size = UDim2.fromOffset(200, 16), Text = "COATS", Font = Enum.Font.GothamBlack, TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Left })
-	rowY = rowY + 14
-	for _, c in ipairs(lastStable.Coats or {}) do
-		local col, row = i % 3, math.floor(i / 3)
-		swatchCard(x0 + col * 140, rowY + row * 68, c, "Coat:" .. c.Id, c.Body or PAPER, c.Mane)
-		i = i + 1
+	for _, sec in ipairs(STABLE_SECTIONS) do
+		local items = lastStable[sec.List] or {}
+		if #items > 0 then
+			label(grid, { Position = UDim2.fromOffset(x0, rowY - 2), Size = UDim2.fromOffset(300, 16), Text = sec.Title, Font = Enum.Font.GothamBlack, TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Left })
+			rowY = rowY + 16
+			for i, item in ipairs(items) do
+				local col, row = (i - 1) % 3, math.floor((i - 1) / 3)
+				swatchCard(x0 + col * 140, rowY + row * 68, item, sec.Kind .. ":" .. item.Id, sec)
+			end
+			rowY = rowY + math.ceil(#items / 3) * 68 + 8
+		end
 	end
-	rowY = rowY + math.ceil(i / 3) * 68 + 6
-	label(grid, { Position = UDim2.fromOffset(x0, rowY - 4), Size = UDim2.fromOffset(200, 16), Text = "SADDLE BLANKETS", Font = Enum.Font.GothamBlack, TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Left })
-	rowY = rowY + 14
-	i = 0
-	for _, b in ipairs(lastStable.Blankets or {}) do
-		local col, row = i % 3, math.floor(i / 3)
-		swatchCard(x0 + col * 140, rowY + row * 68, b, "Blanket:" .. b.Id, b.Color or PAPER)
-		i = i + 1
-	end
-	rowY = rowY + math.ceil(i / 3) * 68
-	return math.max(rowY, y + 210)
+	return math.max(rowY, y + 300)
 end
 
 local function showShop()

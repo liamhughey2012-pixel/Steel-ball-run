@@ -309,7 +309,18 @@ local function horseState(horse)
 	return h
 end
 
+local function clearPlates()
+	for horse, h in pairs(horses) do
+		if h.Plate and not horse.Parent then
+			h.Plate:Destroy()
+			h.Plate = nil
+			horses[horse] = nil
+		end
+	end
+end
+
 local function stepHorses(dt)
+	clearPlates()
 	for _, horse in ipairs(CollectionService:GetTagged("SpinHorse")) do
 		local character = horse.Parent
 		local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -330,6 +341,38 @@ local function stepHorses(dt)
 					a = a - 0.6 * amp + math.sin(os.clock() * 3 + h.Phase) * 0.12
 				end
 				j.Weld.C0 = CFrame.new(j.Joint) * CFrame.Angles(a, 0, 0) * CFrame.new(0, -j.Drop, 0)
+			end
+			-- Its name, over its head.
+			local name = horse:GetAttribute("HorseName")
+			if name and h.PlateName ~= name then
+				h.PlateName = name
+				if h.Plate then
+					h.Plate:Destroy()
+				end
+				local headPart = horse:FindFirstChild("Head")
+				if headPart then
+					local bb = Instance.new("BillboardGui")
+					bb.Name = "HorseNameplate"
+					bb.Adornee = headPart
+					bb.Size = UDim2.fromOffset(160, 26)
+					bb.StudsOffset = Vector3.new(0, 2.2, 0)
+					bb.MaxDistance = 80
+					bb.LightInfluence = 0
+					local text = Instance.new("TextLabel")
+					text.BackgroundTransparency = 1
+					text.Size = UDim2.fromScale(1, 1)
+					text.Font = Enum.Font.Bangers
+					text.TextScaled = true
+					text.Text = string.upper(name)
+					text.TextColor3 = Color3.fromRGB(255, 225, 150)
+					text.TextStrokeTransparency = 0.2
+					text.Parent = bb
+					bb.Parent = VFXLib.Folder
+					h.Plate = bb
+				end
+			elseif not name and h.Plate then
+				h.Plate:Destroy()
+				h.Plate, h.PlateName = nil, nil
 			end
 			-- Body bob, always from where the server put the horse (BodyY),
 			-- never from last frame's position (so it can't creep).

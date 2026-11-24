@@ -1627,22 +1627,36 @@ local function showJobs()
 	return #lastJobs
 end
 
--- STABLE: your horse's coat and saddle blanket (ride it with M).
-local function equippedLook()
-	local look = {}
-	for _, c in ipairs(lastStable.Coats or {}) do
-		if c.Equipped then
-			look.Body, look.Mane, look.Socks = c.Body, c.Mane, c.Socks
-			look.Material = c.Material and Enum.Material[c.Material] or nil
+-- STABLE: customise your horse (ride it with M): coat, mane & tail,
+-- blanket, saddle, marking, socks, extras (on / off) and its name.
+local STABLE_SECTIONS = {
+	{ List = "Coats", Kind = "Coat", Title = "COAT" },
+	{ List = "Manes", Kind = "Mane", Title = "MANE & TAIL" },
+	{ List = "Blankets", Kind = "Blanket", Title = "SADDLE BLANKET" },
+	{ List = "Saddles", Kind = "Saddle", Title = "SADDLE & BRIDLE" },
+	{ List = "Markings", Kind = "Marking", Title = "FACE MARKING" },
+	{ List = "Socks", Kind = "Socks", Title = "WHITE SOCKS" },
+	{ List = "Extras", Kind = "Extra", Title = "EXTRAS (SWITCH ON / OFF)", Multi = true },
+}
+
+local function stableSelection()
+	local sel = { Extras = {} }
+	for _, sec in ipairs(STABLE_SECTIONS) do
+		for _, item in ipairs(lastStable[sec.List] or {}) do
+			if item.Equipped then
+				if sec.Multi then
+					sel.Extras[item.Id] = true
+				else
+					sel[sec.Kind] = item.Id
+				end
+			end
 		end
 	end
-	for _, b in ipairs(lastStable.Blankets or {}) do
-		if b.Equipped then
-			look.Blanket = b.Color
-		end
-	end
-	return look
+	return sel
 end
+
+local MARK_ICONS = { Blaze = "|", None = "-", Star = "*", Stripe = "!", Bald = "O" }
+local SOCK_ICONS = { Two = "2", None = "0", Front = "F", Back = "B", Four = "4" }
 
 showStable = function(y, cash)
 	stablePreview = nil
@@ -1651,17 +1665,29 @@ showStable = function(y, cash)
 	end
 	local head = new("Frame", { Position = UDim2.fromOffset(14, y), Size = UDim2.new(1, -40, 0, 30), BackgroundColor3 = WOOD_DARK }, grid)
 	corner(head, 6)
-	label(head, { Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -20, 1, 0), Text = "STABLE  ·  YOUR HORSE  (PRESS M TO RIDE)", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Left })
+	label(head, { Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -20, 1, 0), Text = "STABLE  ·  CUSTOMISE YOUR HORSE  (PRESS M TO RIDE)", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Left })
 	y = y + 40
-	-- A spinning preview of the horse you've got saddled up.
-	local panel = paperCard(grid, UDim2.fromOffset(14, y), UDim2.fromOffset(200, 200), 0)
-	local vp = new("ViewportFrame", { Position = UDim2.fromOffset(6, 6), Size = UDim2.new(1, -12, 1, -40), BackgroundColor3 = Color3.fromRGB(230, 210, 170), Ambient = Color3.fromRGB(200, 190, 170), LightColor = Color3.new(1, 1, 1) }, panel)
+	-- Left: a spinning preview and the name box.
+	local panel = paperCard(grid, UDim2.fromOffset(14, y), UDim2.fromOffset(200, 290), 0)
+	local vp = new("ViewportFrame", { Position = UDim2.fromOffset(6, 6), Size = UDim2.new(1, -12, 0, 190), BackgroundColor3 = Color3.fromRGB(230, 210, 170), Ambient = Color3.fromRGB(200, 190, 170), LightColor = Color3.new(1, 1, 1) }, panel)
 	corner(vp, 4)
-	label(panel, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -8), Size = UDim2.new(1, -16, 0, 22), Text = "YOUR HORSE", Font = Enum.Font.Bangers })
-	if HorseModel then
-		local look = equippedLook()
+	local nameText = lastStable.Name and string.upper(lastStable.Name) or "YOUR HORSE"
+	label(panel, { Position = UDim2.fromOffset(8, 200), Size = UDim2.new(1, -16, 0, 24), Text = nameText, Font = Enum.Font.Bangers })
+	local box = new("TextBox", { Position = UDim2.fromOffset(8, 228), Size = UDim2.new(1, -78, 0, 28), BackgroundColor3 = Color3.fromRGB(250, 240, 215), Text = "", PlaceholderText = "Name your horse", ClearTextOnFocus = false, Font = Enum.Font.GothamBold, TextScaled = true, TextColor3 = INK, PlaceholderColor3 = INK:Lerp(PAPER, 0.5) }, panel)
+	corner(box, 6)
+	new("UIStroke", { Color = INK, Thickness = 1, Transparency = 0.4 }, box)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6), PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, box)
+	local nameBtn = new("TextButton", { Position = UDim2.new(1, -66, 0, 228), Size = UDim2.fromOffset(58, 28), BackgroundColor3 = GREEN, Text = "NAME", Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, panel)
+	corner(nameBtn, 6)
+	new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }, nameBtn)
+	nameBtn.Activated:Connect(function()
+		Remote:FireServer("NameHorse", string.sub(box.Text or "", 1, lastStable.NameMax or 20))
+	end)
+	label(panel, { Position = UDim2.fromOffset(8, 262), Size = UDim2.new(1, -16, 0, 20), Text = "Shown above your horse", Font = Enum.Font.GothamMedium, TextColor3 = INK:Lerp(PAPER, 0.35) })
+	if HorseModel and HorseModel.lookFrom then
 		local ok, horse = pcall(function()
-			return HorseModel.build(look.Body, look.Mane, { Blanket = look.Blanket, Socks = look.Socks, Material = look.Material })
+			local body, mane, opts = HorseModel.lookFrom(TuskConfig.Horses, stableSelection())
+			return HorseModel.build(body, mane, opts)
 		end)
 		if ok and horse then
 			for _, d in ipairs(horse:GetDescendants()) do
@@ -1676,49 +1702,56 @@ showStable = function(y, cash)
 			cam.CFrame = CFrame.lookAt(Vector3.new(math.sin(0.6) * 13, 2, math.cos(0.6) * 13), Vector3.new(0, 0.2, -0.6))
 		end
 	end
-	-- Coats, then blankets: small swatch cards, 3 to a row, to the right of the preview.
-	local function swatchCard(x, yy, item, key, colorA, colorB)
+	-- Right: every category as a row of small cards, 3 to a row.
+	local function swatchCard(x, yy, item, key, sec)
 		local card = paperCard(grid, UDim2.fromOffset(x, yy), UDim2.fromOffset(134, 62), 0)
-		local sw = new("Frame", { Position = UDim2.fromOffset(8, 10), Size = UDim2.fromOffset(32, 32), BackgroundColor3 = colorA }, card)
+		local colorA = item.Body or item.Color
+		local sw = new("Frame", { Position = UDim2.fromOffset(8, 10), Size = UDim2.fromOffset(32, 32), BackgroundColor3 = colorA or WOOD_DARK }, card)
 		corner(sw, 99)
 		new("UIStroke", { Color = INK, Thickness = 2 }, sw)
-		if colorB then
-			new("Frame", { Position = UDim2.fromOffset(13, 0), Size = UDim2.fromOffset(6, 32), BackgroundColor3 = colorB, BorderSizePixel = 0 }, sw)
+		if item.Mane then
+			new("Frame", { Position = UDim2.fromOffset(13, 0), Size = UDim2.fromOffset(6, 32), BackgroundColor3 = item.Mane, BorderSizePixel = 0 }, sw)
+		end
+		local icon = (sec.Kind == "Marking" and MARK_ICONS[item.Style or ""]) or (sec.Kind == "Socks" and SOCK_ICONS[item.Style or ""]) or (sec.Multi and "+") or (sec.Kind == "Mane" and not colorA and "~")
+		if icon then
+			label(sw, { Size = UDim2.fromScale(1, 1), Text = icon, Font = Enum.Font.GothamBlack, TextColor3 = colorA and INK or GOLD })
 		end
 		local nameL = label(card, { Position = UDim2.fromOffset(46, 6), Size = UDim2.fromOffset(84, 18), Text = item.Name, Font = Enum.Font.GothamBlack, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left })
 		new("UITextSizeConstraint", { MaxTextSize = 13, MinTextSize = 7 }, nameL)
-		local state = item.Equipped and "EQUIPPED" or (item.Owned and "EQUIP" or ("$" .. item.Price))
+		local state
+		if not item.Owned then
+			state = "$" .. item.Price
+		elseif sec.Multi then
+			state = item.Equipped and "ON" or "OFF"
+		else
+			state = item.Equipped and "EQUIPPED" or "EQUIP"
+		end
 		local afford = item.Owned or cash >= item.Price
-		local btn = new("TextButton", { Position = UDim2.fromOffset(46, 30), Size = UDim2.fromOffset(80, 24), BackgroundColor3 = item.Equipped and GOLD or (item.Owned and WOOD_DARK or (afford and GREEN or Color3.fromRGB(130, 120, 110))), Text = state, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = item.Equipped and INK or Color3.new(1, 1, 1), AutoButtonColor = not item.Equipped }, card)
+		local color = item.Equipped and GOLD or (item.Owned and WOOD_DARK or (afford and GREEN or Color3.fromRGB(130, 120, 110)))
+		local btn = new("TextButton", { Position = UDim2.fromOffset(46, 30), Size = UDim2.fromOffset(80, 24), BackgroundColor3 = color, Text = state, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = item.Equipped and INK or Color3.new(1, 1, 1), AutoButtonColor = sec.Multi or not item.Equipped }, card)
 		corner(btn, 6)
 		new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) }, btn)
 		btn.Activated:Connect(function()
-			if not item.Equipped then
+			if sec.Multi or not item.Equipped then
 				Remote:FireServer("BuyHorse", key)
 			end
 		end)
 	end
 	local x0 = 226
 	local rowY = y
-	local i = 0
-	label(grid, { Position = UDim2.fromOffset(x0, rowY - 4), Size = UDim2.fromOffset(200, 16), Text = "COATS", Font = Enum.Font.GothamBlack, TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Left })
-	rowY = rowY + 14
-	for _, c in ipairs(lastStable.Coats or {}) do
-		local col, row = i % 3, math.floor(i / 3)
-		swatchCard(x0 + col * 140, rowY + row * 68, c, "Coat:" .. c.Id, c.Body or PAPER, c.Mane)
-		i = i + 1
+	for _, sec in ipairs(STABLE_SECTIONS) do
+		local items = lastStable[sec.List] or {}
+		if #items > 0 then
+			label(grid, { Position = UDim2.fromOffset(x0, rowY - 2), Size = UDim2.fromOffset(300, 16), Text = sec.Title, Font = Enum.Font.GothamBlack, TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Left })
+			rowY = rowY + 16
+			for i, item in ipairs(items) do
+				local col, row = (i - 1) % 3, math.floor((i - 1) / 3)
+				swatchCard(x0 + col * 140, rowY + row * 68, item, sec.Kind .. ":" .. item.Id, sec)
+			end
+			rowY = rowY + math.ceil(#items / 3) * 68 + 8
+		end
 	end
-	rowY = rowY + math.ceil(i / 3) * 68 + 6
-	label(grid, { Position = UDim2.fromOffset(x0, rowY - 4), Size = UDim2.fromOffset(200, 16), Text = "SADDLE BLANKETS", Font = Enum.Font.GothamBlack, TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Left })
-	rowY = rowY + 14
-	i = 0
-	for _, b in ipairs(lastStable.Blankets or {}) do
-		local col, row = i % 3, math.floor(i / 3)
-		swatchCard(x0 + col * 140, rowY + row * 68, b, "Blanket:" .. b.Id, b.Color or PAPER)
-		i = i + 1
-	end
-	rowY = rowY + math.ceil(i / 3) * 68
-	return math.max(rowY, y + 210)
+	return math.max(rowY, y + 300)
 end
 
 local function showShop()
@@ -5015,14 +5048,19 @@ function HorseModel.build(coat, mane, opts)
 	opts = opts or {}
 	coat = coat or Color3.fromRGB(120, 76, 44)
 	mane = mane or Color3.fromRGB(40, 26, 18)
+	local extras = opts.Extras or {}
 	local W = opts.Width or 1.9
 	local k = W / 2.2 -- how much narrower than the old 2.2-wide body
 	local shade = coat:Lerp(Color3.new(0, 0, 0), 0.2)
-	local white = opts.Socks == false and coat or (opts.Socks or Color3.fromRGB(240, 238, 232))
-	local hoof = Color3.fromRGB(46, 40, 36)
+	local white = opts.SockColor or (typeof(opts.Socks) == "Color3" and opts.Socks) or Color3.fromRGB(240, 238, 232)
+	local sockStyle = opts.SockStyle or (opts.Socks == false and "None" or "Two")
+	local marking = opts.Marking or "Blaze"
+	local hoof = extras.GoldShoes and Color3.fromRGB(230, 186, 60) or Color3.fromRGB(46, 40, 36)
 	local leather = opts.Saddle or Color3.fromRGB(96, 58, 32)
+	local leatherMaterial = opts.SaddleMaterial
 	local blanket = opts.Blanket or Color3.fromRGB(170, 40, 40)
 	local metal = Color3.fromRGB(180, 182, 188)
+	local gold = Color3.fromRGB(230, 186, 60)
 	local coatMaterial = opts.Material
 
 	local model = Instance.new("Model")
@@ -5042,40 +5080,95 @@ function HorseModel.build(coat, mane, opts)
 		end
 	end
 
-	-- Neck (arched forward), mane along its top, head with a blaze and muzzle.
+	-- Neck (arched forward), mane along its top (or braided knots), head.
 	local neck = jointed(model, body, "Neck", Vector3.new(1.1, 2.6, 1.3), coat, Vector3.new(0, 0.6, -2.6), -1.1, -0.55)
-	weld(model, neck, "Mane", Vector3.new(0.35, 2.6, 0.5), mane, CFrame.new(0, 0.05, 0.6))
+	if extras.BraidedMane then
+		for i = 0, 4 do
+			weld(model, neck, "Braid", Vector3.new(0.32, 0.32, 0.32), mane, CFrame.new(0, -1 + i * 0.5, 0.68))
+		end
+	else
+		weld(model, neck, "Mane", Vector3.new(0.35, 2.6, 0.5), mane, CFrame.new(0, 0.05, 0.6))
+	end
 	local head = weld(model, neck, "Head", Vector3.new(1.0, 1.0, 2.1), coat, CFrame.new(0, 1.35, -0.75) * CFrame.Angles(-0.35, 0, 0))
 	weld(model, head, "Muzzle", Vector3.new(0.92, 0.75, 0.6), shade, CFrame.new(0, -0.12, -1.2))
-	weld(model, head, "Blaze", Vector3.new(0.3, 0.06, 1.6), white, CFrame.new(0, 0.52, -0.3))
+	-- Face marking.
+	local faceWhite = Color3.fromRGB(240, 238, 232)
+	if marking == "Blaze" then
+		weld(model, head, "Blaze", Vector3.new(0.3, 0.06, 1.6), faceWhite, CFrame.new(0, 0.52, -0.3))
+	elseif marking == "Star" then
+		weld(model, head, "Star", Vector3.new(0.32, 0.06, 0.32), faceWhite, CFrame.new(0, 0.52, 0.2) * CFrame.Angles(0, math.pi / 4, 0))
+	elseif marking == "Stripe" then
+		weld(model, head, "Stripe", Vector3.new(0.14, 0.06, 1.7), faceWhite, CFrame.new(0, 0.52, -0.35))
+	elseif marking == "Bald" then
+		weld(model, head, "BaldFace", Vector3.new(0.8, 0.06, 1.9), faceWhite, CFrame.new(0, 0.52, -0.3))
+		weld(model, head, "BaldMuzzle", Vector3.new(0.94, 0.4, 0.62), faceWhite, CFrame.new(0, 0.12, -1.2))
+	end
+	if extras.WarPaint then
+		-- Red handprint-style bars on the neck and rump, a ring round the eye.
+		for i = 0, 2 do
+			weld(model, neck, "Paint", Vector3.new(1.14, 0.12, 0.5), Color3.fromRGB(190, 40, 30), CFrame.new(0, -0.8 + i * 0.35, -0.2))
+		end
+		for _, side in ipairs({ -1, 1 }) do
+			weld(model, body, "Paint", Vector3.new(0.05, 0.5, 0.5), Color3.fromRGB(240, 240, 240), CFrame.new(side * (W / 2 + 0.06), 0.3, 1.8))
+			weld(model, body, "Paint", Vector3.new(0.05, 0.12, 1.2), Color3.fromRGB(190, 40, 30), CFrame.new(side * (W / 2 + 0.06), -0.3, 1.6))
+		end
+	end
 	weld(model, head, "Forelock", Vector3.new(0.5, 0.2, 0.5), mane, CFrame.new(0, 0.6, 0.45))
 	for _, side in ipairs({ -1, 1 }) do
 		weld(model, head, "Ear", Vector3.new(0.2, 0.5, 0.22), coat, CFrame.new(side * 0.32, 0.72, 0.75) * CFrame.Angles(0, 0, side * -0.2))
 		weld(model, head, "Eye", Vector3.new(0.06, 0.16, 0.16), Color3.fromRGB(20, 16, 14), CFrame.new(side * 0.51, 0.18, -0.1))
 		weld(model, head, "Nostril", Vector3.new(0.06, 0.12, 0.12), Color3.fromRGB(30, 22, 18), CFrame.new(side * 0.47, -0.2, -1.42))
 		-- Bridle straps.
-		weld(model, head, "Bridle", Vector3.new(0.04, 0.9, 0.08), leather, CFrame.new(side * 0.52, 0.1, 0.1))
+		weld(model, head, "Bridle", Vector3.new(0.04, 0.9, 0.08), leather, CFrame.new(side * 0.52, 0.1, 0.1), leatherMaterial)
+		if extras.Rosette then
+			local r = weld(model, head, "Rosette", Vector3.new(0.06, 0.4, 0.4), Color3.fromRGB(40, 90, 200), CFrame.new(side * 0.56, 0.35, 0.35))
+			r.Shape = Enum.PartType.Cylinder
+			weld(model, r, "RosetteRibbon", Vector3.new(0.04, 0.5, 0.12), gold, CFrame.new(0, -0.35, 0))
+		end
 	end
-	weld(model, head, "Noseband", Vector3.new(1.0, 0.1, 0.1), leather, CFrame.new(0, -0.05, -0.85))
+	weld(model, head, "Noseband", Vector3.new(1.0, 0.1, 0.1), leather, CFrame.new(0, -0.05, -0.85), leatherMaterial)
+	if extras.Plume then
+		local plume = opts.PlumeColor or Color3.fromRGB(200, 40, 50)
+		weld(model, head, "PlumeBase", Vector3.new(0.2, 0.2, 0.2), gold, CFrame.new(0, 0.62, 0.55), Enum.Material.Metal)
+		for i = 0, 2 do
+			weld(model, head, "Plume", Vector3.new(0.18, 0.55, 0.14), plume, CFrame.new(0, 0.95 + i * 0.35, 0.65 + i * 0.12) * CFrame.Angles(0.3 + i * 0.15, 0, 0), Enum.Material.Fabric)
+		end
+	end
+	if extras.Bells then
+		weld(model, neck, "Collar", Vector3.new(1.2, 0.18, 1.4), leather, CFrame.new(0, -0.9, 0), leatherMaterial)
+		for i = -1, 1 do
+			local b = weld(model, neck, "Bell", Vector3.new(0.24, 0.24, 0.24), gold, CFrame.new(i * 0.35, -1.12, -0.68), Enum.Material.Metal)
+			b.Shape = Enum.PartType.Ball
+		end
+	end
 
-	-- Tail.
-	local tail = jointed(model, body, "Tail", Vector3.new(0.5, 2.3, 0.5), mane, Vector3.new(0, 0.7, 2.85), 1.1, -0.55)
-	weld(model, tail, "TailTip", Vector3.new(0.6, 0.6, 0.6), mane, CFrame.new(0, -1.2, 0.05))
+	-- Tail (longer and flowing with the Flowing Tail extra).
+	local long = extras.FlowingTail
+	local tail = jointed(model, body, "Tail", Vector3.new(0.5, long and 3.2 or 2.3, 0.5), mane, Vector3.new(0, 0.7, 2.85), long and 1.55 or 1.1, -0.55)
+	weld(model, tail, "TailTip", Vector3.new(long and 0.75 or 0.6, 0.7, long and 0.75 or 0.6), mane, CFrame.new(0, long and -1.7 or -1.2, 0.05))
 
-	-- Legs: thigh-to-hoof, white socks on two of them, dark hooves.
+	-- Legs: thigh-to-hoof, socks by style, hooves (gold with Gold Horseshoes).
+	local socksOn = {
+		None = {},
+		Two = { LegFL = true, LegBR = true },
+		Front = { LegFL = true, LegFR = true },
+		Back = { LegBL = true, LegBR = true },
+		Four = { LegFL = true, LegFR = true, LegBL = true, LegBR = true },
+	}
+	local on = socksOn[sockStyle] or socksOn.Two
 	local legs = {
-		{ "LegFL", Vector3.new(-0.6 * k, -0.75, -1.9), true },
-		{ "LegFR", Vector3.new(0.6 * k, -0.75, -1.9), false },
-		{ "LegBL", Vector3.new(-0.6 * k, -0.75, 1.9), false },
-		{ "LegBR", Vector3.new(0.6 * k, -0.75, 1.9), true },
+		{ "LegFL", Vector3.new(-0.6 * k, -0.75, -1.9) },
+		{ "LegFR", Vector3.new(0.6 * k, -0.75, -1.9) },
+		{ "LegBL", Vector3.new(-0.6 * k, -0.75, 1.9) },
+		{ "LegBR", Vector3.new(0.6 * k, -0.75, 1.9) },
 	}
 	for _, l in ipairs(legs) do
 		local leg = jointed(model, body, l[1], Vector3.new(0.55, 2.8, 0.6), coat, l[2], 1.4, 0)
 		weld(model, leg, "Thigh", Vector3.new(0.7, 1.0, 0.75), coat, CFrame.new(0, 0.85, 0))
-		if l[3] and opts.Socks ~= false then
+		if on[l[1]] then
 			weld(model, leg, "Sock", Vector3.new(0.6, 0.7, 0.65), white, CFrame.new(0, -0.95, 0))
 		end
-		weld(model, leg, "Hoof", Vector3.new(0.62, 0.32, 0.7), hoof, CFrame.new(0, -1.5, -0.04))
+		weld(model, leg, "Hoof", Vector3.new(0.62, 0.32, 0.7), hoof, CFrame.new(0, -1.5, -0.04), extras.GoldShoes and Enum.Material.Metal or nil)
 	end
 
 	-- Tack: blanket, saddle with a horn, stirrups, reins.
@@ -5084,15 +5177,101 @@ function HorseModel.build(coat, mane, opts)
 	for _, side in ipairs({ -1, 1 }) do
 		weld(model, body, "BlanketSide", Vector3.new(0.1, 0.8, 2.2), blanket, CFrame.new(side * (W / 2 + 0.06), 0.6, -0.1))
 	end
-	weld(model, body, "Saddle", Vector3.new(W - 0.4, 0.3, 1.7), leather, CFrame.new(0, 1.22, -0.1))
-	weld(model, body, "Cantle", Vector3.new(1.4, 0.35, 0.25), leather, CFrame.new(0, 1.45, 0.65))
-	weld(model, body, "Horn", Vector3.new(0.25, 0.45, 0.25), leather, CFrame.new(0, 1.55, -0.8))
+	weld(model, body, "Saddle", Vector3.new(W - 0.4, 0.3, 1.7), leather, CFrame.new(0, 1.22, -0.1), leatherMaterial)
+	weld(model, body, "Cantle", Vector3.new(1.4, 0.35, 0.25), leather, CFrame.new(0, 1.45, 0.65), leatherMaterial)
+	weld(model, body, "Horn", Vector3.new(0.25, 0.45, 0.25), leather, CFrame.new(0, 1.55, -0.8), leatherMaterial)
 	for _, side in ipairs({ -1, 1 }) do
-		weld(model, body, "Strap", Vector3.new(0.05, 1.3, 0.12), leather, CFrame.new(side * (W / 2 + 0.13), 0.55, -0.1))
+		weld(model, body, "Strap", Vector3.new(0.05, 1.3, 0.12), leather, CFrame.new(side * (W / 2 + 0.13), 0.55, -0.1), leatherMaterial)
 		weld(model, body, "Stirrup", Vector3.new(0.12, 0.12, 0.5), metal, CFrame.new(side * (W / 2 + 0.16), -0.15, -0.1), Enum.Material.Metal)
 		weld(model, body, "Rein", Vector3.new(0.05, 0.05, 3.4), leather, CFrame.new(side * 0.45, 2.0, -2.4) * CFrame.Angles(0.33, 0, 0))
+		if extras.Saddlebags then
+			weld(model, body, "Saddlebag", Vector3.new(0.4, 0.8, 0.9), leather:Lerp(Color3.new(0, 0, 0), 0.15), CFrame.new(side * (W / 2 + 0.22), 0.45, 1.35), leatherMaterial)
+			weld(model, body, "SaddlebagFlap", Vector3.new(0.44, 0.25, 0.94), leather, CFrame.new(side * (W / 2 + 0.24), 0.8, 1.35), leatherMaterial)
+			weld(model, body, "Buckle", Vector3.new(0.46, 0.1, 0.12), gold, CFrame.new(side * (W / 2 + 0.25), 0.65, 1.35), Enum.Material.Metal)
+		end
+		if extras.Lantern then
+			if side == 1 then
+				weld(model, body, "LanternHook", Vector3.new(0.06, 0.4, 0.06), metal, CFrame.new(W / 2 + 0.2, 0.9, 0.7), Enum.Material.Metal)
+				local glass = weld(model, body, "Lantern", Vector3.new(0.35, 0.45, 0.35), Color3.fromRGB(255, 210, 120), CFrame.new(W / 2 + 0.25, 0.5, 0.7), Enum.Material.Neon)
+				glass.Transparency = 0.2
+				local light = Instance.new("PointLight")
+				light.Color = Color3.fromRGB(255, 200, 120)
+				light.Range = 14
+				light.Brightness = 1.2
+				light.Parent = glass
+			end
+		end
+	end
+	if extras.Bedroll then
+		local roll = weld(model, body, "Bedroll", Vector3.new(W + 0.3, 0.55, 0.55), Color3.fromRGB(120, 90, 60), CFrame.new(0, 1.4, 1.0), Enum.Material.Fabric)
+		roll.Shape = Enum.PartType.Cylinder
+		for _, side in ipairs({ -1, 1 }) do
+			weld(model, body, "BedrollTie", Vector3.new(0.1, 0.6, 0.6), leather, CFrame.new(side * 0.5, 1.4, 1.0))
+		end
 	end
 	return model
+end
+
+-- The horse a stable selection describes (used by the server and the shop's
+-- preview, so they always match). cat = TuskConfig.Horses; sel = { Coat,
+-- Mane, Blanket, Saddle, Marking, Socks, Extras = { [id] = true } }.
+-- Returns coat colour, mane colour, opts for HorseModel.build.
+local function pick(list, id)
+	for _, item in ipairs(list or {}) do
+		if item.Id == id then
+			return item
+		end
+	end
+	return (list or {})[1]
+end
+
+-- A player's stable selection, from their attributes (HorseCoat, HorseMane,
+-- HorseBlanket, HorseSaddle, HorseMarking, HorseSocks, HorseExtras).
+function HorseModel.selectionOf(player)
+	local extras = {}
+	for id in string.gmatch(player and player:GetAttribute("HorseExtras") or "", "[^,]+") do
+		extras[id] = true
+	end
+	return {
+		Coat = player and player:GetAttribute("HorseCoat"),
+		Mane = player and player:GetAttribute("HorseMane"),
+		Blanket = player and player:GetAttribute("HorseBlanket"),
+		Saddle = player and player:GetAttribute("HorseSaddle"),
+		Marking = player and player:GetAttribute("HorseMarking"),
+		Socks = player and player:GetAttribute("HorseSocks"),
+		Extras = extras,
+	}
+end
+
+function HorseModel.lookFrom(cat, sel)
+	cat, sel = cat or {}, sel or {}
+	local coat = pick(cat.Coats, sel.Coat) or {}
+	local maneItem = pick(cat.Manes, sel.Mane)
+	local blanket = pick(cat.Blankets, sel.Blanket)
+	local saddle = pick(cat.Saddles, sel.Saddle)
+	local marking = pick(cat.Markings, sel.Marking)
+	local socks = pick(cat.Socks, sel.Socks)
+	local mane = (maneItem and maneItem.Color) or coat.Mane
+	local opts = {
+		Width = 1.9,
+		Material = coat.Material and Enum.Material[coat.Material] or nil,
+		Blanket = blanket and blanket.Color,
+		Saddle = saddle and saddle.Color,
+		SaddleMaterial = saddle and saddle.Material and Enum.Material[saddle.Material] or nil,
+		Marking = marking and marking.Style or "Blaze",
+		SockStyle = coat.Socks == false and (socks and socks.Style == "Two" and "None" or (socks and socks.Style)) or (socks and socks.Style or "Two"),
+		Extras = {},
+	}
+	for id, onFlag in pairs(sel.Extras or {}) do
+		if onFlag then
+			opts.Extras[id] = true
+		end
+	end
+	if opts.Extras.Plume then
+		local plume = pick(cat.Extras, "Plume")
+		opts.PlumeColor = plume and plume.Color
+	end
+	return coat.Body, mane, opts
 end
 
 return HorseModel
@@ -5606,7 +5785,18 @@ local function horseState(horse)
 	return h
 end
 
+local function clearPlates()
+	for horse, h in pairs(horses) do
+		if h.Plate and not horse.Parent then
+			h.Plate:Destroy()
+			h.Plate = nil
+			horses[horse] = nil
+		end
+	end
+end
+
 local function stepHorses(dt)
+	clearPlates()
 	for _, horse in ipairs(CollectionService:GetTagged("SpinHorse")) do
 		local character = horse.Parent
 		local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -5627,6 +5817,38 @@ local function stepHorses(dt)
 					a = a - 0.6 * amp + math.sin(os.clock() * 3 + h.Phase) * 0.12
 				end
 				j.Weld.C0 = CFrame.new(j.Joint) * CFrame.Angles(a, 0, 0) * CFrame.new(0, -j.Drop, 0)
+			end
+			-- Its name, over its head.
+			local name = horse:GetAttribute("HorseName")
+			if name and h.PlateName ~= name then
+				h.PlateName = name
+				if h.Plate then
+					h.Plate:Destroy()
+				end
+				local headPart = horse:FindFirstChild("Head")
+				if headPart then
+					local bb = Instance.new("BillboardGui")
+					bb.Name = "HorseNameplate"
+					bb.Adornee = headPart
+					bb.Size = UDim2.fromOffset(160, 26)
+					bb.StudsOffset = Vector3.new(0, 2.2, 0)
+					bb.MaxDistance = 80
+					bb.LightInfluence = 0
+					local text = Instance.new("TextLabel")
+					text.BackgroundTransparency = 1
+					text.Size = UDim2.fromScale(1, 1)
+					text.Font = Enum.Font.Bangers
+					text.TextScaled = true
+					text.Text = string.upper(name)
+					text.TextColor3 = Color3.fromRGB(255, 225, 150)
+					text.TextStrokeTransparency = 0.2
+					text.Parent = bb
+					bb.Parent = VFXLib.Folder
+					h.Plate = bb
+				end
+			elseif not name and h.Plate then
+				h.Plate:Destroy()
+				h.Plate, h.PlateName = nil, nil
 			end
 			-- Body bob, always from where the server put the horse (BodyY),
 			-- never from last frame's position (so it can't creep).

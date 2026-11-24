@@ -280,20 +280,10 @@ local function catalogue(list, id)
 	return (list or {})[1]
 end
 
--- The horse a player set up in the stable.
+-- The horse a player set up in the stable (the same look the shop previews).
 local function lookFor(player)
-	local coat = catalogue(hcfg.Coats, player and player:GetAttribute("HorseCoat"))
-	local blanket = catalogue(hcfg.Blankets, player and player:GetAttribute("HorseBlanket"))
-	local look = { Width = 1.9 }
-	if coat then
-		look.Body, look.Mane = coat.Body, coat.Mane
-		look.Socks = coat.Socks
-		look.Material = coat.Material and Enum.Material[coat.Material] or nil
-	end
-	if blanket then
-		look.Blanket = blanket.Color
-	end
-	return look
+	local body, mane, opts = HorseModel.lookFrom(hcfg, HorseModel.selectionOf(player))
+	return { Body = body, Mane = mane, Opts = opts, Name = player and player:GetAttribute("HorseName") }
 end
 
 local function randomLook()
@@ -363,8 +353,11 @@ local function mount(character, look, speed, kind)
 		character:SetAttribute("RaceHipBase", nil)
 	end
 	look = look or {}
-	local horse = HorseModel.build(look.Body, look.Mane, { Width = look.Width or 1.9, Blanket = look.Blanket, Socks = look.Socks, Material = look.Material })
+	local horse = HorseModel.build(look.Body, look.Mane, look.Opts or { Width = look.Width or 1.9, Blanket = look.Blanket, Socks = look.Socks, Material = look.Material })
 	horse.Name = "RaceHorse"
+	if look.Name then
+		horse:SetAttribute("HorseName", look.Name)
+	end
 	for _, d in ipairs(horse:GetDescendants()) do
 		if d:IsA("BasePart") then
 			d.CanCollide = false

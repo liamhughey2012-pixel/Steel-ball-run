@@ -1023,9 +1023,10 @@ TuskConfig.Race = {
 
 ---------------------------------------------------------------------------
 -- YOUR HORSE: press M (controller D-pad left) to call your horse and ride it
--- anywhere; press again to get off. Pick its coat and blanket in the
--- STABLE (bounty board > SHOP). You race on it too. (Owned coats and
--- blankets last for the session.)
+-- anywhere; press again to get off. Customise it in the STABLE (bounty
+-- board > SHOP): coat, mane & tail, saddle blanket, saddle leather, face
+-- marking, socks, extras (saddlebags, plume, bells...) and its name. You
+-- race on it too. (What you own lasts for the session.)
 ---------------------------------------------------------------------------
 TuskConfig.Horses = {
 	Enabled = true,
@@ -1049,7 +1050,60 @@ TuskConfig.Horses = {
 		{ Id = "Purple", Name = "PURPLE", Price = 80, Color = Color3.fromRGB(110, 50, 150) },
 		{ Id = "Black", Name = "BLACK", Price = 80, Color = Color3.fromRGB(30, 30, 34) },
 		{ Id = "Gold", Name = "GOLD TRIM", Price = 200, Color = Color3.fromRGB(230, 186, 60) },
+		{ Id = "White", Name = "WHITE", Price = 60, Color = Color3.fromRGB(235, 232, 225) },
+		{ Id = "Pink", Name = "PINK", Price = 80, Color = Color3.fromRGB(230, 130, 170) },
+		{ Id = "Teal", Name = "TEAL", Price = 80, Color = Color3.fromRGB(60, 160, 160) },
 	},
+	-- Mane and tail colour ("Natural" = the coat's own).
+	Manes = {
+		{ Id = "Natural", Name = "NATURAL", Price = 0 },
+		{ Id = "Black", Name = "BLACK", Price = 40, Color = Color3.fromRGB(20, 18, 18) },
+		{ Id = "Flaxen", Name = "FLAXEN", Price = 60, Color = Color3.fromRGB(240, 222, 170) },
+		{ Id = "Silver", Name = "SILVER", Price = 80, Color = Color3.fromRGB(200, 204, 214) },
+		{ Id = "Red", Name = "FIERY RED", Price = 80, Color = Color3.fromRGB(190, 50, 30) },
+		{ Id = "Blue", Name = "BLUE", Price = 120, Color = Color3.fromRGB(60, 110, 220) },
+		{ Id = "Pink", Name = "PINK", Price = 120, Color = Color3.fromRGB(240, 130, 190) },
+		{ Id = "Gold", Name = "GOLDEN", Price = 200, Color = Color3.fromRGB(240, 196, 70) },
+	},
+	-- Saddle, bridle and reins.
+	Saddles = {
+		{ Id = "Brown", Name = "BROWN", Price = 0, Color = Color3.fromRGB(96, 58, 32) },
+		{ Id = "Black", Name = "BLACK", Price = 60, Color = Color3.fromRGB(28, 26, 26) },
+		{ Id = "Tan", Name = "TAN", Price = 60, Color = Color3.fromRGB(190, 140, 90) },
+		{ Id = "Red", Name = "RED", Price = 100, Color = Color3.fromRGB(150, 30, 30) },
+		{ Id = "White", Name = "WHITE", Price = 100, Color = Color3.fromRGB(235, 230, 220) },
+		{ Id = "Silver", Name = "SILVER", Price = 250, Color = Color3.fromRGB(190, 195, 205), Material = "Metal" },
+	},
+	-- Face markings.
+	Markings = {
+		{ Id = "Blaze", Name = "BLAZE", Price = 0, Style = "Blaze" },
+		{ Id = "None", Name = "PLAIN", Price = 0, Style = "None" },
+		{ Id = "Star", Name = "STAR", Price = 40, Style = "Star" },
+		{ Id = "Stripe", Name = "STRIPE", Price = 40, Style = "Stripe" },
+		{ Id = "Bald", Name = "BALD FACE", Price = 60, Style = "Bald" },
+	},
+	-- White socks.
+	Socks = {
+		{ Id = "Two", Name = "TWO", Price = 0, Style = "Two" },
+		{ Id = "None", Name = "NONE", Price = 0, Style = "None" },
+		{ Id = "Front", Name = "FRONT", Price = 30, Style = "Front" },
+		{ Id = "Back", Name = "BACK", Price = 30, Style = "Back" },
+		{ Id = "Four", Name = "ALL FOUR", Price = 50, Style = "Four" },
+	},
+	-- Extras: buy once, then switch each on or off.
+	Extras = {
+		{ Id = "Saddlebags", Name = "SADDLEBAGS", Price = 80 },
+		{ Id = "Bedroll", Name = "BEDROLL", Price = 60 },
+		{ Id = "Plume", Name = "HEAD PLUME", Price = 120, Color = Color3.fromRGB(200, 40, 50) },
+		{ Id = "BraidedMane", Name = "BRAIDED MANE", Price = 100 },
+		{ Id = "FlowingTail", Name = "FLOWING TAIL", Price = 80 },
+		{ Id = "GoldShoes", Name = "GOLD HORSESHOES", Price = 200 },
+		{ Id = "Bells", Name = "SLEIGH BELLS", Price = 90 },
+		{ Id = "Lantern", Name = "LANTERN", Price = 110 },
+		{ Id = "Rosette", Name = "WINNER'S ROSETTES", Price = 70 },
+		{ Id = "WarPaint", Name = "WAR PAINT", Price = 150 },
+	},
+	NameMaxLength = 20, -- name your horse (filtered); it's shown above it
 }
 
 ---------------------------------------------------------------------------

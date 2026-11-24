@@ -91,3 +91,22 @@ The first race opens 20 s after the server starts (`StudioFirstAfter`), or 2 min
   - the rider's camera is raised to match (Humanoid.CameraOffset).
 - **The gallop bob** is computed from `BodyY` every frame, never from the previous frame, so it can't creep.
 - **TuskAnimation:** only the newest blend runs; an older one finishing later used to undo it.
+
+## More horse customisation (2026-11-24)
+![[horse_custom_preview.png]]
+The STABLE (bounty board > SHOP) now has a section per category. Each item is a small card: buy it once, then EQUIP it. Extras switch ON / OFF. The live preview on the left spins, and there's a name box under it.
+
+| Category | Options |
+|---|---|
+| **Coat** | Bay (free), Black, Dapple Grey, Chestnut, Palomino, Paint, Midnight, Ghost White, Golden Steed |
+| **Mane & tail** | Natural (the coat's own; free), Black, Flaxen, Silver, Fiery Red, Blue, Pink, Golden |
+| **Saddle blanket** | Red (free), Blue, Green, Purple, Black, Gold Trim, White, Pink, Teal |
+| **Saddle & bridle** | Brown (free), Black, Tan, Red, White, Silver (metal) |
+| **Face marking** | Blaze (free), Plain (free), Star, Stripe, Bald Face |
+| **White socks** | Two (free), None (free), Front, Back, All Four |
+| **Extras (on/off)** | Saddlebags, Bedroll, Head Plume, Braided Mane, Flowing Tail, Gold Horseshoes, Sleigh Bells, Lantern (it lights up), Winner's Rosettes, War Paint |
+
+- **Name:** type a name (up to 20 characters) and press NAME. It goes through Roblox's text filter (TextService) and shows above your horse for everyone.
+- **How it's stored:** player attributes HorseCoat / HorseMane / HorseBlanket / HorseSaddle / HorseMarking / HorseSocks / HorseExtras / HorseName, and HorseOwned (the list of "Kind:Id" you've bought). It lasts for the session.
+- `HorseModel.selectionOf(player)` and `HorseModel.lookFrom(TuskConfig.Horses, selection)` build the look, so the shop preview and the real horse always match. If you change anything while riding, the horse is re-saddled straight away.
+- Prices are in `TuskConfig.Horses`.
