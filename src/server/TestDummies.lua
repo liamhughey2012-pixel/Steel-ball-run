@@ -156,8 +156,9 @@ function TestDummies.init()
 	folder.Parent = workspace
 	local base = findSpawn()
 	for i = 1, SpinConfig.Debug.DummyCount do
-		local offset = CFrame.new((i - (SpinConfig.Debug.DummyCount + 1) / 2) * 8, 3, -30 - i * 6)
-		spawnDummy(folder, base * offset * CFrame.Angles(0, math.pi, 0), i)
+		-- Behind the spawn, on open ground (not on the race track in front of it).
+		local offset = CFrame.new((i - (SpinConfig.Debug.DummyCount + 1) / 2) * 8, 3, 30)
+		spawnDummy(folder, base * offset, i)
 	end
 end
 

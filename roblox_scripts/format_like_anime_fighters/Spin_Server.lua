@@ -5079,16 +5079,60 @@ local function flag(parent, x, z, height, palette, yaw)
 	end
 end
 
+-- A triangular-prism piece (a right-angle triangle extruded): two make a
+-- tent's end wall.
+local function wedge(parent, name, size, cf, color, material)
+	local p = Instance.new("WedgePart")
+	p.Name = name
+	p.Anchored = true
+	p.Size = size
+	p.CFrame = CFrame.new(origin) * cf
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = parent
+	return p
+end
+
+-- A canvas A-frame tent standing ON the ground: two sloped canvas sides,
+-- triangular end walls (a dark door flap at the front), a ridge pole, a
+-- front pole and guy ropes. (It used to be one block tipped 45 degrees and
+-- half buried, which looked sunk into the sand.)
 local function tent(parent, x, z, yaw, scale)
 	scale = scale or 1
-	-- A block rotated 45 degrees and sunk halfway reads as an A-frame tent.
-	local s = 6 * scale
-	block(parent, "Tent", Vector3.new(s, s, 9 * scale),
-		CFrame.new(x, 0, z) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(0, 0, math.pi / 4),
-		C.Canvas, Enum.Material.Fabric)
-	block(parent, "TentDoor", Vector3.new(1.6 * scale, 2.2 * scale, 0.1),
-		CFrame.new(x, 1.1 * scale, z) * CFrame.Angles(0, yaw, 0) * CFrame.new(0, 0, -4.5 * scale - 0.06),
-		C.WoodDark, Enum.Material.Fabric)
+	local m = Instance.new("Model")
+	m.Name = "Tent"
+	m:SetAttribute("TentAt", Vector3.new(x, 0, z))
+	m.Parent = parent
+	local W, H, D = 3 * scale, 3.6 * scale, 8 * scale -- half width, height, depth
+	local base = CFrame.new(x, 0, z) * CFrame.Angles(0, yaw, 0)
+	local slant = math.sqrt(W * W + H * H)
+	local tilt = math.atan2(W, H)
+	local canvas = C.Canvas
+	local shade = C.Canvas:Lerp(Color3.new(0, 0, 0), 0.12)
+	for _, side in ipairs({ -1, 1 }) do
+		-- Sloped side.
+		block(m, "TentRoof", Vector3.new(0.25, slant, D), base * CFrame.new(side * W / 2, H / 2, 0) * CFrame.Angles(0, 0, side * tilt), side > 0 and canvas or shade, Enum.Material.Fabric)
+		-- End walls: two wedges per end (back closed; the front too, with a door flap on it).
+		for _, endZ in ipairs({ -D / 2 + 0.1, D / 2 - 0.1 }) do
+			wedge(m, "TentEnd", Vector3.new(0.2, H, W), base * CFrame.new(side * W / 2, H / 2, endZ) * CFrame.Angles(0, side > 0 and -math.pi / 2 or math.pi / 2, 0), canvas, Enum.Material.Fabric)
+		end
+	end
+	-- Door flap at the front, a ridge pole, a front pole.
+	block(m, "TentDoor", Vector3.new(1.6 * scale, 2.4 * scale, 0.1), base * CFrame.new(0, 1.2 * scale, -D / 2 - 0.02), C.WoodDark, Enum.Material.Fabric)
+	block(m, "TentFlap", Vector3.new(1.1 * scale, 2.6 * scale, 0.08), base * CFrame.new(0.9 * scale, 1.3 * scale, -D / 2 - 0.25) * CFrame.Angles(0, 0.6, 0.12), shade, Enum.Material.Fabric)
+	block(m, "TentRidge", Vector3.new(0.3, 0.3, D + 0.8), base * CFrame.new(0, H + 0.05, 0), C.WoodDark, Enum.Material.Wood)
+	block(m, "TentPole", Vector3.new(0.25, H + 0.3, 0.25), base * CFrame.new(0, (H + 0.3) / 2, -D / 2 - 0.35), C.WoodDark, Enum.Material.Wood)
+	-- Guy ropes from the ridge ends down to pegs in the sand.
+	for _, dir in ipairs({ -1, 1 }) do
+		local top = base * CFrame.new(0, H, dir * (D / 2 + 0.4))
+		local peg = base * CFrame.new(0, 0.15, dir * (D / 2 + 2.6 * scale))
+		local mid = top.Position:Lerp(peg.Position, 0.5)
+		block(m, "TentRope", Vector3.new(0.06, 0.06, (top.Position - peg.Position).Magnitude), CFrame.lookAt(mid, peg.Position), Color3.fromRGB(200, 185, 150), Enum.Material.Fabric, { CanCollide = false })
+		block(m, "TentPeg", Vector3.new(0.2, 0.5, 0.2), peg * CFrame.new(0, 0.1, 0), C.WoodDark, Enum.Material.Wood)
+	end
+	return m
 end
 
 local function wagon(parent, x, z, yaw)
@@ -5601,6 +5645,14 @@ local function hangingLine(parent, a, b, count, kind)
 	rope.CurveSize0 = -sag * 1.3
 	rope.CurveSize1 = sag * 1.3
 	rope.Parent = anchorA
+	-- A visible rope too (the Beam alone is too thin to see from a distance,
+	-- which made the pennants look like they were floating): straight
+	-- segments following the sag.
+	local steps = (count + 1) * 2
+	for k = 0, steps - 1 do
+		local p0, p1 = pointAt(k / steps), pointAt((k + 1) / steps)
+		small(block(m, "Rope", Vector3.new(0.12, 0.12, (p1 - p0).Magnitude + 0.05), CFrame.lookAt((p0 + p1) / 2, p1), Color3.fromRGB(70, 55, 40), Enum.Material.Fabric, { CanCollide = false, CanQuery = false }))
+	end
 	for i = 1, count do
 		local t = i / (count + 1)
 		local p = pointAt(t)
@@ -5613,10 +5665,27 @@ local function hangingLine(parent, a, b, count, kind)
 				light.Color = Color3.fromRGB(255, 200, 130)
 				light.Parent = bulb
 			end
+		elseif kind == "laundry" then
+			-- Clothes pegged on the line: shirts and trousers in faded colours.
+			local cloth = ({ Color3.fromRGB(196, 186, 160), Color3.fromRGB(120, 140, 170), Color3.fromRGB(170, 110, 90), Color3.fromRGB(150, 160, 120), Color3.fromRGB(230, 226, 214) })[(i % 5) + 1]
+			local dir = (b - a).Unit
+			local cf = CFrame.lookAt(p, p + dir) * CFrame.Angles(0, math.pi / 2, 0)
+			if i % 2 == 0 then
+				small(block(m, "Shirt", Vector3.new(1.3, 1.4, 0.08), cf * CFrame.new(0, -0.75, 0), cloth, Enum.Material.Fabric, { CanCollide = false }))
+				for _, side in ipairs({ -1, 1 }) do
+					small(block(m, "Sleeve", Vector3.new(0.5, 0.7, 0.08), cf * CFrame.new(side * 0.85, -0.45, 0) * CFrame.Angles(0, 0, side * 0.5), cloth, Enum.Material.Fabric, { CanCollide = false }))
+				end
+			else
+				for _, side in ipairs({ -1, 1 }) do
+					small(block(m, "TrouserLeg", Vector3.new(0.5, 1.8, 0.08), cf * CFrame.new(side * 0.3, -0.95, 0), cloth, Enum.Material.Fabric, { CanCollide = false }))
+				end
+			end
+			small(block(m, "Peg", Vector3.new(0.12, 0.3, 0.12), cf * CFrame.new(0, -0.05, 0), C.WoodDark, Enum.Material.Wood, { CanCollide = false }))
 		else
 			local palette = FLAG_PALETTES[(i % #FLAG_PALETTES) + 1]
 			local dir = (b - a).Unit
-			small(block(m, "Pennant", Vector3.new(0.05, 1.2, 1.2), CFrame.lookAt(p, p + dir) * CFrame.new(0, -0.6, 0) * CFrame.Angles(math.pi / 4, 0, 0), palette[1], Enum.Material.Fabric, { CanCollide = false }))
+			-- Hangs from the rope by its top corner.
+			small(block(m, "Pennant", Vector3.new(0.05, 0.9, 0.9), CFrame.lookAt(p, p + dir) * CFrame.new(0, -0.62, 0) * CFrame.Angles(math.pi / 4, 0, 0), palette[1], Enum.Material.Fabric, { CanCollide = false }))
 		end
 	end
 	return m
@@ -6762,18 +6831,35 @@ local function buildCampDetail()
 			smoke.RiseVelocity = 4
 			smoke.Size = 2
 			smoke.Parent = d
-		elseif d:IsA("BasePart") and d.Name:find("Tent") and #tents < 40 then
-			table.insert(tents, d.Position - origin)
+		elseif d:IsA("Model") and d.Name == "Tent" and d:GetAttribute("TentAt") and #tents < 40 then
+			table.insert(tents, d:GetAttribute("TentAt"))
 		end
 	end
-	-- Laundry lines between neighbouring tents.
+	-- Laundry lines between neighbouring tents: a post at each end, the line
+	-- at head height, clothes hanging off it (shirts and trousers).
 	local made = 0
-	for i = 1, #tents - 1, 3 do
-		local a, b = tents[i], tents[i + 1]
-		local dist = (a - b).Magnitude
-		if dist > 8 and dist < 24 and made < 8 then
+	local used = {}
+	for i = 1, #tents, 2 do
+		local a = tents[i]
+		-- Its nearest neighbour that isn't already strung up.
+		local b, bestD
+		for j, t in ipairs(tents) do
+			local d = (t - a).Magnitude
+			if j ~= i and not used[j] and d > 10 and d < 30 and (not bestD or d < bestD) then
+				b, bestD = t, d
+				used.pick = j
+			end
+		end
+		if b and made < 10 then
+			used[i], used[used.pick] = true, true
 			made = made + 1
-			hangingLine(f, Vector3.new(a.X, 4, a.Z), Vector3.new(b.X, 4, b.Z), 5, "pennants")
+			-- Posts set a little to the side of each tent (not inside it).
+			local across = Vector3.new(b.Z - a.Z, 0, a.X - b.X).Unit * 6
+			local pa, pb = a + across, b + across
+			for _, p in ipairs({ pa, pb }) do
+				block(f, "LaundryPost", Vector3.new(0.35, 6.4, 0.35), CFrame.new(p.X, 3.2, p.Z), C.WoodDark, Enum.Material.Wood)
+			end
+			hangingLine(f, Vector3.new(pa.X, 6.1, pa.Z), Vector3.new(pb.X, 6.1, pb.Z), 5, "laundry")
 		end
 	end
 end
@@ -7787,8 +7873,9 @@ function TestDummies.init()
 	folder.Parent = workspace
 	local base = findSpawn()
 	for i = 1, SpinConfig.Debug.DummyCount do
-		local offset = CFrame.new((i - (SpinConfig.Debug.DummyCount + 1) / 2) * 8, 3, -30 - i * 6)
-		spawnDummy(folder, base * offset * CFrame.Angles(0, math.pi, 0), i)
+		-- Behind the spawn, on open ground (not on the race track in front of it).
+		local offset = CFrame.new((i - (SpinConfig.Debug.DummyCount + 1) / 2) * 8, 3, 30)
+		spawnDummy(folder, base * offset, i)
 	end
 end
 
