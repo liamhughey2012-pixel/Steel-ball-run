@@ -345,7 +345,7 @@ local function stepBalls(dt)
 	local serverNow = workspace:GetServerTimeNow()
 	local now = os.clock()
 	for id, v in pairs(balls) do
-		local distance = math.min(v.Speed * (serverNow - v.ServerTime), v.Range)
+		local distance = math.min(v.Speed * VFXLib.flight(id, v.ServerTime), v.Range)
 		local pos = v.Origin + v.Direction * distance
 		v.Spin = v.Spin + dt * (v.Style == "Breaker" and 10 or 25)
 		local facing = CFrame.lookAt(pos, pos + v.Direction)
@@ -376,7 +376,7 @@ local function stepBalls(dt)
 				VFXLib.afterimage(facing, 1, pal.Light)
 			end
 		end
-		if now > v.Expire then
+		if now > v.Expire + VFXLib.held(id, v.ServerTime) then
 			balls[id] = nil
 			removeBall(v)
 		end

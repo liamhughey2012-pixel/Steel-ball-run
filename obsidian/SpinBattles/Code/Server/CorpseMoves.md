@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `CorpseMoves` (capitals matter) |
 
-**What it does:** Every character's CORPSE MOVE (V), unlocked while holding a Saint's Corpse part. One shared cooldown (TuskConfig.Corpse.Move.Cooldown); the ready time is the character attribute CorpseReadyAt (server time) for the HUD. Visuals: CorpseClient, from WorldFX "CorpseMove". Johnny       GOLDEN SPIN NAIL: a huge golden spinning nail Gyro         GOLDEN RECTANGLE: a spinning shockwave straight ahead Diego        DINOSAUR CRASH: leaps to the aim point and slams down Pork Pie     HOOK HARVEST: hooks yank everyone round him in Sandman      SOUND BARRIER: dashes through enemies, then a blast Mountain Tim LASSO CYCLONE: a spinning lasso pulls everyone in Hot Pants    FLESH COCOON: heals and armours herself, then a burst Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse Diego (AU)   KNIFE RING: a ring of knives appears round him and flies out With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead (TuskConfig.Corpse.Miracle), and afterwards every part scatters. All damage goes through S.hit (CombatAdapter).
+**What it does:** Every character's CORPSE MOVE (V), unlocked while holding a Saint's Corpse part. One shared cooldown (TuskConfig.Corpse.Move.Cooldown); the ready time is the character attribute CorpseReadyAt (server time) for the HUD. Visuals: CorpseClient, from WorldFX "CorpseMove". Johnny       GOLDEN SPIN NAIL: a huge golden spinning nail Gyro         GOLDEN RECTANGLE: a spinning shockwave straight ahead Diego        DINOSAUR CRASH: leaps to the aim point and slams down Pork Pie     HOOK HARVEST: hooks yank everyone round him in Sandman      SOUND BARRIER: dashes through enemies, then a blast Mountain Tim LASSO CYCLONE: a spinning lasso pulls everyone in Hot Pants    FLESH COCOON: heals and armours herself, then a burst Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse Diego (AU)   REVOLVER: draws a revolver and fans six shots where he aims With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead (TuskConfig.Corpse.Miracle), and afterwards every part scatters. All damage goes through S.hit (CombatAdapter).
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -41,7 +41,7 @@ Back to [[Where To Put Code]]
 	  Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow
 	  Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit
 	  Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse
-	  Diego (AU)   KNIFE RING: a ring of knives appears round him and flies out
+	  Diego (AU)   REVOLVER: draws a revolver and fans six shots where he aims
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -290,33 +290,40 @@ USE.Valentine = function(S, player, state, character, root)
 	end)
 end
 
-USE.DiegoAU = function(S, player, state, character, root)
+-- REVOLVER: he draws a revolver and fans six shots at where he's aiming.
+-- (In stopped time the bullets hang in the air like everything else.)
+USE.DiegoAU = function(S, player, state, character, root, aim)
 	if not S.fireKnife then
 		return false
 	end
-	S.lock(state, 0.45)
-	local count, wave = 12, 0.35
-	fx({ Character = character, Who = "DiegoAU", Phase = "Ring", Position = root.Position, Count = count, Time = wave })
-	task.delay(wave, function()
-		local _, _, r = S.Adapter.getAlive(player)
-		if not r then
-			return
-		end
-		for i = 1, count do
-			local a = (i - 1) / count * math.pi * 2
-			local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+	local shots, every, draw = 6, 0.13, 0.25
+	S.lock(state, draw + shots * every + 0.2)
+	local life = state.Life
+	fx({ Character = character, Who = "DiegoAU", Phase = "Draw", Time = draw + shots * every + 0.35 })
+	for i = 1, shots do
+		task.delay(draw + (i - 1) * every, function()
+			local char, _, r = S.Adapter.getAlive(player)
+			if not r or state.Life ~= life then
+				return
+			end
+			local dir = S.aim(aim, r)
+			-- A little spread as he fans the hammer.
+			dir = (CFrame.lookAt(Vector3.zero, dir) * CFrame.Angles(math.rad((math.random() - 0.5) * 3), math.rad((math.random() - 0.5) * 4), 0)).LookVector
+			local muzzle = S.origin(char, r, CFrame.new(1, 0.4, -2))
 			S.fireKnife(player, state, {
-				Origin = r.Position + dir * 2 + Vector3.new(0, 0.5, 0),
+				Origin = muzzle,
 				Direction = dir,
-				Speed = 120,
-				Radius = 0.8,
-				Range = 50,
+				Speed = 260,
+				Radius = 0.5,
+				Range = 140,
+				Style = "Bullet",
 				OnHit = function(target, position)
-					S.hit(player, target, { Damage = 7, Stun = 0.6, Knockback = 18, Direction = dir, Position = position, Source = "DiegoAUKnifeRing" })
+					S.hit(player, target, { Damage = 5, Stun = 0.3, Knockback = 4, Direction = dir, Position = position, Source = "DiegoAURevolver" })
 				end,
 			})
-		end
-	end)
+			fx({ Character = char, Who = "DiegoAU", Phase = "Shot", Position = muzzle, Direction = dir })
+		end)
+	end
 end
 
 -- THE SAINT'S MIRACLE: only with the complete corpse (all 8 parts).

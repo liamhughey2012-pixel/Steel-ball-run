@@ -3576,21 +3576,47 @@ local function onMove(data)
 	elseif who == "Axl" and data.Phase == "Flood" then
 		ring(data.Position, data.Radius or 22, pal.Main, 0.6)
 		VFXLib.burst(data.Position, { Count = 30, Color = Color3.fromRGB(150, 130, 170), Speed = 16, Lifetime = 0.6 })
-	elseif who == "DiegoAU" and data.Phase == "Ring" then
-		-- A ring of knives glints into being round him (they fly as knives).
-		local count = data.Count or 12
-		for i = 1, count do
-			local a = (i - 1) / count * math.pi * 2
-			local dir = Vector3.new(math.cos(a), 0, math.sin(a))
-			local at = data.Position + dir * 2.4 + Vector3.new(0, 0.5, 0)
-			local glint = VFXLib.part({ Size = Vector3.new(0.12, 0.12, 1.4), CFrame = CFrame.lookAt(at, at + dir), Color = Color3.fromRGB(235, 240, 250), Material = Enum.Material.Neon, Transparency = 1 })
-			VFXLib.animate(data.Time or 0.35, function(k)
-				glint.Transparency = 1 - k * 0.8
+	elseif who == "DiegoAU" and data.Phase == "Draw" and character then
+		-- A blocky six-shooter in his right hand while he fires.
+		local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+		if hand then
+			local steel, grip = Color3.fromRGB(70, 72, 80), Color3.fromRGB(120, 76, 44)
+			local pieces = {
+				{ Vector3.new(0.22, 0.26, 1.3), CFrame.new(0, 0.1, -0.75), steel }, -- barrel
+				{ Vector3.new(0.34, 0.36, 0.45), CFrame.new(0, 0.05, -0.15), steel }, -- cylinder
+				{ Vector3.new(0.26, 0.6, 0.28), CFrame.new(0, -0.3, 0.12) * CFrame.Angles(-0.35, 0, 0), grip }, -- grip
+				{ Vector3.new(0.08, 0.14, 0.2), CFrame.new(0, 0.3, 0.05), steel }, -- hammer
+				{ Vector3.new(0.06, 0.08, 0.06), CFrame.new(0, 0.26, -1.3), Color3.fromRGB(220, 200, 120) }, -- sight
+			}
+			local parts = {}
+			for _, pc in ipairs(pieces) do
+				table.insert(parts, { VFXLib.part({ Size = pc[1], Color = pc[3], Material = Enum.Material.Metal }), pc[2] })
+			end
+			VFXLib.animate(data.Time or 1.3, function()
+				if hand.Parent then
+					local base = hand.CFrame * CFrame.new(0, -hand.Size.Y / 2, -0.1)
+					for _, e in ipairs(parts) do
+						e[1].CFrame = base * e[2]
+					end
+				end
 			end, function()
-				glint:Destroy()
+				for _, e in ipairs(parts) do
+					e[1]:Destroy()
+				end
 			end)
 		end
-		ring(data.Position, 4, Color3.fromRGB(236, 196, 70), 0.35)
+	elseif who == "DiegoAU" and data.Phase == "Shot" and data.Position then
+		-- Muzzle flash and a puff of smoke.
+		local flash = VFXLib.part({ Size = Vector3.new(0.9, 0.9, 0.9), CFrame = CFrame.new(data.Position), Color = Color3.fromRGB(255, 220, 120), Material = Enum.Material.Neon, Shape = Enum.PartType.Ball })
+		VFXLib.animate(0.08, function(a)
+			flash.Transparency = a
+		end, function()
+			flash:Destroy()
+		end)
+		VFXLib.burst(data.Position, { Count = 5, Color = Color3.fromRGB(200, 196, 190), Speed = 4, Lifetime = 0.4 })
+		if local_ then
+			CameraFX.shake(0.15, 0.06)
+		end
 	elseif who == "Valentine" then
 		if data.Phase == "Bless" then
 			shell(character, Color3.fromRGB(255, 250, 225), Enum.Material.ForceField, data.Time or 2.5)
@@ -6435,10 +6461,10 @@ function TuskProjectiles.init()
 		local now = os.clock()
 		local serverNow = workspace:GetServerTimeNow()
 		for id, entry in pairs(active) do
-			local distance = math.min(entry.Speed * (serverNow - entry.ServerTime), entry.Range)
+			local distance = math.min(entry.Speed * VFXLib.flight(id, entry.ServerTime), entry.Range)
 			local pos = entry.Origin + entry.Direction * distance
 			entry.Visual:Step(CFrame.lookAt(pos, pos + entry.Direction), dt)
-			if now > entry.Expire then
+			if now > entry.Expire + VFXLib.held(id, entry.ServerTime) then
 				active[id] = nil
 				entry.Visual:Destroy()
 			end
@@ -10828,6 +10854,64 @@ if not folder then
 	folder.Parent = workspace
 end
 VFXLib.Folder = folder
+
+---------------------------------------------------------------------------
+-- Projectile clock: server projectiles can be paused (The World's time
+-- stop). Every projectile visual asks flight(id, serverTime) how long it has
+-- been flying instead of (now - serverTime), and adds held(id) to its expiry.
+---------------------------------------------------------------------------
+local clocks = {} -- [projectile id] = { Frozen = flight seconds } or { Base, At }
+
+function VFXLib.flight(id, serverTime)
+	local now = workspace:GetServerTimeNow()
+	local c = id and clocks[id]
+	if not c then
+		return now - (serverTime or now)
+	end
+	if c.Frozen then
+		return c.Frozen
+	end
+	return c.Base + (now - c.At)
+end
+
+-- Seconds this projectile has spent paused (push its expiry back by this).
+function VFXLib.held(id, serverTime)
+	local c = id and clocks[id]
+	if not c then
+		return 0
+	end
+	local now = workspace:GetServerTimeNow()
+	return math.max(0, (now - (c.Spawned or serverTime or now)) - VFXLib.flight(id, serverTime))
+end
+
+do
+	local ok, Net = pcall(function()
+		return __require("Net")
+	end)
+	if ok and Net and Net.get then
+		Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+			if typeof(data) ~= "table" then
+				return
+			end
+			if name == "ProjectileFreeze" then
+				for i, id in ipairs(data.Ids or {}) do
+					clocks[id] = { Frozen = data.Flights and data.Flights[i] or 0, Spawned = data.Spawned and data.Spawned[i] }
+				end
+			elseif name == "ProjectileResume" then
+				for i, id in ipairs(data.Ids or {}) do
+					local c = clocks[id]
+					clocks[id] = { Base = data.Flights and data.Flights[i] or 0, At = workspace:GetServerTimeNow(), Spawned = c and c.Spawned or (data.Spawned and data.Spawned[i]) }
+				end
+			elseif name == "ProjectileEnd" and data.Id then
+				-- (Ended a moment later, so the visual's last step still uses it.)
+				local id = data.Id
+				task.delay(0.5, function()
+					clocks[id] = nil
+				end)
+			end
+		end)
+	end
+end
 
 ---------------------------------------------------------------------------
 -- Frame scheduler: one RenderStepped connection drives every animation.

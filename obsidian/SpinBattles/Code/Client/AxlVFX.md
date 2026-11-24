@@ -502,11 +502,11 @@ local function stepJunk()
 	local now = os.clock()
 	local serverNow = workspace:GetServerTimeNow()
 	for id, v in pairs(projectiles) do
-		local t = serverNow - v.ServerTime
+		local t = VFXLib.flight(id, v.ServerTime)
 		local distance = math.min(v.Speed * t, v.Range)
 		local pos = v.Origin + v.Direction * math.max(distance, 0)
 		place(v.Item, CFrame.new(pos) * CFrame.Angles(t * 9 + v.Spin, t * 6, t * 4))
-		if now > v.Expire then
+		if now > v.Expire + VFXLib.held(id, v.ServerTime) then
 			projectiles[id] = nil
 			v.Item.Model:Destroy()
 		end

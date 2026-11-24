@@ -25,12 +25,13 @@ __modules["DiegoAU"] = function()
 	  Ability 2 STAND BARRAGE: The World rushes ahead of him with a storm of
 	            punches (he can still walk, slowly); a last big punch sends
 	            them flying
-	  Ability 3 KNIFE THROW: three knives at once, fanned out. Thrown while
-	            time is stopped, they stop in mid-air a few studs out and all
-	            fly the moment time moves again
-	  Ultimate  THE WORLD: TIME STOP: everyone else nearby freezes for about
-	            6 seconds (can't move, act, block or dodge) while Diego moves
-	            freely. Time stops early if he goes down
+	  Ability 3 KNIFE THROW: three knives at once, fanned out
+	  Ultimate  THE WORLD: TIME STOP: a zone (shown as a dome) round where he
+	            stands: everyone inside, and anyone who walks in, freezes for
+	            about 6 seconds (can't move, act, block or dodge) while Diego
+	            moves freely. Knives, bullets and every other projectile in
+	            the zone stop in the air (his own a few studs out) and fly on
+	            when time moves again. It ends early if he goes down
 	Numbers: TuskConfig.DiegoAU. All damage goes through S.hit (CombatAdapter).
 	Frozen characters carry the "TimeStopped" attribute (CombatAdapter.canAct
 	refuses them) and have their root anchored by the server.
@@ -263,8 +264,6 @@ end
 ---------------------------------------------------------------------------
 -- KNIFE THROW
 ---------------------------------------------------------------------------
-local nextKnife = 0
-
 local function throwKnife(S, player, state, origin, direction, source)
 	local c = cfg.KnifeThrow
 	return S.fireKnife(player, state, {
@@ -307,18 +306,10 @@ local function knifeThrow(S, player, state, aim)
 		local char, _, r = alive(S, player)
 		local direction = S.aim(aim, r)
 		local origin = S.origin(char, r, Moves.HAND)
-		local stop = stops[char]
 		S.fx("Ability", { Character = char, Act = ACT, Move = "KnifeThrow", Phase = "Throw", Direction = direction })
+		-- (Inside stopped time they fly a few studs and hang there: ProjectileService.)
 		for _, dir in ipairs(fan(direction, c.Count, c.Spread)) do
-			if stop then
-				-- Time is stopped: the knife stops a few studs out and waits.
-				nextKnife = nextKnife + 1
-				local at = origin + dir * c.HangDistance
-				table.insert(stop.Knives, { Id = nextKnife, Origin = at, Direction = dir })
-				S.fx("Ability", { Act = ACT, Move = "KnifeThrow", Phase = "Hang", Id = nextKnife, From = origin, Position = at, Direction = dir })
-			else
-				throwKnife(S, player, state, origin, dir)
-			end
+			throwKnife(S, player, state, origin, dir)
 		end
 	end)
 end
@@ -351,18 +342,11 @@ local function resume(S, character, token)
 	if character.Parent then
 		character:SetAttribute("TimeStopper", nil)
 	end
-	local ids = {}
-	for _, k in ipairs(stop.Knives) do
-		table.insert(ids, k.Id)
+	-- Every knife, bullet and projectile hanging in the zone flies on.
+	if S.Projectiles and S.Projectiles.resumeTime then
+		S.Projectiles.resumeTime(token)
 	end
-	local root = character:FindFirstChild("HumanoidRootPart")
-	S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Resume", Position = root and root.Position, Knives = ids })
-	-- Every knife he left hanging flies now.
-	if stop.Player and stop.State then
-		for _, k in ipairs(stop.Knives) do
-			throwKnife(S, stop.Player, stop.State, k.Origin, k.Direction)
-		end
-	end
+	S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Resume", Position = stop.Center })
 end
 
 function DiegoAU.Ultimate(S, player, state, aim)
@@ -389,16 +373,34 @@ function DiegoAU.Ultimate(S, player, state, aim)
 		local char, _, r = alive(S, player)
 		local duration = (typeof(player) == "table" and player.IsBot) and u.BotDuration or u.Duration
 		local token = tostring({})
-		local frozen = {}
-		for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, u.Range, 40)) do
-			local hum = target:FindFirstChildOfClass("Humanoid")
-			if hum and hum.Health > 0 and target ~= char and freeze(target) then
-				table.insert(frozen, target)
+		local center, radius = r.Position, u.Range
+		local frozen, isFrozen = {}, {}
+		-- Everyone inside the zone freezes, and so does anyone who walks in.
+		local function sweep()
+			for _, target in ipairs(S.Hitbox.inRadius(char, center, radius, 40)) do
+				local hum = target:FindFirstChildOfClass("Humanoid")
+				if not isFrozen[target] and hum and hum.Health > 0 and target ~= char and freeze(target) then
+					isFrozen[target] = true
+					table.insert(frozen, target)
+				end
 			end
 		end
-		stops[char] = { Token = token, Frozen = frozen, Knives = {}, Player = player, State = state }
+		sweep()
+		stops[char] = { Token = token, Frozen = frozen, Center = center }
 		char:SetAttribute("TimeStopper", now() + duration)
-		S.fx("Ultimate", { Character = char, Act = ACT, Phase = "Stop", Position = r.Position, Range = u.Range, Duration = duration, Frozen = frozen })
+		if S.Projectiles and S.Projectiles.stopTime then
+			S.Projectiles.stopTime(token, center, radius, player)
+		end
+		S.fx("Ultimate", { Character = char, Act = ACT, Phase = "Stop", Position = center, Range = radius, Duration = duration, Frozen = frozen })
+		local function tick()
+			local stop = stops[char]
+			if not stop or stop.Token ~= token then
+				return
+			end
+			sweep()
+			task.delay(0.2, tick)
+		end
+		task.delay(0.2, tick)
 		task.delay(duration, function()
 			resume(S, char, token)
 		end)
@@ -417,7 +419,6 @@ function DiegoAU.Cleanup(S, player, state)
 		-- He went down (or switched): time moves again.
 		local stop = stops[character]
 		if stop then
-			stop.Player, stop.State = nil, nil -- hanging knives just fall
 			resume(S, character, stop.Token)
 		end
 	end

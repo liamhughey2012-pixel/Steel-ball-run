@@ -38,6 +38,7 @@ local FX = Net.get("TuskFX")
 local TuskService = {}
 TuskService.Hitbox = Hitbox
 TuskService.Adapter = Adapter
+TuskService.Projectiles = Projectiles
 
 local states = {} -- [player] = state
 local rate = {}

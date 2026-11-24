@@ -238,11 +238,11 @@ local function stepDrops()
 	local now = os.clock()
 	local serverNow = workspace:GetServerTimeNow()
 	for id, v in pairs(projectiles) do
-		local distance = math.min(v.Speed * (serverNow - v.ServerTime), v.Range)
+		local distance = math.min(v.Speed * VFXLib.flight(id, v.ServerTime), v.Range)
 		local pos = v.Origin + v.Direction * math.max(distance, 0)
 		-- Point along the flight, like a streak.
 		v.Part.CFrame = CFrame.lookAt(pos, pos + v.Direction) * CFrame.Angles(math.pi / 2, 0, 0)
-		if now > v.Expire then
+		if now > v.Expire + VFXLib.held(id, v.ServerTime) then
 			projectiles[id] = nil
 			v.Part:Destroy()
 		end

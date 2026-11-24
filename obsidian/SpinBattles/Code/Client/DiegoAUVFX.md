@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
 | **Exact name** | `DiegoAUVFX` (capitals matter) |
 
-**What it does:** Client visuals for Diego Brando from another world / THE WORLD. Blocky. The World (TheWorldStand) floats behind him with a golden aura and punches with his moves; he stands with two fingers at his temple STAND GRAB: The World lunges out and grabs; the victim is held up in a golden grip, then hurled with a streak; a dust ring where they crash STAND BARRAGE: The World rushes ahead, a storm of golden fists flying forward, impact stars on the hits, a big last punch KNIFE THROW: three silver knives with gold guards, fanned out. Thrown while time is stopped, they stop dead in the air and wait THE WORLD: TIME STOP: "THE WORLD!" over his head, a dome bursts out from him and the world goes grey; everyone frozen stops dead (their animations freeze too); a countdown for him, TIME HAS STOPPED for them; when it ends the colour floods back, TIME MOVES AGAIN, and the hanging knives fly
+**What it does:** Client visuals for Diego Brando from another world / THE WORLD. Blocky. The World (TheWorldStand) floats behind him with a golden aura and punches with his moves; he stands with two fingers at his temple STAND GRAB: The World lunges out and grabs; the victim is held up in a golden grip, then hurled with a streak; a dust ring where they crash STAND BARRAGE: The World rushes ahead, a storm of golden fists flying forward, impact stars on the hits, a big last punch KNIFE THROW: three silver knives with gold guards, fanned out THE WORLD: TIME STOP: "THE WORLD!" over his head; a dome bursts out to the zone's edge and STAYS UP for the whole stop (a glowing ring on the ground marks the radius). Inside it the world is grey; outside it isn't. Everyone frozen stops dead (animations too); a countdown for him, TIME HAS STOPPED for whoever's frozen; knives, bullets and other projectiles in it hang in the air (VFXLib projectile clock); when it ends the dome collapses, TIME MOVES AGAIN, and they fly REVOLVER (his corpse move): brass bullets with bright tracers
 
 ## How to add it
 1. In Studio's Explorer, find **TuskActVFX** (StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX).
@@ -34,13 +34,15 @@ Back to [[Where To Put Code]]
 	    a golden grip, then hurled with a streak; a dust ring where they crash
 	  * STAND BARRAGE: The World rushes ahead, a storm of golden fists
 	    flying forward, impact stars on the hits, a big last punch
-	  * KNIFE THROW: three silver knives with gold guards, fanned out. Thrown
-	    while time is stopped, they stop dead in the air and wait
-	  * THE WORLD: TIME STOP: "THE WORLD!" over his head, a dome bursts out
-	    from him and the world goes grey; everyone frozen stops dead (their
-	    animations freeze too); a countdown for him, TIME HAS STOPPED for
-	    them; when it ends the colour floods back, TIME MOVES AGAIN, and
-	    the hanging knives fly
+	  * KNIFE THROW: three silver knives with gold guards, fanned out
+	  * THE WORLD: TIME STOP: "THE WORLD!" over his head; a dome bursts out
+	    to the zone's edge and STAYS UP for the whole stop (a glowing ring on
+	    the ground marks the radius). Inside it the world is grey; outside
+	    it isn't. Everyone frozen stops dead (animations too); a countdown
+	    for him, TIME HAS STOPPED for whoever's frozen; knives, bullets and
+	    other projectiles in it hang in the air (VFXLib projectile clock);
+	    when it ends the dome collapses, TIME MOVES AGAIN, and they fly
+	  * REVOLVER (his corpse move): brass bullets with bright tracers
 ]]
 
 local Players = game:GetService("Players")
@@ -76,7 +78,6 @@ local DUST = Color3.fromRGB(200, 180, 140)
 local DOME = Color3.fromRGB(120, 80, 200)
 
 local knives = {} -- [projectile id] = flying knife
-local hanging = {} -- [knife id] = knife stopped in mid-air
 local barrages = {} -- [character] = { Until, NextFist }
 local grips = {} -- [target] = grip ring while held
 local stops = {} -- [stopper character] = { Until, Gui, Cc, Dome }
@@ -243,8 +244,16 @@ end
 ---------------------------------------------------------------------------
 -- Knives (server Kind "WorldKnife")
 ---------------------------------------------------------------------------
+-- A revolver bullet: a small brass slug with a bright tracer.
+local function buildBullet()
+	local m = newModel("WorldBullet")
+	box(m, Vector3.new(0.16, 0.16, 0.34), CFrame.new(), Color3.fromRGB(214, 170, 80), Enum.Material.Metal)
+	box(m, Vector3.new(0.1, 0.1, 2.2), CFrame.new(0, 0, 1.2), Color3.fromRGB(255, 236, 170), Enum.Material.Neon, 0.35)
+	return finish(m)
+end
+
 local function spawnKnife(data)
-	local item = buildKnife(true)
+	local item = (data.Visual and data.Visual.Style == "Bullet") and buildBullet() or buildKnife(true)
 	knives[data.Id] = { Item = item, Origin = data.Origin, Direction = data.Direction, Speed = data.Speed, Range = data.Range, ServerTime = data.ServerTime, Expire = os.clock() + data.Range / math.max(data.Speed, 1) + 0.5 }
 end
 
@@ -265,34 +274,13 @@ local function stepKnives()
 	local now = os.clock()
 	local serverNow = workspace:GetServerTimeNow()
 	for id, v in pairs(knives) do
-		local t = serverNow - (v.ServerTime or serverNow)
+		local t = VFXLib.flight(id, v.ServerTime)
 		local distance = math.clamp(v.Speed * t, 0, v.Range)
 		local pos = v.Origin + v.Direction * distance
 		place(v.Item, CFrame.lookAt(pos, pos + v.Direction))
-		if now > v.Expire then
+		if now > v.Expire + VFXLib.held(id, v.ServerTime) then
 			knives[id] = nil
 			v.Item.Model:Destroy()
-		end
-	end
-end
-
--- Thrown while time is stopped: it flies a few studs and stops dead.
-local function hangKnife(data)
-	local item = buildKnife(false)
-	local from, to, dir = data.From or data.Position, data.Position, data.Direction or Vector3.new(0, 0, -1)
-	hanging[data.Id] = item
-	VFXLib.animate(0.08, function(a)
-		local p = from:Lerp(to, a)
-		place(item, CFrame.lookAt(p, p + dir))
-	end)
-end
-
-local function dropHanging(ids)
-	for _, id in ipairs(ids or {}) do
-		local item = hanging[id]
-		if item then
-			hanging[id] = nil
-			item.Model:Destroy()
 		end
 	end
 end
@@ -345,61 +333,100 @@ local function stepFrozen()
 	end
 end
 
-local function grey(on, stop)
-	if on then
-		local cc = Instance.new("ColorCorrectionEffect")
-		cc.Name = "TheWorldTimeStop"
-		cc.Parent = Lighting
-		VFXLib.animate(0.35, function(a)
-			-- A flash of inverted colour, then grey.
-			if a < 0.4 then
-				cc.TintColor = Color3.fromRGB(255, 255, 255):Lerp(Color3.fromRGB(150, 110, 255), a / 0.4)
-				cc.Contrast = a * 1.5
-			else
-				cc.TintColor = Color3.fromRGB(150, 110, 255):Lerp(Color3.fromRGB(225, 220, 240), (a - 0.4) / 0.6)
-				cc.Contrast = 0.6 - (a - 0.4) * 0.6
-			end
-			cc.Saturation = -a
-		end)
-		stop.Cc = cc
-	elseif stop.Cc then
-		local cc = stop.Cc
-		stop.Cc = nil
-		local fromSat, fromTint = cc.Saturation, cc.TintColor
+-- The time-stop zone: a dome that stays up, showing its edge, for as long
+-- as time is stopped. Inside it the world is grey.
+local function buildDome(center, radius)
+	local m = newModel("TimeStopZone")
+	local shell = box(m, Vector3.new(1, 1, 1), CFrame.new(center), DOME, Enum.Material.ForceField, 0)
+	shell.Shape = Enum.PartType.Ball
+	local tint = box(m, Vector3.new(1, 1, 1), CFrame.new(center), Color3.fromRGB(200, 196, 220), Enum.Material.SmoothPlastic, 0.93)
+	tint.Shape = Enum.PartType.Ball
+	-- A glowing ring on the ground marks the edge.
+	local ring = box(m, Vector3.new(0.3, 1, 1), CFrame.new(center - Vector3.new(0, 2.6, 0)) * CFrame.Angles(0, 0, math.pi / 2), GOLD_LIGHT, Enum.Material.Neon, 0.2)
+	ring.Shape = Enum.PartType.Cylinder
+	local inner = box(m, Vector3.new(0.32, 1, 1), ring.CFrame, Color3.fromRGB(60, 50, 90), Enum.Material.SmoothPlastic, 0)
+	inner.Shape = Enum.PartType.Cylinder
+	return { Model = m, Shell = shell, Tint = tint, Ring = ring, Inner = inner, Center = center, Radius = radius }
+end
+
+local function sizeDome(dome, r, fade)
+	local d = r * 2
+	dome.Shell.Size = Vector3.new(d, d, d)
+	dome.Tint.Size = Vector3.new(d * 0.995, d * 0.995, d * 0.995)
+	dome.Ring.Size = Vector3.new(0.3, d, d)
+	dome.Inner.Size = Vector3.new(0.32, math.max(d - 1.6, 0.1), math.max(d - 1.6, 0.1))
+	dome.Shell.Transparency = 0.35 + 0.65 * fade
+	dome.Tint.Transparency = 0.93 + 0.07 * fade
+	dome.Ring.Transparency = 0.2 + 0.8 * fade
+	dome.Inner.Transparency = 1
+end
+
+local function endStop(character)
+	local stop = stops[character]
+	if not stop then
+		return
+	end
+	stops[character] = nil
+	if stop.Gui then
+		stop.Gui:Destroy()
+	end
+	local cc = stop.Cc
+	if cc then
+		local fromSat, fromTint, fromCon = cc.Saturation, cc.TintColor, cc.Contrast
 		VFXLib.animate(0.45, function(a)
 			cc.Saturation = fromSat * (1 - a)
-			cc.Contrast = 0.24 * (1 - a)
+			cc.Contrast = fromCon * (1 - a)
 			cc.TintColor = fromTint:Lerp(Color3.new(1, 1, 1), a)
 		end, function()
 			cc:Destroy()
 		end)
 	end
+	local dome = stop.Dome
+	if dome then
+		VFXLib.animate(0.4, function(a)
+			sizeDome(dome, dome.Radius * (1 - 0.9 * a * a), a)
+		end, function()
+			dome.Model:Destroy()
+		end)
+	end
 end
 
-local function endStop(character, ids)
-	local stop = stops[character]
-	if not stop then
-		dropHanging(ids)
-		return
-	end
-	stops[character] = nil
-	grey(false, stop)
-	if stop.Gui then
-		stop.Gui:Destroy()
-	end
-	if stop.Dome then
-		stop.Dome:Destroy()
-	end
-	dropHanging(ids)
-end
-
-local function stepStops()
+local function stepStops(dt)
+	local camera = workspace.CurrentCamera
+	local me = localPlayer and localPlayer.Character
 	for character, stop in pairs(stops) do
 		if os.clock() > stop.Expire then
 			endStop(character)
-		elseif stop.Label then
-			local left = math.max(0, stop.Until - workspace:GetServerTimeNow())
-			stop.Label.Text = string.format(stop.Format, left)
+		else
+			-- Grey inside the zone (and for him), colour outside it.
+			local inside = stop.IsMe or (camera and (camera.CFrame.Position - stop.Center).Magnitude <= stop.Radius)
+			local k = stop.Grey or 0
+			k = k + ((inside and 1 or 0) - k) * math.min(1, (dt or 1 / 60) * 6)
+			stop.Grey = k
+			if stop.Cc then
+				stop.Cc.Saturation = -k
+				stop.Cc.Contrast = 0.24 * k
+				stop.Cc.TintColor = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(225, 220, 240), k)
+			end
+			if stop.Dome and stop.Settled then
+				-- The edge shimmers slowly.
+				stop.Dome.Ring.Transparency = 0.25 + 0.15 * math.sin(os.clock() * 4)
+			end
+			-- Countdown for him; TIME HAS STOPPED for anyone frozen in it.
+			local frozenMe = not stop.IsMe and me and me:GetAttribute("TimeStopped")
+			if (stop.IsMe or frozenMe) and not stop.Gui then
+				local gui, label = bigText("", stop.IsMe and GOLD_LIGHT or Color3.fromRGB(230, 230, 240), nil, stop.IsMe and 0.06 or 0.07)
+				if gui and label then
+					label.Position = UDim2.fromScale(0.5, stop.IsMe and 0.14 or 0.22)
+					stop.Gui, stop.Label, stop.Format = gui, label, stop.IsMe and "TIME STOPPED  %.1f" or "TIME HAS STOPPED  %.1f"
+				end
+			elseif stop.Gui and not stop.IsMe and not frozenMe then
+				stop.Gui:Destroy()
+				stop.Gui, stop.Label = nil, nil
+			end
+			if stop.Label then
+				stop.Label.Text = string.format(stop.Format, math.max(0, stop.Until - workspace:GetServerTimeNow()))
+			end
 		end
 	end
 end
@@ -407,54 +434,35 @@ end
 local function startStop(character, data)
 	endStop(character)
 	local duration = data.Duration or 6
-	local stop = { Until = workspace:GetServerTimeNow() + duration, Expire = os.clock() + duration + 2 }
+	local center = data.Position or (Common.rootOf(character) and Common.rootOf(character).Position) or Vector3.zero
+	local radius = data.Range or 60
+	local stop = { Until = workspace:GetServerTimeNow() + duration, Expire = os.clock() + duration + 2, Center = center, Radius = radius, IsMe = Common.isLocal(character) }
 	stops[character] = stop
-	local camera = workspace.CurrentCamera
-	local me = localPlayer and localPlayer.Character
-	local isMe = Common.isLocal(character)
-	local frozenMe = false
 	for _, c in ipairs(data.Frozen or {}) do
-		if c == me then
-			frozenMe = true
-		end
 		freezeTracks(c, true)
 	end
-	local near = camera and data.Position and (camera.CFrame.Position - data.Position).Magnitude <= (data.Range or 150) + 30
-	-- The dome bursts out from him and fades.
-	if data.Position then
-		local dome = VFXLib.part({ Shape = Enum.PartType.Ball, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(data.Position), Color = DOME, Material = Enum.Material.ForceField, Transparency = 0 })
-		stop.Dome = dome
-		local range = math.min(data.Range or 150, 120)
-		VFXLib.animate(0.7, function(a)
-			local d = range * 2 * VFXLib.easeOut(a)
-			dome.Size = Vector3.new(d, d, d)
-			dome.Transparency = a * a
-		end, function()
-			if stop.Dome == dome then
-				stop.Dome = nil
-			end
-			dome:Destroy()
-		end)
-		VFXLib.flash(data.Position, GOLD_LIGHT, 6, 40, 0.4)
-	end
-	if near or isMe or frozenMe then
-		grey(true, stop)
+	local cc = Instance.new("ColorCorrectionEffect")
+	cc.Name = "TheWorldTimeStop"
+	cc.Parent = Lighting
+	stop.Cc = cc
+	-- The dome bursts out to the zone's edge and stays there.
+	local dome = buildDome(center, radius)
+	stop.Dome = dome
+	VFXLib.animate(0.5, function(a)
+		sizeDome(dome, radius * VFXLib.easeOut(a), 0)
+		dome.Shell.Transparency = 0.35 * a -- a bright flash as it bursts out
+	end, function()
+		if stops[character] == stop then
+			stop.Settled = true
+			sizeDome(dome, radius, 0)
+		end
+	end)
+	VFXLib.flash(center, GOLD_LIGHT, 6, 40, 0.4)
+	local camera = workspace.CurrentCamera
+	if stop.IsMe or (camera and (camera.CFrame.Position - center).Magnitude <= radius + 10) then
 		CameraFX.fovPunch(-8, 0.4)
 		CameraFX.shake(0.4, 0.25)
 		VFXLib.sound(sounds.AwakeningBurst, camera, 0.6, 0.7)
-	end
-	if isMe then
-		local gui, label = bigText("", GOLD_LIGHT, nil, 0.06)
-		if gui and label then
-			label.Position = UDim2.fromScale(0.5, 0.14)
-			stop.Gui, stop.Label, stop.Format = gui, label, "TIME STOPPED  %.1f"
-		end
-	elseif frozenMe then
-		local gui, label = bigText("", Color3.fromRGB(230, 230, 240), nil, 0.07)
-		if gui and label then
-			label.Position = UDim2.fromScale(0.5, 0.22)
-			stop.Gui, stop.Label, stop.Format = gui, label, "TIME HAS STOPPED  %.1f"
-		end
 	end
 end
 
@@ -542,8 +550,6 @@ local function onAbility(data)
 			TuskAnimation.play(character, "DWKnife")
 		elseif phase == "Throw" and root then
 			VFXLib.sound(sounds.NailFire, root, 0.5, 1.4)
-		elseif phase == "Hang" and data.Id then
-			hangKnife(data)
 		end
 	end
 end
@@ -583,7 +589,7 @@ local function onUltimate(data)
 	elseif data.Phase == "Resume" and character then
 		local hadStop = stops[character] ~= nil
 		local me = localPlayer and localPlayer.Character
-		endStop(character, data.Knives)
+		endStop(character)
 		for _, c in ipairs(Fighters.list()) do
 			local ch = c.Character
 			if ch and frozenTracks[ch] and not ch:GetAttribute("TimeStopped") then
@@ -641,7 +647,7 @@ function DiegoAUVFX.step(dt)
 	dt = dt or 1 / 60
 	stepKnives()
 	stepBarrages()
-	stepStops()
+	stepStops(dt)
 	slowTimer = slowTimer + dt
 	if slowTimer > 0.15 then
 		slowTimer = 0

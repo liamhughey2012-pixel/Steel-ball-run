@@ -470,13 +470,13 @@ local function stepLassos(dt)
 	local now = os.clock()
 	local serverNow = workspace:GetServerTimeNow()
 	for id, v in pairs(lassos) do
-		local distance = math.min(v.Speed * (serverNow - v.ServerTime), v.Range)
+		local distance = math.min(v.Speed * VFXLib.flight(id, v.ServerTime), v.Range)
 		local pos = v.Origin + v.Direction * math.max(distance, 0)
 		v.Spin = v.Spin + dt * 14
 		v.Loop:PivotTo(CFrame.lookAt(pos, pos + v.Direction) * CFrame.Angles(math.pi / 2, v.Spin, 0))
 		local h = v.Owner and v.Owner.Parent and handPos(v.Owner)
 		setRope(v.Rope, h or v.Origin, pos, 0.6)
-		if now > v.Expire then
+		if now > v.Expire + VFXLib.held(id, v.ServerTime) then
 			lassos[id] = nil
 			removeLasso(v)
 		end

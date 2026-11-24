@@ -23,13 +23,15 @@ __modules["DiegoAUVFX"] = function()
 	    a golden grip, then hurled with a streak; a dust ring where they crash
 	  * STAND BARRAGE: The World rushes ahead, a storm of golden fists
 	    flying forward, impact stars on the hits, a big last punch
-	  * KNIFE THROW: three silver knives with gold guards, fanned out. Thrown
-	    while time is stopped, they stop dead in the air and wait
-	  * THE WORLD: TIME STOP: "THE WORLD!" over his head, a dome bursts out
-	    from him and the world goes grey; everyone frozen stops dead (their
-	    animations freeze too); a countdown for him, TIME HAS STOPPED for
-	    them; when it ends the colour floods back, TIME MOVES AGAIN, and
-	    the hanging knives fly
+	  * KNIFE THROW: three silver knives with gold guards, fanned out
+	  * THE WORLD: TIME STOP: "THE WORLD!" over his head; a dome bursts out
+	    to the zone's edge and STAYS UP for the whole stop (a glowing ring on
+	    the ground marks the radius). Inside it the world is grey; outside
+	    it isn't. Everyone frozen stops dead (animations too); a countdown
+	    for him, TIME HAS STOPPED for whoever's frozen; knives, bullets and
+	    other projectiles in it hang in the air (VFXLib projectile clock);
+	    when it ends the dome collapses, TIME MOVES AGAIN, and they fly
+	  * REVOLVER (his corpse move): brass bullets with bright tracers
 ]]
 
 local Players = game:GetService("Players")
@@ -65,7 +67,6 @@ local DUST = Color3.fromRGB(200, 180, 140)
 local DOME = Color3.fromRGB(120, 80, 200)
 
 local knives = {} -- [projectile id] = flying knife
-local hanging = {} -- [knife id] = knife stopped in mid-air
 local barrages = {} -- [character] = { Until, NextFist }
 local grips = {} -- [target] = grip ring while held
 local stops = {} -- [stopper character] = { Until, Gui, Cc, Dome }
@@ -232,8 +233,16 @@ end
 ---------------------------------------------------------------------------
 -- Knives (server Kind "WorldKnife")
 ---------------------------------------------------------------------------
+-- A revolver bullet: a small brass slug with a bright tracer.
+local function buildBullet()
+	local m = newModel("WorldBullet")
+	box(m, Vector3.new(0.16, 0.16, 0.34), CFrame.new(), Color3.fromRGB(214, 170, 80), Enum.Material.Metal)
+	box(m, Vector3.new(0.1, 0.1, 2.2), CFrame.new(0, 0, 1.2), Color3.fromRGB(255, 236, 170), Enum.Material.Neon, 0.35)
+	return finish(m)
+end
+
 local function spawnKnife(data)
-	local item = buildKnife(true)
+	local item = (data.Visual and data.Visual.Style == "Bullet") and buildBullet() or buildKnife(true)
 	knives[data.Id] = { Item = item, Origin = data.Origin, Direction = data.Direction, Speed = data.Speed, Range = data.Range, ServerTime = data.ServerTime, Expire = os.clock() + data.Range / math.max(data.Speed, 1) + 0.5 }
 end
 
@@ -254,34 +263,13 @@ local function stepKnives()
 	local now = os.clock()
 	local serverNow = workspace:GetServerTimeNow()
 	for id, v in pairs(knives) do
-		local t = serverNow - (v.ServerTime or serverNow)
+		local t = VFXLib.flight(id, v.ServerTime)
 		local distance = math.clamp(v.Speed * t, 0, v.Range)
 		local pos = v.Origin + v.Direction * distance
 		place(v.Item, CFrame.lookAt(pos, pos + v.Direction))
-		if now > v.Expire then
+		if now > v.Expire + VFXLib.held(id, v.ServerTime) then
 			knives[id] = nil
 			v.Item.Model:Destroy()
-		end
-	end
-end
-
--- Thrown while time is stopped: it flies a few studs and stops dead.
-local function hangKnife(data)
-	local item = buildKnife(false)
-	local from, to, dir = data.From or data.Position, data.Position, data.Direction or Vector3.new(0, 0, -1)
-	hanging[data.Id] = item
-	VFXLib.animate(0.08, function(a)
-		local p = from:Lerp(to, a)
-		place(item, CFrame.lookAt(p, p + dir))
-	end)
-end
-
-local function dropHanging(ids)
-	for _, id in ipairs(ids or {}) do
-		local item = hanging[id]
-		if item then
-			hanging[id] = nil
-			item.Model:Destroy()
 		end
 	end
 end
@@ -334,61 +322,100 @@ local function stepFrozen()
 	end
 end
 
-local function grey(on, stop)
-	if on then
-		local cc = Instance.new("ColorCorrectionEffect")
-		cc.Name = "TheWorldTimeStop"
-		cc.Parent = Lighting
-		VFXLib.animate(0.35, function(a)
-			-- A flash of inverted colour, then grey.
-			if a < 0.4 then
-				cc.TintColor = Color3.fromRGB(255, 255, 255):Lerp(Color3.fromRGB(150, 110, 255), a / 0.4)
-				cc.Contrast = a * 1.5
-			else
-				cc.TintColor = Color3.fromRGB(150, 110, 255):Lerp(Color3.fromRGB(225, 220, 240), (a - 0.4) / 0.6)
-				cc.Contrast = 0.6 - (a - 0.4) * 0.6
-			end
-			cc.Saturation = -a
-		end)
-		stop.Cc = cc
-	elseif stop.Cc then
-		local cc = stop.Cc
-		stop.Cc = nil
-		local fromSat, fromTint = cc.Saturation, cc.TintColor
+-- The time-stop zone: a dome that stays up, showing its edge, for as long
+-- as time is stopped. Inside it the world is grey.
+local function buildDome(center, radius)
+	local m = newModel("TimeStopZone")
+	local shell = box(m, Vector3.new(1, 1, 1), CFrame.new(center), DOME, Enum.Material.ForceField, 0)
+	shell.Shape = Enum.PartType.Ball
+	local tint = box(m, Vector3.new(1, 1, 1), CFrame.new(center), Color3.fromRGB(200, 196, 220), Enum.Material.SmoothPlastic, 0.93)
+	tint.Shape = Enum.PartType.Ball
+	-- A glowing ring on the ground marks the edge.
+	local ring = box(m, Vector3.new(0.3, 1, 1), CFrame.new(center - Vector3.new(0, 2.6, 0)) * CFrame.Angles(0, 0, math.pi / 2), GOLD_LIGHT, Enum.Material.Neon, 0.2)
+	ring.Shape = Enum.PartType.Cylinder
+	local inner = box(m, Vector3.new(0.32, 1, 1), ring.CFrame, Color3.fromRGB(60, 50, 90), Enum.Material.SmoothPlastic, 0)
+	inner.Shape = Enum.PartType.Cylinder
+	return { Model = m, Shell = shell, Tint = tint, Ring = ring, Inner = inner, Center = center, Radius = radius }
+end
+
+local function sizeDome(dome, r, fade)
+	local d = r * 2
+	dome.Shell.Size = Vector3.new(d, d, d)
+	dome.Tint.Size = Vector3.new(d * 0.995, d * 0.995, d * 0.995)
+	dome.Ring.Size = Vector3.new(0.3, d, d)
+	dome.Inner.Size = Vector3.new(0.32, math.max(d - 1.6, 0.1), math.max(d - 1.6, 0.1))
+	dome.Shell.Transparency = 0.35 + 0.65 * fade
+	dome.Tint.Transparency = 0.93 + 0.07 * fade
+	dome.Ring.Transparency = 0.2 + 0.8 * fade
+	dome.Inner.Transparency = 1
+end
+
+local function endStop(character)
+	local stop = stops[character]
+	if not stop then
+		return
+	end
+	stops[character] = nil
+	if stop.Gui then
+		stop.Gui:Destroy()
+	end
+	local cc = stop.Cc
+	if cc then
+		local fromSat, fromTint, fromCon = cc.Saturation, cc.TintColor, cc.Contrast
 		VFXLib.animate(0.45, function(a)
 			cc.Saturation = fromSat * (1 - a)
-			cc.Contrast = 0.24 * (1 - a)
+			cc.Contrast = fromCon * (1 - a)
 			cc.TintColor = fromTint:Lerp(Color3.new(1, 1, 1), a)
 		end, function()
 			cc:Destroy()
 		end)
 	end
+	local dome = stop.Dome
+	if dome then
+		VFXLib.animate(0.4, function(a)
+			sizeDome(dome, dome.Radius * (1 - 0.9 * a * a), a)
+		end, function()
+			dome.Model:Destroy()
+		end)
+	end
 end
 
-local function endStop(character, ids)
-	local stop = stops[character]
-	if not stop then
-		dropHanging(ids)
-		return
-	end
-	stops[character] = nil
-	grey(false, stop)
-	if stop.Gui then
-		stop.Gui:Destroy()
-	end
-	if stop.Dome then
-		stop.Dome:Destroy()
-	end
-	dropHanging(ids)
-end
-
-local function stepStops()
+local function stepStops(dt)
+	local camera = workspace.CurrentCamera
+	local me = localPlayer and localPlayer.Character
 	for character, stop in pairs(stops) do
 		if os.clock() > stop.Expire then
 			endStop(character)
-		elseif stop.Label then
-			local left = math.max(0, stop.Until - workspace:GetServerTimeNow())
-			stop.Label.Text = string.format(stop.Format, left)
+		else
+			-- Grey inside the zone (and for him), colour outside it.
+			local inside = stop.IsMe or (camera and (camera.CFrame.Position - stop.Center).Magnitude <= stop.Radius)
+			local k = stop.Grey or 0
+			k = k + ((inside and 1 or 0) - k) * math.min(1, (dt or 1 / 60) * 6)
+			stop.Grey = k
+			if stop.Cc then
+				stop.Cc.Saturation = -k
+				stop.Cc.Contrast = 0.24 * k
+				stop.Cc.TintColor = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(225, 220, 240), k)
+			end
+			if stop.Dome and stop.Settled then
+				-- The edge shimmers slowly.
+				stop.Dome.Ring.Transparency = 0.25 + 0.15 * math.sin(os.clock() * 4)
+			end
+			-- Countdown for him; TIME HAS STOPPED for anyone frozen in it.
+			local frozenMe = not stop.IsMe and me and me:GetAttribute("TimeStopped")
+			if (stop.IsMe or frozenMe) and not stop.Gui then
+				local gui, label = bigText("", stop.IsMe and GOLD_LIGHT or Color3.fromRGB(230, 230, 240), nil, stop.IsMe and 0.06 or 0.07)
+				if gui and label then
+					label.Position = UDim2.fromScale(0.5, stop.IsMe and 0.14 or 0.22)
+					stop.Gui, stop.Label, stop.Format = gui, label, stop.IsMe and "TIME STOPPED  %.1f" or "TIME HAS STOPPED  %.1f"
+				end
+			elseif stop.Gui and not stop.IsMe and not frozenMe then
+				stop.Gui:Destroy()
+				stop.Gui, stop.Label = nil, nil
+			end
+			if stop.Label then
+				stop.Label.Text = string.format(stop.Format, math.max(0, stop.Until - workspace:GetServerTimeNow()))
+			end
 		end
 	end
 end
@@ -396,54 +423,35 @@ end
 local function startStop(character, data)
 	endStop(character)
 	local duration = data.Duration or 6
-	local stop = { Until = workspace:GetServerTimeNow() + duration, Expire = os.clock() + duration + 2 }
+	local center = data.Position or (Common.rootOf(character) and Common.rootOf(character).Position) or Vector3.zero
+	local radius = data.Range or 60
+	local stop = { Until = workspace:GetServerTimeNow() + duration, Expire = os.clock() + duration + 2, Center = center, Radius = radius, IsMe = Common.isLocal(character) }
 	stops[character] = stop
-	local camera = workspace.CurrentCamera
-	local me = localPlayer and localPlayer.Character
-	local isMe = Common.isLocal(character)
-	local frozenMe = false
 	for _, c in ipairs(data.Frozen or {}) do
-		if c == me then
-			frozenMe = true
-		end
 		freezeTracks(c, true)
 	end
-	local near = camera and data.Position and (camera.CFrame.Position - data.Position).Magnitude <= (data.Range or 150) + 30
-	-- The dome bursts out from him and fades.
-	if data.Position then
-		local dome = VFXLib.part({ Shape = Enum.PartType.Ball, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(data.Position), Color = DOME, Material = Enum.Material.ForceField, Transparency = 0 })
-		stop.Dome = dome
-		local range = math.min(data.Range or 150, 120)
-		VFXLib.animate(0.7, function(a)
-			local d = range * 2 * VFXLib.easeOut(a)
-			dome.Size = Vector3.new(d, d, d)
-			dome.Transparency = a * a
-		end, function()
-			if stop.Dome == dome then
-				stop.Dome = nil
-			end
-			dome:Destroy()
-		end)
-		VFXLib.flash(data.Position, GOLD_LIGHT, 6, 40, 0.4)
-	end
-	if near or isMe or frozenMe then
-		grey(true, stop)
+	local cc = Instance.new("ColorCorrectionEffect")
+	cc.Name = "TheWorldTimeStop"
+	cc.Parent = Lighting
+	stop.Cc = cc
+	-- The dome bursts out to the zone's edge and stays there.
+	local dome = buildDome(center, radius)
+	stop.Dome = dome
+	VFXLib.animate(0.5, function(a)
+		sizeDome(dome, radius * VFXLib.easeOut(a), 0)
+		dome.Shell.Transparency = 0.35 * a -- a bright flash as it bursts out
+	end, function()
+		if stops[character] == stop then
+			stop.Settled = true
+			sizeDome(dome, radius, 0)
+		end
+	end)
+	VFXLib.flash(center, GOLD_LIGHT, 6, 40, 0.4)
+	local camera = workspace.CurrentCamera
+	if stop.IsMe or (camera and (camera.CFrame.Position - center).Magnitude <= radius + 10) then
 		CameraFX.fovPunch(-8, 0.4)
 		CameraFX.shake(0.4, 0.25)
 		VFXLib.sound(sounds.AwakeningBurst, camera, 0.6, 0.7)
-	end
-	if isMe then
-		local gui, label = bigText("", GOLD_LIGHT, nil, 0.06)
-		if gui and label then
-			label.Position = UDim2.fromScale(0.5, 0.14)
-			stop.Gui, stop.Label, stop.Format = gui, label, "TIME STOPPED  %.1f"
-		end
-	elseif frozenMe then
-		local gui, label = bigText("", Color3.fromRGB(230, 230, 240), nil, 0.07)
-		if gui and label then
-			label.Position = UDim2.fromScale(0.5, 0.22)
-			stop.Gui, stop.Label, stop.Format = gui, label, "TIME HAS STOPPED  %.1f"
-		end
 	end
 end
 
@@ -531,8 +539,6 @@ local function onAbility(data)
 			TuskAnimation.play(character, "DWKnife")
 		elseif phase == "Throw" and root then
 			VFXLib.sound(sounds.NailFire, root, 0.5, 1.4)
-		elseif phase == "Hang" and data.Id then
-			hangKnife(data)
 		end
 	end
 end
@@ -572,7 +578,7 @@ local function onUltimate(data)
 	elseif data.Phase == "Resume" and character then
 		local hadStop = stops[character] ~= nil
 		local me = localPlayer and localPlayer.Character
-		endStop(character, data.Knives)
+		endStop(character)
 		for _, c in ipairs(Fighters.list()) do
 			local ch = c.Character
 			if ch and frozenTracks[ch] and not ch:GetAttribute("TimeStopped") then
@@ -630,7 +636,7 @@ function DiegoAUVFX.step(dt)
 	dt = dt or 1 / 60
 	stepKnives()
 	stepBarrages()
-	stepStops()
+	stepStops(dt)
 	slowTimer = slowTimer + dt
 	if slowTimer > 0.15 then
 		slowTimer = 0
@@ -662,12 +668,13 @@ __modules["TheWorldStand"] = function()
 
 	THE WORLD (Diego Brando from another world), blocky, matched to the art:
 	  * a muscular, shiny golden body
-	  * a tall helmet: a flat crest rising to a point above the head, the
-	    sides framing the face; narrow eyes and full lips
-	  * thick padded cream rolls (segmented) running over both shoulders,
-	    down the chest and round the back
-	  * round clock-like dials on the wrists, a belt of round studs
-	  * a "D" on each shin
+	  * a tall wedge helmet: wide at the brow, tapering up to a flat top, a
+	    sharp ridge down the front, the sides coming down round a small face
+	    like a hood (narrow eyes, full lips)
+	  * big pillow-like padded rolls looping over both shoulders, down the
+	    chest to the hips and round the back
+	  * round clock-like dials on the wrists and hips, a belt of round studs
+	  * boots with a "D" on each shin
 	Registered with TuskStandModels by DiegoAUVFX, so TuskStand floats it
 	behind Diego (players and NPCs) with a golden aura. A custom model at
 	ReplicatedStorage.SpinAssets.TuskAct14 replaces it.
@@ -675,11 +682,11 @@ __modules["TheWorldStand"] = function()
 
 local TheWorldStand = {}
 
-local GOLD = Color3.fromRGB(238, 196, 64)
-local GOLD_SHADE = Color3.fromRGB(204, 154, 40)
-local GOLD_LIGHT = Color3.fromRGB(255, 232, 140)
-local PAD = Color3.fromRGB(228, 210, 146)
-local PAD_SHADE = Color3.fromRGB(186, 160, 96)
+local GOLD = Color3.fromRGB(244, 204, 48)
+local GOLD_SHADE = Color3.fromRGB(214, 160, 34)
+local GOLD_LIGHT = Color3.fromRGB(255, 230, 120)
+local PAD = Color3.fromRGB(226, 204, 120)
+local PAD_SHADE = Color3.fromRGB(190, 160, 80)
 local LINE = Color3.fromRGB(110, 72, 22)
 local LIP = Color3.fromRGB(196, 120, 56)
 local EYE = Color3.fromRGB(255, 250, 230)
@@ -737,12 +744,17 @@ local function letterD(model, parent, cf, h, s)
 	box(model, parent, "D", Vector3.new(t, h * 0.24, 0.04), LINE, cf * CFrame.new(h * 0.1, -h * 0.36, 0) * CFrame.Angles(0, 0, -0.7))
 end
 
--- A padded roll: a row of cream segments from a to b (torso space).
+-- A padded roll: a row of fat pillow segments from a to b (torso space),
+-- each with a darker seam between it and the next.
 local function roll(model, torso, a, b, thick, s)
-	local count = math.max(2, math.floor((b - a).Magnitude / (0.42 * s)))
+	local length = (b - a).Magnitude
+	local count = math.max(2, math.floor(length / (0.5 * s)))
+	local seg = length / count
 	for i = 0, count - 1 do
 		local p = a:Lerp(b, (i + 0.5) / count)
-		box(model, torso, "Pad", Vector3.new(thick, thick, (b - a).Magnitude / count * 0.86), i % 2 == 0 and PAD or PAD_SHADE, CFrame.lookAt(p, b))
+		local cf = CFrame.lookAt(p, b)
+		box(model, torso, "Pad", Vector3.new(thick, thick, seg * 0.84), i % 2 == 0 and PAD or GOLD_LIGHT, cf)
+		box(model, torso, "PadCore", Vector3.new(thick * 0.82, thick * 0.82, seg * 1.02), PAD_SHADE, cf)
 	end
 end
 
@@ -777,43 +789,62 @@ function TheWorldStand.build(scale)
 		box(model, torso, "Stud", Vector3.new(0.12, 0.26, 0.26) * s, GOLD_LIGHT, CFrame.new(k * 0.34 * s, -1.62 * s, -0.5 * s) * CFrame.Angles(0, math.pi / 2, 0)).Shape = Enum.PartType.Cylinder
 	end
 	box(model, torso, "Hips", Vector3.new(1.7, 0.5, 0.95) * s, GOLD, CFrame.new(0, -1.95 * s, 0))
+	for _, side in ipairs({ -1, 1 }) do
+		dial(model, torso, CFrame.new(side * 0.9 * s, -1.85 * s, 0) * CFrame.Angles(0, side > 0 and 0 or math.pi, 0), s)
+	end
 	box(model, torso, "Neck", Vector3.new(0.55, 0.45, 0.55) * s, GOLD_SHADE, CFrame.new(0, 1.12 * s, 0))
 
-	-- The padded rolls: over each shoulder, down the chest, and round the back.
-	local t = 0.5 * s
+	-- The padded rolls: a fat loop over each shoulder, down the front of the
+	-- chest to the hips, and down the back; joined behind the neck.
+	local t = 0.62 * s
 	for _, side in ipairs({ -1, 1 }) do
-		local neck = Vector3.new(side * 0.45, 1.05, 0) * s
-		local shoulder = Vector3.new(side * 1.2, 1.0, 0) * s
+		local neck = Vector3.new(side * 0.5, 1.15, 0.1) * s
+		local shoulder = Vector3.new(side * 1.25, 1.1, 0) * s
 		roll(model, torso, neck, shoulder, t, s)
-		roll(model, torso, shoulder + Vector3.new(0, 0, -0.35 * s), Vector3.new(side * 0.85, -0.9, -0.62) * s, t, s)
-		roll(model, torso, shoulder + Vector3.new(0, 0, 0.35 * s), Vector3.new(side * 0.85, -0.9, 0.62) * s, t, s)
+		roll(model, torso, shoulder + Vector3.new(0, -0.05, -0.4) * s, Vector3.new(side * 0.95, -0.3, -0.7) * s, t, s)
+		roll(model, torso, Vector3.new(side * 0.95, -0.3, -0.7) * s, Vector3.new(side * 0.75, -1.55, -0.62) * s, t, s)
+		roll(model, torso, shoulder + Vector3.new(0, -0.05, 0.4) * s, Vector3.new(side * 0.8, -1.4, 0.68) * s, t, s)
 	end
+	roll(model, torso, Vector3.new(-0.5, 1.2, 0.45) * s, Vector3.new(0.5, 1.2, 0.45) * s, t, s)
 
-	-- Head: a tall helmet with a flat crest rising to a point; face below.
-	local headBase = CFrame.new(0, 1.25 * s, 0)
-	local headOffset = CFrame.new(0, 0.6 * s, 0)
-	local head, headWeld = box(model, torso, "Head", Vector3.new(0.9, 1.1, 0.95) * s, GOLD, headBase * headOffset)
-	head.Reflectance = 0.15
+	-- Head: a tall wedge helmet, wide at the brow and tapering up to a flat
+	-- top, with a sharp ridge down the front; its sides come down round a
+	-- small face like a hood.
+	local headBase = CFrame.new(0, 1.3 * s, 0)
+	local headOffset = CFrame.new(0, 0.55 * s, 0)
+	local head, headWeld = box(model, torso, "Head", Vector3.new(0.75, 0.9, 0.8) * s, GOLD, headBase * headOffset)
+	head.Reflectance = 0.12
 	rig.Joints.Head = { Weld = headWeld, Base = headBase, Offset = headOffset }
-	local hf = -0.48 * s
-	-- Helmet sides framing the face, and the cap over the brow.
+	local hf = -0.4 * s
+	-- The face: narrow eyes, a nose, full lips, a strong chin.
 	for _, side in ipairs({ -1, 1 }) do
-		box(model, head, "HelmSide", Vector3.new(0.14, 1.15, 0.9) * s, GOLD_SHADE, CFrame.new(side * 0.5 * s, 0.02 * s, 0.05 * s))
+		box(model, head, "Eye", Vector3.new(0.22, 0.07, 0.05) * s, EYE, CFrame.new(side * 0.17 * s, 0.1 * s, hf - 0.02 * s) * CFrame.Angles(0, 0, side * -0.22), Enum.Material.Neon)
+		box(model, head, "Lid", Vector3.new(0.26, 0.06, 0.06) * s, LINE, CFrame.new(side * 0.17 * s, 0.16 * s, hf - 0.03 * s) * CFrame.Angles(0, 0, side * -0.22))
 	end
-	box(model, head, "Brow", Vector3.new(1.05, 0.28, 0.18) * s, GOLD_SHADE, CFrame.new(0, 0.32 * s, hf - 0.04 * s))
-	-- The crest: stacked plates narrowing to a point, slightly swept back.
-	for k = 0, 4 do
-		local w = (0.95 - k * 0.17) * s
-		box(model, head, "Crest", Vector3.new(w, 0.32 * s, 0.7 * s - k * 0.06 * s), k % 2 == 0 and GOLD or GOLD_LIGHT, CFrame.new(0, (0.68 + k * 0.3) * s, (0.04 + k * 0.05) * s))
-	end
-	box(model, head, "CrestLine", Vector3.new(0.06, 1.5, 0.06) * s, LINE, CFrame.new(0, 1.2 * s, hf + 0.06 * s))
-	-- Narrow eyes, a nose ridge, full lips.
+	box(model, head, "Nose", Vector3.new(0.09, 0.26, 0.1) * s, GOLD_SHADE, CFrame.new(0, -0.04 * s, hf - 0.04 * s))
+	box(model, head, "Lips", Vector3.new(0.3, 0.12, 0.08) * s, LIP, CFrame.new(0, -0.27 * s, hf - 0.02 * s))
+	box(model, head, "Chin", Vector3.new(0.42, 0.18, 0.2) * s, GOLD_SHADE, CFrame.new(0, -0.44 * s, hf + 0.08 * s))
+	-- The hood sides, down past the jaw.
 	for _, side in ipairs({ -1, 1 }) do
-		box(model, head, "Eye", Vector3.new(0.26, 0.08, 0.05) * s, EYE, CFrame.new(side * 0.2 * s, 0.14 * s, hf - 0.02 * s) * CFrame.Angles(0, 0, side * -0.18), Enum.Material.Neon)
+		box(model, head, "Hood", Vector3.new(0.18, 1.1, 0.95) * s, GOLD_SHADE, CFrame.new(side * 0.46 * s, -0.05 * s, 0.06 * s) * CFrame.Angles(0, 0, side * 0.08))
 	end
-	box(model, head, "Nose", Vector3.new(0.1, 0.3, 0.1) * s, GOLD_SHADE, CFrame.new(0, -0.04 * s, hf - 0.04 * s))
-	box(model, head, "Lips", Vector3.new(0.36, 0.12, 0.08) * s, LIP, CFrame.new(0, -0.3 * s, hf - 0.02 * s))
-	box(model, head, "Chin", Vector3.new(0.5, 0.2, 0.2) * s, GOLD_SHADE, CFrame.new(0, -0.5 * s, hf + 0.08 * s))
+	box(model, head, "HoodBack", Vector3.new(1.0, 1.2, 0.2) * s, GOLD_SHADE, CFrame.new(0, 0, 0.48 * s))
+	-- The wedge: slabs from a wide brim narrowing to a flat top, leaning back.
+	local layers = 6
+	for k = 0, layers - 1 do
+		local f = k / (layers - 1)
+		local w = (1.25 - f * 0.7) * s
+		local d = (1.1 - f * 0.45) * s
+		box(model, head, "Wedge", Vector3.new(w, 0.3 * s, d), k % 2 == 0 and GOLD or GOLD_LIGHT, CFrame.new(0, (0.5 + k * 0.27) * s, (0.08 + f * 0.25) * s))
+	end
+	box(model, head, "WedgeTop", Vector3.new(0.6, 0.12, 0.7) * s, GOLD_LIGHT, CFrame.new(0, (0.5 + layers * 0.27) * s, 0.36 * s))
+	-- The brim over the eyes and the sharp ridge up the front.
+	box(model, head, "Brim", Vector3.new(1.2, 0.16, 0.3) * s, GOLD_SHADE, CFrame.new(0, 0.36 * s, hf - 0.1 * s))
+	box(model, head, "Ridge", Vector3.new(0.14, 1.5, 0.14) * s, GOLD_LIGHT, CFrame.new(0, 1.17 * s, -0.25 * s) * CFrame.Angles(0.34, 0, 0) * CFrame.Angles(0, math.pi / 4, 0))
+	for _, side in ipairs({ -1, 1 }) do
+		-- Shading on the two slanted faces either side of the ridge.
+		box(model, head, "WedgeShade", Vector3.new(0.05, 1.3, 0.5) * s, GOLD_SHADE, CFrame.new(side * (0.5 - 0.15) * s, 1.1 * s, 0.05 * s) * CFrame.Angles(0.34, 0, side * 0.22))
+	end
 
 	-- Thick arms with dials on the wrists.
 	for _, a in ipairs({ { "ArmL", -1 }, { "ArmR", 1 } }) do

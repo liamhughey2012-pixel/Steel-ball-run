@@ -496,21 +496,47 @@ local function onMove(data)
 	elseif who == "Axl" and data.Phase == "Flood" then
 		ring(data.Position, data.Radius or 22, pal.Main, 0.6)
 		VFXLib.burst(data.Position, { Count = 30, Color = Color3.fromRGB(150, 130, 170), Speed = 16, Lifetime = 0.6 })
-	elseif who == "DiegoAU" and data.Phase == "Ring" then
-		-- A ring of knives glints into being round him (they fly as knives).
-		local count = data.Count or 12
-		for i = 1, count do
-			local a = (i - 1) / count * math.pi * 2
-			local dir = Vector3.new(math.cos(a), 0, math.sin(a))
-			local at = data.Position + dir * 2.4 + Vector3.new(0, 0.5, 0)
-			local glint = VFXLib.part({ Size = Vector3.new(0.12, 0.12, 1.4), CFrame = CFrame.lookAt(at, at + dir), Color = Color3.fromRGB(235, 240, 250), Material = Enum.Material.Neon, Transparency = 1 })
-			VFXLib.animate(data.Time or 0.35, function(k)
-				glint.Transparency = 1 - k * 0.8
+	elseif who == "DiegoAU" and data.Phase == "Draw" and character then
+		-- A blocky six-shooter in his right hand while he fires.
+		local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+		if hand then
+			local steel, grip = Color3.fromRGB(70, 72, 80), Color3.fromRGB(120, 76, 44)
+			local pieces = {
+				{ Vector3.new(0.22, 0.26, 1.3), CFrame.new(0, 0.1, -0.75), steel }, -- barrel
+				{ Vector3.new(0.34, 0.36, 0.45), CFrame.new(0, 0.05, -0.15), steel }, -- cylinder
+				{ Vector3.new(0.26, 0.6, 0.28), CFrame.new(0, -0.3, 0.12) * CFrame.Angles(-0.35, 0, 0), grip }, -- grip
+				{ Vector3.new(0.08, 0.14, 0.2), CFrame.new(0, 0.3, 0.05), steel }, -- hammer
+				{ Vector3.new(0.06, 0.08, 0.06), CFrame.new(0, 0.26, -1.3), Color3.fromRGB(220, 200, 120) }, -- sight
+			}
+			local parts = {}
+			for _, pc in ipairs(pieces) do
+				table.insert(parts, { VFXLib.part({ Size = pc[1], Color = pc[3], Material = Enum.Material.Metal }), pc[2] })
+			end
+			VFXLib.animate(data.Time or 1.3, function()
+				if hand.Parent then
+					local base = hand.CFrame * CFrame.new(0, -hand.Size.Y / 2, -0.1)
+					for _, e in ipairs(parts) do
+						e[1].CFrame = base * e[2]
+					end
+				end
 			end, function()
-				glint:Destroy()
+				for _, e in ipairs(parts) do
+					e[1]:Destroy()
+				end
 			end)
 		end
-		ring(data.Position, 4, Color3.fromRGB(236, 196, 70), 0.35)
+	elseif who == "DiegoAU" and data.Phase == "Shot" and data.Position then
+		-- Muzzle flash and a puff of smoke.
+		local flash = VFXLib.part({ Size = Vector3.new(0.9, 0.9, 0.9), CFrame = CFrame.new(data.Position), Color = Color3.fromRGB(255, 220, 120), Material = Enum.Material.Neon, Shape = Enum.PartType.Ball })
+		VFXLib.animate(0.08, function(a)
+			flash.Transparency = a
+		end, function()
+			flash:Destroy()
+		end)
+		VFXLib.burst(data.Position, { Count = 5, Color = Color3.fromRGB(200, 196, 190), Speed = 4, Lifetime = 0.4 })
+		if local_ then
+			CameraFX.shake(0.15, 0.06)
+		end
 	elseif who == "Valentine" then
 		if data.Phase == "Bless" then
 			shell(character, Color3.fromRGB(255, 250, 225), Enum.Material.ForceField, data.Time or 2.5)

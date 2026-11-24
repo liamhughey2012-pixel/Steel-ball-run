@@ -120,6 +120,78 @@ local function overlapAtStart(p)
 	return nil
 end
 
+---------------------------------------------------------------------------
+-- Stopped time (The World): a zone where projectiles hang in the air. Other
+-- people's projectiles stop the moment they're inside; the zone owner's own
+-- stop once they've flown OwnFreezeAfter studs. They all fly on when the
+-- zone ends. Clients are told ("ProjectileFreeze" / "ProjectileResume") with
+-- each projectile's flight time so the visuals stop and restart in step.
+---------------------------------------------------------------------------
+ProjectileService.OwnFreezeAfter = 5
+local zones = {} -- [token] = { Center, Radius, Owner }
+
+local function flightOf(p)
+	return p.Traveled / math.max(p.Speed, 1e-3)
+end
+
+local function inZone(p)
+	for token, z in pairs(zones) do
+		if (p.Position - z.Center).Magnitude <= z.Radius and (p.Owner ~= z.Owner or p.Traveled >= ProjectileService.OwnFreezeAfter) then
+			return token
+		end
+	end
+	return nil
+end
+
+local function freeze(list, token)
+	local ids, flights, spawned = {}, {}, {}
+	for _, p in ipairs(list) do
+		p.FrozenBy = token
+		table.insert(ids, p.Id)
+		table.insert(flights, flightOf(p))
+		table.insert(spawned, p.SpawnedAt)
+	end
+	if #ids > 0 then
+		FX:FireAllClients("ProjectileFreeze", { Ids = ids, Flights = flights, Spawned = spawned })
+	end
+end
+
+function ProjectileService.stopTime(token, center, radius, owner)
+	zones[token] = { Center = center, Radius = radius, Owner = owner }
+	local list = {}
+	for _, p in pairs(active) do
+		if not p.FrozenBy and inZone(p) == token then
+			table.insert(list, p)
+		end
+	end
+	freeze(list, token)
+end
+
+function ProjectileService.resumeTime(token)
+	zones[token] = nil
+	local ids, flights, spawned = {}, {}, {}
+	for _, p in pairs(active) do
+		if p.FrozenBy == token then
+			p.FrozenBy = nil
+			table.insert(ids, p.Id)
+			table.insert(flights, flightOf(p))
+			table.insert(spawned, p.SpawnedAt)
+		end
+	end
+	if #ids > 0 then
+		FX:FireAllClients("ProjectileResume", { Ids = ids, Flights = flights, Spawned = spawned })
+	end
+end
+
+function ProjectileService.isTimeStopped(position)
+	for _, z in pairs(zones) do
+		if (position - z.Center).Magnitude <= z.Radius then
+			return true
+		end
+	end
+	return false
+end
+
 function ProjectileService.activeCount(player)
 	return countByPlayer[player] or 0
 end
@@ -155,6 +227,7 @@ function ProjectileService.fire(owner, spec)
 		OnEnd = spec.OnEnd, -- function(position, normal, hitCharacter, projectile): always called once
 		-- (projectile.HitWall is true when it stopped on a wall / the ground)
 		Visual = spec.Visual or {},
+		SpawnedAt = workspace:GetServerTimeNow(),
 	}
 	active[p.Id] = p
 	if owner then
@@ -169,7 +242,7 @@ function ProjectileService.fire(owner, spec)
 		Speed = p.Speed,
 		Range = p.Range,
 		OwnerId = owner and owner.UserId or 0,
-		ServerTime = workspace:GetServerTimeNow(),
+		ServerTime = p.SpawnedAt,
 		Visual = p.Visual,
 	})
 
@@ -182,6 +255,9 @@ end
 
 RunService.Heartbeat:Connect(function(dt)
 	for _, p in pairs(active) do
+		if p.FrozenBy then
+			continue -- hanging in stopped time
+		end
 		local step = math.min(p.Speed * dt, p.Range - p.Traveled)
 		if step <= 0.01 then
 			finish(p, p.Position, nil, nil)
@@ -201,6 +277,12 @@ RunService.Heartbeat:Connect(function(dt)
 			else
 				p.Position = p.Position + p.Direction * step
 				p.Traveled = p.Traveled + step
+				if next(zones) then
+					local token = inZone(p)
+					if token then
+						freeze({ p }, token)
+					end
+				end
 			end
 		end
 	end

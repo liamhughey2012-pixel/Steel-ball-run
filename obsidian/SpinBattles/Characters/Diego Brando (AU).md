@@ -19,12 +19,12 @@ Diego and The World were matched to the reference art the user sent (2026-11-24)
 - tall dark-brown riding boots with silver spurs.
 
 ![[the_world_preview.png]]
-**The World:**
-- a muscular golden body;
-- a tall helmet with a flat crest rising to a point;
-- padded cream rolls over the shoulders, down the chest and round the back;
-- clock dials on the wrists and a belt of round studs;
-- a "D" on each shin.
+**The World** (remodelled from the second set of reference art, 2026-11-24):
+- a bright yellow-gold body;
+- a tall wedge helmet: wide at the brow, tapering back to a flat top, a sharp ridge up the front, and hood sides round a small face;
+- big pillow-like padded rolls looping over both shoulders, down the chest to the hips and round the back;
+- clock dials on the wrists and hips, and a belt of round studs;
+- boots with a "D" on each shin.
 
 It floats behind him with a golden aura.
 
@@ -34,15 +34,15 @@ It floats behind him with a golden aura.
 | 1 | STAND GRAB | The World lunges out and grabs the nearest enemy in front (12 studs): 4 damage. It holds them up in the air for 0.55 s, then **hurls them** the way he's facing (8, big knockback and launch). Whoever they crash into takes 5. 9 s (3 s on a miss) |
 | 2 | STAND BARRAGE | The World rushes ahead with a storm of golden fists for 1.6 s: 16 hits of 0.9, then a big last punch (6, knockback). He can walk at 45% speed during it. A stun stops it. 12 s |
 | 3 | KNIFE THROW | **three knives at once**, fanned 8° apart: 4 each. 7 s |
-| G | THE WORLD: TIME STOP | "THE WORLD!" appears over his head. A dome bursts out and **time stops for 6 s** (4 s when an NPC does it) for everyone within 150 studs |
+| G | THE WORLD: TIME STOP | "THE WORLD!" appears over his head. **A 60-stud zone** around where he stands is shown as a dome, with a glowing ring on the ground. It stays up for the whole stop. **Time stops for 6 s** (4 s when an NPC does it) for everyone inside, and for anyone who walks in |
 
 **While time is stopped:**
 - frozen fighters can't move, act, block or dodge, and their animations freeze;
-- the world goes grey;
+- the world is grey **inside the dome only** (and always for him);
 - he sees a countdown, and frozen players see TIME HAS STOPPED;
-- knives he throws **stop in mid-air** 6 studs out and all fly when time moves again;
+- **every projectile in the zone stops in mid-air**: anyone's nails, balls, hooks, words, lassos, raindrops, junk, and his knives and bullets. Others' projectiles stop as soon as they're inside; his own stop after flying 5 studs. They all fly on when time moves again (`ProjectileService.stopTime` / `resumeTime`; clients use `VFXLib.flight` / `held`);
 - if he goes down, time moves again at once.
 
-- **Corpse move (V): KNIFE RING.** A ring of 12 knives appears round him and flies outward (7 each).
+- **Corpse move (V): REVOLVER.** He draws a six-shooter and fans 6 shots where he's aiming: 5 damage each, fast bullets with tracers. Inside stopped time the bullets hang too.
 - He's also a Stand-user NPC (11 NPCs now, with a new camp spot in the south-east desert) and a bounty-board target ("STAND: THE WORLD").
 - **How it works:** frozen characters get the `TimeStopped` attribute and the server anchors their root. `CombatAdapter.canAct` refuses anyone with that attribute. Freezes and pins are counted, so overlapping time stops, or a grab during a time stop, never unfreeze someone early.

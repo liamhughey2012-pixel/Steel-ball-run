@@ -34,6 +34,64 @@ end
 VFXLib.Folder = folder
 
 ---------------------------------------------------------------------------
+-- Projectile clock: server projectiles can be paused (The World's time
+-- stop). Every projectile visual asks flight(id, serverTime) how long it has
+-- been flying instead of (now - serverTime), and adds held(id) to its expiry.
+---------------------------------------------------------------------------
+local clocks = {} -- [projectile id] = { Frozen = flight seconds } or { Base, At }
+
+function VFXLib.flight(id, serverTime)
+	local now = workspace:GetServerTimeNow()
+	local c = id and clocks[id]
+	if not c then
+		return now - (serverTime or now)
+	end
+	if c.Frozen then
+		return c.Frozen
+	end
+	return c.Base + (now - c.At)
+end
+
+-- Seconds this projectile has spent paused (push its expiry back by this).
+function VFXLib.held(id, serverTime)
+	local c = id and clocks[id]
+	if not c then
+		return 0
+	end
+	local now = workspace:GetServerTimeNow()
+	return math.max(0, (now - (c.Spawned or serverTime or now)) - VFXLib.flight(id, serverTime))
+end
+
+do
+	local ok, Net = pcall(function()
+		return require(Shared.Net)
+	end)
+	if ok and Net and Net.get then
+		Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+			if typeof(data) ~= "table" then
+				return
+			end
+			if name == "ProjectileFreeze" then
+				for i, id in ipairs(data.Ids or {}) do
+					clocks[id] = { Frozen = data.Flights and data.Flights[i] or 0, Spawned = data.Spawned and data.Spawned[i] }
+				end
+			elseif name == "ProjectileResume" then
+				for i, id in ipairs(data.Ids or {}) do
+					local c = clocks[id]
+					clocks[id] = { Base = data.Flights and data.Flights[i] or 0, At = workspace:GetServerTimeNow(), Spawned = c and c.Spawned or (data.Spawned and data.Spawned[i]) }
+				end
+			elseif name == "ProjectileEnd" and data.Id then
+				-- (Ended a moment later, so the visual's last step still uses it.)
+				local id = data.Id
+				task.delay(0.5, function()
+					clocks[id] = nil
+				end)
+			end
+		end)
+	end
+end
+
+---------------------------------------------------------------------------
 -- Frame scheduler: one RenderStepped connection drives every animation.
 ---------------------------------------------------------------------------
 local jobs = {}

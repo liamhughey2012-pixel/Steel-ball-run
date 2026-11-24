@@ -301,6 +301,7 @@ local function spawnHook(data)
 		Speed = data.Speed,
 		Range = data.Range,
 		ServerTime = data.ServerTime,
+		Id = data.Id,
 		Expire = os.clock() + data.Range / math.max(data.Speed, 1) + 1,
 	}
 	hooks[data.Id] = v
@@ -310,7 +311,7 @@ local function spawnHook(data)
 end
 
 local function hookPos(v)
-	local distance = math.min(v.Speed * (workspace:GetServerTimeNow() - v.ServerTime), v.Range)
+	local distance = math.min(v.Speed * VFXLib.flight(v.Id, v.ServerTime), v.Range)
 	return v.Origin + v.Direction * math.max(distance, 0)
 end
 
@@ -359,7 +360,7 @@ local function stepHooks()
 		v.Model:PivotTo(CFrame.lookAt(pos, pos + v.Direction))
 		local m = v.Owner and v.Owner.Parent and mouthCF(v.Owner)
 		setCable(v.Cable, m and m.Position or v.Origin, pos)
-		if now > v.Expire then
+		if now > v.Expire + VFXLib.held(id, v.ServerTime) then
 			hooks[id] = nil
 			removeHook(v)
 		end

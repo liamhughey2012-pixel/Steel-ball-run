@@ -256,10 +256,10 @@ function TuskProjectiles.init()
 		local now = os.clock()
 		local serverNow = workspace:GetServerTimeNow()
 		for id, entry in pairs(active) do
-			local distance = math.min(entry.Speed * (serverNow - entry.ServerTime), entry.Range)
+			local distance = math.min(entry.Speed * VFXLib.flight(id, entry.ServerTime), entry.Range)
 			local pos = entry.Origin + entry.Direction * distance
 			entry.Visual:Step(CFrame.lookAt(pos, pos + entry.Direction), dt)
-			if now > entry.Expire then
+			if now > entry.Expire + VFXLib.held(id, entry.ServerTime) then
 				active[id] = nil
 				entry.Visual:Destroy()
 			end

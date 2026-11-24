@@ -1136,7 +1136,7 @@ __modules["CorpseMoves"] = function()
 	  Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow
 	  Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit
 	  Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse
-	  Diego (AU)   KNIFE RING: a ring of knives appears round him and flies out
+	  Diego (AU)   REVOLVER: draws a revolver and fans six shots where he aims
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -1385,33 +1385,40 @@ USE.Valentine = function(S, player, state, character, root)
 	end)
 end
 
-USE.DiegoAU = function(S, player, state, character, root)
+-- REVOLVER: he draws a revolver and fans six shots at where he's aiming.
+-- (In stopped time the bullets hang in the air like everything else.)
+USE.DiegoAU = function(S, player, state, character, root, aim)
 	if not S.fireKnife then
 		return false
 	end
-	S.lock(state, 0.45)
-	local count, wave = 12, 0.35
-	fx({ Character = character, Who = "DiegoAU", Phase = "Ring", Position = root.Position, Count = count, Time = wave })
-	task.delay(wave, function()
-		local _, _, r = S.Adapter.getAlive(player)
-		if not r then
-			return
-		end
-		for i = 1, count do
-			local a = (i - 1) / count * math.pi * 2
-			local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+	local shots, every, draw = 6, 0.13, 0.25
+	S.lock(state, draw + shots * every + 0.2)
+	local life = state.Life
+	fx({ Character = character, Who = "DiegoAU", Phase = "Draw", Time = draw + shots * every + 0.35 })
+	for i = 1, shots do
+		task.delay(draw + (i - 1) * every, function()
+			local char, _, r = S.Adapter.getAlive(player)
+			if not r or state.Life ~= life then
+				return
+			end
+			local dir = S.aim(aim, r)
+			-- A little spread as he fans the hammer.
+			dir = (CFrame.lookAt(Vector3.zero, dir) * CFrame.Angles(math.rad((math.random() - 0.5) * 3), math.rad((math.random() - 0.5) * 4), 0)).LookVector
+			local muzzle = S.origin(char, r, CFrame.new(1, 0.4, -2))
 			S.fireKnife(player, state, {
-				Origin = r.Position + dir * 2 + Vector3.new(0, 0.5, 0),
+				Origin = muzzle,
 				Direction = dir,
-				Speed = 120,
-				Radius = 0.8,
-				Range = 50,
+				Speed = 260,
+				Radius = 0.5,
+				Range = 140,
+				Style = "Bullet",
 				OnHit = function(target, position)
-					S.hit(player, target, { Damage = 7, Stun = 0.6, Knockback = 18, Direction = dir, Position = position, Source = "DiegoAUKnifeRing" })
+					S.hit(player, target, { Damage = 5, Stun = 0.3, Knockback = 4, Direction = dir, Position = position, Source = "DiegoAURevolver" })
 				end,
 			})
-		end
-	end)
+			fx({ Character = char, Who = "DiegoAU", Phase = "Shot", Position = muzzle, Direction = dir })
+		end)
+	end
 end
 
 -- THE SAINT'S MIRACLE: only with the complete corpse (all 8 parts).
@@ -2796,6 +2803,78 @@ local function overlapAtStart(p)
 	return nil
 end
 
+---------------------------------------------------------------------------
+-- Stopped time (The World): a zone where projectiles hang in the air. Other
+-- people's projectiles stop the moment they're inside; the zone owner's own
+-- stop once they've flown OwnFreezeAfter studs. They all fly on when the
+-- zone ends. Clients are told ("ProjectileFreeze" / "ProjectileResume") with
+-- each projectile's flight time so the visuals stop and restart in step.
+---------------------------------------------------------------------------
+ProjectileService.OwnFreezeAfter = 5
+local zones = {} -- [token] = { Center, Radius, Owner }
+
+local function flightOf(p)
+	return p.Traveled / math.max(p.Speed, 1e-3)
+end
+
+local function inZone(p)
+	for token, z in pairs(zones) do
+		if (p.Position - z.Center).Magnitude <= z.Radius and (p.Owner ~= z.Owner or p.Traveled >= ProjectileService.OwnFreezeAfter) then
+			return token
+		end
+	end
+	return nil
+end
+
+local function freeze(list, token)
+	local ids, flights, spawned = {}, {}, {}
+	for _, p in ipairs(list) do
+		p.FrozenBy = token
+		table.insert(ids, p.Id)
+		table.insert(flights, flightOf(p))
+		table.insert(spawned, p.SpawnedAt)
+	end
+	if #ids > 0 then
+		FX:FireAllClients("ProjectileFreeze", { Ids = ids, Flights = flights, Spawned = spawned })
+	end
+end
+
+function ProjectileService.stopTime(token, center, radius, owner)
+	zones[token] = { Center = center, Radius = radius, Owner = owner }
+	local list = {}
+	for _, p in pairs(active) do
+		if not p.FrozenBy and inZone(p) == token then
+			table.insert(list, p)
+		end
+	end
+	freeze(list, token)
+end
+
+function ProjectileService.resumeTime(token)
+	zones[token] = nil
+	local ids, flights, spawned = {}, {}, {}
+	for _, p in pairs(active) do
+		if p.FrozenBy == token then
+			p.FrozenBy = nil
+			table.insert(ids, p.Id)
+			table.insert(flights, flightOf(p))
+			table.insert(spawned, p.SpawnedAt)
+		end
+	end
+	if #ids > 0 then
+		FX:FireAllClients("ProjectileResume", { Ids = ids, Flights = flights, Spawned = spawned })
+	end
+end
+
+function ProjectileService.isTimeStopped(position)
+	for _, z in pairs(zones) do
+		if (position - z.Center).Magnitude <= z.Radius then
+			return true
+		end
+	end
+	return false
+end
+
 function ProjectileService.activeCount(player)
 	return countByPlayer[player] or 0
 end
@@ -2831,6 +2910,7 @@ function ProjectileService.fire(owner, spec)
 		OnEnd = spec.OnEnd, -- function(position, normal, hitCharacter, projectile): always called once
 		-- (projectile.HitWall is true when it stopped on a wall / the ground)
 		Visual = spec.Visual or {},
+		SpawnedAt = workspace:GetServerTimeNow(),
 	}
 	active[p.Id] = p
 	if owner then
@@ -2845,7 +2925,7 @@ function ProjectileService.fire(owner, spec)
 		Speed = p.Speed,
 		Range = p.Range,
 		OwnerId = owner and owner.UserId or 0,
-		ServerTime = workspace:GetServerTimeNow(),
+		ServerTime = p.SpawnedAt,
 		Visual = p.Visual,
 	})
 
@@ -2858,6 +2938,9 @@ end
 
 RunService.Heartbeat:Connect(function(dt)
 	for _, p in pairs(active) do
+		if p.FrozenBy then
+			continue -- hanging in stopped time
+		end
 		local step = math.min(p.Speed * dt, p.Range - p.Traveled)
 		if step <= 0.01 then
 			finish(p, p.Position, nil, nil)
@@ -2877,6 +2960,12 @@ RunService.Heartbeat:Connect(function(dt)
 			else
 				p.Position = p.Position + p.Direction * step
 				p.Traveled = p.Traveled + step
+				if next(zones) then
+					local token = inZone(p)
+					if token then
+						freeze({ p }, token)
+					end
+				end
 			end
 		end
 	end
@@ -7472,6 +7561,7 @@ local FX = Net.get("TuskFX")
 local TuskService = {}
 TuskService.Hitbox = Hitbox
 TuskService.Adapter = Adapter
+TuskService.Projectiles = Projectiles
 
 local states = {} -- [player] = state
 local rate = {}

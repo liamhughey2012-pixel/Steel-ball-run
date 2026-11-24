@@ -176,7 +176,7 @@ local function stepWords()
 	local now = os.clock()
 	local serverNow = workspace:GetServerTimeNow()
 	for id, v in pairs(words) do
-		local distance = math.min(v.Speed * (serverNow - v.ServerTime), v.Range)
+		local distance = math.min(v.Speed * VFXLib.flight(id, v.ServerTime), v.Range)
 		local pos = v.Origin + v.Direction * math.max(distance, 0)
 		local wobble = math.sin(distance * 0.6) * 0.15
 		-- Skims along edge-on like a blade, tilted slightly.
@@ -185,7 +185,7 @@ local function stepWords()
 			v.NextDust = now + 0.06
 			sandBurst(pos - Vector3.new(0, 1, 0), 3, 6)
 		end
-		if now > v.Expire then
+		if now > v.Expire + VFXLib.held(id, v.ServerTime) then
 			words[id] = nil
 			v.Word.Model:Destroy()
 		end

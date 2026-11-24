@@ -3,12 +3,13 @@
 
 	THE WORLD (Diego Brando from another world), blocky, matched to the art:
 	  * a muscular, shiny golden body
-	  * a tall helmet: a flat crest rising to a point above the head, the
-	    sides framing the face; narrow eyes and full lips
-	  * thick padded cream rolls (segmented) running over both shoulders,
-	    down the chest and round the back
-	  * round clock-like dials on the wrists, a belt of round studs
-	  * a "D" on each shin
+	  * a tall wedge helmet: wide at the brow, tapering up to a flat top, a
+	    sharp ridge down the front, the sides coming down round a small face
+	    like a hood (narrow eyes, full lips)
+	  * big pillow-like padded rolls looping over both shoulders, down the
+	    chest to the hips and round the back
+	  * round clock-like dials on the wrists and hips, a belt of round studs
+	  * boots with a "D" on each shin
 	Registered with TuskStandModels by DiegoAUVFX, so TuskStand floats it
 	behind Diego (players and NPCs) with a golden aura. A custom model at
 	ReplicatedStorage.SpinAssets.TuskAct14 replaces it.
@@ -16,11 +17,11 @@
 
 local TheWorldStand = {}
 
-local GOLD = Color3.fromRGB(238, 196, 64)
-local GOLD_SHADE = Color3.fromRGB(204, 154, 40)
-local GOLD_LIGHT = Color3.fromRGB(255, 232, 140)
-local PAD = Color3.fromRGB(228, 210, 146)
-local PAD_SHADE = Color3.fromRGB(186, 160, 96)
+local GOLD = Color3.fromRGB(244, 204, 48)
+local GOLD_SHADE = Color3.fromRGB(214, 160, 34)
+local GOLD_LIGHT = Color3.fromRGB(255, 230, 120)
+local PAD = Color3.fromRGB(226, 204, 120)
+local PAD_SHADE = Color3.fromRGB(190, 160, 80)
 local LINE = Color3.fromRGB(110, 72, 22)
 local LIP = Color3.fromRGB(196, 120, 56)
 local EYE = Color3.fromRGB(255, 250, 230)
@@ -78,12 +79,17 @@ local function letterD(model, parent, cf, h, s)
 	box(model, parent, "D", Vector3.new(t, h * 0.24, 0.04), LINE, cf * CFrame.new(h * 0.1, -h * 0.36, 0) * CFrame.Angles(0, 0, -0.7))
 end
 
--- A padded roll: a row of cream segments from a to b (torso space).
+-- A padded roll: a row of fat pillow segments from a to b (torso space),
+-- each with a darker seam between it and the next.
 local function roll(model, torso, a, b, thick, s)
-	local count = math.max(2, math.floor((b - a).Magnitude / (0.42 * s)))
+	local length = (b - a).Magnitude
+	local count = math.max(2, math.floor(length / (0.5 * s)))
+	local seg = length / count
 	for i = 0, count - 1 do
 		local p = a:Lerp(b, (i + 0.5) / count)
-		box(model, torso, "Pad", Vector3.new(thick, thick, (b - a).Magnitude / count * 0.86), i % 2 == 0 and PAD or PAD_SHADE, CFrame.lookAt(p, b))
+		local cf = CFrame.lookAt(p, b)
+		box(model, torso, "Pad", Vector3.new(thick, thick, seg * 0.84), i % 2 == 0 and PAD or GOLD_LIGHT, cf)
+		box(model, torso, "PadCore", Vector3.new(thick * 0.82, thick * 0.82, seg * 1.02), PAD_SHADE, cf)
 	end
 end
 
@@ -118,43 +124,62 @@ function TheWorldStand.build(scale)
 		box(model, torso, "Stud", Vector3.new(0.12, 0.26, 0.26) * s, GOLD_LIGHT, CFrame.new(k * 0.34 * s, -1.62 * s, -0.5 * s) * CFrame.Angles(0, math.pi / 2, 0)).Shape = Enum.PartType.Cylinder
 	end
 	box(model, torso, "Hips", Vector3.new(1.7, 0.5, 0.95) * s, GOLD, CFrame.new(0, -1.95 * s, 0))
+	for _, side in ipairs({ -1, 1 }) do
+		dial(model, torso, CFrame.new(side * 0.9 * s, -1.85 * s, 0) * CFrame.Angles(0, side > 0 and 0 or math.pi, 0), s)
+	end
 	box(model, torso, "Neck", Vector3.new(0.55, 0.45, 0.55) * s, GOLD_SHADE, CFrame.new(0, 1.12 * s, 0))
 
-	-- The padded rolls: over each shoulder, down the chest, and round the back.
-	local t = 0.5 * s
+	-- The padded rolls: a fat loop over each shoulder, down the front of the
+	-- chest to the hips, and down the back; joined behind the neck.
+	local t = 0.62 * s
 	for _, side in ipairs({ -1, 1 }) do
-		local neck = Vector3.new(side * 0.45, 1.05, 0) * s
-		local shoulder = Vector3.new(side * 1.2, 1.0, 0) * s
+		local neck = Vector3.new(side * 0.5, 1.15, 0.1) * s
+		local shoulder = Vector3.new(side * 1.25, 1.1, 0) * s
 		roll(model, torso, neck, shoulder, t, s)
-		roll(model, torso, shoulder + Vector3.new(0, 0, -0.35 * s), Vector3.new(side * 0.85, -0.9, -0.62) * s, t, s)
-		roll(model, torso, shoulder + Vector3.new(0, 0, 0.35 * s), Vector3.new(side * 0.85, -0.9, 0.62) * s, t, s)
+		roll(model, torso, shoulder + Vector3.new(0, -0.05, -0.4) * s, Vector3.new(side * 0.95, -0.3, -0.7) * s, t, s)
+		roll(model, torso, Vector3.new(side * 0.95, -0.3, -0.7) * s, Vector3.new(side * 0.75, -1.55, -0.62) * s, t, s)
+		roll(model, torso, shoulder + Vector3.new(0, -0.05, 0.4) * s, Vector3.new(side * 0.8, -1.4, 0.68) * s, t, s)
 	end
+	roll(model, torso, Vector3.new(-0.5, 1.2, 0.45) * s, Vector3.new(0.5, 1.2, 0.45) * s, t, s)
 
-	-- Head: a tall helmet with a flat crest rising to a point; face below.
-	local headBase = CFrame.new(0, 1.25 * s, 0)
-	local headOffset = CFrame.new(0, 0.6 * s, 0)
-	local head, headWeld = box(model, torso, "Head", Vector3.new(0.9, 1.1, 0.95) * s, GOLD, headBase * headOffset)
-	head.Reflectance = 0.15
+	-- Head: a tall wedge helmet, wide at the brow and tapering up to a flat
+	-- top, with a sharp ridge down the front; its sides come down round a
+	-- small face like a hood.
+	local headBase = CFrame.new(0, 1.3 * s, 0)
+	local headOffset = CFrame.new(0, 0.55 * s, 0)
+	local head, headWeld = box(model, torso, "Head", Vector3.new(0.75, 0.9, 0.8) * s, GOLD, headBase * headOffset)
+	head.Reflectance = 0.12
 	rig.Joints.Head = { Weld = headWeld, Base = headBase, Offset = headOffset }
-	local hf = -0.48 * s
-	-- Helmet sides framing the face, and the cap over the brow.
+	local hf = -0.4 * s
+	-- The face: narrow eyes, a nose, full lips, a strong chin.
 	for _, side in ipairs({ -1, 1 }) do
-		box(model, head, "HelmSide", Vector3.new(0.14, 1.15, 0.9) * s, GOLD_SHADE, CFrame.new(side * 0.5 * s, 0.02 * s, 0.05 * s))
+		box(model, head, "Eye", Vector3.new(0.22, 0.07, 0.05) * s, EYE, CFrame.new(side * 0.17 * s, 0.1 * s, hf - 0.02 * s) * CFrame.Angles(0, 0, side * -0.22), Enum.Material.Neon)
+		box(model, head, "Lid", Vector3.new(0.26, 0.06, 0.06) * s, LINE, CFrame.new(side * 0.17 * s, 0.16 * s, hf - 0.03 * s) * CFrame.Angles(0, 0, side * -0.22))
 	end
-	box(model, head, "Brow", Vector3.new(1.05, 0.28, 0.18) * s, GOLD_SHADE, CFrame.new(0, 0.32 * s, hf - 0.04 * s))
-	-- The crest: stacked plates narrowing to a point, slightly swept back.
-	for k = 0, 4 do
-		local w = (0.95 - k * 0.17) * s
-		box(model, head, "Crest", Vector3.new(w, 0.32 * s, 0.7 * s - k * 0.06 * s), k % 2 == 0 and GOLD or GOLD_LIGHT, CFrame.new(0, (0.68 + k * 0.3) * s, (0.04 + k * 0.05) * s))
-	end
-	box(model, head, "CrestLine", Vector3.new(0.06, 1.5, 0.06) * s, LINE, CFrame.new(0, 1.2 * s, hf + 0.06 * s))
-	-- Narrow eyes, a nose ridge, full lips.
+	box(model, head, "Nose", Vector3.new(0.09, 0.26, 0.1) * s, GOLD_SHADE, CFrame.new(0, -0.04 * s, hf - 0.04 * s))
+	box(model, head, "Lips", Vector3.new(0.3, 0.12, 0.08) * s, LIP, CFrame.new(0, -0.27 * s, hf - 0.02 * s))
+	box(model, head, "Chin", Vector3.new(0.42, 0.18, 0.2) * s, GOLD_SHADE, CFrame.new(0, -0.44 * s, hf + 0.08 * s))
+	-- The hood sides, down past the jaw.
 	for _, side in ipairs({ -1, 1 }) do
-		box(model, head, "Eye", Vector3.new(0.26, 0.08, 0.05) * s, EYE, CFrame.new(side * 0.2 * s, 0.14 * s, hf - 0.02 * s) * CFrame.Angles(0, 0, side * -0.18), Enum.Material.Neon)
+		box(model, head, "Hood", Vector3.new(0.18, 1.1, 0.95) * s, GOLD_SHADE, CFrame.new(side * 0.46 * s, -0.05 * s, 0.06 * s) * CFrame.Angles(0, 0, side * 0.08))
 	end
-	box(model, head, "Nose", Vector3.new(0.1, 0.3, 0.1) * s, GOLD_SHADE, CFrame.new(0, -0.04 * s, hf - 0.04 * s))
-	box(model, head, "Lips", Vector3.new(0.36, 0.12, 0.08) * s, LIP, CFrame.new(0, -0.3 * s, hf - 0.02 * s))
-	box(model, head, "Chin", Vector3.new(0.5, 0.2, 0.2) * s, GOLD_SHADE, CFrame.new(0, -0.5 * s, hf + 0.08 * s))
+	box(model, head, "HoodBack", Vector3.new(1.0, 1.2, 0.2) * s, GOLD_SHADE, CFrame.new(0, 0, 0.48 * s))
+	-- The wedge: slabs from a wide brim narrowing to a flat top, leaning back.
+	local layers = 6
+	for k = 0, layers - 1 do
+		local f = k / (layers - 1)
+		local w = (1.25 - f * 0.7) * s
+		local d = (1.1 - f * 0.45) * s
+		box(model, head, "Wedge", Vector3.new(w, 0.3 * s, d), k % 2 == 0 and GOLD or GOLD_LIGHT, CFrame.new(0, (0.5 + k * 0.27) * s, (0.08 + f * 0.25) * s))
+	end
+	box(model, head, "WedgeTop", Vector3.new(0.6, 0.12, 0.7) * s, GOLD_LIGHT, CFrame.new(0, (0.5 + layers * 0.27) * s, 0.36 * s))
+	-- The brim over the eyes and the sharp ridge up the front.
+	box(model, head, "Brim", Vector3.new(1.2, 0.16, 0.3) * s, GOLD_SHADE, CFrame.new(0, 0.36 * s, hf - 0.1 * s))
+	box(model, head, "Ridge", Vector3.new(0.14, 1.5, 0.14) * s, GOLD_LIGHT, CFrame.new(0, 1.17 * s, -0.25 * s) * CFrame.Angles(0.34, 0, 0) * CFrame.Angles(0, math.pi / 4, 0))
+	for _, side in ipairs({ -1, 1 }) do
+		-- Shading on the two slanted faces either side of the ridge.
+		box(model, head, "WedgeShade", Vector3.new(0.05, 1.3, 0.5) * s, GOLD_SHADE, CFrame.new(side * (0.5 - 0.15) * s, 1.1 * s, 0.05 * s) * CFrame.Angles(0.34, 0, side * 0.22))
+	end
 
 	-- Thick arms with dials on the wrists.
 	for _, a in ipairs({ { "ArmL", -1 }, { "ArmR", 1 } }) do

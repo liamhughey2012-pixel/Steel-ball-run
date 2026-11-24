@@ -788,14 +788,12 @@ TuskConfig.DiegoAU = {
 		Count = 3, Spread = 8, -- degrees between knives
 		Speed = 150, Radius = 0.7, Range = 110,
 		Damage = 4, Stun = 0.4, Knockback = 6,
-		HangDistance = 6, -- thrown while time is stopped: they stop this far out and fly when time moves again
 	},
 	Ultimate = { -- THE WORLD: TIME STOP. Everyone else nearby freezes; Diego moves freely
 		Windup = 0.8,
 		Duration = 6, -- seconds time stays stopped
 		BotDuration = 4, -- shorter when an NPC Diego does it
-		Range = 150,
-		ReleaseDamage = 0, -- (extra damage when time moves again; 0 = none)
+		Range = 60, -- radius of the time-stop zone (shown as a dome); anyone inside freezes
 	},
 }
 
@@ -883,7 +881,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "KNIFE RING",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }
