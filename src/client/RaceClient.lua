@@ -14,7 +14,9 @@
 	  * the winner and the results for everyone
 	  * every horse gallops: legs in a four-beat stride that speeds up with
 	    the horse, the neck nods, the tail streams out, the body bobs; riders
-	    sit astride with their hands on the reins
+	    (and NPC jockeys) sit astride, legs round its sides, hands on the reins
+	  * M (controller D-pad left, or the HORSE button on mobile): call your
+	    own horse and ride it anywhere; press again to get off
 ]]
 
 local Players = game:GetService("Players")
@@ -22,6 +24,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")
+local ContextActionService = game:GetService("ContextActionService")
 
 local Shared = ReplicatedStorage:WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
@@ -395,11 +398,24 @@ local function stepUI()
 end
 
 function RaceClient.init()
-	if cfg.Enabled == false then
+	local horses = TuskConfig.Horses or {}
+	if cfg.Enabled == false and horses.Enabled == false then
 		return
 	end
 	Remote = Net.get("Race")
 	buildUI()
+	-- M: call your horse / get off it.
+	if horses.Enabled ~= false then
+		local keys = TuskConfig.Keys and TuskConfig.Keys.Horse
+		ContextActionService:BindAction("SpinHorse", function(_, state)
+			if state == Enum.UserInputState.Begin then
+				Remote:FireServer("Horse")
+			end
+			return Enum.ContextActionResult.Sink
+		end, true, keys and keys.Keyboard or Enum.KeyCode.M, keys and keys.Gamepad or Enum.KeyCode.DPadLeft)
+		ContextActionService:SetTitle("SpinHorse", "HORSE")
+		ContextActionService:SetPosition("SpinHorse", UDim2.new(1, -170, 1, -165))
+	end
 	Remote.OnClientEvent:Connect(function(kind, data)
 		data = typeof(data) == "table" and data or {}
 		if kind == "EntryOpen" then
@@ -436,9 +452,15 @@ function RaceClient.init()
 				nextGate = totalGates + 1
 				clearGuide()
 				showBanner("YOU FINISHED " .. ordinal(data.Place or 0) .. "!  +$" .. tostring(data.Prize or 0) .. (data.Part and ("  +  " .. data.Part) or ""), GOLD, 4)
-			elseif data.Place == 1 then
+			elseif data.Place == 1 and entered then
+				showBanner(string.upper(data.Name or "SOMEONE") .. " WINS THE STEEL BALL RUN!", GOLD, 3.5)
+			elseif data.Place == 1 and not data.Jockey then
 				showBanner(string.upper(data.Name or "SOMEONE") .. " WINS THE STEEL BALL RUN!", GOLD, 3.5)
 			end
+		elseif kind == "Horse" then
+			showBanner(data.Riding and "YOUR HORSE  (M TO GET OFF)" or "SENT YOUR HORSE AWAY", PAPER, 1.6)
+		elseif kind == "Denied" then
+			showBanner(string.upper(data.Reason or "CAN'T DO THAT"), Color3.fromRGB(255, 150, 130), 1.6)
 		elseif kind == "Results" then
 			setEntered(false)
 			clearGuide()

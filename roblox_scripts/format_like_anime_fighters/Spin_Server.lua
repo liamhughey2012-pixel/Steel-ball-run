@@ -202,6 +202,8 @@ __modules["BountyService"] = function()
 	  * SHOP tab: spend Cash on bandages, a speed tonic, a lucky horseshoe
 	    (faster ultimate), a corpse compass, or CLEAR YOUR NAME (wipes your
 	    streak and any price on your head)
+	  * STABLE (in the SHOP): buy and pick your horse's coat and saddle
+	    blanket (you ride it with M and race on it)
 	  * PUT A PRICE ON THEIR HEAD: from a player's contract, pay to raise
 	    their bounty. Whoever takes them down next is paid it
 	Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
@@ -675,6 +677,70 @@ local function buy(player, id)
 end
 
 ---------------------------------------------------------------------------
+-- STABLE (in the SHOP): horse coats and saddle blankets. Bought ones are
+-- yours for the session; the equipped ones are what you ride (M) and race.
+---------------------------------------------------------------------------
+local hcfg = TuskConfig.Horses or {}
+
+local function owned(player)
+	local set = {}
+	for id in string.gmatch(player:GetAttribute("HorseOwned") or "", "[^,]+") do
+		set[id] = true
+	end
+	return set
+end
+
+local function stableFor(player)
+	local have = owned(player)
+	local coat = player:GetAttribute("HorseCoat") or ((hcfg.Coats or {})[1] or {}).Id
+	local blanket = player:GetAttribute("HorseBlanket") or ((hcfg.Blankets or {})[1] or {}).Id
+	local coats, blankets = {}, {}
+	for _, c in ipairs(hcfg.Coats or {}) do
+		table.insert(coats, { Id = c.Id, Name = c.Name, Price = c.Price, Body = c.Body, Mane = c.Mane, Material = c.Material, Socks = c.Socks, Owned = c.Price <= 0 or have["Coat:" .. c.Id] == true, Equipped = c.Id == coat })
+	end
+	for _, b in ipairs(hcfg.Blankets or {}) do
+		table.insert(blankets, { Id = b.Id, Name = b.Name, Price = b.Price, Color = b.Color, Owned = b.Price <= 0 or have["Blanket:" .. b.Id] == true, Equipped = b.Id == blanket })
+	end
+	return { Coats = coats, Blankets = blankets }
+end
+
+local function stableItem(key)
+	local kind, id = string.match(tostring(key), "^(%a+):(%w+)$")
+	local list = kind == "Coat" and hcfg.Coats or (kind == "Blanket" and hcfg.Blankets or nil)
+	for _, item in ipairs(list or {}) do
+		if item.Id == id then
+			return kind, item
+		end
+	end
+	return nil
+end
+
+local function buyHorse(player, key)
+	local kind, item = stableItem(key)
+	if not item then
+		return
+	end
+	local have = owned(player)
+	if item.Price > 0 and not have[kind .. ":" .. item.Id] then
+		if not spend(player, item.Price) then
+			send(player, "Denied", { Reason = "Not enough Cash ($" .. item.Price .. ")." })
+			return
+		end
+		local list = player:GetAttribute("HorseOwned")
+		player:SetAttribute("HorseOwned", (list and list ~= "" and (list .. ",") or "") .. kind .. ":" .. item.Id)
+		send(player, "Bought", { Name = item.Name .. (kind == "Coat" and " HORSE" or " BLANKET"), Price = item.Price })
+	end
+	player:SetAttribute(kind == "Coat" and "HorseCoat" or "HorseBlanket", item.Id)
+	-- Riding your horse right now? It changes straight away.
+	local ok, Race = pcall(function()
+		return __require("RaceService")
+	end)
+	if ok and Race and Race.refreshHorse then
+		Race.refreshHorse(player)
+	end
+end
+
+---------------------------------------------------------------------------
 -- PUT A PRICE ON THEIR HEAD
 ---------------------------------------------------------------------------
 local function place(player, key)
@@ -871,6 +937,7 @@ function BountyService.init()
 			Jobs = jobsFor(player),
 			JobsUntil = jobsUntil,
 			Shop = shopFor(player),
+			Stable = stableFor(player),
 			PlaceAmount = cfg.PlaceAmount or 100,
 		}
 	end
@@ -919,6 +986,9 @@ function BountyService.init()
 			send(player, "Refresh", boardData(player))
 		elseif action == "Place" then
 			place(player, key)
+			send(player, "Refresh", boardData(player))
+		elseif action == "BuyHorse" then
+			buyHorse(player, key)
 			send(player, "Refresh", boardData(player))
 		end
 	end)
@@ -2581,7 +2651,7 @@ end
 -- ======================================================================
 __modules["HorseModel"] = function()
 --[[
-	HorseModel  (ServerScriptService.SpinServer.HorseModel)
+	HorseModel  (ReplicatedStorage.SpinShared.HorseModel)
 
 	A blocky racehorse for the Steel Ball Run, built from parts (no uploads):
 	a long body, an arched neck with a mane, a head with a white blaze, ears
@@ -2589,8 +2659,14 @@ __modules["HorseModel"] = function()
 	hooves, and full tack: a red saddle blanket, a brown saddle with a horn,
 	stirrups and reins.
 
-	HorseModel.build(coat, mane) -> model (PrimaryPart "Body", facing -Z,
-	body centre at the origin, hooves 3.85 studs below it). Every limb is
+	HorseModel.build(coat, mane, opts) -> model (PrimaryPart "Body", facing
+	-Z, body centre at the origin, hooves 3.85 studs below it, the top of
+	the saddle SaddleTop above it). opts (all optional):
+	  Width     body width (default 1.9: slim, so a rider's legs go round it)
+	  Blanket   saddle blanket colour      Saddle  saddle / tack colour
+	  Material  coat material (e.g. Metal for the Golden Steed)
+	  Socks     sock colour (false: no socks)
+	The server builds race and ride horses; the shop builds a preview. Every limb is
 	joined to the body with a Weld; clients animate the gallop by changing
 	those welds' C0 (RaceClient). Each animated part carries attributes:
 	  Joint (Vector3, where it pivots on the body) and Drop (studs from the
@@ -2599,6 +2675,7 @@ __modules["HorseModel"] = function()
 
 local HorseModel = {}
 HorseModel.HoofDepth = 3.85 -- studs from the body centre down to the ground
+HorseModel.SaddleTop = 1.37 -- studs from the body centre up to the top of the saddle
 
 local function part(model, name, size, color, material)
 	local p = Instance.new("Part")
@@ -2639,25 +2716,36 @@ local function jointed(model, body, name, size, color, joint, drop, angle)
 	return p, w
 end
 
-function HorseModel.build(coat, mane)
+function HorseModel.build(coat, mane, opts)
+	opts = opts or {}
 	coat = coat or Color3.fromRGB(120, 76, 44)
 	mane = mane or Color3.fromRGB(40, 26, 18)
+	local W = opts.Width or 1.9
+	local k = W / 2.2 -- how much narrower than the old 2.2-wide body
 	local shade = coat:Lerp(Color3.new(0, 0, 0), 0.2)
-	local white = Color3.fromRGB(240, 238, 232)
+	local white = opts.Socks == false and coat or (opts.Socks or Color3.fromRGB(240, 238, 232))
 	local hoof = Color3.fromRGB(46, 40, 36)
-	local leather = Color3.fromRGB(96, 58, 32)
-	local blanket = Color3.fromRGB(170, 40, 40)
+	local leather = opts.Saddle or Color3.fromRGB(96, 58, 32)
+	local blanket = opts.Blanket or Color3.fromRGB(170, 40, 40)
 	local metal = Color3.fromRGB(180, 182, 188)
+	local coatMaterial = opts.Material
 
 	local model = Instance.new("Model")
 	model.Name = "Horse"
-	local body = part(model, "Body", Vector3.new(2.2, 2.0, 5.0), coat)
+	local body = part(model, "Body", Vector3.new(W, 2.0, 5.0), coat, coatMaterial)
 	body.CFrame = CFrame.new()
 	model.PrimaryPart = body
 	-- Rounded barrel: chest and rump blocks, a belly.
-	weld(model, body, "Chest", Vector3.new(2.3, 2.1, 1.2), coat, CFrame.new(0, 0.05, -2.3))
-	weld(model, body, "Rump", Vector3.new(2.3, 2.1, 1.3), coat, CFrame.new(0, 0.12, 2.2))
-	weld(model, body, "Belly", Vector3.new(1.9, 0.4, 3.8), shade, CFrame.new(0, -1.05, 0))
+	weld(model, body, "Chest", Vector3.new(W + 0.1, 2.1, 1.2), coat, CFrame.new(0, 0.05, -2.3))
+	weld(model, body, "Rump", Vector3.new(W + 0.1, 2.1, 1.3), coat, CFrame.new(0, 0.12, 2.2))
+	weld(model, body, "Belly", Vector3.new(W - 0.3, 0.4, 3.8), shade, CFrame.new(0, -1.05, 0))
+	if coatMaterial then
+		for _, p in ipairs(model:GetChildren()) do
+			if p:IsA("BasePart") and p ~= body then
+				p.Material = coatMaterial
+			end
+		end
+	end
 
 	-- Neck (arched forward), mane along its top, head with a blaze and muzzle.
 	local neck = jointed(model, body, "Neck", Vector3.new(1.1, 2.6, 1.3), coat, Vector3.new(0, 0.6, -2.6), -1.1, -0.55)
@@ -2681,29 +2769,32 @@ function HorseModel.build(coat, mane)
 
 	-- Legs: thigh-to-hoof, white socks on two of them, dark hooves.
 	local legs = {
-		{ "LegFL", Vector3.new(-0.6, -0.75, -1.9), true },
-		{ "LegFR", Vector3.new(0.6, -0.75, -1.9), false },
-		{ "LegBL", Vector3.new(-0.6, -0.75, 1.9), false },
-		{ "LegBR", Vector3.new(0.6, -0.75, 1.9), true },
+		{ "LegFL", Vector3.new(-0.6 * k, -0.75, -1.9), true },
+		{ "LegFR", Vector3.new(0.6 * k, -0.75, -1.9), false },
+		{ "LegBL", Vector3.new(-0.6 * k, -0.75, 1.9), false },
+		{ "LegBR", Vector3.new(0.6 * k, -0.75, 1.9), true },
 	}
 	for _, l in ipairs(legs) do
 		local leg = jointed(model, body, l[1], Vector3.new(0.55, 2.8, 0.6), coat, l[2], 1.4, 0)
 		weld(model, leg, "Thigh", Vector3.new(0.7, 1.0, 0.75), coat, CFrame.new(0, 0.85, 0))
-		if l[3] then
+		if l[3] and opts.Socks ~= false then
 			weld(model, leg, "Sock", Vector3.new(0.6, 0.7, 0.65), white, CFrame.new(0, -0.95, 0))
 		end
 		weld(model, leg, "Hoof", Vector3.new(0.62, 0.32, 0.7), hoof, CFrame.new(0, -1.5, -0.04))
 	end
 
 	-- Tack: blanket, saddle with a horn, stirrups, reins.
-	weld(model, body, "Blanket", Vector3.new(2.4, 0.14, 2.3), blanket, CFrame.new(0, 1.04, -0.1))
-	weld(model, body, "BlanketEdge", Vector3.new(2.5, 0.6, 0.1), blanket:Lerp(Color3.new(1, 1, 1), 0.2), CFrame.new(0, 0.8, -1.25))
-	weld(model, body, "Saddle", Vector3.new(1.7, 0.3, 1.7), leather, CFrame.new(0, 1.22, -0.1))
+	weld(model, body, "Blanket", Vector3.new(W + 0.2, 0.14, 2.3), blanket, CFrame.new(0, 1.04, -0.1))
+	weld(model, body, "BlanketEdge", Vector3.new(W + 0.3, 0.6, 0.1), blanket:Lerp(Color3.new(1, 1, 1), 0.2), CFrame.new(0, 0.8, -1.25))
+	for _, side in ipairs({ -1, 1 }) do
+		weld(model, body, "BlanketSide", Vector3.new(0.1, 0.8, 2.2), blanket, CFrame.new(side * (W / 2 + 0.06), 0.6, -0.1))
+	end
+	weld(model, body, "Saddle", Vector3.new(W - 0.4, 0.3, 1.7), leather, CFrame.new(0, 1.22, -0.1))
 	weld(model, body, "Cantle", Vector3.new(1.4, 0.35, 0.25), leather, CFrame.new(0, 1.45, 0.65))
 	weld(model, body, "Horn", Vector3.new(0.25, 0.45, 0.25), leather, CFrame.new(0, 1.55, -0.8))
 	for _, side in ipairs({ -1, 1 }) do
-		weld(model, body, "Strap", Vector3.new(0.05, 1.3, 0.12), leather, CFrame.new(side * 1.12, 0.55, -0.1))
-		weld(model, body, "Stirrup", Vector3.new(0.12, 0.12, 0.5), metal, CFrame.new(side * 1.15, -0.15, -0.1), Enum.Material.Metal)
+		weld(model, body, "Strap", Vector3.new(0.05, 1.3, 0.12), leather, CFrame.new(side * (W / 2 + 0.13), 0.55, -0.1))
+		weld(model, body, "Stirrup", Vector3.new(0.12, 0.12, 0.5), metal, CFrame.new(side * (W / 2 + 0.16), -0.15, -0.1), Enum.Material.Metal)
 		weld(model, body, "Rein", Vector3.new(0.05, 0.05, 3.4), leather, CFrame.new(side * 0.45, 2.0, -2.4) * CFrame.Angles(0.33, 0, 0))
 	end
 	return model
@@ -3551,38 +3642,46 @@ __modules["RaceService"] = function()
 --[[
 	RaceService  (ServerScriptService.SpinServer.RaceService)
 
-	THE STEEL BALL RUN: a horse race round the map, every 10 minutes.
+	THE STEEL BALL RUN: a horse race round the map, every 10 minutes, and
+	your own horse (M) to ride anywhere the rest of the time.
 	  * ENTRY: every Race.Every seconds entry opens for EntryTime seconds.
-	    Everyone gets a banner with a JOIN button (or walk up to the start
-	    gate and press E). The course gates go up round the map.
-	  * START: everyone who entered is put on a horse on the start line
-	    (a random coat), held there for the countdown: 3, 2, 1, GO!
-	  * THE RACE: ride through the numbered gates in order to the FINISH.
-	    Horses are fast (Race.HorseSpeed); everything else works as normal,
-	    so you can fight, dash, block and use your Stand while you ride.
-	    Going down puts you out of the race.
-	  * PRIZES: Cash for the top 3 (and a little for every finisher), and a
-	    Saint's Corpse part appears at the finish for the winner (if one is
-	    lying out in the desert). It ends when everyone's finished, FinishGrace
-	    seconds after the winner, or at TimeLimit.
-	Clients draw the HUD, the next-gate beacon and the gallop (RaceClient).
-	ReplicatedStorage attributes for the clients:
-	  SpinRacePhase ("Entry" | "Countdown" | "Racing" | nil), SpinRaceNext
-	  (when entry next opens), SpinRaceEntryEnds, SpinRaceGoAt, SpinRaceStart
-	Remote: Net "Race" (client: "Join" / "Leave"; server: events below).
-	Numbers: TuskConfig.Race.
+	    Everyone gets a banner with a JOIN button (or press E at the
+	    starting grid). The numbered gates go up round the course.
+	  * START: riders line up 4 abreast inside the map's fenced race track,
+	    behind its START arch, on their own horse (coat and blanket from the
+	    STABLE) with its hooves on the ground, held for the countdown.
+	    NPC JOCKEYS (Race.NPCRacers) line up with them.
+	  * THE RACE: down the track, out past its end, round the open desert
+	    to the east and back to the FINISH by the spawn, through the gates in
+	    order. You can fight, dash, block and use your Stand on horseback.
+	    Going down puts you out. Jockeys find their way with pathfinding (and
+	    hop free if they get stuck).
+	  * PRIZES: Cash for the top 3 players (and a little for every
+	    finisher); a Saint's Corpse part appears at the finish for a winning
+	    player. Finishers keep their horse to ride on.
+	  * YOUR HORSE (M): call it, ride it anywhere, press M again to get off
+	    (not during a race you're in; the race gives you yours).
+	The rider sits exactly on the saddle: their HipHeight is set so the
+	hooves touch the ground with the saddle under their hips (no more being
+	inside the horse or floating).
+	Clients: RaceClient (HUD, beacon, gallop, M key). ReplicatedStorage
+	attributes: SpinRacePhase, SpinRaceNext, SpinRaceEntryEnds, SpinRaceGoAt,
+	SpinRaceStart. Remote: Net "Race" (client: "Join" / "Leave" / "Horse").
+	Numbers: TuskConfig.Race and TuskConfig.Horses.
 ]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
+local PlayersService = Players
 
 local Shared = nil -- (bundled: modules are inlined)
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
 local Net = __require("Net")
 local Adapter = __require("CombatAdapter")
 local HorseModel = __require("HorseModel")
+local PathfindingService = game:GetService("PathfindingService")
 
 local RaceService = {}
 local cfg = TuskConfig.Race or {}
@@ -3623,6 +3722,11 @@ local function groundAt(position)
 	end
 	for _, m in ipairs(CollectionService:GetTagged("SpinFighter")) do
 		table.insert(ignore, m)
+	end
+	for _, r in pairs(racers) do
+		if r.Model then
+			table.insert(ignore, r.Model)
+		end
 	end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -3732,6 +3836,7 @@ local function buildGate(parent, position, facing, text, kind)
 	return gate, ground
 end
 
+-- The course gates (the start is the map's own fenced track and arch).
 local function buildCourse()
 	if courseFolder then
 		courseFolder:Destroy()
@@ -3740,74 +3845,128 @@ local function buildCourse()
 	courseFolder.Name = "SteelBallRunCourse"
 	courseFolder.Parent = workspace
 	local o = origin()
-	local start = groundAt(o + (cfg.Start or Vector3.new(25, 0, 112)))
+	local start = groundAt(o + (cfg.Start or Vector3.new(0, 0, 118)))
+	local facing = cfg.StartFacing or Vector3.new(0, 0, -1)
+	facing = Vector3.new(facing.X, 0, facing.Z).Unit
 	local gates = {}
 	local points = { start }
 	for _, offset in ipairs(cfg.Checkpoints or {}) do
 		table.insert(points, groundAt(o + offset))
 	end
 	for i = 2, #points do
-		local from, to = points[i - 1], points[i]
-		local facing = (to - from)
 		local isFinish = i == #points
-		local _, ground = buildGate(courseFolder, to, facing, isFinish and "FINISH" or tostring(i - 1), isFinish and "Finish" or "Gate")
+		local _, ground = buildGate(courseFolder, points[i], points[i] - points[i - 1], isFinish and "FINISH" or tostring(i - 1), isFinish and "Finish" or "Gate")
 		table.insert(gates, ground)
 	end
-	-- The start gate: STEEL BALL RUN, with the entry prompt on a post.
-	local startFacing = (points[2] or (start + Vector3.new(0, 0, -1))) - start
-	local startGate = buildGate(courseFolder, start, startFacing, "STEEL BALL RUN", "Start")
-	startGate.Name = "StartGate"
-	local post = startGate:FindFirstChild("Post")
+	-- The starting grid: a painted line across the track, and the entry
+	-- prompt on an invisible marker in the middle of it (nothing to bump into).
+	local right = facing:Cross(Vector3.new(0, 1, 0)).Unit
+	local lineCf = CFrame.lookAt(start, start + facing)
+	block(courseFolder, "StartLine", Vector3.new(24, 0.2, 0.8), lineCf * CFrame.new(0, 0.1, 0), CREAM, Enum.Material.SmoothPlastic)
+	local marker = block(courseFolder, "EntryMarker", Vector3.new(4, 4, 4), lineCf * CFrame.new(0, 3, 8), CREAM)
+	marker.Transparency = 1
 	startPrompt = Instance.new("ProximityPrompt")
 	startPrompt.ActionText = "Enter the Race"
 	startPrompt.ObjectText = "STEEL BALL RUN"
 	startPrompt.HoldDuration = 0
-	startPrompt.MaxActivationDistance = 14
+	startPrompt.MaxActivationDistance = 16
 	startPrompt.RequiresLineOfSight = false
 	startPrompt.Enabled = phase == "Entry"
-	startPrompt.Parent = post
+	startPrompt.Parent = marker
 	startPrompt.Triggered:Connect(function(player)
 		RaceService.join(player)
 	end)
-	course = { Start = start, StartFacing = Vector3.new(startFacing.X, 0, startFacing.Z).Unit, Gates = gates }
+	course = { Start = start, StartFacing = facing, Right = right, Gates = gates }
 	return course
 end
 
 ---------------------------------------------------------------------------
--- Horses
+-- Horses (players' own, race horses, jockeys')
 ---------------------------------------------------------------------------
-local function mount(player)
-	local character = player.Character
+local hcfg = TuskConfig.Horses or {}
+
+local function catalogue(list, id)
+	for _, item in ipairs(list or {}) do
+		if item.Id == id then
+			return item
+		end
+	end
+	return (list or {})[1]
+end
+
+-- The horse a player set up in the stable.
+local function lookFor(player)
+	local coat = catalogue(hcfg.Coats, player and player:GetAttribute("HorseCoat"))
+	local blanket = catalogue(hcfg.Blankets, player and player:GetAttribute("HorseBlanket"))
+	local look = { Width = 1.9 }
+	if coat then
+		look.Body, look.Mane = coat.Body, coat.Mane
+		look.Socks = coat.Socks
+		look.Material = coat.Material and Enum.Material[coat.Material] or nil
+	end
+	if blanket then
+		look.Blanket = blanket.Color
+	end
+	return look
+end
+
+local function randomLook()
+	local coats = cfg.Coats or {}
+	local c = coats[rng:NextInteger(1, math.max(#coats, 1))] or {}
+	local blankets = hcfg.Blankets or {}
+	local b = blankets[rng:NextInteger(1, math.max(#blankets, 1))]
+	return { Body = c[1], Mane = c[2], Blanket = b and b.Color, Width = 1.9 }
+end
+
+-- Where the rider's seat is (the bottom of their hips), relative to the root.
+local function seatHeight(character, root)
+	local hips = character:FindFirstChild("LowerTorso")
+	if hips then
+		return (root.CFrame:Inverse() * hips.Position).Y - hips.Size.Y / 2
+	end
+	local torso = character:FindFirstChild("Torso")
+	if torso then
+		return (root.CFrame:Inverse() * torso.Position).Y - torso.Size.Y / 2
+	end
+	return -1
+end
+
+local function mount(character, look, speed, kind)
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if not root or not humanoid or humanoid.Health <= 0 or character:FindFirstChild("RaceHorse") then
-		return
+	if not root or not humanoid or humanoid.Health <= 0 then
+		return nil
 	end
-	local coats = cfg.Coats or {}
-	local coat = coats[rng:NextInteger(1, math.max(#coats, 1))] or {}
-	local horse = HorseModel.build(coat[1], coat[2])
+	local old = character:FindFirstChild("RaceHorse")
+	if old then
+		old:Destroy()
+	end
+	look = look or {}
+	local horse = HorseModel.build(look.Body, look.Mane, { Width = look.Width or 1.9, Blanket = look.Blanket, Socks = look.Socks, Material = look.Material })
 	horse.Name = "RaceHorse"
-	local raise = cfg.HipRaise or 2.8
-	character:SetAttribute("RaceHipBase", humanoid.HipHeight)
-	humanoid.HipHeight = humanoid.HipHeight + raise
-	-- Hooves on the ground under the raised rider.
-	local groundBelowRoot = humanoid.HipHeight + root.Size.Y / 2
+	if character:GetAttribute("RaceHipBase") == nil then
+		character:SetAttribute("RaceHipBase", humanoid.HipHeight)
+	end
+	-- The saddle goes right under the rider's hips, and the rider stands
+	-- (HipHeight) so the horse's hooves touch the ground.
+	local bodyY = seatHeight(character, root) - HorseModel.SaddleTop + 0.05
+	humanoid.HipHeight = math.max(0, HorseModel.HoofDepth - bodyY - root.Size.Y / 2)
 	local body = horse.PrimaryPart
 	local w = Instance.new("Weld")
 	w.Name = "HorseWeld"
 	w.Part0 = root
 	w.Part1 = body
-	w.C0 = CFrame.new(0, HorseModel.HoofDepth - groundBelowRoot, -0.4)
+	w.C0 = CFrame.new(0, bodyY, -0.4)
 	w.Parent = body
 	body.CFrame = root.CFrame * w.C0
 	horse.Parent = character
 	CollectionService:AddTag(horse, "SpinHorse")
-	Adapter.setMoveModifier(humanoid, "Horse", cfg.HorseSpeed or 3.2)
-	character:SetAttribute("Riding", true)
+	Adapter.setMoveModifier(humanoid, "Horse", speed or 3)
+	character:SetAttribute("Riding", kind or "Ride")
+	return horse
 end
 
-local function dismount(player)
-	local character = player and player.Character
+local function dismount(character)
 	if not character then
 		return
 	end
@@ -3823,18 +3982,84 @@ local function dismount(player)
 		end
 		Adapter.setMoveModifier(humanoid, "Horse", nil)
 	end
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if root and character:GetAttribute("RaceAnchored") then
+		root.Anchored = false
+	end
+	character:SetAttribute("RaceAnchored", nil)
 	character:SetAttribute("RaceHipBase", nil)
 	character:SetAttribute("Riding", nil)
 end
 RaceService.dismount = dismount
 
+-- Put a (mounted) character standing on the ground at `position`, facing `facing`.
+local function standAt(character, position, facing)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not humanoid or not root then
+		return
+	end
+	local ground = groundAt(position)
+	local at = ground + Vector3.new(0, humanoid.HipHeight + root.Size.Y / 2 + 0.05, 0)
+	character:PivotTo(CFrame.lookAt(at, at + facing))
+end
+
+-- M: call your horse / send it away.
+function RaceService.toggleHorse(player)
+	if hcfg.Enabled == false then
+		return
+	end
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.Health <= 0 then
+		return
+	end
+	local r = racers[player]
+	if r and not r.Finished and (phase == "Countdown" or phase == "Racing") then
+		send(player, "Denied", { Reason = "You're racing!" })
+		return
+	end
+	local t = now()
+	if (player:GetAttribute("HorseReadyAt") or 0) > t then
+		return
+	end
+	player:SetAttribute("HorseReadyAt", t + (hcfg.Cooldown or 2))
+	if character:FindFirstChild("RaceHorse") then
+		dismount(character)
+		send(player, "Horse", { Riding = false })
+	else
+		if not Adapter.canAct(player) then
+			return
+		end
+		mount(character, lookFor(player), hcfg.RideSpeed or 2.8, "Ride")
+		send(player, "Horse", { Riding = true })
+	end
+end
+
+-- The stable changed: re-saddle anyone riding their own horse.
+function RaceService.refreshHorse(player)
+	local character = player.Character
+	if character and character:FindFirstChild("RaceHorse") then
+		local kind = character:GetAttribute("Riding")
+		mount(character, lookFor(player), kind == "Race" and (cfg.HorseSpeed or 3.2) or (hcfg.RideSpeed or 2.8), kind)
+	end
+end
+
 ---------------------------------------------------------------------------
--- Entry, start, race, results
+-- Racers: players and NPC jockeys. racers[key] = r, where key is the Player
+-- (or the jockey's record) and r = { Player?, Jockey?, Name, UserId, Next,
+-- Finished, Place, Time }.
 ---------------------------------------------------------------------------
-local function racerCount()
+local function charOf(r)
+	return r.Player and r.Player.Character or r.Model
+end
+
+local function racerCount(playersOnly)
 	local n = 0
-	for _ in pairs(racers) do
-		n = n + 1
+	for _, r in pairs(racers) do
+		if not playersOnly or r.Player then
+			n = n + 1
+		end
 	end
 	return n
 end
@@ -3848,32 +4073,161 @@ function RaceService.join(player)
 	if not humanoid or humanoid.Health <= 0 then
 		return
 	end
-	racers[player] = { Next = 1 }
+	racers[player] = { Player = player, Name = player.DisplayName, UserId = player.UserId, Next = 1 }
 	player:SetAttribute("RaceEntered", true)
 	send(player, "Joined", { Ends = entryEnds })
-	broadcast("Entrants", { Count = racerCount() })
+	broadcast("Entrants", { Count = racerCount(true) })
 end
 
-local function out(player, reason)
+local function out(key, reason)
+	local r = racers[key]
+	if not r then
+		return
+	end
+	racers[key] = nil
+	if r.Player then
+		r.Player:SetAttribute("RaceEntered", nil)
+		dismount(r.Player.Character)
+		send(r.Player, "Out", { Reason = reason })
+		broadcast("Entrants", { Count = racerCount(true) })
+	elseif r.Model then
+		local model = r.Model
+		task.delay(3, function()
+			model:Destroy()
+		end)
+	end
+end
+
+function RaceService.leave(player)
 	local r = racers[player]
 	if not r then
 		return
 	end
-	racers[player] = nil
-	player:SetAttribute("RaceEntered", nil)
-	dismount(player)
-	send(player, "Out", { Reason = reason })
-	broadcast("Entrants", { Count = racerCount() })
-end
-
-function RaceService.leave(player)
 	if phase == "Entry" then
 		out(player, "You left the race.")
-	elseif racers[player] and not racers[player].Finished then
+	elseif not r.Finished then
 		out(player, "You pulled out of the race.")
 	end
 end
 
+---------------------------------------------------------------------------
+-- NPC jockeys
+---------------------------------------------------------------------------
+local JOCKEY_SILKS = {
+	Color3.fromRGB(200, 50, 50), Color3.fromRGB(50, 90, 200), Color3.fromRGB(240, 200, 60),
+	Color3.fromRGB(60, 160, 90), Color3.fromRGB(150, 70, 170), Color3.fromRGB(240, 140, 50),
+}
+
+local function spawnJockey(index)
+	local names = cfg.NPCNames or { "Jockey" }
+	local name = names[((index - 1) % #names) + 1]
+	local desc = Instance.new("HumanoidDescription")
+	local silk = JOCKEY_SILKS[((index - 1) % #JOCKEY_SILKS) + 1]
+	desc.HeadColor = Color3.fromRGB(226, 186, 150)
+	desc.LeftArmColor = silk
+	desc.RightArmColor = silk
+	desc.TorsoColor = silk
+	desc.LeftLegColor = Color3.fromRGB(235, 230, 220)
+	desc.RightLegColor = Color3.fromRGB(235, 230, 220)
+	local ok, model = pcall(function()
+		return PlayersService:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not model then
+		return nil
+	end
+	model.Name = "Jockey: " .. name
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	humanoid.DisplayName = "Jockey: " .. name
+	humanoid.MaxHealth = cfg.NPCHealth or 120
+	humanoid.Health = humanoid.MaxHealth
+	model:SetAttribute("RaceJockey", true)
+	model.Parent = workspace
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if root and root.SetNetworkOwner then
+		pcall(function()
+			root:SetNetworkOwner(nil)
+		end)
+	end
+	local skill = cfg.NPCSkill or { 0.8, 0.95 }
+	local r = { Jockey = true, Model = model, Name = "Jockey: " .. name, UserId = -500 - index, Next = 1, Skill = skill[1] + rng:NextNumber() * (skill[2] - skill[1]) }
+	humanoid.Died:Connect(function()
+		for key, rr in pairs(racers) do
+			if rr == r then
+				out(key, "down")
+			end
+		end
+	end)
+	return r
+end
+
+-- A jockey rides the course: pathfinding to each gate, hopping free if stuck.
+local function runJockey(key, r)
+	local model = r.Model
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if not humanoid or not root then
+		return
+	end
+	local path
+	pcall(function()
+		path = PathfindingService:CreatePath({ AgentRadius = 3, AgentHeight = 9, AgentCanJump = true, WaypointSpacing = 10 })
+	end)
+	local waypoints, wi, forGate
+	local lastPos, lastProgress = root.Position, now()
+	local function step()
+		if phase ~= "Racing" or racers[key] ~= r or r.Finished or humanoid.Health <= 0 or not model.Parent then
+			return
+		end
+		local gate = course.Gates[r.Next]
+		if not gate then
+			return
+		end
+		if forGate ~= r.Next then
+			forGate = r.Next
+			waypoints, wi = nil, 1
+			if path then
+				local ok = pcall(function()
+					path:ComputeAsync(root.Position, gate)
+				end)
+				if ok and path.Status == Enum.PathStatus.Success then
+					waypoints, wi = path:GetWaypoints(), 2
+				end
+			end
+		end
+		local target = gate
+		if waypoints and waypoints[wi] then
+			target = waypoints[wi].Position
+			local flat = Vector3.new(target.X - root.Position.X, 0, target.Z - root.Position.Z)
+			if flat.Magnitude < 7 then
+				if waypoints[wi].Action == Enum.PathWaypointAction.Jump then
+					humanoid.Jump = true
+				end
+				wi = wi + 1
+				target = waypoints[wi] and waypoints[wi].Position or gate
+			end
+		end
+		humanoid:MoveTo(target)
+		-- Stuck? Jump; still stuck? Hop free towards the gate.
+		if (root.Position - lastPos).Magnitude > 4 then
+			lastPos, lastProgress = root.Position, now()
+		elseif now() - lastProgress > 2 then
+			humanoid.Jump = true
+			if now() - lastProgress > 5 then
+				local dir = Vector3.new(gate.X - root.Position.X, 0, gate.Z - root.Position.Z)
+				dir = dir.Magnitude > 0.1 and dir.Unit or course.StartFacing
+				standAt(model, root.Position + dir * 12, dir)
+				lastPos, lastProgress = root.Position, now()
+				forGate = nil
+			end
+		end
+		task.delay(0.25, step)
+	end
+	step()
+end
+
+---------------------------------------------------------------------------
+-- Entry, start, race, results
+---------------------------------------------------------------------------
 local function openEntry()
 	phase = "Entry"
 	racers, finishOrder, winnerAt = {}, {}, nil
@@ -3890,9 +4244,30 @@ local function openEntry()
 end
 
 local function cleanup()
-	for player in pairs(racers) do
-		player:SetAttribute("RaceEntered", nil)
-		dismount(player)
+	for key, r in pairs(racers) do
+		if r.Player then
+			r.Player:SetAttribute("RaceEntered", nil)
+			local character = r.Player.Character
+			-- Riders keep their horse (now theirs to ride around).
+			if character and character:FindFirstChild("RaceHorse") then
+				local humanoid = character:FindFirstChildOfClass("Humanoid")
+				local root = character:FindFirstChild("HumanoidRootPart")
+				if root and character:GetAttribute("RaceAnchored") then
+					root.Anchored = false
+					character:SetAttribute("RaceAnchored", nil)
+				end
+				if humanoid then
+					Adapter.setMoveModifier(humanoid, "Horse", hcfg.RideSpeed or 2.8)
+				end
+				character:SetAttribute("Riding", "Ride")
+			end
+		elseif r.Model then
+			local model = r.Model
+			task.delay(2, function()
+				model:Destroy()
+			end)
+		end
+		racers[key] = nil
 	end
 	racers, finishOrder, winnerAt = {}, {}, nil
 	phase = nil
@@ -3911,41 +4286,56 @@ local function startRace()
 		startPrompt.Enabled = false
 	end
 	-- Only riders still alive and in the game.
-	for player in pairs(racers) do
-		local h = player.Parent and player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	for key, r in pairs(racers) do
+		local player = r.Player
+		local h = player and player.Parent and player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 		if not h or h.Health <= 0 then
-			racers[player] = nil
-			player:SetAttribute("RaceEntered", nil)
+			racers[key] = nil
+			if player then
+				player:SetAttribute("RaceEntered", nil)
+			end
 		end
 	end
-	if racerCount() == 0 then
+	if racerCount(true) == 0 then
 		broadcast("Cancelled", { Reason = "Nobody entered the Steel Ball Run this time." })
 		cleanup()
 		return
+	end
+	-- NPC jockeys join the field.
+	for i = 1, cfg.NPCRacers or 0 do
+		local r = spawnJockey(i)
+		if r then
+			racers[r] = r
+		end
 	end
 	phase = "Countdown"
 	setAttr("SpinRacePhase", "Countdown")
 	local goAt = now() + (cfg.Countdown or 4)
 	setAttr("SpinRaceGoAt", goAt)
-	-- Line them up behind the start gate, side by side, and put them on horses.
+	-- Line everyone up inside the track, 4 abreast, on their horses, hooves on the ground.
 	local list = {}
-	for player in pairs(racers) do
-		table.insert(list, player)
+	for key, r in pairs(racers) do
+		table.insert(list, { Key = key, R = r })
 	end
-	local facing = course.StartFacing
-	local right = facing:Cross(Vector3.new(0, 1, 0)).Unit
-	local perRow = 6
-	for i, player in ipairs(list) do
-		local col = (i - 1) % perRow
-		local row = math.floor((i - 1) / perRow)
-		local spot = course.Start - facing * (6 + row * 8) + right * ((col - (math.min(#list, perRow) - 1) / 2) * 5)
-		local character = player.Character
-		local root = character and character:FindFirstChild("HumanoidRootPart")
-		if root then
-			local at = groundAt(spot) + Vector3.new(0, 7, 0)
-			character:PivotTo(CFrame.lookAt(at, at + facing))
-			mount(player)
-			root.Anchored = true
+	table.sort(list, function(a, b)
+		return (a.R.Player and 0 or 1) < (b.R.Player and 0 or 1) -- players at the front
+	end)
+	local facing, right = course.StartFacing, course.Right
+	local cols = cfg.GridColumns or 4
+	for i, e in ipairs(list) do
+		local col = (i - 1) % cols
+		local row = math.floor((i - 1) / cols)
+		local spot = course.Start - facing * (row * (cfg.GridRowGap or 7) + 3) + right * ((col - (cols - 1) / 2) * (cfg.GridSpacing or 4.5))
+		local character = charOf(e.R)
+		if character then
+			local look = e.R.Player and lookFor(e.R.Player) or randomLook()
+			mount(character, look, (cfg.HorseSpeed or 3.2) * (e.R.Skill or 1), "Race")
+			standAt(character, spot, facing)
+			local root = character:FindFirstChild("HumanoidRootPart")
+			if root then
+				root.Anchored = true
+				character:SetAttribute("RaceAnchored", true)
+			end
 		end
 	end
 	broadcast("Countdown", { GoAt = goAt, Riders = #list, Total = #course.Gates })
@@ -3957,10 +4347,15 @@ local function startRace()
 		raceStart = now()
 		setAttr("SpinRacePhase", "Racing")
 		setAttr("SpinRaceStart", raceStart)
-		for player in pairs(racers) do
-			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		for key, r in pairs(racers) do
+			local character = charOf(r)
+			local root = character and character:FindFirstChild("HumanoidRootPart")
 			if root then
 				root.Anchored = false
+				character:SetAttribute("RaceAnchored", nil)
+			end
+			if r.Jockey then
+				task.spawn(runJockey, key, r)
 			end
 		end
 		broadcast("Go", { Total = #course.Gates })
@@ -3969,53 +4364,63 @@ end
 
 local function endRace(reason)
 	local results = {}
-	for _, player in ipairs(finishOrder) do
-		local r = racers[player]
-		table.insert(results, { Name = player.DisplayName, Place = r and r.Place, Time = r and r.Time })
+	for _, r in ipairs(finishOrder) do
+		table.insert(results, { Name = r.Name, Place = r.Place, Time = r.Time, Jockey = r.Jockey })
 	end
 	broadcast("Results", { List = results, Reason = reason })
 	cleanup()
 end
 
-local function finish(player, r)
-	table.insert(finishOrder, player)
+local function finish(r)
+	table.insert(finishOrder, r)
 	r.Finished = true
 	r.Place = #finishOrder
 	r.Time = now() - raceStart
-	local prizes = cfg.Prizes or { 500, 250, 150 }
-	local prize = prizes[r.Place] or cfg.FinishPrize or 50
-	pay(player, prize)
-	local partName
-	if r.Place == 1 then
-		winnerAt = now()
-		-- A Saint's Corpse part appears at the finish for the winner.
-		if cfg.WinnerCorpsePart ~= false then
+	local prize, partName = 0, nil
+	if r.Player then
+		-- Prizes go by place among the players.
+		local playerPlace = 0
+		for _, f in ipairs(finishOrder) do
+			if f.Player then
+				playerPlace = playerPlace + 1
+			end
+		end
+		local prizes = cfg.Prizes or { 500, 250, 150 }
+		prize = prizes[playerPlace] or cfg.FinishPrize or 50
+		pay(r.Player, prize)
+		if r.Place == 1 and cfg.WinnerCorpsePart ~= false then
+			-- A Saint's Corpse part appears at the finish for the winner.
 			local ok, C = pcall(function()
 				return __require("CorpseService")
 			end)
-			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			local root = r.Player.Character and r.Player.Character:FindFirstChild("HumanoidRootPart")
 			if ok and C and C.summon and root then
 				local _, name = C.summon(root.Position + course.StartFacing * 6)
 				partName = name
 			end
 		end
-	end
-	broadcast("Finished", { Name = player.DisplayName, UserId = player.UserId, Place = r.Place, Time = r.Time, Prize = prize, Part = partName })
-	-- Off the horse a moment after crossing the line.
-	task.delay(2.5, function()
-		if racers[player] == r then
-			dismount(player)
+		-- Finished: their horse is theirs to ride around now.
+		local character = r.Player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid and character:FindFirstChild("RaceHorse") then
+			Adapter.setMoveModifier(humanoid, "Horse", hcfg.RideSpeed or 2.8)
+			character:SetAttribute("Riding", "Ride")
 		end
-	end)
+	end
+	if r.Place == 1 then
+		winnerAt = now()
+	end
+	broadcast("Finished", { Name = r.Name, UserId = r.UserId, Place = r.Place, Time = r.Time, Prize = prize, Part = partName, Jockey = r.Jockey })
 end
 
 local function standings()
 	local list = {}
-	for player, r in pairs(racers) do
-		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	for _, r in pairs(racers) do
+		local character = charOf(r)
+		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local gate = course.Gates[r.Next]
 		local dist = (root and gate) and (Vector3.new(gate.X, 0, gate.Z) - Vector3.new(root.Position.X, 0, root.Position.Z)).Magnitude or 1e6
-		table.insert(list, { Player = player, Name = player.DisplayName, UserId = player.UserId, Next = r.Next, Place = r.Place, Dist = dist })
+		table.insert(list, { Name = r.Name, UserId = r.UserId, Next = r.Next, Place = r.Place, Dist = dist, Jockey = r.Jockey })
 	end
 	table.sort(list, function(a, b)
 		if a.Place or b.Place then
@@ -4028,7 +4433,7 @@ local function standings()
 	end)
 	local rows = {}
 	for i, e in ipairs(list) do
-		table.insert(rows, { Name = e.Name, UserId = e.UserId, Position = i, Next = e.Next, Finished = e.Place ~= nil, Dist = math.floor(e.Dist) })
+		table.insert(rows, { Name = e.Name, UserId = e.UserId, Position = i, Next = e.Next, Finished = e.Place ~= nil, Dist = math.floor(e.Dist), Jockey = e.Jockey })
 	end
 	return rows
 end
@@ -4052,20 +4457,23 @@ local function tick()
 		return
 	end
 	local total = #course.Gates
-	local active = 0
-	for player, r in pairs(racers) do
+	local activePlayers = 0
+	for key, r in pairs(racers) do
 		if not r.Finished then
-			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			local character = charOf(r)
+			local root = character and character:FindFirstChild("HumanoidRootPart")
 			local gate = course.Gates[r.Next]
 			if root and gate then
-				active = active + 1
+				if r.Player then
+					activePlayers = activePlayers + 1
+				end
 				local d = (Vector3.new(gate.X, 0, gate.Z) - Vector3.new(root.Position.X, 0, root.Position.Z)).Magnitude
 				if d <= (cfg.PassRadius or 20) and math.abs(root.Position.Y - gate.Y) < 40 then
 					r.Next = r.Next + 1
 					if r.Next > total then
-						finish(player, r)
-					else
-						send(player, "Gate", { Index = r.Next - 1, Total = total })
+						finish(r)
+					elseif r.Player then
+						send(r.Player, "Gate", { Index = r.Next - 1, Total = total })
 					end
 				end
 			end
@@ -4074,11 +4482,14 @@ local function tick()
 	if t - lastStandings >= 0.5 then
 		lastStandings = t
 		local list = standings()
-		for player in pairs(racers) do
-			send(player, "Standings", { List = list, Total = total, Elapsed = t - raceStart })
+		for _, r in pairs(racers) do
+			if r.Player then
+				send(r.Player, "Standings", { List = list, Total = total, Elapsed = t - raceStart })
+			end
 		end
 	end
-	if active == 0 then
+	-- Ends when no player is still racing, FinishGrace after the winner, or at the time limit.
+	if activePlayers == 0 then
 		endRace(#finishOrder > 0 and "Everyone's crossed the line." or "Nobody finished.")
 	elseif winnerAt and t - winnerAt >= (cfg.FinishGrace or 25) then
 		endRace("Time's up for the stragglers.")
@@ -4087,45 +4498,30 @@ local function tick()
 	end
 end
 
-local function watchPlayer(player)
-	player.CharacterAdded:Connect(function()
-		-- A new character means the old one went down (or reset): out of the race.
-		if racers[player] and phase ~= "Entry" then
-			racers[player] = nil
-			player:SetAttribute("RaceEntered", nil)
-			send(player, "Out", { Reason = "You went down: out of the race." })
-		end
-	end)
-end
-
 function RaceService.init()
-	if cfg.Enabled == false then
+	if cfg.Enabled == false and hcfg.Enabled == false then
 		return
 	end
 	Remote = Net.get("Race")
-	local first = RunService:IsStudio() and (cfg.StudioFirstAfter or 20) or (cfg.FirstAfter or 120)
-	nextEntryAt = now() + first
-	setAttr("SpinRaceNext", nextEntryAt)
 	Remote.OnServerEvent:Connect(function(player, action)
 		if action == "Join" then
 			RaceService.join(player)
 		elseif action == "Leave" then
 			RaceService.leave(player)
+		elseif action == "Horse" then
+			RaceService.toggleHorse(player)
 		end
 	end)
-	Players.PlayerAdded:Connect(watchPlayer)
-	for _, p in ipairs(Players:GetPlayers()) do
-		watchPlayer(p)
-	end
 	Players.PlayerRemoving:Connect(function(player)
 		racers[player] = nil
 	end)
-	-- Going down puts you out of the race (the horse goes with the body).
+	-- Going down (or resetting) puts you out of the race; the horse goes with the body.
 	local function watchDeath(player, character)
 		local humanoid = character:WaitForChild("Humanoid", 10)
 		if humanoid then
 			humanoid.Died:Connect(function()
-				if racers[player] and phase ~= "Entry" and not racers[player].Finished then
+				local r = racers[player]
+				if r and phase ~= "Entry" and not r.Finished then
 					out(player, "You went down: out of the race.")
 				end
 			end)
@@ -4143,6 +4539,12 @@ function RaceService.init()
 	for _, p in ipairs(Players:GetPlayers()) do
 		hook(p)
 	end
+	if cfg.Enabled == false then
+		return -- horses only, no races
+	end
+	local first = RunService:IsStudio() and (cfg.StudioFirstAfter or 20) or (cfg.FirstAfter or 120)
+	nextEntryAt = now() + first
+	setAttr("SpinRaceNext", nextEntryAt)
 	local acc = 0
 	RunService.Heartbeat:Connect(function(dt)
 		acc = acc + dt

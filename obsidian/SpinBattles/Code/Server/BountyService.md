@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `BountyService` (capitals matter) |
 
-**What it does:** The BOUNTY BOARD by the spawn (owner's design): a blocky board: two brown posts with grass at their feet, a brown plank back, and parchment wanted posters pinned on it. The posters on the board show the faces of the current top bounties. walk up and press E ("View Bounties"): the client opens the board UI with a wanted poster for every other player and every Stand-user NPC accept one: you get a bounty tracker and a TARGET marker on them. Land the killing blow (your hit within KillCreditTime) and you're paid in Cash (leaderstats). Players are worth more the longer their kill streak. Bounties run out after Duration seconds. JOBS tab: a few paid tasks (the same for everyone, new ones every 10 minutes): take down NPCs, deal damage, perfect blocks / dodges, claim bounties, take a corpse part... Progress counts on its own; you're paid the moment one's done SHOP tab: spend Cash on bandages, a speed tonic, a lucky horseshoe (faster ultimate), a corpse compass, or CLEAR YOUR NAME (wipes your streak and any price on your head) PUT A PRICE ON THEIR HEAD: from a player's contract, pay to raise their bounty. Whoever takes them down next is paid it Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
+**What it does:** The BOUNTY BOARD by the spawn (owner's design): a blocky board: two brown posts with grass at their feet, a brown plank back, and parchment wanted posters pinned on it. The posters on the board show the faces of the current top bounties. walk up and press E ("View Bounties"): the client opens the board UI with a wanted poster for every other player and every Stand-user NPC accept one: you get a bounty tracker and a TARGET marker on them. Land the killing blow (your hit within KillCreditTime) and you're paid in Cash (leaderstats). Players are worth more the longer their kill streak. Bounties run out after Duration seconds. JOBS tab: a few paid tasks (the same for everyone, new ones every 10 minutes): take down NPCs, deal damage, perfect blocks / dodges, claim bounties, take a corpse part... Progress counts on its own; you're paid the moment one's done SHOP tab: spend Cash on bandages, a speed tonic, a lucky horseshoe (faster ultimate), a corpse compass, or CLEAR YOUR NAME (wipes your streak and any price on your head) STABLE (in the SHOP): buy and pick your horse's coat and saddle blanket (you ride it with M and race on it) PUT A PRICE ON THEIR HEAD: from a player's contract, pay to raise their bounty. Whoever takes them down next is paid it Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -44,6 +44,8 @@ Back to [[Where To Put Code]]
 	  * SHOP tab: spend Cash on bandages, a speed tonic, a lucky horseshoe
 	    (faster ultimate), a corpse compass, or CLEAR YOUR NAME (wipes your
 	    streak and any price on your head)
+	  * STABLE (in the SHOP): buy and pick your horse's coat and saddle
+	    blanket (you ride it with M and race on it)
 	  * PUT A PRICE ON THEIR HEAD: from a player's contract, pay to raise
 	    their bounty. Whoever takes them down next is paid it
 	Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
@@ -517,6 +519,70 @@ local function buy(player, id)
 end
 
 ---------------------------------------------------------------------------
+-- STABLE (in the SHOP): horse coats and saddle blankets. Bought ones are
+-- yours for the session; the equipped ones are what you ride (M) and race.
+---------------------------------------------------------------------------
+local hcfg = TuskConfig.Horses or {}
+
+local function owned(player)
+	local set = {}
+	for id in string.gmatch(player:GetAttribute("HorseOwned") or "", "[^,]+") do
+		set[id] = true
+	end
+	return set
+end
+
+local function stableFor(player)
+	local have = owned(player)
+	local coat = player:GetAttribute("HorseCoat") or ((hcfg.Coats or {})[1] or {}).Id
+	local blanket = player:GetAttribute("HorseBlanket") or ((hcfg.Blankets or {})[1] or {}).Id
+	local coats, blankets = {}, {}
+	for _, c in ipairs(hcfg.Coats or {}) do
+		table.insert(coats, { Id = c.Id, Name = c.Name, Price = c.Price, Body = c.Body, Mane = c.Mane, Material = c.Material, Socks = c.Socks, Owned = c.Price <= 0 or have["Coat:" .. c.Id] == true, Equipped = c.Id == coat })
+	end
+	for _, b in ipairs(hcfg.Blankets or {}) do
+		table.insert(blankets, { Id = b.Id, Name = b.Name, Price = b.Price, Color = b.Color, Owned = b.Price <= 0 or have["Blanket:" .. b.Id] == true, Equipped = b.Id == blanket })
+	end
+	return { Coats = coats, Blankets = blankets }
+end
+
+local function stableItem(key)
+	local kind, id = string.match(tostring(key), "^(%a+):(%w+)$")
+	local list = kind == "Coat" and hcfg.Coats or (kind == "Blanket" and hcfg.Blankets or nil)
+	for _, item in ipairs(list or {}) do
+		if item.Id == id then
+			return kind, item
+		end
+	end
+	return nil
+end
+
+local function buyHorse(player, key)
+	local kind, item = stableItem(key)
+	if not item then
+		return
+	end
+	local have = owned(player)
+	if item.Price > 0 and not have[kind .. ":" .. item.Id] then
+		if not spend(player, item.Price) then
+			send(player, "Denied", { Reason = "Not enough Cash ($" .. item.Price .. ")." })
+			return
+		end
+		local list = player:GetAttribute("HorseOwned")
+		player:SetAttribute("HorseOwned", (list and list ~= "" and (list .. ",") or "") .. kind .. ":" .. item.Id)
+		send(player, "Bought", { Name = item.Name .. (kind == "Coat" and " HORSE" or " BLANKET"), Price = item.Price })
+	end
+	player:SetAttribute(kind == "Coat" and "HorseCoat" or "HorseBlanket", item.Id)
+	-- Riding your horse right now? It changes straight away.
+	local ok, Race = pcall(function()
+		return require(script.Parent.RaceService)
+	end)
+	if ok and Race and Race.refreshHorse then
+		Race.refreshHorse(player)
+	end
+end
+
+---------------------------------------------------------------------------
 -- PUT A PRICE ON THEIR HEAD
 ---------------------------------------------------------------------------
 local function place(player, key)
@@ -713,6 +779,7 @@ function BountyService.init()
 			Jobs = jobsFor(player),
 			JobsUntil = jobsUntil,
 			Shop = shopFor(player),
+			Stable = stableFor(player),
 			PlaceAmount = cfg.PlaceAmount or 100,
 		}
 	end
@@ -761,6 +828,9 @@ function BountyService.init()
 			send(player, "Refresh", boardData(player))
 		elseif action == "Place" then
 			place(player, key)
+			send(player, "Refresh", boardData(player))
+		elseif action == "BuyHorse" then
+			buyHorse(player, key)
 			send(player, "Refresh", boardData(player))
 		end
 	end)

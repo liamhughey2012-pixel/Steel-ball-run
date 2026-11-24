@@ -23,6 +23,7 @@ TuskConfig.Keys = {
 	Block = { Keyboard = Enum.KeyCode.F, Gamepad = Enum.KeyCode.ButtonL2 }, -- hold
 	Dash = { Keyboard = Enum.KeyCode.Q, Gamepad = Enum.KeyCode.ButtonR2 },
 	CorpseMove = { Keyboard = Enum.KeyCode.V, Gamepad = Enum.KeyCode.DPadRight }, -- needs a corpse part
+	Horse = { Keyboard = Enum.KeyCode.M, Gamepad = Enum.KeyCode.DPadLeft }, -- call / send away your horse
 }
 
 ---------------------------------------------------------------------------
@@ -957,22 +958,27 @@ TuskConfig.Race = {
 	TimeLimit = 240, -- the race ends after this long no matter what
 	FinishGrace = 25, -- ...or this long after the winner crosses the line
 	-- The course (offsets from the map's origin; snapped to the ground).
-	Start = Vector3.new(25, 0, 112),
+	-- It starts inside the map's fenced race track, behind its START arch,
+	-- runs south down the track, then loops round the open desert to the
+	-- east (no buildings in the way) and finishes by the spawn.
+	Start = Vector3.new(0, 0, 118), -- the front of the starting grid
+	StartFacing = Vector3.new(0, 0, -1), -- down the track
+	GridColumns = 4, GridSpacing = 4.5, GridRowGap = 7, -- riders line up 4 abreast inside the track
 	Checkpoints = {
-		Vector3.new(150, 0, -150), -- the dunes
-		Vector3.new(45, 0, -250), -- the mission church
-		Vector3.new(-100, 0, -180), -- the western desert
-		Vector3.new(-158, 0, -59), -- Dustwater ghost town
-		Vector3.new(-235, 0, 150), -- the oasis
-		Vector3.new(-165, 0, 275), -- the gold-panning camp
-		Vector3.new(40, 0, 140), -- FINISH, back by the spawn
+		Vector3.new(0, 0, -90), -- 1: down the race track
+		Vector3.new(0, 0, -262), -- 2: out past the end of the track
+		Vector3.new(110, 0, -300), -- 3: south desert, by the mission
+		Vector3.new(200, 0, -190), -- 4: under Headquarters hill
+		Vector3.new(185, 0, -40), -- 5: east desert, outside town
+		Vector3.new(160, 0, 110), -- 6: the north-east flats
+		Vector3.new(130, 0, 165), -- 7: the home stretch
+		Vector3.new(45, 0, 175), -- FINISH, by the spawn
 	},
-	GateWidth = 30, -- studs between a gate's posts
+	GateWidth = 34, -- studs between a gate's posts (wide enough to stand outside the track's fences)
 	PassRadius = 20, -- get this close to the next gate to pass it
 	-- Horses
-	HorseSpeed = 3.2, -- walk speed multiplier while riding
-	HipRaise = 2.8, -- how much higher the rider sits
-	Coats = {
+	HorseSpeed = 3.2, -- walk speed multiplier while racing
+	Coats = { -- NPC jockeys' horses (players ride the horse they set up in the shop)
 		{ Color3.fromRGB(120, 76, 44), Color3.fromRGB(40, 26, 18) }, -- bay
 		{ Color3.fromRGB(40, 36, 36), Color3.fromRGB(18, 16, 16) }, -- black
 		{ Color3.fromRGB(226, 222, 212), Color3.fromRGB(180, 176, 168) }, -- grey / white
@@ -980,10 +986,45 @@ TuskConfig.Race = {
 		{ Color3.fromRGB(214, 176, 110), Color3.fromRGB(245, 236, 210) }, -- palomino
 		{ Color3.fromRGB(150, 110, 80), Color3.fromRGB(240, 238, 230) }, -- paint
 	},
-	-- Prizes (Cash): 1st, 2nd, 3rd; every other finisher gets FinishPrize.
+	-- NPC JOCKEYS ride too (they find their way round with pathfinding).
+	NPCRacers = 3,
+	NPCNames = { "Dusty Pete", "Sandstorm Sally", "Iron Hoof Ike", "Lucky Lou", "Prairie Pat", "Cactus Jack" },
+	NPCSkill = { 0.78, 0.95 }, -- their horse speed is HorseSpeed times this (random per jockey)
+	NPCHealth = 120,
 	Prizes = { 500, 250, 150 },
 	FinishPrize = 50,
 	WinnerCorpsePart = true, -- a Saint's Corpse part appears at the finish for the winner (if one is lying out)
+}
+
+---------------------------------------------------------------------------
+-- YOUR HORSE: press M (controller D-pad left) to call your horse and ride it
+-- anywhere; press again to get off. Pick its coat and blanket in the
+-- STABLE (bounty board > SHOP). You race on it too. (Owned coats and
+-- blankets last for the session.)
+---------------------------------------------------------------------------
+TuskConfig.Horses = {
+	Enabled = true,
+	RideSpeed = 2.8, -- walk speed multiplier on your own horse (races use Race.HorseSpeed)
+	Cooldown = 2, -- seconds between calling / sending away your horse
+	Coats = {
+		{ Id = "Bay", Name = "BAY", Price = 0, Body = Color3.fromRGB(120, 76, 44), Mane = Color3.fromRGB(40, 26, 18) },
+		{ Id = "Black", Name = "BLACK", Price = 150, Body = Color3.fromRGB(40, 36, 36), Mane = Color3.fromRGB(18, 16, 16) },
+		{ Id = "Grey", Name = "DAPPLE GREY", Price = 150, Body = Color3.fromRGB(200, 198, 192), Mane = Color3.fromRGB(150, 148, 142) },
+		{ Id = "Chestnut", Name = "CHESTNUT", Price = 150, Body = Color3.fromRGB(170, 90, 44), Mane = Color3.fromRGB(130, 64, 30) },
+		{ Id = "Palomino", Name = "PALOMINO", Price = 250, Body = Color3.fromRGB(214, 176, 110), Mane = Color3.fromRGB(245, 236, 210) },
+		{ Id = "Paint", Name = "PAINT", Price = 250, Body = Color3.fromRGB(150, 110, 80), Mane = Color3.fromRGB(240, 238, 230) },
+		{ Id = "Midnight", Name = "MIDNIGHT", Price = 500, Body = Color3.fromRGB(24, 28, 52), Mane = Color3.fromRGB(190, 200, 230), Socks = false },
+		{ Id = "Ghost", Name = "GHOST WHITE", Price = 600, Body = Color3.fromRGB(245, 245, 250), Mane = Color3.fromRGB(200, 220, 255), Socks = false },
+		{ Id = "Golden", Name = "GOLDEN STEED", Price = 900, Body = Color3.fromRGB(230, 186, 60), Mane = Color3.fromRGB(255, 244, 200), Material = "Metal", Socks = false },
+	},
+	Blankets = {
+		{ Id = "Red", Name = "RED", Price = 0, Color = Color3.fromRGB(170, 40, 40) },
+		{ Id = "Blue", Name = "BLUE", Price = 60, Color = Color3.fromRGB(40, 80, 170) },
+		{ Id = "Green", Name = "GREEN", Price = 60, Color = Color3.fromRGB(50, 130, 70) },
+		{ Id = "Purple", Name = "PURPLE", Price = 80, Color = Color3.fromRGB(110, 50, 150) },
+		{ Id = "Black", Name = "BLACK", Price = 80, Color = Color3.fromRGB(30, 30, 34) },
+		{ Id = "Gold", Name = "GOLD TRIM", Price = 200, Color = Color3.fromRGB(230, 186, 60) },
+	},
 }
 
 ---------------------------------------------------------------------------

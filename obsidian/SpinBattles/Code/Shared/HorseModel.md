@@ -1,7 +1,7 @@
 ---
-tags: [code, server]
+tags: [code, shared]
 type: ModuleScript
-location: "ServerScriptService › SpinServer"
+location: "ReplicatedStorage › SpinShared"
 updated: 2026-11-22
 ---
 # HorseModel
@@ -9,13 +9,13 @@ updated: 2026-11-22
 | | |
 |---|---|
 | **Type** | ModuleScript |
-| **Put it in** | `ServerScriptService › SpinServer` |
+| **Put it in** | `ReplicatedStorage › SpinShared` |
 | **Exact name** | `HorseModel` (capitals matter) |
 
 **What it does:** A blocky racehorse for the Steel Ball Run, built from parts (no uploads): a long body, an arched neck with a mane, a head with a white blaze, ears and a dark muzzle, a swishing tail, four legs with white socks and hooves, and full tack: a red saddle blanket, a brown saddle with a horn, stirrups and reins.
 
 ## How to add it
-1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
+1. In Studio's Explorer, find **SpinShared** (ReplicatedStorage › SpinShared).
 2. Right-click it › **Insert Object** › **ModuleScript**.
 3. Rename it to **HorseModel**.
 4. Open it, select all (Ctrl+A), and paste the code below over it.
@@ -25,7 +25,7 @@ Back to [[Where To Put Code]]
 ## Code
 ```lua
 --[[
-	HorseModel  (ServerScriptService.SpinServer.HorseModel)
+	HorseModel  (ReplicatedStorage.SpinShared.HorseModel)
 
 	A blocky racehorse for the Steel Ball Run, built from parts (no uploads):
 	a long body, an arched neck with a mane, a head with a white blaze, ears
@@ -33,8 +33,14 @@ Back to [[Where To Put Code]]
 	hooves, and full tack: a red saddle blanket, a brown saddle with a horn,
 	stirrups and reins.
 
-	HorseModel.build(coat, mane) -> model (PrimaryPart "Body", facing -Z,
-	body centre at the origin, hooves 3.85 studs below it). Every limb is
+	HorseModel.build(coat, mane, opts) -> model (PrimaryPart "Body", facing
+	-Z, body centre at the origin, hooves 3.85 studs below it, the top of
+	the saddle SaddleTop above it). opts (all optional):
+	  Width     body width (default 1.9: slim, so a rider's legs go round it)
+	  Blanket   saddle blanket colour      Saddle  saddle / tack colour
+	  Material  coat material (e.g. Metal for the Golden Steed)
+	  Socks     sock colour (false: no socks)
+	The server builds race and ride horses; the shop builds a preview. Every limb is
 	joined to the body with a Weld; clients animate the gallop by changing
 	those welds' C0 (RaceClient). Each animated part carries attributes:
 	  Joint (Vector3, where it pivots on the body) and Drop (studs from the
@@ -43,6 +49,7 @@ Back to [[Where To Put Code]]
 
 local HorseModel = {}
 HorseModel.HoofDepth = 3.85 -- studs from the body centre down to the ground
+HorseModel.SaddleTop = 1.37 -- studs from the body centre up to the top of the saddle
 
 local function part(model, name, size, color, material)
 	local p = Instance.new("Part")
@@ -83,25 +90,36 @@ local function jointed(model, body, name, size, color, joint, drop, angle)
 	return p, w
 end
 
-function HorseModel.build(coat, mane)
+function HorseModel.build(coat, mane, opts)
+	opts = opts or {}
 	coat = coat or Color3.fromRGB(120, 76, 44)
 	mane = mane or Color3.fromRGB(40, 26, 18)
+	local W = opts.Width or 1.9
+	local k = W / 2.2 -- how much narrower than the old 2.2-wide body
 	local shade = coat:Lerp(Color3.new(0, 0, 0), 0.2)
-	local white = Color3.fromRGB(240, 238, 232)
+	local white = opts.Socks == false and coat or (opts.Socks or Color3.fromRGB(240, 238, 232))
 	local hoof = Color3.fromRGB(46, 40, 36)
-	local leather = Color3.fromRGB(96, 58, 32)
-	local blanket = Color3.fromRGB(170, 40, 40)
+	local leather = opts.Saddle or Color3.fromRGB(96, 58, 32)
+	local blanket = opts.Blanket or Color3.fromRGB(170, 40, 40)
 	local metal = Color3.fromRGB(180, 182, 188)
+	local coatMaterial = opts.Material
 
 	local model = Instance.new("Model")
 	model.Name = "Horse"
-	local body = part(model, "Body", Vector3.new(2.2, 2.0, 5.0), coat)
+	local body = part(model, "Body", Vector3.new(W, 2.0, 5.0), coat, coatMaterial)
 	body.CFrame = CFrame.new()
 	model.PrimaryPart = body
 	-- Rounded barrel: chest and rump blocks, a belly.
-	weld(model, body, "Chest", Vector3.new(2.3, 2.1, 1.2), coat, CFrame.new(0, 0.05, -2.3))
-	weld(model, body, "Rump", Vector3.new(2.3, 2.1, 1.3), coat, CFrame.new(0, 0.12, 2.2))
-	weld(model, body, "Belly", Vector3.new(1.9, 0.4, 3.8), shade, CFrame.new(0, -1.05, 0))
+	weld(model, body, "Chest", Vector3.new(W + 0.1, 2.1, 1.2), coat, CFrame.new(0, 0.05, -2.3))
+	weld(model, body, "Rump", Vector3.new(W + 0.1, 2.1, 1.3), coat, CFrame.new(0, 0.12, 2.2))
+	weld(model, body, "Belly", Vector3.new(W - 0.3, 0.4, 3.8), shade, CFrame.new(0, -1.05, 0))
+	if coatMaterial then
+		for _, p in ipairs(model:GetChildren()) do
+			if p:IsA("BasePart") and p ~= body then
+				p.Material = coatMaterial
+			end
+		end
+	end
 
 	-- Neck (arched forward), mane along its top, head with a blaze and muzzle.
 	local neck = jointed(model, body, "Neck", Vector3.new(1.1, 2.6, 1.3), coat, Vector3.new(0, 0.6, -2.6), -1.1, -0.55)
@@ -125,29 +143,32 @@ function HorseModel.build(coat, mane)
 
 	-- Legs: thigh-to-hoof, white socks on two of them, dark hooves.
 	local legs = {
-		{ "LegFL", Vector3.new(-0.6, -0.75, -1.9), true },
-		{ "LegFR", Vector3.new(0.6, -0.75, -1.9), false },
-		{ "LegBL", Vector3.new(-0.6, -0.75, 1.9), false },
-		{ "LegBR", Vector3.new(0.6, -0.75, 1.9), true },
+		{ "LegFL", Vector3.new(-0.6 * k, -0.75, -1.9), true },
+		{ "LegFR", Vector3.new(0.6 * k, -0.75, -1.9), false },
+		{ "LegBL", Vector3.new(-0.6 * k, -0.75, 1.9), false },
+		{ "LegBR", Vector3.new(0.6 * k, -0.75, 1.9), true },
 	}
 	for _, l in ipairs(legs) do
 		local leg = jointed(model, body, l[1], Vector3.new(0.55, 2.8, 0.6), coat, l[2], 1.4, 0)
 		weld(model, leg, "Thigh", Vector3.new(0.7, 1.0, 0.75), coat, CFrame.new(0, 0.85, 0))
-		if l[3] then
+		if l[3] and opts.Socks ~= false then
 			weld(model, leg, "Sock", Vector3.new(0.6, 0.7, 0.65), white, CFrame.new(0, -0.95, 0))
 		end
 		weld(model, leg, "Hoof", Vector3.new(0.62, 0.32, 0.7), hoof, CFrame.new(0, -1.5, -0.04))
 	end
 
 	-- Tack: blanket, saddle with a horn, stirrups, reins.
-	weld(model, body, "Blanket", Vector3.new(2.4, 0.14, 2.3), blanket, CFrame.new(0, 1.04, -0.1))
-	weld(model, body, "BlanketEdge", Vector3.new(2.5, 0.6, 0.1), blanket:Lerp(Color3.new(1, 1, 1), 0.2), CFrame.new(0, 0.8, -1.25))
-	weld(model, body, "Saddle", Vector3.new(1.7, 0.3, 1.7), leather, CFrame.new(0, 1.22, -0.1))
+	weld(model, body, "Blanket", Vector3.new(W + 0.2, 0.14, 2.3), blanket, CFrame.new(0, 1.04, -0.1))
+	weld(model, body, "BlanketEdge", Vector3.new(W + 0.3, 0.6, 0.1), blanket:Lerp(Color3.new(1, 1, 1), 0.2), CFrame.new(0, 0.8, -1.25))
+	for _, side in ipairs({ -1, 1 }) do
+		weld(model, body, "BlanketSide", Vector3.new(0.1, 0.8, 2.2), blanket, CFrame.new(side * (W / 2 + 0.06), 0.6, -0.1))
+	end
+	weld(model, body, "Saddle", Vector3.new(W - 0.4, 0.3, 1.7), leather, CFrame.new(0, 1.22, -0.1))
 	weld(model, body, "Cantle", Vector3.new(1.4, 0.35, 0.25), leather, CFrame.new(0, 1.45, 0.65))
 	weld(model, body, "Horn", Vector3.new(0.25, 0.45, 0.25), leather, CFrame.new(0, 1.55, -0.8))
 	for _, side in ipairs({ -1, 1 }) do
-		weld(model, body, "Strap", Vector3.new(0.05, 1.3, 0.12), leather, CFrame.new(side * 1.12, 0.55, -0.1))
-		weld(model, body, "Stirrup", Vector3.new(0.12, 0.12, 0.5), metal, CFrame.new(side * 1.15, -0.15, -0.1), Enum.Material.Metal)
+		weld(model, body, "Strap", Vector3.new(0.05, 1.3, 0.12), leather, CFrame.new(side * (W / 2 + 0.13), 0.55, -0.1))
+		weld(model, body, "Stirrup", Vector3.new(0.12, 0.12, 0.5), metal, CFrame.new(side * (W / 2 + 0.16), -0.15, -0.1), Enum.Material.Metal)
 		weld(model, body, "Rein", Vector3.new(0.05, 0.05, 3.4), leather, CFrame.new(side * 0.45, 2.0, -2.4) * CFrame.Angles(0.33, 0, 0))
 	end
 	return model

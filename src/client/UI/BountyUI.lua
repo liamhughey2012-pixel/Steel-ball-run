@@ -28,6 +28,12 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local Net = require(Shared.Net)
 local Registry = require(Shared.TuskActRegistry)
 local TuskConfig = require(Shared.TuskConfig)
+local okHorse, HorseModel = pcall(function()
+	return require(Shared.HorseModel)
+end)
+if not okHorse then
+	HorseModel = nil
+end
 
 local BountyUI = {}
 local player = Players.LocalPlayer
@@ -207,6 +213,9 @@ end
 ---------------------------------------------------------------------------
 local lastList = {}
 local lastJobs, lastShop, jobsUntil = {}, {}, 0
+local lastStable = { Coats = {}, Blankets = {} }
+local stablePreview -- { Camera, Angle } spinning horse in the STABLE
+local showStable -- (below)
 local placeAmount = 100
 local placeButton -- "PUT $100 ON THEIR HEAD" on a player's contract
 local jobsTimer -- "NEW JOBS IN m:ss"
@@ -457,6 +466,100 @@ local function showJobs()
 	return #lastJobs
 end
 
+-- STABLE: your horse's coat and saddle blanket (ride it with M).
+local function equippedLook()
+	local look = {}
+	for _, c in ipairs(lastStable.Coats or {}) do
+		if c.Equipped then
+			look.Body, look.Mane, look.Socks = c.Body, c.Mane, c.Socks
+			look.Material = c.Material and Enum.Material[c.Material] or nil
+		end
+	end
+	for _, b in ipairs(lastStable.Blankets or {}) do
+		if b.Equipped then
+			look.Blanket = b.Color
+		end
+	end
+	return look
+end
+
+showStable = function(y, cash)
+	stablePreview = nil
+	if #(lastStable.Coats or {}) == 0 then
+		return y
+	end
+	local head = new("Frame", { Position = UDim2.fromOffset(14, y), Size = UDim2.new(1, -40, 0, 30), BackgroundColor3 = WOOD_DARK }, grid)
+	corner(head, 6)
+	label(head, { Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -20, 1, 0), Text = "STABLE  ·  YOUR HORSE  (PRESS M TO RIDE)", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Left })
+	y = y + 40
+	-- A spinning preview of the horse you've got saddled up.
+	local panel = paperCard(grid, UDim2.fromOffset(14, y), UDim2.fromOffset(200, 200), 0)
+	local vp = new("ViewportFrame", { Position = UDim2.fromOffset(6, 6), Size = UDim2.new(1, -12, 1, -40), BackgroundColor3 = Color3.fromRGB(230, 210, 170), Ambient = Color3.fromRGB(200, 190, 170), LightColor = Color3.new(1, 1, 1) }, panel)
+	corner(vp, 4)
+	label(panel, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -8), Size = UDim2.new(1, -16, 0, 22), Text = "YOUR HORSE", Font = Enum.Font.Bangers })
+	if HorseModel then
+		local look = equippedLook()
+		local ok, horse = pcall(function()
+			return HorseModel.build(look.Body, look.Mane, { Blanket = look.Blanket, Socks = look.Socks, Material = look.Material })
+		end)
+		if ok and horse then
+			for _, d in ipairs(horse:GetDescendants()) do
+				if d:IsA("BasePart") then
+					d.Anchored = true
+				end
+			end
+			horse.Parent = vp
+			local cam = new("Camera", { FieldOfView = 40 }, vp)
+			vp.CurrentCamera = cam
+			stablePreview = { Camera = cam, Angle = 0.6 }
+			cam.CFrame = CFrame.lookAt(Vector3.new(math.sin(0.6) * 13, 2, math.cos(0.6) * 13), Vector3.new(0, 0.2, -0.6))
+		end
+	end
+	-- Coats, then blankets: small swatch cards, 3 to a row, to the right of the preview.
+	local function swatchCard(x, yy, item, key, colorA, colorB)
+		local card = paperCard(grid, UDim2.fromOffset(x, yy), UDim2.fromOffset(134, 62), 0)
+		local sw = new("Frame", { Position = UDim2.fromOffset(8, 10), Size = UDim2.fromOffset(32, 32), BackgroundColor3 = colorA }, card)
+		corner(sw, 99)
+		new("UIStroke", { Color = INK, Thickness = 2 }, sw)
+		if colorB then
+			new("Frame", { Position = UDim2.fromOffset(13, 0), Size = UDim2.fromOffset(6, 32), BackgroundColor3 = colorB, BorderSizePixel = 0 }, sw)
+		end
+		local nameL = label(card, { Position = UDim2.fromOffset(46, 6), Size = UDim2.fromOffset(84, 18), Text = item.Name, Font = Enum.Font.GothamBlack, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left })
+		new("UITextSizeConstraint", { MaxTextSize = 13, MinTextSize = 7 }, nameL)
+		local state = item.Equipped and "EQUIPPED" or (item.Owned and "EQUIP" or ("$" .. item.Price))
+		local afford = item.Owned or cash >= item.Price
+		local btn = new("TextButton", { Position = UDim2.fromOffset(46, 30), Size = UDim2.fromOffset(80, 24), BackgroundColor3 = item.Equipped and GOLD or (item.Owned and WOOD_DARK or (afford and GREEN or Color3.fromRGB(130, 120, 110))), Text = state, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = item.Equipped and INK or Color3.new(1, 1, 1), AutoButtonColor = not item.Equipped }, card)
+		corner(btn, 6)
+		new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) }, btn)
+		btn.Activated:Connect(function()
+			if not item.Equipped then
+				Remote:FireServer("BuyHorse", key)
+			end
+		end)
+	end
+	local x0 = 226
+	local rowY = y
+	local i = 0
+	label(grid, { Position = UDim2.fromOffset(x0, rowY - 4), Size = UDim2.fromOffset(200, 16), Text = "COATS", Font = Enum.Font.GothamBlack, TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Left })
+	rowY = rowY + 14
+	for _, c in ipairs(lastStable.Coats or {}) do
+		local col, row = i % 3, math.floor(i / 3)
+		swatchCard(x0 + col * 140, rowY + row * 68, c, "Coat:" .. c.Id, c.Body or PAPER, c.Mane)
+		i = i + 1
+	end
+	rowY = rowY + math.ceil(i / 3) * 68 + 6
+	label(grid, { Position = UDim2.fromOffset(x0, rowY - 4), Size = UDim2.fromOffset(200, 16), Text = "SADDLE BLANKETS", Font = Enum.Font.GothamBlack, TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Left })
+	rowY = rowY + 14
+	i = 0
+	for _, b in ipairs(lastStable.Blankets or {}) do
+		local col, row = i % 3, math.floor(i / 3)
+		swatchCard(x0 + col * 140, rowY + row * 68, b, "Blanket:" .. b.Id, b.Color or PAPER)
+		i = i + 1
+	end
+	rowY = rowY + math.ceil(i / 3) * 68
+	return math.max(rowY, y + 210)
+end
+
 local function showShop()
 	local cash = 0
 	local ls = player:FindFirstChild("leaderstats")
@@ -494,7 +597,9 @@ local function showShop()
 			Remote:FireServer("Buy", item.Id)
 		end)
 	end
-	grid.CanvasSize = UDim2.fromOffset(0, 30 + math.ceil(#lastShop / 2) * 134)
+	local y = 16 + math.ceil(#lastShop / 2) * 134 + 6
+	y = showStable(y, cash)
+	grid.CanvasSize = UDim2.fromOffset(0, y + 20)
 	return #lastShop
 end
 
@@ -580,6 +685,7 @@ local function openBoard(data)
 	current = data.Active or current
 	lastList = data.Bounties or {}
 	lastJobs, lastShop, jobsUntil = data.Jobs or {}, data.Shop or {}, data.JobsUntil or 0
+	lastStable = data.Stable or lastStable
 	placeAmount = data.PlaceAmount or placeAmount
 	cashLabel.Text = cashText()
 	huntingLabel.Text = current and ("HUNTING: " .. string.upper(current.Name)) or "NO ACTIVE BOUNTY"
@@ -849,6 +955,11 @@ local function showBanner(text, color)
 end
 
 function BountyUI.step()
+	if stablePreview and stablePreview.Camera.Parent and dim and dim.Visible then
+		stablePreview.Angle = stablePreview.Angle + 0.01
+		local a = stablePreview.Angle
+		stablePreview.Camera.CFrame = CFrame.lookAt(Vector3.new(math.sin(a) * 13, 2, math.cos(a) * 13), Vector3.new(0, 0.2, -0.6))
+	end
 	if jobsTimer and jobsTimer.Parent then
 		local left = math.max(0, jobsUntil - workspace:GetServerTimeNow())
 		jobsTimer:FindFirstChild("Text").Text = string.format("NEW JOBS IN %d:%02d", math.floor(left / 60), math.floor(left % 60))
@@ -897,6 +1008,7 @@ function BountyUI.init()
 		elseif kind == "Refresh" then
 			lastList = data.Bounties or lastList
 			lastJobs, lastShop, jobsUntil = data.Jobs or lastJobs, data.Shop or lastShop, data.JobsUntil or jobsUntil
+			lastStable = data.Stable or lastStable
 			cashLabel.Text = cashText()
 			if dim.Visible then
 				fillGrid()
