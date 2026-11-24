@@ -1255,8 +1255,8 @@ TuskConfig.Race = {
 		{ Color3.fromRGB(150, 110, 80), Color3.fromRGB(240, 238, 230) }, -- paint
 	},
 	-- NPC JOCKEYS ride too (they find their way round with pathfinding).
-	NPCRacers = 3,
-	NPCNames = { "Dusty Pete", "Sandstorm Sally", "Iron Hoof Ike", "Lucky Lou", "Prairie Pat", "Cactus Jack" },
+	NPCRacers = 7,
+	NPCNames = { "Dusty Pete", "Sandstorm Sally", "Iron Hoof Ike", "Lucky Lou", "Prairie Pat", "Cactus Jack", "Two-Spur Tom", "Rattlesnake Rosa", "Big Sky Hank", "Whiskey Jim" },
 	NPCSkill = { 0.92, 1.04 }, -- their horse speed is HorseSpeed times this (random per jockey): a real race
 	NPCHealth = 120,
 	Prizes = { 500, 250, 150 },
@@ -1284,7 +1284,17 @@ TuskConfig.Race = {
 	-- JOCKEY smarts: they save stamina, sprint the last stretch of a stage,
 	-- turn aside for carrots when they're tired, and a jockey who's fallen
 	-- far behind digs in (CatchUp speed) so the field stays close.
-	Jockey = { GallopAbove = 55, StopBelow = 18, SprintFrom = 0.75, CarrotBelow = 55, CarrotReach = 35, CatchUpBehind = 110, CatchUp = 1.08 },
+	Jockey = {
+		GallopAbove = 55, StopBelow = 18, SprintFrom = 0.75, CarrotBelow = 55, CarrotReach = 35, CatchUpBehind = 110, CatchUp = 1.08,
+		Lane = 4, -- each jockey keeps to its own lane (studs either side of the road's middle) so they don't bunch up
+		CornerCut = 12, -- near a gate they already aim on towards the next one
+		-- FIGHTING (from FightFromStage on): Brawlers (that share of the
+		-- jockeys) ride at rivals close by and lash them with a whip in
+		-- passing: other jockeys, and you (PlayerChance of the time).
+		FightFromStage = 2, Brawlers = 0.6, SeekRange = 18, FightRange = 9, FightEvery = { 2.5, 4.5 },
+		FightPlayers = true, PlayerChance = 0.5,
+		Damage = 6, Stun = 0.45, Knockback = 26,
+	},
 	-- RECORDS: your best total time (all 9 stages) and your wins are saved (DataService).
 }
 

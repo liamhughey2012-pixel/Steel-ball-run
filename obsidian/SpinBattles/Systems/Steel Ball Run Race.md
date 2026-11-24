@@ -173,3 +173,11 @@ The race now has **its own giant world** (`RaceMap`, `TuskConfig.Race.Map`). The
 - **Water** (ocean, river, lake) slows riders to 45%; take the bridge. Invisible walls round the edge stop anyone riding off the map.
 - **Longer legs:** more carrot crates (one per ~320 studs) and more hurdles (one per ~220 studs on hurdle legs). Stages allow 150 s (`StageTimeLimit`) and 25 s after the winner (`StageGrace`).
 - With `Map.Enabled = false` the race runs on the main-map stages instead (also used while the map is still building).
+
+## Jockeys: smarter, more of them, and they fight (2026-11-24)
+- **7 NPC jockeys** now (`NPCRacers`), with new names.
+- **On the race map they ride the road properly.** No pathfinding: the road is clear by design. Each keeps its own lane (`Lane`) so they don't bunch up, cuts corners toward the next gate when it's close (`CornerCut`), and re-steers 5 times a second.
+- **From the 2nd stage on they fight** (`FightFromStage`). About 60% are brawlers (`Brawlers`): they ride at a rival within 18 studs and lash them with a **whip** when within 9 (every 2.5-4.5 s; 6 damage, a short stun, a shove sideways).
+- **They come for you too:** when a player's in reach, a brawler picks the player about half the time (`PlayerChance`, re-decided every 4 s). Set `FightPlayers = false` to keep them off players.
+- **Whips use the normal combat rules:** a stand-in "player" per jockey, so blocking, dodging, i-frames and hit effects all work. Everyone sees the whip crack; you get "WHIPPED BY ...!" when it's you.
+- A jockey taken down is out of the race.

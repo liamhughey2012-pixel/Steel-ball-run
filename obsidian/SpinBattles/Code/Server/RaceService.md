@@ -803,6 +803,53 @@ local function stepRider(key, r, dt, t)
 		end
 		local behind = (lead - (r.ProgressNow or 0)) * (course.StageLength or 600)
 		setMod(r, "CatchUp", behind > (jc.CatchUpBehind or 110) and (jc.CatchUp or 1.08) or nil)
+		-- Fighting: from the 2nd stage on, brawlers go for whoever's close.
+		r.FightTarget = nil
+		if r.Brawler and stageIndex >= (jc.FightFromStage or 2) and not character:GetAttribute("RaceAnchored") then
+			local best, bestD, bestRoot
+			local pBest, pD, pRoot
+			for _, other in pairs(racers) do
+				if other ~= r and not other.Finished and (not other.Player or jc.FightPlayers ~= false) then
+					local oc = charOf(other)
+					local orr = oc and oc:FindFirstChild("HumanoidRootPart")
+					local oh = oc and oc:FindFirstChildOfClass("Humanoid")
+					if orr and oh and oh.Health > 0 then
+						local d = (orr.Position - root.Position).Magnitude
+						if d <= (jc.SeekRange or 18) then
+							if not bestD or d < bestD then
+								best, bestD, bestRoot = other, d, orr
+							end
+							if other.Player and (not pD or d < pD) then
+								pBest, pD, pRoot = other, d, orr
+							end
+						end
+					end
+				end
+			end
+			-- A player close by? This jockey has it in for them (some of the time).
+			if pBest and best ~= pBest then
+				if r.PicksPlayer == nil or t >= (r.PickUntil or 0) then
+					r.PicksPlayer = rng:NextNumber() < (jc.PlayerChance or 0.5)
+					r.PickUntil = t + 4
+				end
+				if r.PicksPlayer then
+					best, bestD, bestRoot = pBest, pD, pRoot
+				end
+			end
+			if best then
+				r.FightTarget = bestRoot
+				if bestD <= (jc.FightRange or 9) and t >= (r.NextFight or 0) then
+					local fe = jc.FightEvery or { 2.5, 4.5 }
+					r.NextFight = t + rng:NextNumber(fe[1], fe[2])
+					do
+						local away = flat(bestRoot.Position - root.Position)
+						away = away.Magnitude > 0.1 and away.Unit or root.CFrame.RightVector
+						Adapter.dealHit(r.BotPlayer, charOf(best), { Damage = jc.Damage or 6, Stun = jc.Stun or 0.45, Knockback = jc.Knockback or 26, Direction = away, Position = bestRoot.Position, Source = "JockeyWhip" })
+						broadcast("JockeyWhip", { From = root.Position, To = bestRoot.Position, Name = r.Name, Target = best.Name, TargetUserId = best.UserId })
+					end
+				end
+			end
+		end
 	end
 	local galloping = r.Galloping and not r.Winded and r.Stamina > 0 and speed > 4 and not character:GetAttribute("RaceAnchored")
 	if galloping then
@@ -1019,6 +1066,22 @@ local function spawnJockey(index)
 	local skill = cfg.NPCSkill or { 0.8, 0.95 }
 	local r = { Jockey = true, Model = model, Name = "Jockey: " .. name, UserId = -500 - index, Next = 1, Skill = skill[1] + rng:NextNumber() * (skill[2] - skill[1]) }
 	initRacer(r)
+	local jc = cfg.Jockey or {}
+	-- Its own lane on the road, and maybe a brawler.
+	r.Lane = (((index - 1) % 5) - 2) * (jc.Lane or 4) / 2
+	r.Brawler = rng:NextNumber() < (jc.Brawlers or 0.6)
+	-- A stand-in "player" so its whip goes through the normal combat rules
+	-- (blocking, dodging, i-frames, stuns, hit effects).
+	local attrs = {}
+	r.BotPlayer = {
+		Name = r.Name, DisplayName = r.Name, UserId = r.UserId, Character = model, Neutral = true, IsBot = true,
+		GetAttribute = function(_, k)
+			return attrs[k]
+		end,
+		SetAttribute = function(_, k, v)
+			attrs[k] = v
+		end,
+	}
 	humanoid.Died:Connect(function()
 		for key, rr in pairs(racers) do
 			if rr == r then
@@ -1054,7 +1117,8 @@ local function runJockey(key, r)
 		if forGate ~= r.Next then
 			forGate = r.Next
 			waypoints, wi = nil, 1
-			if path then
+			-- On the race map the road is clear by design: no pathfinding needed.
+			if path and not useMap() then
 				local ok = pcall(function()
 					path:ComputeAsync(root.Position, gate)
 				end)
@@ -1064,11 +1128,32 @@ local function runJockey(key, r)
 			end
 		end
 		local target = gate
+		local jc = cfg.Jockey or {}
 		if r.CarrotTarget then
 			-- Off the line for a carrot crate.
 			humanoid:MoveTo(r.CarrotTarget)
-			task.delay(0.25, step)
+			task.delay(0.2, step)
 			return
+		end
+		if r.FightTarget and r.FightTarget.Parent then
+			-- Ride at a rival (a little ahead of them, so they stay on course).
+			local ahead = flat(gate - r.FightTarget.Position)
+			humanoid:MoveTo(r.FightTarget.Position + (ahead.Magnitude > 0.1 and ahead.Unit * 4 or Vector3.new()))
+			task.delay(0.2, step)
+			return
+		end
+		if useMap() then
+			-- Its own lane; near the gate, already aim on towards the next one.
+			local toGate = flat(gate - root.Position)
+			local dir = toGate.Magnitude > 0.1 and toGate.Unit or course.StartFacing
+			target = gate + dir:Cross(Vector3.new(0, 1, 0)) * (r.Lane or 0)
+			local nextG = course.Gates[r.Next + 1]
+			if nextG and toGate.Magnitude < 35 then
+				local on = flat(nextG - gate)
+				if on.Magnitude > 0.1 then
+					target = gate + on.Unit * (jc.CornerCut or 12)
+				end
+			end
 		end
 		if waypoints and waypoints[wi] then
 			target = waypoints[wi].Position
@@ -1095,7 +1180,7 @@ local function runJockey(key, r)
 				forGate = nil
 			end
 		end
-		task.delay(0.25, step)
+		task.delay(0.2, step)
 	end
 	step()
 end

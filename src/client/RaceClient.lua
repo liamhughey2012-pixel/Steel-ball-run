@@ -11,7 +11,8 @@
 	rider on it (you in gold); "JUMP!" when a log hurdle is ahead; H (D-pad
 	up / BACK button) to go back to your last gate; split times at each
 	gate; NEW RECORD! and your best time and wins at the finish; a results
-	board at the end; dust behind galloping horses; carrot crates bob.
+	board at the end; dust behind galloping horses; carrot crates bob; a
+	whip cracking when a jockey lashes a rival ("WHIPPED BY ...!" if it's you).
 
 	The Steel Ball Run on the client (RaceService runs it):
 	  * Look: the bounty board's style (UI.UITheme) - dark wood boards with
@@ -776,6 +777,28 @@ function RaceClient.init()
 				showBanner("STAGE " .. tostring(data.Stage or stageIndex) .. ": YOU CAME " .. ordinal(data.Place or 0) .. "!  +" .. tostring(data.Points or 0) .. " PTS" .. ((data.Prize or 0) > 0 and ("  +$" .. data.Prize) or ""), GOLD, 3.5)
 			elseif data.Place == 1 and entered then
 				showBanner(string.upper(data.Name or "SOMEONE") .. " WINS STAGE " .. tostring(data.Stage or stageIndex) .. "!", GOLD, 2.5)
+			end
+		elseif kind == "JockeyWhip" and data.From and data.To then
+			-- A jockey lashes a rival: a whip cracks between them.
+			local from, to = data.From + Vector3.new(0, 2, 0), data.To + Vector3.new(0, 2, 0)
+			local mid = (from + to) / 2 + Vector3.new(0, 2.5, 0)
+			for k, seg in ipairs({ { from, mid }, { mid, to } }) do
+				local a, b = seg[1], seg[2]
+				local len = (b - a).Magnitude
+				if len > 0.1 then
+					local lash = VFXLib.part({ Size = Vector3.new(0.12, 0.12, len), CFrame = CFrame.lookAt((a + b) / 2, b), Color = Color3.fromRGB(90, 56, 30), Material = Enum.Material.SmoothPlastic })
+					VFXLib.animate(0.25 + k * 0.05, function(t)
+						lash.Transparency = t
+					end, function()
+						lash:Destroy()
+					end)
+				end
+			end
+			VFXLib.burst(to, { Count = 8, Color = Color3.fromRGB(255, 230, 170), Speed = 12, Lifetime = 0.3 })
+			VFXLib.sound(TuskConfig.Sounds.Swing, to, 0.6, 1.8)
+			if data.TargetUserId == player.UserId then
+				showBanner("WHIPPED BY " .. string.upper(data.Name or "A JOCKEY") .. "!", RED, 1.2)
+				CameraFX.shake(0.35, 0.2)
 			end
 		elseif kind == "Winded" then
 			showBanner("YOUR HORSE IS WINDED!", RED, 1.6)
