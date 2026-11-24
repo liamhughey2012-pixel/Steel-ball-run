@@ -4222,6 +4222,7 @@ local function deco(parent, size, cf, color, material, props)
 	p.CanCollide = false
 	p.CanQuery = false
 	p.CanTouch = false
+	p.CastShadow = false -- (small decorations: cheaper to draw)
 	return p
 end
 
@@ -4244,6 +4245,21 @@ local function distToRoute(x, z)
 	return best
 end
 RaceMap.distToRoute = distToRoute
+
+-- Which stage's trail is nearest to a point (for colouring the ground).
+local function nearestStage(x, z)
+	local p = Vector2.new(x, z)
+	local best, stage = math.huge, 1
+	for _, s in ipairs(segments) do
+		local ab = s.B - s.A
+		local t = math.clamp((p - s.A):Dot(ab) / math.max(ab:Dot(ab), 1e-6), 0, 1)
+		local d = (s.A + ab * t - p).Magnitude
+		if d < best then
+			best, stage = d, s.Stage
+		end
+	end
+	return stage
+end
 
 -- A random spot beside a stage's route, between `near` and `far` studs out,
 -- never closer than `clear` studs to ANY part of the route.
@@ -4275,20 +4291,22 @@ local function buildGround()
 			local mid = (a + b) / 2
 			local len = (b - a).Magnitude
 			local cf = CFrame.lookAt(world(mid.X, -1, mid.Y), world(b.X, -1, b.Y))
-			-- The stage's ground: a wide band along the leg (a little lower each
-			-- stage, so overlaps never flicker), and a round patch at each corner.
-			part(f, Vector3.new(BAND_WIDTH, 2, len + BAND_WIDTH * 0.2), cf * CFrame.new(0, -si * 0.01, 0), g[1], g[2])
-			local corner = part(f, Vector3.new(2, BAND_WIDTH, BAND_WIDTH), CFrame.new(world(b.X, -1 - si * 0.01, b.Y)) * CFrame.Angles(0, 0, math.pi / 2), g[1], g[2])
-			corner.Shape = Enum.PartType.Cylinder
-			-- The dirt road.
-			part(f, Vector3.new(ROAD_WIDTH, 0.2, len + 2), CFrame.lookAt(world(mid.X, 0.1, mid.Y), world(b.X, 0.1, b.Y)), ROAD, Enum.Material.Ground)
+			-- The dirt road, with paler packed edges.
+			local roadCf = CFrame.lookAt(world(mid.X, 0.1, mid.Y), world(b.X, 0.1, b.Y))
+			part(f, Vector3.new(ROAD_WIDTH, 0.2, len + 2), roadCf, ROAD, Enum.Material.Ground)
+			for _, side in ipairs({ -1, 1 }) do
+				deco(f, Vector3.new(2.4, 0.22, len + 2), roadCf * CFrame.new(side * (ROAD_WIDTH / 2 - 1.2), 0.01, 0), ROAD:Lerp(g[1], 0.5), Enum.Material.Ground)
+				-- Wheel ruts down the middle.
+				deco(f, Vector3.new(1.2, 0.22, len), roadCf * CFrame.new(side * 3.5, 0.015, 0), ROAD:Lerp(Color3.new(0, 0, 0), 0.18), Enum.Material.Ground)
+			end
 			local bend = part(f, Vector3.new(0.2, ROAD_WIDTH, ROAD_WIDTH), CFrame.new(world(b.X, 0.1, b.Y)) * CFrame.Angles(0, 0, math.pi / 2), ROAD, Enum.Material.Ground)
 			bend.Shape = Enum.PartType.Cylinder
 			table.insert(segments, { A = a, B = b, Stage = si })
 		end
 	end
-	-- One big plain of base ground under everything (so there are no holes
-	-- between the bands), and invisible walls round the edge.
+	-- The whole world's ground, in tiles, each coloured like the stage whose
+	-- trail is nearest (with a little natural variation): sand by the sea, red
+	-- desert, grey rock, green plains, cobbles, forest floor, city concrete.
 	local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
 	for _, s in ipairs(segments) do
 		for _, p in ipairs({ s.A, s.B }) do
@@ -4298,11 +4316,16 @@ local function buildGround()
 	end
 	local pad = 420
 	minX, maxX, minZ, maxZ = minX - pad, maxX + pad, minZ - pad, maxZ + pad
-	local tile = 2000
-	for x = minX, maxX, tile do
-		for z = minZ, maxZ, tile do
+	local tile = 250
+	for x = minX, maxX - 1, tile do
+		for z = minZ, maxZ - 1, tile do
 			local w, d = math.min(tile, maxX - x), math.min(tile, maxZ - z)
-			part(f, Vector3.new(w, 2, d), CFrame.new(world(x + w / 2, -1.2, z + d / 2)), Color3.fromRGB(150, 140, 100), Enum.Material.Ground)
+			local cx, cz = x + w / 2, z + d / 2
+			local stage = nearestStage(cx, cz)
+			local g = GROUND[STAGES[stage].Theme]
+			local shade = rng:NextNumber(-0.02, 0.02)
+			local color = shade >= 0 and g[1]:Lerp(Color3.new(1, 1, 1), shade) or g[1]:Lerp(Color3.new(0, 0, 0), -shade)
+			part(f, Vector3.new(w + 0.05, 2, d + 0.05), CFrame.new(world(cx, -1, cz)), color, g[2])
 		end
 	end
 	local walls = model("Walls")
@@ -4505,6 +4528,234 @@ local function waterBox(cfRel, size)
 	table.insert(water, { CF = cfRel, Size = size })
 end
 
+
+---------------------------------------------------------------------------
+-- More scenery pieces (for a fuller, livelier world)
+---------------------------------------------------------------------------
+local HILL = {
+	Beach = Enum.Material.Sand, Desert = Enum.Material.Sandstone, Rockies = Enum.Material.Rock, Plains = Enum.Material.Grass,
+	River = Enum.Material.Grass, Lake = Enum.Material.Grass, Town = Enum.Material.Grass, Forest = Enum.Material.LeafyGrass, City = Enum.Material.Grass,
+}
+
+-- A gentle rolling hill / dune of terrain (low, wide, never near the trail).
+local function hill(p, theme)
+	local r = rng:NextNumber(45, 95)
+	workspace.Terrain:FillBall(world(p.X, -r * 0.78, p.Y), r, HILL[theme] or Enum.Material.Grass)
+	pause()
+end
+
+-- The mountains all round the world's edge, so it never just stops.
+local function buildBackdrop()
+	local b = RaceMap.Bounds
+	local terrain = workspace.Terrain
+	local function ring(x, z)
+		local stage = nearestStage(math.clamp(x, b.MinX + 420, b.MaxX - 420), math.clamp(z, b.MinZ + 420, b.MaxZ - 420))
+		local theme = STAGES[stage].Theme
+		local r = rng:NextNumber(150, 260)
+		local mat = (theme == "Beach" or theme == "Lake") and Enum.Material.Sandstone or (theme == "Desert" and Enum.Material.Sandstone or Enum.Material.Rock)
+		terrain:FillBall(world(x, -r * 0.25, z), r, mat)
+		if theme == "Rockies" or theme == "Forest" or theme == "Plains" then
+			terrain:FillBall(world(x, r * 0.6, z), r * 0.32, Enum.Material.Snow)
+		end
+		pause()
+	end
+	-- (Not along the beach and the lake: there the water runs to the horizon.)
+	for x = b.MinX, b.MaxX, 230 do
+		ring(x + rng:NextNumber(-40, 40), b.MaxZ + rng:NextNumber(90, 180))
+	end
+	for z = b.MinZ + 600, b.MaxZ, 230 do
+		ring(b.MaxX + rng:NextNumber(90, 180), z + rng:NextNumber(-40, 40))
+	end
+	for z = b.MinZ, b.MinZ + 600, 230 do
+		ring(b.MaxX + rng:NextNumber(90, 180), z)
+	end
+	for x = b.MinX + 1500, b.MaxX, 230 do
+		ring(x, b.MinZ - rng:NextNumber(90, 180))
+	end
+	for z = b.MinZ + 300, b.MinZ + 2100, 230 do
+		ring(b.MinX - rng:NextNumber(90, 180), z)
+	end
+	-- Rolling hills and dunes inside each region.
+	for i, st in ipairs(STAGES) do
+		if st.Theme ~= "City" and st.Theme ~= "Town" then
+			for _ = 1, 9 do
+				local p = besideStage(i, 140, 400, 130)
+				if p then
+					hill(p, st.Theme)
+				end
+			end
+		end
+	end
+end
+
+-- A rail fence beside a stretch of road (both sides), posts every 12 studs.
+local function fenceAlong(a, b, offset, color)
+	local f = model("Fence")
+	local dir = (b - a).Unit
+	local side = Vector2.new(-dir.Y, dir.X)
+	local len = (b - a).Magnitude
+	for _, s in ipairs({ -1, 1 }) do
+		local base = a + side * s * offset
+		for d = 20, len - 20, 16 do
+			local p = base + dir * d
+			deco(f, Vector3.new(0.6, 4, 0.6), CFrame.new(world(p.X, 2, p.Y)), color or WOOD, Enum.Material.Wood)
+		end
+		local mid = base + dir * (len / 2)
+		for _, y in ipairs({ 1.6, 3.2 }) do
+			deco(f, Vector3.new(0.3, 0.4, len - 40), CFrame.lookAt(world(mid.X, y, mid.Y), world(mid.X + dir.X, y, mid.Y + dir.Y)), color or WOOD, Enum.Material.Wood)
+		end
+	end
+end
+
+-- Sidewalks either side of a town / city street.
+local function sidewalks(a, b, color)
+	local f = model("Sidewalk")
+	local dir = (b - a).Unit
+	local side = Vector2.new(-dir.Y, dir.X)
+	local len = (b - a).Magnitude
+	local mid = (a + b) / 2
+	for _, s in ipairs({ -1, 1 }) do
+		local c = mid + side * s * (ROAD_WIDTH / 2 + 4)
+		part(f, Vector3.new(8, 0.6, len), CFrame.lookAt(world(c.X, 0.3, c.Y), world(c.X + dir.X, 0.3, c.Y + dir.Y)), color or Color3.fromRGB(176, 170, 160), Enum.Material.Concrete)
+	end
+end
+
+local function hut(p)
+	local m = model("BeachHut")
+	local yaw = rng:NextNumber(0, 6.28)
+	local cf = CFrame.new(world(p.X, 0, p.Y)) * CFrame.Angles(0, yaw, 0)
+	for _, x in ipairs({ -4, 4 }) do
+		for _, z in ipairs({ -4, 4 }) do
+			deco(m, Vector3.new(0.6, 7, 0.6), cf * CFrame.new(x, 3.5, z), WOOD, Enum.Material.Wood)
+		end
+	end
+	deco(m, Vector3.new(11, 1, 11), cf * CFrame.new(0, 7.2, 0), Color3.fromRGB(214, 190, 120), Enum.Material.Grass)
+	deco(m, Vector3.new(9, 0.4, 9), cf * CFrame.new(0, 1, 0), Color3.fromRGB(150, 110, 70), Enum.Material.WoodPlanks)
+	deco(m, Vector3.new(6, 2, 0.4), cf * CFrame.new(0, 2.2, -4), Color3.fromHSV(rng:NextNumber(), 0.5, 0.9), Enum.Material.Fabric)
+end
+
+local function tumbleweed(p)
+	local t = deco(model("Tumbleweed"), Vector3.new(3, 3, 3), CFrame.new(world(p.X, 1.4, p.Y)), Color3.fromRGB(170, 140, 90), Enum.Material.Grass)
+	t.Shape = Enum.PartType.Ball
+	t.Transparency = 0.15
+end
+
+local function wagon(p)
+	local m = model("Wagon")
+	local cf = CFrame.new(world(p.X, 0, p.Y)) * CFrame.Angles(0, rng:NextNumber(0, 6.28), rng:NextNumber(-0.15, 0.15))
+	part(m, Vector3.new(6, 2, 12), cf * CFrame.new(0, 2.4, 0), Color3.fromRGB(120, 84, 52), Enum.Material.WoodPlanks)
+	for _, x in ipairs({ -3.4, 3.4 }) do
+		for _, z in ipairs({ -4, 4 }) do
+			local w = deco(m, Vector3.new(0.5, 4, 4), cf * CFrame.new(x, 2, z), Color3.fromRGB(90, 60, 36), Enum.Material.Wood)
+			w.Shape = Enum.PartType.Cylinder
+		end
+	end
+	for k = -1, 1 do
+		deco(m, Vector3.new(0.3, 5, 0.3), cf * CFrame.new(-3, 5, k * 4) * CFrame.Angles(0, 0, 0.5), WOOD_DARK)
+		deco(m, Vector3.new(0.3, 5, 0.3), cf * CFrame.new(3, 5, k * 4) * CFrame.Angles(0, 0, -0.5), WOOD_DARK)
+	end
+	deco(m, Vector3.new(7, 0.2, 9), cf * CFrame.new(0, 7.2, 0), Color3.fromRGB(236, 226, 200), Enum.Material.Fabric)
+end
+
+local function rockArch(p)
+	local m = model("RockArch")
+	local cf = CFrame.new(world(p.X, 0, p.Y)) * CFrame.Angles(0, rng:NextNumber(0, 6.28), 0)
+	local c = Color3.fromRGB(184, 110, 70)
+	part(m, Vector3.new(8, 26, 8), cf * CFrame.new(-14, 13, 0), c, Enum.Material.Sandstone)
+	part(m, Vector3.new(8, 26, 8), cf * CFrame.new(14, 13, 0), c, Enum.Material.Sandstone)
+	part(m, Vector3.new(38, 7, 9), cf * CFrame.new(0, 28, 0), c, Enum.Material.Sandstone)
+end
+
+local function cow(p)
+	local m = model("Cow")
+	local cf = CFrame.new(world(p.X, 0, p.Y)) * CFrame.Angles(0, rng:NextNumber(0, 6.28), 0)
+	local brown = rng:NextNumber() < 0.5
+	local body = brown and Color3.fromRGB(120, 76, 50) or Color3.fromRGB(236, 236, 230)
+	deco(m, Vector3.new(3, 3, 6), cf * CFrame.new(0, 3.4, 0), body)
+	deco(m, Vector3.new(2, 2, 2.4), cf * CFrame.new(0, 4.4, -3.8), body)
+	if not brown then
+		deco(m, Vector3.new(3.05, 1.6, 2), cf * CFrame.new(0, 3.8, 1), Color3.fromRGB(30, 30, 30))
+	end
+	for _, x in ipairs({ -1, 1 }) do
+		for _, z in ipairs({ -2.2, 2.2 }) do
+			deco(m, Vector3.new(0.7, 2.2, 0.7), cf * CFrame.new(x, 1.1, z), body)
+		end
+	end
+end
+
+local function hayBale(p)
+	local h = deco(model("HayBale"), Vector3.new(4, 5, 5), CFrame.new(world(p.X, 2.5, p.Y)) * CFrame.Angles(0, rng:NextNumber(0, 6.28), math.pi / 2), Color3.fromRGB(224, 190, 100), Enum.Material.Grass)
+	h.Shape = Enum.PartType.Cylinder
+end
+
+local function taxi(p, yaw)
+	local m = model("Cab")
+	local cf = CFrame.new(world(p.X, 0, p.Y)) * CFrame.Angles(0, yaw or rng:NextNumber(0, 6.28), 0)
+	local yellow = Color3.fromRGB(240, 200, 40)
+	deco(m, Vector3.new(5, 2, 11), cf * CFrame.new(0, 1.8, 0), yellow, Enum.Material.Metal)
+	deco(m, Vector3.new(4.6, 2, 6), cf * CFrame.new(0, 3.6, 0.6), Color3.fromRGB(40, 50, 60), Enum.Material.Glass)
+	for _, x in ipairs({ -2.6, 2.6 }) do
+		for _, z in ipairs({ -3.6, 3.6 }) do
+			local w = deco(m, Vector3.new(0.6, 2, 2), cf * CFrame.new(x, 1, z), Color3.fromRGB(20, 20, 20))
+			w.Shape = Enum.PartType.Cylinder
+		end
+	end
+end
+
+-- A little crowd of spectators.
+local function crowd(at, facing, count)
+	local m = model("Crowd")
+	for _ = 1, count or 8 do
+		local p = at + Vector2.new(rng:NextNumber(-8, 8), rng:NextNumber(-8, 8))
+		local cf = CFrame.lookAt(world(p.X, 0, p.Y), world(p.X + facing.X, 0, p.Y + facing.Y))
+		deco(m, Vector3.new(1.8, 2.6, 1), cf * CFrame.new(0, 2.6, 0), Color3.fromHSV(rng:NextNumber(), 0.55, 0.8))
+		deco(m, Vector3.new(1.6, 2.4, 1), cf * CFrame.new(0, 0.2 + 1, 0), Color3.fromRGB(60, 56, 70))
+		deco(m, Vector3.new(1.2, 1.2, 1.2), cf * CFrame.new(0, 4.5, 0), Color3.fromRGB(rng:NextInteger(150, 240), rng:NextInteger(110, 200), rng:NextInteger(80, 170)))
+		if rng:NextNumber() < 0.4 then
+			deco(m, Vector3.new(2.4, 0.4, 2.4), cf * CFrame.new(0, 5.3, 0), Color3.fromRGB(110, 76, 48))
+		end
+	end
+end
+
+-- A big wooden welcome arch over the road at a stage start: the stage's
+-- name on it, flags on top, a line of bunting, and spectators either side.
+local function stageArch(at, dir, text, index)
+	local m = model("StageArch")
+	local cf = CFrame.lookAt(world(at.X, 0, at.Y), world(at.X + dir.X, 0, at.Y + dir.Y))
+	local span = ROAD_WIDTH + 10
+	for _, x in ipairs({ -span / 2, span / 2 }) do
+		deco(m, Vector3.new(2, 22, 2), cf * CFrame.new(x, 11, 0), WOOD_DARK, Enum.Material.Wood)
+		deco(m, Vector3.new(0.3, 4, 3), cf * CFrame.new(x, 24, 1.5), Color3.fromHSV((index * 0.11) % 1, 0.7, 0.9), Enum.Material.Fabric)
+		deco(m, Vector3.new(0.4, 4, 0.4), cf * CFrame.new(x, 24, 0), WOOD_DARK)
+	end
+	local board = deco(m, Vector3.new(span + 4, 5, 1), cf * CFrame.new(0, 19, 0), WOOD, Enum.Material.WoodPlanks)
+	for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = face
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 24
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.fromScale(1, 1)
+		label.Font = Enum.Font.Bangers
+		label.TextScaled = true
+		label.Text = text
+		label.TextColor3 = Color3.fromRGB(255, 220, 120)
+		label.TextStrokeTransparency = 0.2
+		label.Parent = gui
+		gui.Parent = board
+	end
+	-- Bunting: little coloured flags strung across under the board.
+	for k = 0, 9 do
+		local x = -span / 2 + 2 + k * (span - 4) / 9
+		local flag = deco(m, Vector3.new(1.6, 1.8, 0.1), cf * CFrame.new(x, 15.2 - math.sin(k / 9 * math.pi) * 1.5, 0) * CFrame.Angles(0, 0, math.pi / 4), Color3.fromHSV((k * 0.13) % 1, 0.7, 0.95), Enum.Material.Fabric)
+		flag.Size = Vector3.new(1.4, 1.4, 0.1)
+	end
+	local side = Vector2.new(-dir.Y, dir.X)
+	crowd(at + side * (span / 2 + 9) - dir * 8, -side, 9)
+	crowd(at - side * (span / 2 + 9) - dir * 8, side, 9)
+end
+
 ---------------------------------------------------------------------------
 -- The stages' scenery
 ---------------------------------------------------------------------------
@@ -4684,13 +4935,77 @@ local function buildScenery()
 		grandstand(fin + Vector2.new(-dir.Y, dir.X) * 50, Vector2.new(dir.Y, -dir.X))
 		grandstand(fin - Vector2.new(-dir.Y, dir.X) * 50, Vector2.new(-dir.Y, dir.X))
 	end
-	-- A sign at every stage start.
-	for i, st in ipairs(STAGES) do
-		local a, b = stageFrom(i)
+	-- Livelier stages.
+	-- Beach: huts, a pier into the sea, white surf along the shore.
+	scatter(1, 7, 40, 140, 36, hut)
+	do
+		local pier = model("Pier")
+		part(pier, Vector3.new(10, 1, 160), CFrame.new(world(300, 0.6, -220)), Color3.fromRGB(140, 104, 66), Enum.Material.WoodPlanks)
+		for z = -290, -150, 14 do
+			for _, x in ipairs({ -4.5, 4.5 }) do
+				deco(pier, Vector3.new(0.8, 5, 0.8), CFrame.new(world(300 + x, -1.5, z)), WOOD_DARK, Enum.Material.Wood)
+			end
+		end
+		for x = -200, 1250, 120 do
+			deco(model("Surf"), Vector3.new(124, 0.25, 6), CFrame.new(world(x, 0.2, -138 + rng:NextNumber(-3, 3))), Color3.fromRGB(240, 248, 255), Enum.Material.SmoothPlastic, { Transparency = 0.25 })
+		end
+	end
+	-- Desert: tumbleweeds, wagon wrecks, rock arches.
+	scatter(2, 25, 30, 220, 26, tumbleweed)
+	scatter(2, 4, 50, 200, 45, wagon)
+	scatter(2, 3, 90, 260, 80, rockArch)
+	-- Plains: cattle, hay bales, rail fences along the road.
+	scatter(4, 30, 40, 240, 34, cow)
+	scatter(4, 24, 30, 220, 26, hayBale)
+	-- Lake shore: a pebble beach along the water, cabins.
+	deco(model("Shore"), Vector3.new(40, 0.3, 1200), CFrame.new(world(240, 0.12, 2860)), Color3.fromRGB(196, 186, 160), Enum.Material.Pebble)
+	scatter(6, 4, 60, 200, 50, function(p)
+		if p.X > 300 then
+			house(p, Color3.fromRGB(130, 90, 56), Color3.fromRGB(70, 50, 36), 18, 14, 10)
+		end
+	end)
+	-- Fences, sidewalks, street furniture along the road.
+	for si, st in ipairs(STAGES) do
+		for k = 1, #st.Path - 1 do
+			local a, b = v2(st.Path[k]), v2(st.Path[k + 1])
+			if st.Theme == "Plains" or st.Theme == "River" or st.Theme == "Beach" then
+				fenceAlong(a, b, ROAD_WIDTH / 2 + 5, st.Theme == "Beach" and Color3.fromRGB(200, 180, 140) or WOOD)
+			elseif st.Theme == "Town" then
+				sidewalks(a, b, Color3.fromRGB(170, 160, 150))
+			elseif st.Theme == "City" then
+				sidewalks(a, b, Color3.fromRGB(150, 150, 156))
+				local dir = (b - a).Unit
+				local side = Vector2.new(-dir.Y, dir.X)
+				local len = (b - a).Magnitude
+				for d = 40, len - 40, 40 do
+					for _, s2 in ipairs({ -1, 1 }) do
+						lampPost(a + dir * d + side * s2 * (ROAD_WIDTH / 2 + 6))
+					end
+					if rng:NextNumber() < 0.5 then
+						local cab = a + dir * (d + 20) + side * (rng:NextNumber() < 0.5 and -1 or 1) * (ROAD_WIDTH / 2 + 15)
+						if distToRoute(cab.X, cab.Y) > 14 then
+							taxi(cab, math.atan2(-dir.X, -dir.Y))
+						end
+					end
+				end
+			end
+		end
+		-- A welcome arch over the road at every stage start.
+		local a, b = stageFrom(si)
+		local dir = (b - a).Unit
+		local name = (TuskConfig.Race and TuskConfig.Race.Stages and TuskConfig.Race.Stages[si] and TuskConfig.Race.Stages[si].Name) or st.Theme
+		stageArch(a + dir * 14, dir, "STAGE " .. si .. ": " .. name, si)
+	end
+	-- Spectators along the final avenue in New York.
+	do
+		local path = STAGES[9].Path
+		local a, b = v2(path[#path - 1]), v2(path[#path])
 		local dir = (b - a).Unit
 		local side = Vector2.new(-dir.Y, dir.X)
-		local name = (TuskConfig.Race and TuskConfig.Race.Stages and TuskConfig.Race.Stages[i] and TuskConfig.Race.Stages[i].Name) or st.Theme
-		sign(a + side * 26 + dir * 6, -dir, "STAGE " .. i .. ": " .. name)
+		for d = 40, (b - a).Magnitude - 10, 30 do
+			crowd(a + dir * d + side * (ROAD_WIDTH / 2 + 12), -side, 6)
+			crowd(a + dir * d - side * (ROAD_WIDTH / 2 + 12), side, 6)
+		end
 	end
 end
 
@@ -4774,6 +5089,7 @@ function RaceMap.build()
 	folder.Parent = workspace
 	local ok, err = pcall(function()
 		buildGround()
+		buildBackdrop()
 		buildScenery()
 	end)
 	if not ok then

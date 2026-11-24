@@ -183,3 +183,16 @@ The race now has **its own giant world** (`RaceMap`, `TuskConfig.Race.Map`). The
 - A jockey taken down is out of the race.
 
 - **Fighting turned OFF (2026-11-24):** `Brawlers = 0`, `FightPlayers = false`. Jockeys just race. Set them back to 0.6 / true to turn it on again.
+
+### Race map, made to look better (2026-11-24)
+![[race_map_start.png]]
+- **The whole world has ground now.** 250-stud tiles, each coloured like the nearest stage (sand, red desert, rock, plains, cobbles, forest floor, concrete), with a faint natural variation. No more bare khaki.
+- **Mountains all round the edge** (terrain, snow-capped in the north and east), so the world never just stops. The open sea stays to the south and the lake to the west. **Rolling hills and dunes** inside each region.
+- **The road:** paler packed edges and wheel ruts. Rail fences along the beach, plains and river stretches. Sidewalks in Philadelphia and New York, with lamp posts and yellow cabs in New York.
+- **A wooden welcome arch at every stage start** with the stage's name, flags, bunting and spectators on both sides. Crowds line the final avenue in New York.
+- **More life in every region:**
+  - beach: huts, a pier and white surf along the shore;
+  - desert: tumbleweeds, covered-wagon wrecks and rock arches;
+  - plains: cattle and hay bales;
+  - lake: a pebble beach and cabins.
+- Small decorations don't cast shadows (cheaper to draw). About 5,500 parts in all.
