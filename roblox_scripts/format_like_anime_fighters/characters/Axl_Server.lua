@@ -166,14 +166,16 @@ end
 local function engulf(S, player, target, opts)
 	local t = opts.Time * (rainy() and (opts.RainMultiplier or 0.5) or 1)
 	local untilT = now() + t
+	local token = tostring({}) -- only this membrane's squeezes may act (a newer one replaces it)
 	target:SetAttribute("GuiltMembraneUntil", untilT)
+	target:SetAttribute("GuiltMembraneCast", token)
 	slow(S, target, "GuiltMembrane", opts.Slow, t)
 	local ticks = math.max(1, math.floor(t / opts.Tick))
 	for i = 1, ticks do
 		task.delay(i * opts.Tick, function()
 			local tr = target:FindFirstChild("HumanoidRootPart")
 			-- (Ends early if the membrane was cleared, e.g. a new life.)
-			if not tr or (target:GetAttribute("GuiltMembraneUntil") or 0) < untilT - 0.01 then
+			if not tr or target:GetAttribute("GuiltMembraneCast") ~= token or not target:GetAttribute("GuiltMembraneUntil") then
 				return
 			end
 			local last = i == ticks

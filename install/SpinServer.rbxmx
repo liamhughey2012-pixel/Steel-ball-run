@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Script" referent="RBX51"><Properties><string name="Name">SpinServer</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Script" referent="RBX52"><Properties><string name="Name">SpinServer</string><ProtectedString name="Source"><![CDATA[--[[
 	SpinServer  (ServerScriptService.SpinServer — Script)
 	Boots every server system: characters (Johnny/Tusk, Gyro/Ball Breaker,
 	Diego/Scary Monsters, Pork Pie Hat Kid/Wired, Sandman/In a Silent Way),
@@ -11,6 +11,7 @@ local TuskService = require(script.TuskService)
 local NPCService = require(script.NPCService)
 local TestDummies = require(script.TestDummies)
 local StandAssetLoader = require(script.StandAssetLoader)
+local JohnnyOutfit = require(script.JohnnyOutfit)
 local GyroOutfit = require(script.GyroOutfit)
 local DiegoOutfit = require(script.DiegoOutfit)
 local PorkPieOutfit = require(script.PorkPieOutfit)
@@ -29,6 +30,7 @@ ProjectileService.MaxActivePerPlayer = 20
 
 StandAssetLoader.init()
 TuskService.init()
+JohnnyOutfit.init()
 GyroOutfit.init()
 DiegoOutfit.init()
 PorkPieOutfit.init()
@@ -2274,7 +2276,271 @@ function HotPantsOutfit.init()
 end
 
 return HotPantsOutfit
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX23"><Properties><string name="Name">MountainTimOutfit</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX23"><Properties><string name="Name">JohnnyOutfit</string><ProtectedString name="Source"><![CDATA[--[[
+	JohnnyOutfit  (ServerScriptService.SpinServer.JohnnyOutfit)
+
+	Gives a character Johnny Joestar's look while they play him (Tusk, Acts
+	1-4), built from blocky parts (no catalog asset ids), matched to his art:
+	  * a light-blue knit cap covered in pink stars, a gold horseshoe on the
+	    front with a black horse head inside it, little frayed tips
+	  * wavy blond hair to his shoulders
+	  * a lavender scarf round his neck
+	  * a light-blue top with a black V across the chest, a purple star
+	    patch on the sleeve, sleeves pushed up to lavender cuffs at the elbow,
+	    bare forearms and black wristbands
+	  * light-blue trousers covered in pink stars
+	The player's own hats/hair are hidden while they play him and come back
+	when they switch. Built on the server so every player sees it.
+]]
+
+local Players = game:GetService("Players")
+
+local JohnnyOutfit = {}
+JohnnyOutfit.Act = 1 -- (any Tusk Act: 1-4)
+
+local C = {
+	Cap = Color3.fromRGB(176, 214, 236),
+	CapShade = Color3.fromRGB(140, 182, 210),
+	Star = Color3.fromRGB(236, 140, 186),
+	Gold = Color3.fromRGB(222, 180, 64),
+	GoldDark = Color3.fromRGB(170, 130, 40),
+	Horse = Color3.fromRGB(26, 24, 28),
+	Hair = Color3.fromRGB(232, 206, 140),
+	HairDark = Color3.fromRGB(196, 168, 104),
+	Scarf = Color3.fromRGB(184, 160, 222),
+	Suit = Color3.fromRGB(170, 208, 232),
+	SuitShade = Color3.fromRGB(134, 174, 204),
+	Chevron = Color3.fromRGB(26, 28, 34),
+	Patch = Color3.fromRGB(120, 90, 170),
+	Band = Color3.fromRGB(30, 30, 34),
+	Shoe = Color3.fromRGB(60, 54, 70),
+}
+
+local saved = setmetatable({}, { __mode = "k" })
+
+local function piece(parent, outfit, name, size, color, offset)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.SmoothPlastic
+	p.Size = size
+	p.Color = color
+	p.CFrame = parent.CFrame * offset
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = parent
+	weld.Part1 = p
+	weld.Parent = p
+	p.Parent = outfit
+	return p
+end
+
+-- Little pink stars (a diamond and a cross) scattered over one face.
+local function stars(part, outfit, faceCF, w, h, count, seed)
+	for i = 1, count do
+		local u = ((i * 37 + seed * 17) % 100) / 100 - 0.5
+		local v = ((i * 59 + seed * 31) % 100) / 100 - 0.5
+		local cf = faceCF * CFrame.new(u * w * 0.85, v * h * 0.85, 0)
+		piece(part, outfit, "Star", Vector3.new(0.12, 0.12, 0.03), C.Star, cf * CFrame.Angles(0, 0, math.pi / 4))
+		piece(part, outfit, "Star", Vector3.new(0.2, 0.05, 0.03), C.Star, cf)
+	end
+end
+
+-- Stars all round a box laid over a part.
+local function starry(part, outfit, size, cf, count, seed)
+	local x, z = size.X / 2 + 0.015, size.Z / 2 + 0.015
+	stars(part, outfit, cf * CFrame.new(0, 0, -z), size.X, size.Y, count, seed)
+	stars(part, outfit, cf * CFrame.new(0, 0, z) * CFrame.Angles(0, math.pi, 0), size.X, size.Y, count, seed + 1)
+	stars(part, outfit, cf * CFrame.new(x, 0, 0) * CFrame.Angles(0, -math.pi / 2, 0), size.Z, size.Y, math.max(1, count - 1), seed + 2)
+	stars(part, outfit, cf * CFrame.new(-x, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), size.Z, size.Y, math.max(1, count - 1), seed + 3)
+end
+
+local function headPieces(head, outfit)
+	local s = head.Size.Y / 1.2
+	local w, h, d = head.Size.X / 2, head.Size.Y / 2, head.Size.Z / 2
+	-- Wavy blond hair down to the shoulders.
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, "Hair", Vector3.new(0.18 * s, 1.0 * s, head.Size.Z * 0.85), C.Hair, CFrame.new(side * (w + 0.08 * s), -0.3 * s, 0.06 * s))
+		piece(head, outfit, "HairWave", Vector3.new(0.22 * s, 0.3 * s, head.Size.Z * 0.5), C.HairDark, CFrame.new(side * (w + 0.12 * s), -0.75 * s, 0.1 * s) * CFrame.Angles(0, 0, side * 0.3))
+	end
+	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.3 * s, 1.0 * s, 0.22 * s), C.Hair, CFrame.new(0, -0.4 * s, d + 0.1 * s))
+	piece(head, outfit, "Bangs", Vector3.new(head.Size.X * 0.5, 0.18 * s, 0.1 * s), C.Hair, CFrame.new(0.15 * s, h - 0.42 * s, -d - 0.03 * s) * CFrame.Angles(0, 0, -0.25))
+	-- The knit cap, pulled down low, with a folded band and little frayed tips.
+	local capSize = Vector3.new(head.Size.X + 0.2 * s, 0.75 * s, head.Size.Z + 0.2 * s)
+	local capCF = CFrame.new(0, h - 0.12 * s, 0.02 * s)
+	piece(head, outfit, "Cap", capSize, C.Cap, capCF)
+	piece(head, outfit, "CapTop", Vector3.new(head.Size.X * 0.8, 0.2 * s, head.Size.Z * 0.8), C.Cap, CFrame.new(0, h + 0.34 * s, 0.04 * s))
+	piece(head, outfit, "CapBand", Vector3.new(head.Size.X + 0.26 * s, 0.18 * s, head.Size.Z + 0.26 * s), C.CapShade, CFrame.new(0, h - 0.42 * s, 0.02 * s))
+	starry(head, outfit, capSize, capCF, 3, 4)
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, "CapTip", Vector3.new(0.1 * s, 0.3 * s, 0.1 * s), C.CapShade, CFrame.new(side * (w + 0.02 * s), h + 0.24 * s, 0.2 * s) * CFrame.Angles(0, 0, side * -0.5))
+	end
+	-- Gold horseshoe on the front, opening upward, a black horse head inside.
+	local hf = -d - 0.14 * s
+	local hy = h - 0.02 * s
+	piece(head, outfit, "Horseshoe", Vector3.new(0.5 * s, 0.1 * s, 0.06 * s), C.Gold, CFrame.new(0, hy - 0.26 * s, hf))
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, "Horseshoe", Vector3.new(0.1 * s, 0.5 * s, 0.06 * s), C.Gold, CFrame.new(side * 0.22 * s, hy, hf) * CFrame.Angles(0, 0, side * 0.08))
+		piece(head, outfit, "Nail", Vector3.new(0.04 * s, 0.04 * s, 0.04 * s), C.GoldDark, CFrame.new(side * 0.22 * s, hy + 0.05 * s, hf - 0.04 * s))
+	end
+	piece(head, outfit, "HorseHead", Vector3.new(0.18 * s, 0.34 * s, 0.04 * s), C.Horse, CFrame.new(0, hy - 0.02 * s, hf + 0.02 * s) * CFrame.Angles(0, 0, 0.3))
+	piece(head, outfit, "HorseHead", Vector3.new(0.18 * s, 0.1 * s, 0.04 * s), C.Horse, CFrame.new(0.05 * s, hy + 0.14 * s, hf + 0.02 * s))
+end
+
+local function body(character, outfit)
+	local headPart = character:FindFirstChild("Head")
+	local skin = headPart and headPart.Color or Color3.fromRGB(238, 200, 170)
+	local upper = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	local lower = character:FindFirstChild("LowerTorso")
+	if upper then
+		local s = upper.Size
+		local top, front = s.Y / 2, -s.Z / 2
+		piece(upper, outfit, "Top", s + Vector3.new(0.1, 0.02, 0.1), C.Suit, CFrame.new())
+		-- Lavender scarf round the neck.
+		piece(upper, outfit, "Scarf", Vector3.new(s.X * 0.62, 0.34, s.Z + 0.22), C.Scarf, CFrame.new(0, top + 0.1, 0))
+		piece(upper, outfit, "ScarfDrape", Vector3.new(0.5, 0.36, 0.08), C.Scarf, CFrame.new(0.1, top - 0.14, front - 0.06))
+		-- The black V across the chest (and a matching one at the back).
+		for _, side in ipairs({ -1, 1 }) do
+			piece(upper, outfit, "Chevron", Vector3.new(0.22, s.Y * 0.75, 0.05), C.Chevron, CFrame.new(side * s.X * 0.22, top - s.Y * 0.3, front - 0.06) * CFrame.Angles(0, 0, side * -0.9))
+			piece(upper, outfit, "Chevron", Vector3.new(0.22, s.Y * 0.75, 0.05), C.Chevron, CFrame.new(side * s.X * 0.22, top - s.Y * 0.3, -front + 0.06) * CFrame.Angles(0, 0, side * 0.9))
+		end
+		stars(upper, outfit, CFrame.new(0, -s.Y * 0.3, front - 0.06), s.X * 0.9, s.Y * 0.3, 2, 9)
+	end
+	local waist = lower or upper
+	if waist and lower then
+		piece(lower, outfit, "Pants", lower.Size + Vector3.new(0.06, 0.02, 0.06), C.Suit, CFrame.new())
+	end
+	-- Sleeves pushed up to the elbow (lavender cuffs), bare forearms, black wristbands.
+	for _, name in ipairs({ "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm", "Left Arm", "Right Arm" }) do
+		local arm = character:FindFirstChild(name)
+		if arm then
+			local as = arm.Size
+			local tall = as.Y > 1.8
+			local out = name:find("Left") and -1 or 1
+			if name:find("Upper") or tall then
+				local h = tall and as.Y * 0.55 or as.Y
+				piece(arm, outfit, "Sleeve", Vector3.new(as.X + 0.12, h, as.Z + 0.12), C.Suit, CFrame.new(0, as.Y / 2 - h / 2, 0))
+				piece(arm, outfit, "Cuff", Vector3.new(as.X + 0.18, 0.28, as.Z + 0.18), C.Scarf, CFrame.new(0, as.Y / 2 - h, 0))
+				if name:find("Right") or name == "Right Arm" then
+					piece(arm, outfit, "Patch", Vector3.new(0.05, 0.36, 0.36), C.Patch, CFrame.new(out * (as.X / 2 + 0.08), as.Y / 2 - 0.4, 0))
+				end
+			end
+			if name:find("Lower") or tall then
+				-- Bare forearm (covers whatever shirt the avatar wears).
+				local fh = tall and as.Y * 0.45 or as.Y
+				piece(arm, outfit, "Skin", Vector3.new(as.X + 0.04, fh, as.Z + 0.04), skin, CFrame.new(0, -as.Y / 2 + fh / 2, 0))
+				piece(arm, outfit, "Wristband", Vector3.new(as.X + 0.12, 0.3, as.Z + 0.12), C.Band, CFrame.new(0, -as.Y / 2 + 0.25, 0))
+			end
+		end
+	end
+	-- Light-blue trousers covered in pink stars.
+	for _, name in ipairs({ "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
+		local leg = character:FindFirstChild(name)
+		if leg then
+			local size = leg.Size + Vector3.new(0.06, 0.02, 0.06)
+			piece(leg, outfit, "Pants", size, C.Suit, CFrame.new())
+			starry(leg, outfit, size, CFrame.new(), leg.Size.Y > 1.8 and 3 or 2, #name)
+		end
+	end
+	for _, name in ipairs({ "LeftFoot", "RightFoot" }) do
+		local foot = character:FindFirstChild(name)
+		if foot then
+			piece(foot, outfit, "Shoe", foot.Size + Vector3.new(0.08, 0.06, 0.1), C.Shoe, CFrame.new())
+		end
+	end
+end
+
+function JohnnyOutfit.apply(character)
+	if character:FindFirstChild("JohnnyOutfit") then
+		return
+	end
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local store = { Hidden = {} }
+	saved[character] = store
+	for _, d in ipairs(character:GetChildren()) do
+		if d:IsA("Accessory") then
+			local handle = d:FindFirstChild("Handle")
+			local kind = d.AccessoryType
+			if handle and (kind == Enum.AccessoryType.Hat or kind == Enum.AccessoryType.Hair or kind == Enum.AccessoryType.Unknown) then
+				store.Hidden[handle] = handle.Transparency
+				handle.Transparency = 1
+			end
+		end
+	end
+	local outfit = Instance.new("Model")
+	outfit.Name = "JohnnyOutfit"
+	outfit.Parent = character
+	headPieces(head, outfit)
+	body(character, outfit)
+end
+
+function JohnnyOutfit.remove(character)
+	local outfit = character:FindFirstChild("JohnnyOutfit")
+	if outfit then
+		outfit:Destroy()
+	end
+	local store = saved[character]
+	if not store then
+		return
+	end
+	saved[character] = nil
+	for thing, transparency in pairs(store.Hidden) do
+		if thing.Parent then
+			thing.Transparency = transparency
+		end
+	end
+end
+
+local function watch(character)
+	local function update()
+		local function isJohnny()
+			local act = character:GetAttribute("TuskAct")
+			return type(act) == "number" and act >= 1 and act <= 4
+		end
+		if isJohnny() then
+			task.delay(0.3, function()
+				if character.Parent and isJohnny() then
+					JohnnyOutfit.apply(character)
+				end
+			end)
+		else
+			JohnnyOutfit.remove(character)
+		end
+	end
+	character:GetAttributeChangedSignal("TuskAct"):Connect(update)
+	update()
+end
+
+function JohnnyOutfit.init()
+	local function onPlayer(player)
+		player.CharacterAppearanceLoaded:Connect(watch)
+		if player.Character then
+			watch(player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	-- Stand-user NPCs (StandBots) wear the outfit too.
+	local CollectionService = game:GetService("CollectionService")
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		watch(model)
+	end
+	CollectionService:GetInstanceAddedSignal("SpinFighter"):Connect(watch)
+	for _, player in ipairs(Players:GetPlayers()) do
+		onPlayer(player)
+	end
+end
+
+return JohnnyOutfit
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX24"><Properties><string name="Name">MountainTimOutfit</string><ProtectedString name="Source"><![CDATA[--[[
 	MountainTimOutfit  (ServerScriptService.SpinServer.MountainTimOutfit)
 
 	Gives a character Mountain Tim's cowboy look while they play him (TuskAct 9),
@@ -2576,7 +2842,7 @@ function MountainTimOutfit.init()
 end
 
 return MountainTimOutfit
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX24"><Properties><string name="Name">NPCService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">NPCService</string><ProtectedString name="Source"><![CDATA[--[[
 	NPCService  (ServerScriptService.SpinServer.NPCService)
 
 	Turns the markers in workspace.SBRMap.NPCSpawns (made by SBRMapBuilder)
@@ -2790,7 +3056,7 @@ function NPCService.init()
 end
 
 return NPCService
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">PorkPieOutfit</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX26"><Properties><string name="Name">PorkPieOutfit</string><ProtectedString name="Source"><![CDATA[--[[
 	PorkPieOutfit  (ServerScriptService.SpinServer.PorkPieOutfit)
 
 	Gives a character Pork Pie Hat Kid's look while they play him (TuskAct 7),
@@ -3060,7 +3326,7 @@ function PorkPieOutfit.init()
 end
 
 return PorkPieOutfit
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX26"><Properties><string name="Name">ProjectileService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX27"><Properties><string name="Name">ProjectileService</string><ProtectedString name="Source"><![CDATA[--[[
 	ProjectileService  (ServerScriptService.SpinServer.ProjectileService)
 
 	Server-simulated projectiles. The server owns position, collision and
@@ -3255,7 +3521,7 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return ProjectileService
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX27"><Properties><string name="Name">SandmanOutfit</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX28"><Properties><string name="Name">SandmanOutfit</string><ProtectedString name="Source"><![CDATA[--[[
 	SandmanOutfit  (ServerScriptService.SpinServer.SandmanOutfit)
 
 	Gives a character Sandman's look while they play him (TuskAct 8), built
@@ -3537,7 +3803,7 @@ function SandmanOutfit.init()
 end
 
 return SandmanOutfit
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX28"><Properties><string name="Name">StandAssetLoader</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX29"><Properties><string name="Name">StandAssetLoader</string><ProtectedString name="Source"><![CDATA[--[[
 	StandAssetLoader  (ServerScriptService.SpinServer.StandAssetLoader)
 
 	Loads the Stand models listed in TuskConfig.StandModels (by asset id)
@@ -3621,7 +3887,7 @@ function StandAssetLoader.init()
 end
 
 return StandAssetLoader
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX29"><Properties><string name="Name">StandBots</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX30"><Properties><string name="Name">StandBots</string><ProtectedString name="Source"><![CDATA[--[[
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
@@ -4135,7 +4401,7 @@ function StandBots.init(TuskService)
 end
 
 return StandBots
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX30"><Properties><string name="Name">TestDummies</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX31"><Properties><string name="Name">TestDummies</string><ProtectedString name="Source"><![CDATA[--[[
 	TestDummies  (ServerScriptService.SpinServer.TestDummies)
 	Studio-only practice targets so Spin can be tested solo.
 	Never runs in a live server (guarded by RunService:IsStudio()).
@@ -4299,7 +4565,7 @@ function TestDummies.init()
 end
 
 return TestDummies
-]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX44"><Properties><string name="Name">TuskActs</string></Properties><Item class="ModuleScript" referent="RBX31"><Properties><string name="Name">Axl</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Folder" referent="RBX45"><Properties><string name="Name">TuskActs</string></Properties><Item class="ModuleScript" referent="RBX32"><Properties><string name="Name">Axl</string><ProtectedString name="Source"><![CDATA[--[[
 	Axl  (ServerScriptService.SpinServer.TuskActs.Axl)
 
 	Axl RO: CIVIL WAR. His Stand makes a target's guilt real: the people
@@ -4452,14 +4718,16 @@ end
 local function engulf(S, player, target, opts)
 	local t = opts.Time * (rainy() and (opts.RainMultiplier or 0.5) or 1)
 	local untilT = now() + t
+	local token = tostring({}) -- only this membrane's squeezes may act (a newer one replaces it)
 	target:SetAttribute("GuiltMembraneUntil", untilT)
+	target:SetAttribute("GuiltMembraneCast", token)
 	slow(S, target, "GuiltMembrane", opts.Slow, t)
 	local ticks = math.max(1, math.floor(t / opts.Tick))
 	for i = 1, ticks do
 		task.delay(i * opts.Tick, function()
 			local tr = target:FindFirstChild("HumanoidRootPart")
 			-- (Ends early if the membrane was cleared, e.g. a new life.)
-			if not tr or (target:GetAttribute("GuiltMembraneUntil") or 0) < untilT - 0.01 then
+			if not tr or target:GetAttribute("GuiltMembraneCast") ~= token or not target:GetAttribute("GuiltMembraneUntil") then
 				return
 			end
 			local last = i == ticks
@@ -4776,7 +5044,7 @@ function Axl.Cleanup(S, player, state)
 end
 
 return Axl
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX32"><Properties><string name="Name">Blackmore</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX33"><Properties><string name="Name">Blackmore</string><ProtectedString name="Source"><![CDATA[--[[
 	Blackmore  (ServerScriptService.SpinServer.TuskActs.Blackmore)
 
 	Blackmore: CATCH THE RAINBOW. His Stand freezes raindrops in mid-air: he
@@ -5112,7 +5380,7 @@ function Blackmore.Cleanup(S, player, state)
 end
 
 return Blackmore
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX33"><Properties><string name="Name">DiegoBrando</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX34"><Properties><string name="Name">DiegoBrando</string><ProtectedString name="Source"><![CDATA[--[[
 	DiegoBrando  (ServerScriptService.SpinServer.TuskActs.DiegoBrando)
 
 	Diego Brando: SCARY MONSTERS (dinosaur Stand). Registered as "Act" 6 so it
@@ -5564,7 +5832,7 @@ function Diego.Cleanup(S, player, state)
 end
 
 return Diego
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX34"><Properties><string name="Name">GyroZeppeli</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX35"><Properties><string name="Name">GyroZeppeli</string><ProtectedString name="Source"><![CDATA[--[[
 	GyroZeppeli  (ServerScriptService.SpinServer.TuskActs.GyroZeppeli)
 
 	Gyro Zeppeli: Steel Ball moveset (registered as "Act" 5 so it reuses the
@@ -5882,7 +6150,7 @@ function Gyro.Cleanup(S, player, state)
 end
 
 return Gyro
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX35"><Properties><string name="Name">HotPants</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX36"><Properties><string name="Name">HotPants</string><ProtectedString name="Source"><![CDATA[--[[
 	HotPants  (ServerScriptService.SpinServer.TuskActs.HotPants)
 
 	Hot Pants: CREAM STARTER, a spray can that sprays flesh. It can seal
@@ -6159,7 +6427,7 @@ function HotPants.Cleanup(S, player, state)
 end
 
 return HotPants
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX36"><Properties><string name="Name">MountainTim</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX37"><Properties><string name="Name">MountainTim</string><ProtectedString name="Source"><![CDATA[--[[
 	MountainTim  (ServerScriptService.SpinServer.TuskActs.MountainTim)
 
 	Mountain Tim: OH! LONESOME ME. The cowboy's Stand splits his body into
@@ -6558,7 +6826,7 @@ function Tim.Cleanup(S, player, state)
 end
 
 return Tim
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX37"><Properties><string name="Name">PorkPieHatKid</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX38"><Properties><string name="Name">PorkPieHatKid</string><ProtectedString name="Source"><![CDATA[--[[
 	PorkPieHatKid  (ServerScriptService.SpinServer.TuskActs.PorkPieHatKid)
 
 	Pork Pie Hat Kid: WIRED. Two fish hooks on steel cables that roll out of a
@@ -6942,7 +7210,7 @@ function PorkPie.Cleanup(S, player, state)
 end
 
 return PorkPie
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX38"><Properties><string name="Name">Sandman</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX39"><Properties><string name="Name">Sandman</string><ProtectedString name="Source"><![CDATA[--[[
 	Sandman  (ServerScriptService.SpinServer.TuskActs.Sandman)
 
 	Sandman (Soundman): IN A SILENT WAY. His Stand turns sounds into solid,
@@ -7209,7 +7477,7 @@ function Sandman.Cleanup(S, player, state)
 end
 
 return Sandman
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX39"><Properties><string name="Name">TuskAct1</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX40"><Properties><string name="Name">TuskAct1</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAct1  (ServerScriptService.SpinServer.TuskActs.TuskAct1)
 
 	Server logic for Tusk Act 1, "the beginning of Spin".
@@ -7563,7 +7831,7 @@ function Act1.Cleanup(S, player, state)
 end
 
 return Act1
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX40"><Properties><string name="Name">TuskAct2</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX41"><Properties><string name="Name">TuskAct2</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAct2  (ServerScriptService.SpinServer.TuskActs.TuskAct2)
 
 	Tusk Act 2: wormhole combat.
@@ -7830,7 +8098,7 @@ function Act2.Cleanup(S, player, state)
 end
 
 return Act2
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX41"><Properties><string name="Name">TuskAct3</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX42"><Properties><string name="Name">TuskAct3</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAct3  (ServerScriptService.SpinServer.TuskActs.TuskAct3)
 
 	Tusk Act 3: master of spatial movement.
@@ -8015,7 +8283,7 @@ function Act3.Cleanup(S, player, state)
 end
 
 return Act3
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX42"><Properties><string name="Name">TuskAct4</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX43"><Properties><string name="Name">TuskAct4</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskAct4  (ServerScriptService.SpinServer.TuskActs.TuskAct4)
 
 	Tusk Act 4: Infinite Rotation. Gold and deep blue, heavy and majestic.
@@ -8282,7 +8550,7 @@ function Act4.Cleanup(S, player, state)
 end
 
 return Act4
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX43"><Properties><string name="Name">Valentine</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX44"><Properties><string name="Name">Valentine</string><ProtectedString name="Source"><![CDATA[--[[
 	Valentine  (ServerScriptService.SpinServer.TuskActs.Valentine)
 
 	Funny Valentine: D4C (Dirty Deeds Done Dirt Cheap). Sandwiched between
@@ -8293,12 +8561,17 @@ return Act4
 	  M1        DIRTY DEEDS COMBO: D4C chops with him
 	  Ability 1 DIMENSION HOP: a flag sweeps over him (he can't be hit while
 	            he's between worlds) and he steps out behind the nearest enemy
-	            in front, striking them; with nobody there, he hops ahead
+	            in front, striking them; with nobody there, he hops ahead. He
+	            leaves a flag where he was: press again within 4 s to hop back
 	  Ability 2 PARALLEL VALENTINE: a Valentine from another world joins the
-	            fight for a few seconds, chasing and punching the nearest enemy
+	            fight for a few seconds, chasing and punching the nearest enemy.
+	            If he's nearly beaten while it's out, they SWAP: he takes its
+	            place (healed) and it's gone
 	  Ability 3 MENGER SPONGE: the nearest enemy's other-world self appears
 	            beside them: two of the same person can't exist together, so
-	            they crumble into cubes (slowed, ticks of damage), then burst
+	            they crumble into cubes (slowed, ticks of damage), then burst,
+	            hitting whoever's next to them. They only crumble near their
+	            double: running away from it ends it
 	  Ultimate  D4C LOVE TRAIN: a wall of light: every hit on him is
 	            cancelled and the misfortune lands on the nearest enemy
 	            instead; he moves faster; it ends with a pulse of light
@@ -8369,8 +8642,45 @@ end
 ---------------------------------------------------------------------------
 -- DIMENSION HOP
 ---------------------------------------------------------------------------
+-- Step out of another world at `to` (shared by the hop and the hop back).
+local function hopThrough(S, player, state, c, to, facing, onArrive)
+	local character, _, root = alive(S, player)
+	local life = state.Life
+	S.lock(state, c.Windup + 0.3)
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	character:SetAttribute(iframes, true)
+	S.fx("Ability", { Character = character, Act = ACT, Move = "DimensionHop", Phase = "Wrap", Position = root.Position, Windup = c.Windup })
+	task.delay(c.Windup, function()
+		character:SetAttribute(iframes, nil)
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char = alive(S, player)
+		local dest, face = to(), facing()
+		local flatFace = Vector3.new(face.X, dest.Y, face.Z)
+		char:PivotTo((flatFace - dest).Magnitude > 0.1 and CFrame.lookAt(dest, flatFace) or CFrame.new(dest))
+		S.fx("Ability", { Character = char, Act = ACT, Move = "DimensionHop", Phase = "Unwrap", Position = dest })
+		if onArrive then
+			onArrive(char, dest)
+		end
+	end)
+end
+
 local function dimensionHop(S, player, state, aim)
 	local c = cfg.DimensionHop
+	-- Hop back through the flag he left (doesn't need the cooldown).
+	local back = state.HopReturn
+	if back and now() < back.Until and not S.isBusy(state) and not state.Charging then
+		state.HopReturn = nil
+		local character = alive(S, player)
+		S.fx("Ability", { Character = character, Act = ACT, Move = "DimensionHop", Phase = "AnchorGone" })
+		hopThrough(S, player, state, c, function()
+			return back.Pos
+		end, function()
+			return back.Pos + back.Facing
+		end)
+		return
+	end
 	if not ready(S, player, state, "DimensionHop", 1) then
 		return
 	end
@@ -8395,29 +8705,24 @@ local function dimensionHop(S, player, state, aim)
 		return
 	end
 	S.startCooldown(player, state, "DimensionHop", c.Cooldown, 1)
-	S.lock(state, c.Windup + 0.3)
-	local life = state.Life
-	local iframes = S.Adapter.Settings.IFrameAttribute
-	character:SetAttribute(iframes, true)
-	S.fx("Ability", { Character = character, Act = ACT, Move = "DimensionHop", Phase = "Wrap", Position = root.Position, Windup = c.Windup })
-	task.delay(c.Windup, function()
-		character:SetAttribute(iframes, nil)
-		if not S.stillValid(player, state, life) then
-			return
-		end
-		local char, _, r = alive(S, player)
+	-- He leaves a flag where he was: press again soon to hop back to it.
+	local from, fromFacing = root.Position, Moves.flat(root.CFrame.LookVector)
+	hopThrough(S, player, state, c, function()
 		-- The target may have moved: step out behind where they are now.
 		if tr and tr.Parent then
 			local behind = -Moves.flat(tr.CFrame.LookVector)
-			destination = Moves.safeStep(char, tr, behind, 5) or destination
+			destination = Moves.safeStep(alive(S, player), tr, behind, 5) or destination
 			facing = tr.Position
 		end
-		local flatFace = Vector3.new(facing.X, destination.Y, facing.Z)
-		char:PivotTo((flatFace - destination).Magnitude > 0.1 and CFrame.lookAt(destination, flatFace) or CFrame.new(destination))
-		S.fx("Ability", { Character = char, Act = ACT, Move = "DimensionHop", Phase = "Unwrap", Position = destination })
+		return destination
+	end, function()
+		return facing
+	end, function(char, dest)
+		state.HopReturn = { Pos = from, Facing = fromFacing, Until = now() + c.ReturnWindow }
+		S.fx("Ability", { Character = char, Act = ACT, Move = "DimensionHop", Phase = "Anchor", Position = from, Duration = c.ReturnWindow })
 		-- Out of the other world: a strike at whoever he came for.
-		if target and tr and (tr.Position - destination).Magnitude <= c.StrikeRange then
-			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = tr.Position - destination, Position = tr.Position, Source = "ValentineHop" })
+		if target and tr and (tr.Position - dest).Magnitude <= c.StrikeRange then
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = tr.Position - dest, Position = tr.Position, Source = "ValentineHop" })
 		end
 	end)
 end
@@ -8451,8 +8756,20 @@ local function parallelClone(S, player, state)
 		local born = now()
 		local punches, nextPunch, target = 0, 0, nil
 		local step = 0.1
+		local swapped = false
 		local function tick()
-			local _, _, myRoot = alive(S, player)
+			local _, myHum, myRoot = alive(S, player)
+			-- Nearly beaten while his other self is out: they swap places.
+			if myHum and myRoot and not swapped and myHum.Health > 0 and myHum.Health <= myHum.MaxHealth * c.SwapAt and state.Life == life then
+				swapped = true
+				local old = myRoot.Position
+				myHum.Health = math.min(myHum.MaxHealth, myHum.Health + myHum.MaxHealth * c.SwapHeal)
+				local at = Vector3.new(pos.X, old.Y, pos.Z)
+				char:PivotTo(CFrame.lookAt(at, at + Moves.flat(myRoot.CFrame.LookVector)))
+				char:SetAttribute("ParallelCloneUntil", nil)
+				S.fx("Ability", { Character = char, Act = ACT, Move = "ParallelClone", Phase = "Swap", Id = id, From = old, To = at })
+				return
+			end
 			if not myRoot or state.Life ~= life or now() - born > c.Duration or punches >= c.MaxPunches then
 				char:SetAttribute("ParallelCloneUntil", nil)
 				S.fx("Ability", { Act = ACT, Move = "ParallelClone", Phase = "Leave", Id = id, Position = pos })
@@ -8509,14 +8826,28 @@ local function mengerSponge(S, player, state, aim)
 			return
 		end
 		local untilT = now() + c.Time
+		local token = tostring({}) -- only this cast's ticks may act (a newer one replaces it)
 		target:SetAttribute("MengerUntil", untilT)
+		target:SetAttribute("MengerCast", token)
 		slow(S, target, "Menger", c.Slow, c.Time)
-		S.fx("Ability", { Character = char, Act = ACT, Move = "MengerSponge", Phase = "Crumble", Target = target, Duration = c.Time })
+		-- Their double appears right beside them, and stays put.
+		local doublePos = (tr.CFrame * CFrame.new(c.DoubleOffset, 0, 0)).Position
+		S.fx("Ability", { Character = char, Act = ACT, Move = "MengerSponge", Phase = "Crumble", Target = target, Duration = c.Time, DoublePos = doublePos, Leash = c.Leash })
 		local ticks = math.floor(c.Time / c.Tick)
 		for i = 1, ticks do
 			task.delay(i * c.Tick, function()
 				local t = target:FindFirstChild("HumanoidRootPart")
-				if not t or (target:GetAttribute("MengerUntil") or 0) < untilT - 0.01 then
+				if not t or target:GetAttribute("MengerCast") ~= token or not target:GetAttribute("MengerUntil") then
+					return
+				end
+				-- Got away from their double: it's over.
+				if (t.Position - doublePos).Magnitude > c.Leash then
+					target:SetAttribute("MengerUntil", nil)
+					local hum = target:FindFirstChildOfClass("Humanoid")
+					if hum then
+						S.Adapter.setMoveModifier(hum, "Menger", nil)
+					end
+					S.fx("Ability", { Act = ACT, Move = "MengerSponge", Phase = "Escape", Position = t.Position, Target = target, DoublePos = doublePos })
 					return
 				end
 				local last = i == ticks
@@ -8530,7 +8861,9 @@ local function mengerSponge(S, player, state, aim)
 				})
 				if last then
 					target:SetAttribute("MengerUntil", nil)
-					S.fx("Ability", { Act = ACT, Move = "MengerSponge", Phase = "Burst", Position = t.Position, Target = target })
+					-- The burst catches whoever's right next to them.
+					Moves.aoe(S, player, t.Position, c.BurstRadius, { Damage = c.BurstDamage, Stun = 0.5, Knockback = 20, Source = "ValentineMenger" }, 6, { [target] = true })
+					S.fx("Ability", { Act = ACT, Move = "MengerSponge", Phase = "Burst", Position = t.Position, Target = target, Radius = c.BurstRadius })
 				end
 			end)
 		end
@@ -8632,6 +8965,7 @@ function Valentine.Ultimate(S, player, state, aim)
 end
 
 function Valentine.Cleanup(S, player, state)
+	state.HopReturn = nil
 	local character = state.Character
 	if character then
 		character:SetAttribute("Armored", nil)
@@ -8646,7 +8980,7 @@ function Valentine.Cleanup(S, player, state)
 end
 
 return Valentine
-]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX45"><Properties><string name="Name">TuskHitbox</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX46"><Properties><string name="Name">TuskHitbox</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskHitbox  (ServerScriptService.SpinServer.TuskHitbox)
 	Server-side spatial queries for melee and area attacks.
 	Returns unique characters (models with a Humanoid), nearest first.
@@ -8721,7 +9055,7 @@ function TuskHitbox.lineOfSight(fromPos, toPos, ignore)
 end
 
 return TuskHitbox
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX46"><Properties><string name="Name">TuskMoves</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX47"><Properties><string name="Name">TuskMoves</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskMoves  (ServerScriptService.SpinServer.TuskMoves)
 
 	Shared server building blocks for every Tusk Act, so each Act module
@@ -8977,7 +9311,7 @@ end
 
 TuskMoves.Config = TuskConfig
 return TuskMoves
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX47"><Properties><string name="Name">TuskService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX48"><Properties><string name="Name">TuskService</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskService  (ServerScriptService.SpinServer.TuskService)
 
 	Server brain for Tusk (the "TuskController" of the design doc):
@@ -9707,7 +10041,7 @@ function TuskService.init()
 end
 
 return TuskService
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX48"><Properties><string name="Name">TuskSneakService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX49"><Properties><string name="Name">TuskSneakService</string><ProtectedString name="Source"><![CDATA[--[[
 	TuskSneakService  (ServerScriptService.SpinServer.TuskSneakService)
 
 	Tusk Sneak (every Act): a crouched, slowed stalking state, plus the
@@ -9964,7 +10298,7 @@ function TuskSneakService.burrowStrike(player, state, target, a, source)
 end
 
 return TuskSneakService
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX49"><Properties><string name="Name">ValentineOutfit</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX50"><Properties><string name="Name">ValentineOutfit</string><ProtectedString name="Source"><![CDATA[--[[
 	ValentineOutfit  (ServerScriptService.SpinServer.ValentineOutfit)
 
 	Gives a character Funny Valentine's look while they play him (TuskAct
@@ -10212,7 +10546,7 @@ function ValentineOutfit.init()
 end
 
 return ValentineOutfit
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX50"><Properties><string name="Name">WeatherService</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX51"><Properties><string name="Name">WeatherService</string><ProtectedString name="Source"><![CDATA[--[[
 	WeatherService  (ServerScriptService.SpinServer.WeatherService)
 
 	Rain for the whole server: every TuskConfig.Weather.RainEvery seconds it

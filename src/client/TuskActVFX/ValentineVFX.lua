@@ -5,12 +5,15 @@
 	  * the D4C Stand (D4CStand) floats behind him with a pale-blue aura and
 	    strikes with his moves
 	  * DIMENSION HOP: a striped flag sweeps round him and he's gone; where he
-	    steps out, a flag unfurls and falls away
-	  * PARALLEL VALENTINE: a shimmering Valentine from another world steps
-	    out of a flag, chases the nearest enemy and punches, then leaves
-	  * MENGER SPONGE: the target's other-world double flickers beside them
-	    and their body crumbles into little cubes (Menger sponges orbit them),
-	    then bursts
+	    steps out, a flag unfurls and falls away; a flag on a pole stays
+	    planted where he left from while he can hop back to it
+	  * PARALLEL VALENTINE: a shimmering Valentine from another world (pink
+	    coat, blond ringlets) steps out of a flag, chases the nearest enemy
+	    and punches, then leaves; when they SWAP, flags flash at both spots
+	  * MENGER SPONGE: the target's other-world double stands where it
+	    appeared, flickering; near it their body crumbles into little cubes
+	    (Menger sponges orbit them), then bursts; get away and the double
+	    shatters
 	  * D4C LOVE TRAIN: a column of light falls on him and a shell of light
 	    surrounds him; every hit on him bounces off as a bolt of light into
 	    someone else; it ends with a ring of light
@@ -44,6 +47,7 @@ local SHIMMER = Color3.fromRGB(170, 200, 255)
 local CUBE = Color3.fromRGB(200, 196, 190)
 
 local clones = {} -- [id] = a parallel Valentine
+local anchors = {} -- [character] = flag planted where he hopped from
 local crumbling = {} -- [character] = cubes and double
 local trains = {} -- [character] = light shell
 local stanced = {}
@@ -104,20 +108,35 @@ local function buildFlag(w, h)
 	return finish(m)
 end
 
--- A Valentine from another world: blocky, pale and shimmering.
+-- A Valentine from another world: his look (pink coat, blond ringlets,
+-- magenta trousers), shimmering.
 local function buildValentine()
 	local m = newModel("ParallelValentine")
-	local coat, hair, skin, pants = Color3.fromRGB(232, 226, 236), Color3.fromRGB(244, 218, 120), Color3.fromRGB(240, 210, 190), Color3.fromRGB(44, 50, 84)
+	local coat, coatShade = Color3.fromRGB(232, 150, 196), Color3.fromRGB(200, 116, 166)
+	local hair, hairDark = Color3.fromRGB(238, 218, 130), Color3.fromRGB(204, 180, 96)
+	local skin, pants, grey = Color3.fromRGB(240, 210, 190), Color3.fromRGB(196, 96, 210), Color3.fromRGB(120, 116, 124)
 	box(m, Vector3.new(2, 2, 1), CFrame.new(0, 3, 0), coat)
-	box(m, Vector3.new(2.2, 1.6, 0.2), CFrame.new(0, 1.6, 0.5), coat)
-	box(m, Vector3.new(0.6, 0.5, 0.15), CFrame.new(0, 3.7, -0.55), WHITE)
-	box(m, Vector3.new(1.2, 1.2, 1.2), CFrame.new(0, 4.6, 0), skin)
-	box(m, Vector3.new(1.4, 0.45, 1.4), CFrame.new(0, 5.2, 0), hair)
-	box(m, Vector3.new(1.4, 1, 0.3), CFrame.new(0, 4.6, 0.6), hair)
+	box(m, Vector3.new(1.2, 0.45, 1.1), CFrame.new(0, 4.15, 0), grey) -- high collar
+	box(m, Vector3.new(0.08, 2.1, 0.05), CFrame.new(0.15, 3, -0.52) * CFrame.Angles(0, 0, -0.18), coatShade)
+	-- Long coat skirt flaring to the calves, open at the front.
+	box(m, Vector3.new(2.5, 2.4, 0.14), CFrame.new(0, 1, 0.62) * CFrame.Angles(0.06, 0, 0), coat)
 	for _, side in ipairs({ -1, 1 }) do
-		box(m, Vector3.new(0.4, 0.4, 0.4), CFrame.new(side * 0.95, 4.9, 0), hair)
-		box(m, Vector3.new(0.3, 0.3, 0.3), CFrame.new(side * 1.2, 5.1, 0), hair)
+		box(m, Vector3.new(0.7, 2.3, 0.14), CFrame.new(side * 0.95, 1, -0.58) * CFrame.Angles(0, side * 0.35, 0), coat)
+		box(m, Vector3.new(0.14, 2.3, 1.3), CFrame.new(side * 1.16, 1, 0.05), coatShade)
+	end
+	box(m, Vector3.new(1.2, 1.2, 1.2), CFrame.new(0, 4.9, 0), skin)
+	box(m, Vector3.new(1.4, 0.4, 1.4), CFrame.new(0, 5.55, 0), hair)
+	box(m, Vector3.new(1.5, 1.6, 0.3), CFrame.new(0, 4.5, 0.65), hair)
+	for _, side in ipairs({ -1, 1 }) do
+		box(m, Vector3.new(0.2, 1.2, 1.1), CFrame.new(side * 0.7, 4.6, 0.05), hair)
+		-- Spiral ringlets at the sides.
+		for k = 0, 5 do
+			local a = k / 6 * math.pi * 2
+			box(m, Vector3.new(0.14, 0.2, 0.2), CFrame.new(side * 0.95, 4.9 + math.sin(a) * 0.3, math.cos(a) * 0.3), k % 2 == 0 and hair or hairDark)
+		end
 		box(m, Vector3.new(1, 2, 1), CFrame.new(side * 1.5, 3, 0), coat)
+		box(m, Vector3.new(1.1, 0.25, 1.1), CFrame.new(side * 1.5, 2.1, 0), grey)
+		box(m, Vector3.new(1, 0.4, 1), CFrame.new(side * 1.5, 1.8, 0), Color3.fromRGB(214, 110, 196))
 		box(m, Vector3.new(1, 2, 1), CFrame.new(side * 0.5, 1, 0), pants)
 	end
 	local item = finish(m)
@@ -226,7 +245,7 @@ local function cloneStep(dt)
 end
 
 -- The target's other-world double flickers beside them; their body crumbles into cubes.
-local function startCrumble(target, duration)
+local function startCrumble(target, duration, doublePos, leash)
 	local tr = Common.rootOf(target)
 	if not tr then
 		return
@@ -251,7 +270,7 @@ local function startCrumble(target, duration)
 	for i = 1, 4 do
 		sponges[i] = buildSponge(0.9)
 	end
-	crumbling[target] = { Double = finish(dm), Sponges = sponges, Born = os.clock(), Duration = duration or 3, Next = 0 }
+	crumbling[target] = { Double = finish(dm), Sponges = sponges, Born = os.clock(), Duration = duration or 3, Next = 0, DoublePos = doublePos, Leash = leash or 10 }
 	flash(tr.Position, 3)
 end
 
@@ -267,8 +286,11 @@ local function crumbleStep(dt)
 			c.Double.Model:Destroy()
 		else
 			local t = now - c.Born
-			-- The double stands beside them, facing them, flickering.
-			place(c.Double, tr.CFrame * CFrame.new(3.2, 0, 0) * CFrame.Angles(0, math.pi / 2, 0))
+			-- The double stands where it appeared, facing them, flickering.
+			local at = c.DoublePos or (tr.CFrame * CFrame.new(3.2, 0, 0)).Position
+			local face = Vector3.new(tr.Position.X, at.Y, tr.Position.Z)
+			place(c.Double, (face - at).Magnitude > 0.1 and CFrame.lookAt(at, face) or CFrame.new(at))
+			local near = (tr.Position - at).Magnitude <= c.Leash
 			local flick = (math.floor(t * 14) % 3 == 0) and 0.75 or 0.4
 			for _, p in ipairs(c.Double.Parts) do
 				p.Transparency = flick
@@ -278,9 +300,9 @@ local function crumbleStep(dt)
 				local a = t * 2.5 + i / #c.Sponges * math.pi * 2
 				place(sp, CFrame.new(tr.Position + Vector3.new(math.cos(a) * 2.4, math.sin(t * 3 + i) * 1.2, math.sin(a) * 2.4)) * CFrame.Angles(t * 2, t * 3, 0))
 			end
-			-- Little cubes break off the body and drift away.
-			c.Next = c.Next - dt
-			while c.Next <= 0 do
+			-- Little cubes break off the body and drift away (only near the double).
+			c.Next = near and c.Next - dt or 0.06
+			while c.Next <= 0 and near do
 				c.Next = c.Next + 0.06
 				local from = tr.Position + Vector3.new((math.random() - 0.5) * 2, (math.random() - 0.5) * 4, (math.random() - 0.5) * 1.4)
 				local cube = VFXLib.part({ Size = Vector3.new(0.35, 0.35, 0.35), Color = CUBE, Material = Enum.Material.SmoothPlastic })
@@ -296,6 +318,47 @@ local function crumbleStep(dt)
 	end
 end
 
+-- A flag on a pole planted where he hopped from (he can hop back to it).
+local function plantAnchor(character, position, duration)
+	local old = anchors[character]
+	if old then
+		old.Flag.Model:Destroy()
+		old.Pole:Destroy()
+	end
+	local pole = VFXLib.part({ Size = Vector3.new(0.2, 7, 0.2), CFrame = CFrame.new(position + Vector3.new(0, 0.5, 0)), Color = Color3.fromRGB(220, 220, 225), Material = Enum.Material.Metal })
+	local flag = buildFlag(3.2, 2)
+	anchors[character] = { Flag = flag, Pole = pole, Pos = position, Until = os.clock() + (duration or 4) }
+end
+
+local function removeAnchor(character)
+	local a = anchors[character]
+	if a then
+		anchors[character] = nil
+		flagWrap(a.Pos)
+		a.Flag.Model:Destroy()
+		a.Pole:Destroy()
+	end
+end
+
+local function anchorStep()
+	local now = os.clock()
+	for character, a in pairs(anchors) do
+		if now > a.Until or not character.Parent then
+			anchors[character] = nil
+			a.Flag.Model:Destroy()
+			a.Pole:Destroy()
+		else
+			-- The flag waves at the top of the pole.
+			place(a.Flag, CFrame.new(a.Pos + Vector3.new(1.7, 3, 0)) * CFrame.Angles(0, math.sin(now * 3) * 0.25, math.sin(now * 5) * 0.05))
+			-- Blinks in its last second.
+			local blink = (a.Until - now) < 1 and (math.floor(now * 8) % 2 == 0)
+			for _, p in ipairs(a.Flag.Parts) do
+				p.Transparency = blink and 0.6 or 0
+			end
+		end
+	end
+end
+
 local function onAbility(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
@@ -304,6 +367,10 @@ local function onAbility(data)
 		if phase == "Wrap" then
 			TuskAnimation.play(character, "VHop")
 			flagWrap(data.Position or (root and root.Position))
+		elseif phase == "Anchor" and character then
+			plantAnchor(character, data.Position, data.Duration)
+		elseif phase == "AnchorGone" and character then
+			removeAnchor(character)
 		elseif phase == "Unwrap" then
 			flagUnfurl(data.Position)
 			TuskStand.action(character, "Lunge", { Duration = 0.35 })
@@ -332,6 +399,19 @@ local function onAbility(data)
 			if data.Position then
 				TuskVFX.CreateImpactStar(data.Position, { Size = 2.6, Rays = 6, Color = pal.Main, Color2 = WHITE, Duration = 0.12 })
 			end
+		elseif phase == "Swap" then
+			-- They trade places: flags at both spots, and the other one is gone.
+			local c = clones[data.Id]
+			if c then
+				clones[data.Id] = nil
+				c.Item.Model:Destroy()
+			end
+			flagWrap(data.From)
+			flagUnfurl(data.To)
+			flash(data.To + Vector3.new(0, 1, 0), 5)
+			if character and Common.isLocal(character) then
+				CameraFX.impactFrame(SHIMMER)
+			end
 		elseif phase == "Leave" then
 			local c = clones[data.Id]
 			if c then
@@ -343,7 +423,19 @@ local function onAbility(data)
 			TuskAnimation.play(character, "VMenger")
 			TuskStand.action(character, "Lunge", { Duration = 0.45 })
 		elseif phase == "Crumble" and data.Target then
-			startCrumble(data.Target, data.Duration)
+			startCrumble(data.Target, data.Duration, data.DoublePos, data.Leash)
+		elseif phase == "Escape" and data.Target then
+			-- They got away from their double: it shatters into cubes.
+			local c = crumbling[data.Target]
+			if c then
+				crumbling[data.Target] = nil
+				local at = c.DoublePos or data.Position
+				for _, sp in ipairs(c.Sponges) do
+					sp.Model:Destroy()
+				end
+				c.Double.Model:Destroy()
+				VFXLib.burst(at, { Count = 24, Color = CUBE, Speed = 16, Lifetime = 0.45 })
+			end
 		elseif phase == "Burst" and data.Position then
 			VFXLib.burst(data.Position, { Count = 30, Color = CUBE, Speed = 22, Lifetime = 0.5 })
 			flash(data.Position, 5)
@@ -509,6 +601,7 @@ function ValentineVFX.step(dt)
 	dt = dt or 1 / 60
 	cloneStep(dt)
 	crumbleStep(dt)
+	anchorStep()
 	trainStep()
 	slowTimer = slowTimer + dt
 	if slowTimer > 0.2 then

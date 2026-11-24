@@ -2022,12 +2022,14 @@ TuskConfig.Valentine = {
 		Range = 40, Cone = 80, -- finds an enemy in front this close
 		Distance = 26, -- with nobody to hop to, he goes this far ahead
 		Damage = 5, Stun = 0.6, Knockback = 10, StrikeRange = 7,
+		ReturnWindow = 4, -- press again within this long to hop back through the flag he left
 	},
 	ParallelClone = { -- a Valentine from another world joins the fight for a while
 		Cooldown = 12, Windup = 0.3,
 		Duration = 6, Speed = 20, Range = 50,
 		PunchRange = 4.5, PunchEvery = 0.8, MaxPunches = 5,
 		Damage = 3.5, Stun = 0.45, Knockback = 4,
+		SwapAt = 0.25, SwapHeal = 0.3, -- nearly beaten while it's out: they swap places and he's healed
 	},
 	MengerSponge = { -- their other-world self appears beside them: they crumble into cubes
 		Cooldown = 13, MissCooldown = 3, Windup = 0.3,
@@ -2035,6 +2037,8 @@ TuskConfig.Valentine = {
 		Damage = 4, Stun = 0.6,
 		Time = 3, Tick = 0.4, TickDamage = 1, TickGrowth = 0.08, Slow = 0.55,
 		FinalDamage = 6, FinalKnockback = 25, FinalStun = 0.7,
+		DoubleOffset = 3.5, Leash = 10, -- they only crumble near their double: run from it to escape
+		BurstRadius = 7, BurstDamage = 5, -- the burst hits enemies right next to them too
 	},
 	Ultimate = { -- D4C LOVE TRAIN: a wall of light; hits on him are cancelled and the misfortune lands on someone else
 		Windup = 0.7, Duration = 6,
@@ -3595,6 +3599,7 @@ local TuskService = require(script.TuskService)
 local NPCService = require(script.NPCService)
 local TestDummies = require(script.TestDummies)
 local StandAssetLoader = require(script.StandAssetLoader)
+local JohnnyOutfit = require(script.JohnnyOutfit)
 local GyroOutfit = require(script.GyroOutfit)
 local DiegoOutfit = require(script.DiegoOutfit)
 local PorkPieOutfit = require(script.PorkPieOutfit)
@@ -3613,6 +3618,7 @@ ProjectileService.MaxActivePerPlayer = 20
 
 StandAssetLoader.init()
 TuskService.init()
+JohnnyOutfit.init()
 GyroOutfit.init()
 DiegoOutfit.init()
 PorkPieOutfit.init()
@@ -5914,7 +5920,277 @@ end
 return HotPantsOutfit
 ```
 
-## 24. MountainTimOutfit  (ModuleScript)
+## 24. JohnnyOutfit  (ModuleScript)
+**Put it in:** `ServerScriptService › SpinServer`
+
+```lua
+--[[
+	JohnnyOutfit  (ServerScriptService.SpinServer.JohnnyOutfit)
+
+	Gives a character Johnny Joestar's look while they play him (Tusk, Acts
+	1-4), built from blocky parts (no catalog asset ids), matched to his art:
+	  * a light-blue knit cap covered in pink stars, a gold horseshoe on the
+	    front with a black horse head inside it, little frayed tips
+	  * wavy blond hair to his shoulders
+	  * a lavender scarf round his neck
+	  * a light-blue top with a black V across the chest, a purple star
+	    patch on the sleeve, sleeves pushed up to lavender cuffs at the elbow,
+	    bare forearms and black wristbands
+	  * light-blue trousers covered in pink stars
+	The player's own hats/hair are hidden while they play him and come back
+	when they switch. Built on the server so every player sees it.
+]]
+
+local Players = game:GetService("Players")
+
+local JohnnyOutfit = {}
+JohnnyOutfit.Act = 1 -- (any Tusk Act: 1-4)
+
+local C = {
+	Cap = Color3.fromRGB(176, 214, 236),
+	CapShade = Color3.fromRGB(140, 182, 210),
+	Star = Color3.fromRGB(236, 140, 186),
+	Gold = Color3.fromRGB(222, 180, 64),
+	GoldDark = Color3.fromRGB(170, 130, 40),
+	Horse = Color3.fromRGB(26, 24, 28),
+	Hair = Color3.fromRGB(232, 206, 140),
+	HairDark = Color3.fromRGB(196, 168, 104),
+	Scarf = Color3.fromRGB(184, 160, 222),
+	Suit = Color3.fromRGB(170, 208, 232),
+	SuitShade = Color3.fromRGB(134, 174, 204),
+	Chevron = Color3.fromRGB(26, 28, 34),
+	Patch = Color3.fromRGB(120, 90, 170),
+	Band = Color3.fromRGB(30, 30, 34),
+	Shoe = Color3.fromRGB(60, 54, 70),
+}
+
+local saved = setmetatable({}, { __mode = "k" })
+
+local function piece(parent, outfit, name, size, color, offset)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.SmoothPlastic
+	p.Size = size
+	p.Color = color
+	p.CFrame = parent.CFrame * offset
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = parent
+	weld.Part1 = p
+	weld.Parent = p
+	p.Parent = outfit
+	return p
+end
+
+-- Little pink stars (a diamond and a cross) scattered over one face.
+local function stars(part, outfit, faceCF, w, h, count, seed)
+	for i = 1, count do
+		local u = ((i * 37 + seed * 17) % 100) / 100 - 0.5
+		local v = ((i * 59 + seed * 31) % 100) / 100 - 0.5
+		local cf = faceCF * CFrame.new(u * w * 0.85, v * h * 0.85, 0)
+		piece(part, outfit, "Star", Vector3.new(0.12, 0.12, 0.03), C.Star, cf * CFrame.Angles(0, 0, math.pi / 4))
+		piece(part, outfit, "Star", Vector3.new(0.2, 0.05, 0.03), C.Star, cf)
+	end
+end
+
+-- Stars all round a box laid over a part.
+local function starry(part, outfit, size, cf, count, seed)
+	local x, z = size.X / 2 + 0.015, size.Z / 2 + 0.015
+	stars(part, outfit, cf * CFrame.new(0, 0, -z), size.X, size.Y, count, seed)
+	stars(part, outfit, cf * CFrame.new(0, 0, z) * CFrame.Angles(0, math.pi, 0), size.X, size.Y, count, seed + 1)
+	stars(part, outfit, cf * CFrame.new(x, 0, 0) * CFrame.Angles(0, -math.pi / 2, 0), size.Z, size.Y, math.max(1, count - 1), seed + 2)
+	stars(part, outfit, cf * CFrame.new(-x, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), size.Z, size.Y, math.max(1, count - 1), seed + 3)
+end
+
+local function headPieces(head, outfit)
+	local s = head.Size.Y / 1.2
+	local w, h, d = head.Size.X / 2, head.Size.Y / 2, head.Size.Z / 2
+	-- Wavy blond hair down to the shoulders.
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, "Hair", Vector3.new(0.18 * s, 1.0 * s, head.Size.Z * 0.85), C.Hair, CFrame.new(side * (w + 0.08 * s), -0.3 * s, 0.06 * s))
+		piece(head, outfit, "HairWave", Vector3.new(0.22 * s, 0.3 * s, head.Size.Z * 0.5), C.HairDark, CFrame.new(side * (w + 0.12 * s), -0.75 * s, 0.1 * s) * CFrame.Angles(0, 0, side * 0.3))
+	end
+	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.3 * s, 1.0 * s, 0.22 * s), C.Hair, CFrame.new(0, -0.4 * s, d + 0.1 * s))
+	piece(head, outfit, "Bangs", Vector3.new(head.Size.X * 0.5, 0.18 * s, 0.1 * s), C.Hair, CFrame.new(0.15 * s, h - 0.42 * s, -d - 0.03 * s) * CFrame.Angles(0, 0, -0.25))
+	-- The knit cap, pulled down low, with a folded band and little frayed tips.
+	local capSize = Vector3.new(head.Size.X + 0.2 * s, 0.75 * s, head.Size.Z + 0.2 * s)
+	local capCF = CFrame.new(0, h - 0.12 * s, 0.02 * s)
+	piece(head, outfit, "Cap", capSize, C.Cap, capCF)
+	piece(head, outfit, "CapTop", Vector3.new(head.Size.X * 0.8, 0.2 * s, head.Size.Z * 0.8), C.Cap, CFrame.new(0, h + 0.34 * s, 0.04 * s))
+	piece(head, outfit, "CapBand", Vector3.new(head.Size.X + 0.26 * s, 0.18 * s, head.Size.Z + 0.26 * s), C.CapShade, CFrame.new(0, h - 0.42 * s, 0.02 * s))
+	starry(head, outfit, capSize, capCF, 3, 4)
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, "CapTip", Vector3.new(0.1 * s, 0.3 * s, 0.1 * s), C.CapShade, CFrame.new(side * (w + 0.02 * s), h + 0.24 * s, 0.2 * s) * CFrame.Angles(0, 0, side * -0.5))
+	end
+	-- Gold horseshoe on the front, opening upward, a black horse head inside.
+	local hf = -d - 0.14 * s
+	local hy = h - 0.02 * s
+	piece(head, outfit, "Horseshoe", Vector3.new(0.5 * s, 0.1 * s, 0.06 * s), C.Gold, CFrame.new(0, hy - 0.26 * s, hf))
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, "Horseshoe", Vector3.new(0.1 * s, 0.5 * s, 0.06 * s), C.Gold, CFrame.new(side * 0.22 * s, hy, hf) * CFrame.Angles(0, 0, side * 0.08))
+		piece(head, outfit, "Nail", Vector3.new(0.04 * s, 0.04 * s, 0.04 * s), C.GoldDark, CFrame.new(side * 0.22 * s, hy + 0.05 * s, hf - 0.04 * s))
+	end
+	piece(head, outfit, "HorseHead", Vector3.new(0.18 * s, 0.34 * s, 0.04 * s), C.Horse, CFrame.new(0, hy - 0.02 * s, hf + 0.02 * s) * CFrame.Angles(0, 0, 0.3))
+	piece(head, outfit, "HorseHead", Vector3.new(0.18 * s, 0.1 * s, 0.04 * s), C.Horse, CFrame.new(0.05 * s, hy + 0.14 * s, hf + 0.02 * s))
+end
+
+local function body(character, outfit)
+	local headPart = character:FindFirstChild("Head")
+	local skin = headPart and headPart.Color or Color3.fromRGB(238, 200, 170)
+	local upper = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	local lower = character:FindFirstChild("LowerTorso")
+	if upper then
+		local s = upper.Size
+		local top, front = s.Y / 2, -s.Z / 2
+		piece(upper, outfit, "Top", s + Vector3.new(0.1, 0.02, 0.1), C.Suit, CFrame.new())
+		-- Lavender scarf round the neck.
+		piece(upper, outfit, "Scarf", Vector3.new(s.X * 0.62, 0.34, s.Z + 0.22), C.Scarf, CFrame.new(0, top + 0.1, 0))
+		piece(upper, outfit, "ScarfDrape", Vector3.new(0.5, 0.36, 0.08), C.Scarf, CFrame.new(0.1, top - 0.14, front - 0.06))
+		-- The black V across the chest (and a matching one at the back).
+		for _, side in ipairs({ -1, 1 }) do
+			piece(upper, outfit, "Chevron", Vector3.new(0.22, s.Y * 0.75, 0.05), C.Chevron, CFrame.new(side * s.X * 0.22, top - s.Y * 0.3, front - 0.06) * CFrame.Angles(0, 0, side * -0.9))
+			piece(upper, outfit, "Chevron", Vector3.new(0.22, s.Y * 0.75, 0.05), C.Chevron, CFrame.new(side * s.X * 0.22, top - s.Y * 0.3, -front + 0.06) * CFrame.Angles(0, 0, side * 0.9))
+		end
+		stars(upper, outfit, CFrame.new(0, -s.Y * 0.3, front - 0.06), s.X * 0.9, s.Y * 0.3, 2, 9)
+	end
+	local waist = lower or upper
+	if waist and lower then
+		piece(lower, outfit, "Pants", lower.Size + Vector3.new(0.06, 0.02, 0.06), C.Suit, CFrame.new())
+	end
+	-- Sleeves pushed up to the elbow (lavender cuffs), bare forearms, black wristbands.
+	for _, name in ipairs({ "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm", "Left Arm", "Right Arm" }) do
+		local arm = character:FindFirstChild(name)
+		if arm then
+			local as = arm.Size
+			local tall = as.Y > 1.8
+			local out = name:find("Left") and -1 or 1
+			if name:find("Upper") or tall then
+				local h = tall and as.Y * 0.55 or as.Y
+				piece(arm, outfit, "Sleeve", Vector3.new(as.X + 0.12, h, as.Z + 0.12), C.Suit, CFrame.new(0, as.Y / 2 - h / 2, 0))
+				piece(arm, outfit, "Cuff", Vector3.new(as.X + 0.18, 0.28, as.Z + 0.18), C.Scarf, CFrame.new(0, as.Y / 2 - h, 0))
+				if name:find("Right") or name == "Right Arm" then
+					piece(arm, outfit, "Patch", Vector3.new(0.05, 0.36, 0.36), C.Patch, CFrame.new(out * (as.X / 2 + 0.08), as.Y / 2 - 0.4, 0))
+				end
+			end
+			if name:find("Lower") or tall then
+				-- Bare forearm (covers whatever shirt the avatar wears).
+				local fh = tall and as.Y * 0.45 or as.Y
+				piece(arm, outfit, "Skin", Vector3.new(as.X + 0.04, fh, as.Z + 0.04), skin, CFrame.new(0, -as.Y / 2 + fh / 2, 0))
+				piece(arm, outfit, "Wristband", Vector3.new(as.X + 0.12, 0.3, as.Z + 0.12), C.Band, CFrame.new(0, -as.Y / 2 + 0.25, 0))
+			end
+		end
+	end
+	-- Light-blue trousers covered in pink stars.
+	for _, name in ipairs({ "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
+		local leg = character:FindFirstChild(name)
+		if leg then
+			local size = leg.Size + Vector3.new(0.06, 0.02, 0.06)
+			piece(leg, outfit, "Pants", size, C.Suit, CFrame.new())
+			starry(leg, outfit, size, CFrame.new(), leg.Size.Y > 1.8 and 3 or 2, #name)
+		end
+	end
+	for _, name in ipairs({ "LeftFoot", "RightFoot" }) do
+		local foot = character:FindFirstChild(name)
+		if foot then
+			piece(foot, outfit, "Shoe", foot.Size + Vector3.new(0.08, 0.06, 0.1), C.Shoe, CFrame.new())
+		end
+	end
+end
+
+function JohnnyOutfit.apply(character)
+	if character:FindFirstChild("JohnnyOutfit") then
+		return
+	end
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local store = { Hidden = {} }
+	saved[character] = store
+	for _, d in ipairs(character:GetChildren()) do
+		if d:IsA("Accessory") then
+			local handle = d:FindFirstChild("Handle")
+			local kind = d.AccessoryType
+			if handle and (kind == Enum.AccessoryType.Hat or kind == Enum.AccessoryType.Hair or kind == Enum.AccessoryType.Unknown) then
+				store.Hidden[handle] = handle.Transparency
+				handle.Transparency = 1
+			end
+		end
+	end
+	local outfit = Instance.new("Model")
+	outfit.Name = "JohnnyOutfit"
+	outfit.Parent = character
+	headPieces(head, outfit)
+	body(character, outfit)
+end
+
+function JohnnyOutfit.remove(character)
+	local outfit = character:FindFirstChild("JohnnyOutfit")
+	if outfit then
+		outfit:Destroy()
+	end
+	local store = saved[character]
+	if not store then
+		return
+	end
+	saved[character] = nil
+	for thing, transparency in pairs(store.Hidden) do
+		if thing.Parent then
+			thing.Transparency = transparency
+		end
+	end
+end
+
+local function watch(character)
+	local function update()
+		local function isJohnny()
+			local act = character:GetAttribute("TuskAct")
+			return type(act) == "number" and act >= 1 and act <= 4
+		end
+		if isJohnny() then
+			task.delay(0.3, function()
+				if character.Parent and isJohnny() then
+					JohnnyOutfit.apply(character)
+				end
+			end)
+		else
+			JohnnyOutfit.remove(character)
+		end
+	end
+	character:GetAttributeChangedSignal("TuskAct"):Connect(update)
+	update()
+end
+
+function JohnnyOutfit.init()
+	local function onPlayer(player)
+		player.CharacterAppearanceLoaded:Connect(watch)
+		if player.Character then
+			watch(player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	-- Stand-user NPCs (StandBots) wear the outfit too.
+	local CollectionService = game:GetService("CollectionService")
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		watch(model)
+	end
+	CollectionService:GetInstanceAddedSignal("SpinFighter"):Connect(watch)
+	for _, player in ipairs(Players:GetPlayers()) do
+		onPlayer(player)
+	end
+end
+
+return JohnnyOutfit
+```
+
+## 25. MountainTimOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6222,7 +6498,7 @@ end
 return MountainTimOutfit
 ```
 
-## 25. NPCService  (ModuleScript)
+## 26. NPCService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6442,7 +6718,7 @@ end
 return NPCService
 ```
 
-## 26. PorkPieOutfit  (ModuleScript)
+## 27. PorkPieOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6718,7 +6994,7 @@ end
 return PorkPieOutfit
 ```
 
-## 27. ProjectileService  (ModuleScript)
+## 28. ProjectileService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -6919,7 +7195,7 @@ end)
 return ProjectileService
 ```
 
-## 28. SandmanOutfit  (ModuleScript)
+## 29. SandmanOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -7207,7 +7483,7 @@ end
 return SandmanOutfit
 ```
 
-## 29. StandAssetLoader  (ModuleScript)
+## 30. StandAssetLoader  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -7297,7 +7573,7 @@ end
 return StandAssetLoader
 ```
 
-## 30. StandBots  (ModuleScript)
+## 31. StandBots  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -7817,7 +8093,7 @@ end
 return StandBots
 ```
 
-## 31. TestDummies  (ModuleScript)
+## 32. TestDummies  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -7987,12 +8263,12 @@ end
 return TestDummies
 ```
 
-## 32. TuskActs  (Folder)
+## 33. TuskActs  (Folder)
 **Put it in:** `ServerScriptService › SpinServer`
 
 _Empty folder: nothing to paste._
 
-## 33. Axl  (ModuleScript)
+## 34. Axl  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -8149,14 +8425,16 @@ end
 local function engulf(S, player, target, opts)
 	local t = opts.Time * (rainy() and (opts.RainMultiplier or 0.5) or 1)
 	local untilT = now() + t
+	local token = tostring({}) -- only this membrane's squeezes may act (a newer one replaces it)
 	target:SetAttribute("GuiltMembraneUntil", untilT)
+	target:SetAttribute("GuiltMembraneCast", token)
 	slow(S, target, "GuiltMembrane", opts.Slow, t)
 	local ticks = math.max(1, math.floor(t / opts.Tick))
 	for i = 1, ticks do
 		task.delay(i * opts.Tick, function()
 			local tr = target:FindFirstChild("HumanoidRootPart")
 			-- (Ends early if the membrane was cleared, e.g. a new life.)
-			if not tr or (target:GetAttribute("GuiltMembraneUntil") or 0) < untilT - 0.01 then
+			if not tr or target:GetAttribute("GuiltMembraneCast") ~= token or not target:GetAttribute("GuiltMembraneUntil") then
 				return
 			end
 			local last = i == ticks
@@ -8475,7 +8753,7 @@ end
 return Axl
 ```
 
-## 34. Blackmore  (ModuleScript)
+## 35. Blackmore  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -8817,7 +9095,7 @@ end
 return Blackmore
 ```
 
-## 35. DiegoBrando  (ModuleScript)
+## 36. DiegoBrando  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -9275,7 +9553,7 @@ end
 return Diego
 ```
 
-## 36. GyroZeppeli  (ModuleScript)
+## 37. GyroZeppeli  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -9599,7 +9877,7 @@ end
 return Gyro
 ```
 
-## 37. HotPants  (ModuleScript)
+## 38. HotPants  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -9882,7 +10160,7 @@ end
 return HotPants
 ```
 
-## 38. MountainTim  (ModuleScript)
+## 39. MountainTim  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -10287,7 +10565,7 @@ end
 return Tim
 ```
 
-## 39. PorkPieHatKid  (ModuleScript)
+## 40. PorkPieHatKid  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -10677,7 +10955,7 @@ end
 return PorkPie
 ```
 
-## 40. Sandman  (ModuleScript)
+## 41. Sandman  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -10950,7 +11228,7 @@ end
 return Sandman
 ```
 
-## 41. TuskAct1  (ModuleScript)
+## 42. TuskAct1  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -11310,7 +11588,7 @@ end
 return Act1
 ```
 
-## 42. TuskAct2  (ModuleScript)
+## 43. TuskAct2  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -11583,7 +11861,7 @@ end
 return Act2
 ```
 
-## 43. TuskAct3  (ModuleScript)
+## 44. TuskAct3  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -11774,7 +12052,7 @@ end
 return Act3
 ```
 
-## 44. TuskAct4  (ModuleScript)
+## 45. TuskAct4  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -12047,7 +12325,7 @@ end
 return Act4
 ```
 
-## 45. Valentine  (ModuleScript)
+## 46. Valentine  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer › TuskActs`
 
 ```lua
@@ -12062,12 +12340,17 @@ return Act4
 	  M1        DIRTY DEEDS COMBO: D4C chops with him
 	  Ability 1 DIMENSION HOP: a flag sweeps over him (he can't be hit while
 	            he's between worlds) and he steps out behind the nearest enemy
-	            in front, striking them; with nobody there, he hops ahead
+	            in front, striking them; with nobody there, he hops ahead. He
+	            leaves a flag where he was: press again within 4 s to hop back
 	  Ability 2 PARALLEL VALENTINE: a Valentine from another world joins the
-	            fight for a few seconds, chasing and punching the nearest enemy
+	            fight for a few seconds, chasing and punching the nearest enemy.
+	            If he's nearly beaten while it's out, they SWAP: he takes its
+	            place (healed) and it's gone
 	  Ability 3 MENGER SPONGE: the nearest enemy's other-world self appears
 	            beside them: two of the same person can't exist together, so
-	            they crumble into cubes (slowed, ticks of damage), then burst
+	            they crumble into cubes (slowed, ticks of damage), then burst,
+	            hitting whoever's next to them. They only crumble near their
+	            double: running away from it ends it
 	  Ultimate  D4C LOVE TRAIN: a wall of light: every hit on him is
 	            cancelled and the misfortune lands on the nearest enemy
 	            instead; he moves faster; it ends with a pulse of light
@@ -12138,8 +12421,45 @@ end
 ---------------------------------------------------------------------------
 -- DIMENSION HOP
 ---------------------------------------------------------------------------
+-- Step out of another world at `to` (shared by the hop and the hop back).
+local function hopThrough(S, player, state, c, to, facing, onArrive)
+	local character, _, root = alive(S, player)
+	local life = state.Life
+	S.lock(state, c.Windup + 0.3)
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	character:SetAttribute(iframes, true)
+	S.fx("Ability", { Character = character, Act = ACT, Move = "DimensionHop", Phase = "Wrap", Position = root.Position, Windup = c.Windup })
+	task.delay(c.Windup, function()
+		character:SetAttribute(iframes, nil)
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char = alive(S, player)
+		local dest, face = to(), facing()
+		local flatFace = Vector3.new(face.X, dest.Y, face.Z)
+		char:PivotTo((flatFace - dest).Magnitude > 0.1 and CFrame.lookAt(dest, flatFace) or CFrame.new(dest))
+		S.fx("Ability", { Character = char, Act = ACT, Move = "DimensionHop", Phase = "Unwrap", Position = dest })
+		if onArrive then
+			onArrive(char, dest)
+		end
+	end)
+end
+
 local function dimensionHop(S, player, state, aim)
 	local c = cfg.DimensionHop
+	-- Hop back through the flag he left (doesn't need the cooldown).
+	local back = state.HopReturn
+	if back and now() < back.Until and not S.isBusy(state) and not state.Charging then
+		state.HopReturn = nil
+		local character = alive(S, player)
+		S.fx("Ability", { Character = character, Act = ACT, Move = "DimensionHop", Phase = "AnchorGone" })
+		hopThrough(S, player, state, c, function()
+			return back.Pos
+		end, function()
+			return back.Pos + back.Facing
+		end)
+		return
+	end
 	if not ready(S, player, state, "DimensionHop", 1) then
 		return
 	end
@@ -12164,29 +12484,24 @@ local function dimensionHop(S, player, state, aim)
 		return
 	end
 	S.startCooldown(player, state, "DimensionHop", c.Cooldown, 1)
-	S.lock(state, c.Windup + 0.3)
-	local life = state.Life
-	local iframes = S.Adapter.Settings.IFrameAttribute
-	character:SetAttribute(iframes, true)
-	S.fx("Ability", { Character = character, Act = ACT, Move = "DimensionHop", Phase = "Wrap", Position = root.Position, Windup = c.Windup })
-	task.delay(c.Windup, function()
-		character:SetAttribute(iframes, nil)
-		if not S.stillValid(player, state, life) then
-			return
-		end
-		local char, _, r = alive(S, player)
+	-- He leaves a flag where he was: press again soon to hop back to it.
+	local from, fromFacing = root.Position, Moves.flat(root.CFrame.LookVector)
+	hopThrough(S, player, state, c, function()
 		-- The target may have moved: step out behind where they are now.
 		if tr and tr.Parent then
 			local behind = -Moves.flat(tr.CFrame.LookVector)
-			destination = Moves.safeStep(char, tr, behind, 5) or destination
+			destination = Moves.safeStep(alive(S, player), tr, behind, 5) or destination
 			facing = tr.Position
 		end
-		local flatFace = Vector3.new(facing.X, destination.Y, facing.Z)
-		char:PivotTo((flatFace - destination).Magnitude > 0.1 and CFrame.lookAt(destination, flatFace) or CFrame.new(destination))
-		S.fx("Ability", { Character = char, Act = ACT, Move = "DimensionHop", Phase = "Unwrap", Position = destination })
+		return destination
+	end, function()
+		return facing
+	end, function(char, dest)
+		state.HopReturn = { Pos = from, Facing = fromFacing, Until = now() + c.ReturnWindow }
+		S.fx("Ability", { Character = char, Act = ACT, Move = "DimensionHop", Phase = "Anchor", Position = from, Duration = c.ReturnWindow })
 		-- Out of the other world: a strike at whoever he came for.
-		if target and tr and (tr.Position - destination).Magnitude <= c.StrikeRange then
-			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = tr.Position - destination, Position = tr.Position, Source = "ValentineHop" })
+		if target and tr and (tr.Position - dest).Magnitude <= c.StrikeRange then
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = tr.Position - dest, Position = tr.Position, Source = "ValentineHop" })
 		end
 	end)
 end
@@ -12220,8 +12535,20 @@ local function parallelClone(S, player, state)
 		local born = now()
 		local punches, nextPunch, target = 0, 0, nil
 		local step = 0.1
+		local swapped = false
 		local function tick()
-			local _, _, myRoot = alive(S, player)
+			local _, myHum, myRoot = alive(S, player)
+			-- Nearly beaten while his other self is out: they swap places.
+			if myHum and myRoot and not swapped and myHum.Health > 0 and myHum.Health <= myHum.MaxHealth * c.SwapAt and state.Life == life then
+				swapped = true
+				local old = myRoot.Position
+				myHum.Health = math.min(myHum.MaxHealth, myHum.Health + myHum.MaxHealth * c.SwapHeal)
+				local at = Vector3.new(pos.X, old.Y, pos.Z)
+				char:PivotTo(CFrame.lookAt(at, at + Moves.flat(myRoot.CFrame.LookVector)))
+				char:SetAttribute("ParallelCloneUntil", nil)
+				S.fx("Ability", { Character = char, Act = ACT, Move = "ParallelClone", Phase = "Swap", Id = id, From = old, To = at })
+				return
+			end
 			if not myRoot or state.Life ~= life or now() - born > c.Duration or punches >= c.MaxPunches then
 				char:SetAttribute("ParallelCloneUntil", nil)
 				S.fx("Ability", { Act = ACT, Move = "ParallelClone", Phase = "Leave", Id = id, Position = pos })
@@ -12278,14 +12605,28 @@ local function mengerSponge(S, player, state, aim)
 			return
 		end
 		local untilT = now() + c.Time
+		local token = tostring({}) -- only this cast's ticks may act (a newer one replaces it)
 		target:SetAttribute("MengerUntil", untilT)
+		target:SetAttribute("MengerCast", token)
 		slow(S, target, "Menger", c.Slow, c.Time)
-		S.fx("Ability", { Character = char, Act = ACT, Move = "MengerSponge", Phase = "Crumble", Target = target, Duration = c.Time })
+		-- Their double appears right beside them, and stays put.
+		local doublePos = (tr.CFrame * CFrame.new(c.DoubleOffset, 0, 0)).Position
+		S.fx("Ability", { Character = char, Act = ACT, Move = "MengerSponge", Phase = "Crumble", Target = target, Duration = c.Time, DoublePos = doublePos, Leash = c.Leash })
 		local ticks = math.floor(c.Time / c.Tick)
 		for i = 1, ticks do
 			task.delay(i * c.Tick, function()
 				local t = target:FindFirstChild("HumanoidRootPart")
-				if not t or (target:GetAttribute("MengerUntil") or 0) < untilT - 0.01 then
+				if not t or target:GetAttribute("MengerCast") ~= token or not target:GetAttribute("MengerUntil") then
+					return
+				end
+				-- Got away from their double: it's over.
+				if (t.Position - doublePos).Magnitude > c.Leash then
+					target:SetAttribute("MengerUntil", nil)
+					local hum = target:FindFirstChildOfClass("Humanoid")
+					if hum then
+						S.Adapter.setMoveModifier(hum, "Menger", nil)
+					end
+					S.fx("Ability", { Act = ACT, Move = "MengerSponge", Phase = "Escape", Position = t.Position, Target = target, DoublePos = doublePos })
 					return
 				end
 				local last = i == ticks
@@ -12299,7 +12640,9 @@ local function mengerSponge(S, player, state, aim)
 				})
 				if last then
 					target:SetAttribute("MengerUntil", nil)
-					S.fx("Ability", { Act = ACT, Move = "MengerSponge", Phase = "Burst", Position = t.Position, Target = target })
+					-- The burst catches whoever's right next to them.
+					Moves.aoe(S, player, t.Position, c.BurstRadius, { Damage = c.BurstDamage, Stun = 0.5, Knockback = 20, Source = "ValentineMenger" }, 6, { [target] = true })
+					S.fx("Ability", { Act = ACT, Move = "MengerSponge", Phase = "Burst", Position = t.Position, Target = target, Radius = c.BurstRadius })
 				end
 			end)
 		end
@@ -12401,6 +12744,7 @@ function Valentine.Ultimate(S, player, state, aim)
 end
 
 function Valentine.Cleanup(S, player, state)
+	state.HopReturn = nil
 	local character = state.Character
 	if character then
 		character:SetAttribute("Armored", nil)
@@ -12417,7 +12761,7 @@ end
 return Valentine
 ```
 
-## 46. TuskHitbox  (ModuleScript)
+## 47. TuskHitbox  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -12498,7 +12842,7 @@ end
 return TuskHitbox
 ```
 
-## 47. TuskMoves  (ModuleScript)
+## 48. TuskMoves  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -12760,7 +13104,7 @@ TuskMoves.Config = TuskConfig
 return TuskMoves
 ```
 
-## 48. TuskService  (ModuleScript)
+## 49. TuskService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -13496,7 +13840,7 @@ end
 return TuskService
 ```
 
-## 49. TuskSneakService  (ModuleScript)
+## 50. TuskSneakService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -13759,7 +14103,7 @@ end
 return TuskSneakService
 ```
 
-## 50. ValentineOutfit  (ModuleScript)
+## 51. ValentineOutfit  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -14013,7 +14357,7 @@ end
 return ValentineOutfit
 ```
 
-## 51. WeatherService  (ModuleScript)
+## 52. WeatherService  (ModuleScript)
 **Put it in:** `ServerScriptService › SpinServer`
 
 ```lua
@@ -14075,7 +14419,7 @@ end
 return WeatherService
 ```
 
-## 52. SpinClient  (LocalScript)
+## 53. SpinClient  (LocalScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts`
 
 ```lua
@@ -14112,7 +14456,7 @@ BountyUI.init()
 WeatherClient.init()
 ```
 
-## 53. CameraFX  (ModuleScript)
+## 54. CameraFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -14291,7 +14635,7 @@ end
 return CameraFX
 ```
 
-## 54. DefenseClient  (ModuleScript)
+## 55. DefenseClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -14592,7 +14936,7 @@ end
 return DefenseClient
 ```
 
-## 55. Fighters  (ModuleScript)
+## 56. Fighters  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -14627,7 +14971,7 @@ end
 return Fighters
 ```
 
-## 56. HitFX  (ModuleScript)
+## 57. HitFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -14778,7 +15122,7 @@ end
 return HitFX
 ```
 
-## 57. JointCache  (ModuleScript)
+## 58. JointCache  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -14833,7 +15177,7 @@ end
 return JointCache
 ```
 
-## 58. TuskActCommon  (ModuleScript)
+## 59. TuskActCommon  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -15088,12 +15432,12 @@ end
 return Common
 ```
 
-## 59. TuskActVFX  (Folder)
+## 60. TuskActVFX  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 60. Act1  (ModuleScript)
+## 61. Act1  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -15475,7 +15819,7 @@ end
 return Act1
 ```
 
-## 61. Act2  (ModuleScript)
+## 62. Act2  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -15587,7 +15931,7 @@ end
 return Act2
 ```
 
-## 62. Act3  (ModuleScript)
+## 63. Act3  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -15765,7 +16109,7 @@ end
 return Act3
 ```
 
-## 63. Act4  (ModuleScript)
+## 64. Act4  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -16075,7 +16419,7 @@ end
 return Act4
 ```
 
-## 64. AxlVFX  (ModuleScript)
+## 65. AxlVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -16830,7 +17174,7 @@ end)
 return AxlVFX
 ```
 
-## 65. BlackmoreVFX  (ModuleScript)
+## 66. BlackmoreVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -17599,7 +17943,7 @@ end)
 return BlackmoreVFX
 ```
 
-## 66. CivilWarStand  (ModuleScript)
+## 67. CivilWarStand  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -17805,7 +18149,7 @@ end
 return CivilWarStand
 ```
 
-## 67. D4CStand  (ModuleScript)
+## 68. D4CStand  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -17966,7 +18310,7 @@ end
 return D4CStand
 ```
 
-## 68. Diego  (ModuleScript)
+## 69. Diego  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -18858,7 +19202,7 @@ end
 return Diego
 ```
 
-## 69. Gyro  (ModuleScript)
+## 70. Gyro  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -19993,7 +20337,7 @@ end)
 return Gyro
 ```
 
-## 70. HotPantsVFX  (ModuleScript)
+## 71. HotPantsVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -20553,7 +20897,7 @@ end
 return HotPantsVFX
 ```
 
-## 71. MountainTimVFX  (ModuleScript)
+## 72. MountainTimVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -21463,7 +21807,7 @@ end)
 return TimVFX
 ```
 
-## 72. PorkPie  (ModuleScript)
+## 73. PorkPie  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -22122,7 +22466,7 @@ end)
 return PorkPie
 ```
 
-## 73. SandmanVFX  (ModuleScript)
+## 74. SandmanVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -22538,7 +22882,7 @@ end)
 return SandmanVFX
 ```
 
-## 74. SilentWayStand  (ModuleScript)
+## 75. SilentWayStand  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -22749,7 +23093,7 @@ end
 return SilentWayStand
 ```
 
-## 75. ValentineVFX  (ModuleScript)
+## 76. ValentineVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX`
 
 ```lua
@@ -22760,12 +23104,15 @@ return SilentWayStand
 	  * the D4C Stand (D4CStand) floats behind him with a pale-blue aura and
 	    strikes with his moves
 	  * DIMENSION HOP: a striped flag sweeps round him and he's gone; where he
-	    steps out, a flag unfurls and falls away
-	  * PARALLEL VALENTINE: a shimmering Valentine from another world steps
-	    out of a flag, chases the nearest enemy and punches, then leaves
-	  * MENGER SPONGE: the target's other-world double flickers beside them
-	    and their body crumbles into little cubes (Menger sponges orbit them),
-	    then bursts
+	    steps out, a flag unfurls and falls away; a flag on a pole stays
+	    planted where he left from while he can hop back to it
+	  * PARALLEL VALENTINE: a shimmering Valentine from another world (pink
+	    coat, blond ringlets) steps out of a flag, chases the nearest enemy
+	    and punches, then leaves; when they SWAP, flags flash at both spots
+	  * MENGER SPONGE: the target's other-world double stands where it
+	    appeared, flickering; near it their body crumbles into little cubes
+	    (Menger sponges orbit them), then bursts; get away and the double
+	    shatters
 	  * D4C LOVE TRAIN: a column of light falls on him and a shell of light
 	    surrounds him; every hit on him bounces off as a bolt of light into
 	    someone else; it ends with a ring of light
@@ -22799,6 +23146,7 @@ local SHIMMER = Color3.fromRGB(170, 200, 255)
 local CUBE = Color3.fromRGB(200, 196, 190)
 
 local clones = {} -- [id] = a parallel Valentine
+local anchors = {} -- [character] = flag planted where he hopped from
 local crumbling = {} -- [character] = cubes and double
 local trains = {} -- [character] = light shell
 local stanced = {}
@@ -22859,20 +23207,35 @@ local function buildFlag(w, h)
 	return finish(m)
 end
 
--- A Valentine from another world: blocky, pale and shimmering.
+-- A Valentine from another world: his look (pink coat, blond ringlets,
+-- magenta trousers), shimmering.
 local function buildValentine()
 	local m = newModel("ParallelValentine")
-	local coat, hair, skin, pants = Color3.fromRGB(232, 226, 236), Color3.fromRGB(244, 218, 120), Color3.fromRGB(240, 210, 190), Color3.fromRGB(44, 50, 84)
+	local coat, coatShade = Color3.fromRGB(232, 150, 196), Color3.fromRGB(200, 116, 166)
+	local hair, hairDark = Color3.fromRGB(238, 218, 130), Color3.fromRGB(204, 180, 96)
+	local skin, pants, grey = Color3.fromRGB(240, 210, 190), Color3.fromRGB(196, 96, 210), Color3.fromRGB(120, 116, 124)
 	box(m, Vector3.new(2, 2, 1), CFrame.new(0, 3, 0), coat)
-	box(m, Vector3.new(2.2, 1.6, 0.2), CFrame.new(0, 1.6, 0.5), coat)
-	box(m, Vector3.new(0.6, 0.5, 0.15), CFrame.new(0, 3.7, -0.55), WHITE)
-	box(m, Vector3.new(1.2, 1.2, 1.2), CFrame.new(0, 4.6, 0), skin)
-	box(m, Vector3.new(1.4, 0.45, 1.4), CFrame.new(0, 5.2, 0), hair)
-	box(m, Vector3.new(1.4, 1, 0.3), CFrame.new(0, 4.6, 0.6), hair)
+	box(m, Vector3.new(1.2, 0.45, 1.1), CFrame.new(0, 4.15, 0), grey) -- high collar
+	box(m, Vector3.new(0.08, 2.1, 0.05), CFrame.new(0.15, 3, -0.52) * CFrame.Angles(0, 0, -0.18), coatShade)
+	-- Long coat skirt flaring to the calves, open at the front.
+	box(m, Vector3.new(2.5, 2.4, 0.14), CFrame.new(0, 1, 0.62) * CFrame.Angles(0.06, 0, 0), coat)
 	for _, side in ipairs({ -1, 1 }) do
-		box(m, Vector3.new(0.4, 0.4, 0.4), CFrame.new(side * 0.95, 4.9, 0), hair)
-		box(m, Vector3.new(0.3, 0.3, 0.3), CFrame.new(side * 1.2, 5.1, 0), hair)
+		box(m, Vector3.new(0.7, 2.3, 0.14), CFrame.new(side * 0.95, 1, -0.58) * CFrame.Angles(0, side * 0.35, 0), coat)
+		box(m, Vector3.new(0.14, 2.3, 1.3), CFrame.new(side * 1.16, 1, 0.05), coatShade)
+	end
+	box(m, Vector3.new(1.2, 1.2, 1.2), CFrame.new(0, 4.9, 0), skin)
+	box(m, Vector3.new(1.4, 0.4, 1.4), CFrame.new(0, 5.55, 0), hair)
+	box(m, Vector3.new(1.5, 1.6, 0.3), CFrame.new(0, 4.5, 0.65), hair)
+	for _, side in ipairs({ -1, 1 }) do
+		box(m, Vector3.new(0.2, 1.2, 1.1), CFrame.new(side * 0.7, 4.6, 0.05), hair)
+		-- Spiral ringlets at the sides.
+		for k = 0, 5 do
+			local a = k / 6 * math.pi * 2
+			box(m, Vector3.new(0.14, 0.2, 0.2), CFrame.new(side * 0.95, 4.9 + math.sin(a) * 0.3, math.cos(a) * 0.3), k % 2 == 0 and hair or hairDark)
+		end
 		box(m, Vector3.new(1, 2, 1), CFrame.new(side * 1.5, 3, 0), coat)
+		box(m, Vector3.new(1.1, 0.25, 1.1), CFrame.new(side * 1.5, 2.1, 0), grey)
+		box(m, Vector3.new(1, 0.4, 1), CFrame.new(side * 1.5, 1.8, 0), Color3.fromRGB(214, 110, 196))
 		box(m, Vector3.new(1, 2, 1), CFrame.new(side * 0.5, 1, 0), pants)
 	end
 	local item = finish(m)
@@ -22981,7 +23344,7 @@ local function cloneStep(dt)
 end
 
 -- The target's other-world double flickers beside them; their body crumbles into cubes.
-local function startCrumble(target, duration)
+local function startCrumble(target, duration, doublePos, leash)
 	local tr = Common.rootOf(target)
 	if not tr then
 		return
@@ -23006,7 +23369,7 @@ local function startCrumble(target, duration)
 	for i = 1, 4 do
 		sponges[i] = buildSponge(0.9)
 	end
-	crumbling[target] = { Double = finish(dm), Sponges = sponges, Born = os.clock(), Duration = duration or 3, Next = 0 }
+	crumbling[target] = { Double = finish(dm), Sponges = sponges, Born = os.clock(), Duration = duration or 3, Next = 0, DoublePos = doublePos, Leash = leash or 10 }
 	flash(tr.Position, 3)
 end
 
@@ -23022,8 +23385,11 @@ local function crumbleStep(dt)
 			c.Double.Model:Destroy()
 		else
 			local t = now - c.Born
-			-- The double stands beside them, facing them, flickering.
-			place(c.Double, tr.CFrame * CFrame.new(3.2, 0, 0) * CFrame.Angles(0, math.pi / 2, 0))
+			-- The double stands where it appeared, facing them, flickering.
+			local at = c.DoublePos or (tr.CFrame * CFrame.new(3.2, 0, 0)).Position
+			local face = Vector3.new(tr.Position.X, at.Y, tr.Position.Z)
+			place(c.Double, (face - at).Magnitude > 0.1 and CFrame.lookAt(at, face) or CFrame.new(at))
+			local near = (tr.Position - at).Magnitude <= c.Leash
 			local flick = (math.floor(t * 14) % 3 == 0) and 0.75 or 0.4
 			for _, p in ipairs(c.Double.Parts) do
 				p.Transparency = flick
@@ -23033,9 +23399,9 @@ local function crumbleStep(dt)
 				local a = t * 2.5 + i / #c.Sponges * math.pi * 2
 				place(sp, CFrame.new(tr.Position + Vector3.new(math.cos(a) * 2.4, math.sin(t * 3 + i) * 1.2, math.sin(a) * 2.4)) * CFrame.Angles(t * 2, t * 3, 0))
 			end
-			-- Little cubes break off the body and drift away.
-			c.Next = c.Next - dt
-			while c.Next <= 0 do
+			-- Little cubes break off the body and drift away (only near the double).
+			c.Next = near and c.Next - dt or 0.06
+			while c.Next <= 0 and near do
 				c.Next = c.Next + 0.06
 				local from = tr.Position + Vector3.new((math.random() - 0.5) * 2, (math.random() - 0.5) * 4, (math.random() - 0.5) * 1.4)
 				local cube = VFXLib.part({ Size = Vector3.new(0.35, 0.35, 0.35), Color = CUBE, Material = Enum.Material.SmoothPlastic })
@@ -23051,6 +23417,47 @@ local function crumbleStep(dt)
 	end
 end
 
+-- A flag on a pole planted where he hopped from (he can hop back to it).
+local function plantAnchor(character, position, duration)
+	local old = anchors[character]
+	if old then
+		old.Flag.Model:Destroy()
+		old.Pole:Destroy()
+	end
+	local pole = VFXLib.part({ Size = Vector3.new(0.2, 7, 0.2), CFrame = CFrame.new(position + Vector3.new(0, 0.5, 0)), Color = Color3.fromRGB(220, 220, 225), Material = Enum.Material.Metal })
+	local flag = buildFlag(3.2, 2)
+	anchors[character] = { Flag = flag, Pole = pole, Pos = position, Until = os.clock() + (duration or 4) }
+end
+
+local function removeAnchor(character)
+	local a = anchors[character]
+	if a then
+		anchors[character] = nil
+		flagWrap(a.Pos)
+		a.Flag.Model:Destroy()
+		a.Pole:Destroy()
+	end
+end
+
+local function anchorStep()
+	local now = os.clock()
+	for character, a in pairs(anchors) do
+		if now > a.Until or not character.Parent then
+			anchors[character] = nil
+			a.Flag.Model:Destroy()
+			a.Pole:Destroy()
+		else
+			-- The flag waves at the top of the pole.
+			place(a.Flag, CFrame.new(a.Pos + Vector3.new(1.7, 3, 0)) * CFrame.Angles(0, math.sin(now * 3) * 0.25, math.sin(now * 5) * 0.05))
+			-- Blinks in its last second.
+			local blink = (a.Until - now) < 1 and (math.floor(now * 8) % 2 == 0)
+			for _, p in ipairs(a.Flag.Parts) do
+				p.Transparency = blink and 0.6 or 0
+			end
+		end
+	end
+end
+
 local function onAbility(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
@@ -23059,6 +23466,10 @@ local function onAbility(data)
 		if phase == "Wrap" then
 			TuskAnimation.play(character, "VHop")
 			flagWrap(data.Position or (root and root.Position))
+		elseif phase == "Anchor" and character then
+			plantAnchor(character, data.Position, data.Duration)
+		elseif phase == "AnchorGone" and character then
+			removeAnchor(character)
 		elseif phase == "Unwrap" then
 			flagUnfurl(data.Position)
 			TuskStand.action(character, "Lunge", { Duration = 0.35 })
@@ -23087,6 +23498,19 @@ local function onAbility(data)
 			if data.Position then
 				TuskVFX.CreateImpactStar(data.Position, { Size = 2.6, Rays = 6, Color = pal.Main, Color2 = WHITE, Duration = 0.12 })
 			end
+		elseif phase == "Swap" then
+			-- They trade places: flags at both spots, and the other one is gone.
+			local c = clones[data.Id]
+			if c then
+				clones[data.Id] = nil
+				c.Item.Model:Destroy()
+			end
+			flagWrap(data.From)
+			flagUnfurl(data.To)
+			flash(data.To + Vector3.new(0, 1, 0), 5)
+			if character and Common.isLocal(character) then
+				CameraFX.impactFrame(SHIMMER)
+			end
 		elseif phase == "Leave" then
 			local c = clones[data.Id]
 			if c then
@@ -23098,7 +23522,19 @@ local function onAbility(data)
 			TuskAnimation.play(character, "VMenger")
 			TuskStand.action(character, "Lunge", { Duration = 0.45 })
 		elseif phase == "Crumble" and data.Target then
-			startCrumble(data.Target, data.Duration)
+			startCrumble(data.Target, data.Duration, data.DoublePos, data.Leash)
+		elseif phase == "Escape" and data.Target then
+			-- They got away from their double: it shatters into cubes.
+			local c = crumbling[data.Target]
+			if c then
+				crumbling[data.Target] = nil
+				local at = c.DoublePos or data.Position
+				for _, sp in ipairs(c.Sponges) do
+					sp.Model:Destroy()
+				end
+				c.Double.Model:Destroy()
+				VFXLib.burst(at, { Count = 24, Color = CUBE, Speed = 16, Lifetime = 0.45 })
+			end
 		elseif phase == "Burst" and data.Position then
 			VFXLib.burst(data.Position, { Count = 30, Color = CUBE, Speed = 22, Lifetime = 0.5 })
 			flash(data.Position, 5)
@@ -23264,6 +23700,7 @@ function ValentineVFX.step(dt)
 	dt = dt or 1 / 60
 	cloneStep(dt)
 	crumbleStep(dt)
+	anchorStep()
 	trainStep()
 	slowTimer = slowTimer + dt
 	if slowTimer > 0.2 then
@@ -23275,7 +23712,7 @@ end
 return ValentineVFX
 ```
 
-## 76. TuskAnimation  (ModuleScript)
+## 77. TuskAnimation  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -24030,7 +24467,7 @@ end)
 return TuskAnimation
 ```
 
-## 77. TuskController  (ModuleScript)
+## 78. TuskController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -24278,7 +24715,7 @@ end
 return TuskController
 ```
 
-## 78. TuskProjectiles  (ModuleScript)
+## 79. TuskProjectiles  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -24554,7 +24991,7 @@ end
 return TuskProjectiles
 ```
 
-## 79. TuskSneakController  (ModuleScript)
+## 80. TuskSneakController  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -24839,7 +25276,7 @@ end
 return TuskSneakController
 ```
 
-## 80. TuskStand  (ModuleScript)
+## 81. TuskStand  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -25210,7 +25647,7 @@ end
 return TuskStand
 ```
 
-## 81. TuskVFX  (ModuleScript)
+## 82. TuskVFX  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -26454,12 +26891,12 @@ end
 return TuskVFX
 ```
 
-## 82. UI  (Folder)
+## 83. UI  (Folder)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 _Empty folder: nothing to paste._
 
-## 83. BountyUI  (ModuleScript)
+## 84. BountyUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -27061,7 +27498,7 @@ end
 return BountyUI
 ```
 
-## 84. CharacterCard  (ModuleScript)
+## 85. CharacterCard  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -27671,7 +28108,7 @@ end
 return CharacterCard
 ```
 
-## 85. CombatUI  (ModuleScript)
+## 86. CombatUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -28017,7 +28454,7 @@ end
 return CombatUI
 ```
 
-## 86. SettingsUI  (ModuleScript)
+## 87. SettingsUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -28092,7 +28529,7 @@ end
 return SettingsUI
 ```
 
-## 87. TuskUI  (ModuleScript)
+## 88. TuskUI  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient › UI`
 
 ```lua
@@ -29284,7 +29721,7 @@ end
 return TuskUI
 ```
 
-## 88. VFXLib  (ModuleScript)
+## 89. VFXLib  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -29650,7 +30087,7 @@ end
 return VFXLib
 ```
 
-## 89. WeatherClient  (ModuleScript)
+## 90. WeatherClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -29918,7 +30355,7 @@ end
 return WeatherClient
 ```
 
-## 90. WorldClient  (ModuleScript)
+## 91. WorldClient  (ModuleScript)
 **Put it in:** `StarterPlayer › StarterPlayerScripts › SpinClient`
 
 ```lua
@@ -30155,12 +30592,12 @@ end
 return WorldClient
 ```
 
-## 91. SpinTools  (Folder)
+## 92. SpinTools  (Folder)
 **Put it in:** `ServerStorage`
 
 _Empty folder: nothing to paste._
 
-## 92. SBRMapBuilder  (ModuleScript)
+## 93. SBRMapBuilder  (ModuleScript)
 **Put it in:** `ServerStorage › SpinTools`
 
 ```lua

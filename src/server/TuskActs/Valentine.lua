@@ -9,12 +9,17 @@
 	  M1        DIRTY DEEDS COMBO: D4C chops with him
 	  Ability 1 DIMENSION HOP: a flag sweeps over him (he can't be hit while
 	            he's between worlds) and he steps out behind the nearest enemy
-	            in front, striking them; with nobody there, he hops ahead
+	            in front, striking them; with nobody there, he hops ahead. He
+	            leaves a flag where he was: press again within 4 s to hop back
 	  Ability 2 PARALLEL VALENTINE: a Valentine from another world joins the
-	            fight for a few seconds, chasing and punching the nearest enemy
+	            fight for a few seconds, chasing and punching the nearest enemy.
+	            If he's nearly beaten while it's out, they SWAP: he takes its
+	            place (healed) and it's gone
 	  Ability 3 MENGER SPONGE: the nearest enemy's other-world self appears
 	            beside them: two of the same person can't exist together, so
-	            they crumble into cubes (slowed, ticks of damage), then burst
+	            they crumble into cubes (slowed, ticks of damage), then burst,
+	            hitting whoever's next to them. They only crumble near their
+	            double: running away from it ends it
 	  Ultimate  D4C LOVE TRAIN: a wall of light: every hit on him is
 	            cancelled and the misfortune lands on the nearest enemy
 	            instead; he moves faster; it ends with a pulse of light
@@ -85,8 +90,45 @@ end
 ---------------------------------------------------------------------------
 -- DIMENSION HOP
 ---------------------------------------------------------------------------
+-- Step out of another world at `to` (shared by the hop and the hop back).
+local function hopThrough(S, player, state, c, to, facing, onArrive)
+	local character, _, root = alive(S, player)
+	local life = state.Life
+	S.lock(state, c.Windup + 0.3)
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	character:SetAttribute(iframes, true)
+	S.fx("Ability", { Character = character, Act = ACT, Move = "DimensionHop", Phase = "Wrap", Position = root.Position, Windup = c.Windup })
+	task.delay(c.Windup, function()
+		character:SetAttribute(iframes, nil)
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char = alive(S, player)
+		local dest, face = to(), facing()
+		local flatFace = Vector3.new(face.X, dest.Y, face.Z)
+		char:PivotTo((flatFace - dest).Magnitude > 0.1 and CFrame.lookAt(dest, flatFace) or CFrame.new(dest))
+		S.fx("Ability", { Character = char, Act = ACT, Move = "DimensionHop", Phase = "Unwrap", Position = dest })
+		if onArrive then
+			onArrive(char, dest)
+		end
+	end)
+end
+
 local function dimensionHop(S, player, state, aim)
 	local c = cfg.DimensionHop
+	-- Hop back through the flag he left (doesn't need the cooldown).
+	local back = state.HopReturn
+	if back and now() < back.Until and not S.isBusy(state) and not state.Charging then
+		state.HopReturn = nil
+		local character = alive(S, player)
+		S.fx("Ability", { Character = character, Act = ACT, Move = "DimensionHop", Phase = "AnchorGone" })
+		hopThrough(S, player, state, c, function()
+			return back.Pos
+		end, function()
+			return back.Pos + back.Facing
+		end)
+		return
+	end
 	if not ready(S, player, state, "DimensionHop", 1) then
 		return
 	end
@@ -111,29 +153,24 @@ local function dimensionHop(S, player, state, aim)
 		return
 	end
 	S.startCooldown(player, state, "DimensionHop", c.Cooldown, 1)
-	S.lock(state, c.Windup + 0.3)
-	local life = state.Life
-	local iframes = S.Adapter.Settings.IFrameAttribute
-	character:SetAttribute(iframes, true)
-	S.fx("Ability", { Character = character, Act = ACT, Move = "DimensionHop", Phase = "Wrap", Position = root.Position, Windup = c.Windup })
-	task.delay(c.Windup, function()
-		character:SetAttribute(iframes, nil)
-		if not S.stillValid(player, state, life) then
-			return
-		end
-		local char, _, r = alive(S, player)
+	-- He leaves a flag where he was: press again soon to hop back to it.
+	local from, fromFacing = root.Position, Moves.flat(root.CFrame.LookVector)
+	hopThrough(S, player, state, c, function()
 		-- The target may have moved: step out behind where they are now.
 		if tr and tr.Parent then
 			local behind = -Moves.flat(tr.CFrame.LookVector)
-			destination = Moves.safeStep(char, tr, behind, 5) or destination
+			destination = Moves.safeStep(alive(S, player), tr, behind, 5) or destination
 			facing = tr.Position
 		end
-		local flatFace = Vector3.new(facing.X, destination.Y, facing.Z)
-		char:PivotTo((flatFace - destination).Magnitude > 0.1 and CFrame.lookAt(destination, flatFace) or CFrame.new(destination))
-		S.fx("Ability", { Character = char, Act = ACT, Move = "DimensionHop", Phase = "Unwrap", Position = destination })
+		return destination
+	end, function()
+		return facing
+	end, function(char, dest)
+		state.HopReturn = { Pos = from, Facing = fromFacing, Until = now() + c.ReturnWindow }
+		S.fx("Ability", { Character = char, Act = ACT, Move = "DimensionHop", Phase = "Anchor", Position = from, Duration = c.ReturnWindow })
 		-- Out of the other world: a strike at whoever he came for.
-		if target and tr and (tr.Position - destination).Magnitude <= c.StrikeRange then
-			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = tr.Position - destination, Position = tr.Position, Source = "ValentineHop" })
+		if target and tr and (tr.Position - dest).Magnitude <= c.StrikeRange then
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = tr.Position - dest, Position = tr.Position, Source = "ValentineHop" })
 		end
 	end)
 end
@@ -167,8 +204,20 @@ local function parallelClone(S, player, state)
 		local born = now()
 		local punches, nextPunch, target = 0, 0, nil
 		local step = 0.1
+		local swapped = false
 		local function tick()
-			local _, _, myRoot = alive(S, player)
+			local _, myHum, myRoot = alive(S, player)
+			-- Nearly beaten while his other self is out: they swap places.
+			if myHum and myRoot and not swapped and myHum.Health > 0 and myHum.Health <= myHum.MaxHealth * c.SwapAt and state.Life == life then
+				swapped = true
+				local old = myRoot.Position
+				myHum.Health = math.min(myHum.MaxHealth, myHum.Health + myHum.MaxHealth * c.SwapHeal)
+				local at = Vector3.new(pos.X, old.Y, pos.Z)
+				char:PivotTo(CFrame.lookAt(at, at + Moves.flat(myRoot.CFrame.LookVector)))
+				char:SetAttribute("ParallelCloneUntil", nil)
+				S.fx("Ability", { Character = char, Act = ACT, Move = "ParallelClone", Phase = "Swap", Id = id, From = old, To = at })
+				return
+			end
 			if not myRoot or state.Life ~= life or now() - born > c.Duration or punches >= c.MaxPunches then
 				char:SetAttribute("ParallelCloneUntil", nil)
 				S.fx("Ability", { Act = ACT, Move = "ParallelClone", Phase = "Leave", Id = id, Position = pos })
@@ -225,14 +274,28 @@ local function mengerSponge(S, player, state, aim)
 			return
 		end
 		local untilT = now() + c.Time
+		local token = tostring({}) -- only this cast's ticks may act (a newer one replaces it)
 		target:SetAttribute("MengerUntil", untilT)
+		target:SetAttribute("MengerCast", token)
 		slow(S, target, "Menger", c.Slow, c.Time)
-		S.fx("Ability", { Character = char, Act = ACT, Move = "MengerSponge", Phase = "Crumble", Target = target, Duration = c.Time })
+		-- Their double appears right beside them, and stays put.
+		local doublePos = (tr.CFrame * CFrame.new(c.DoubleOffset, 0, 0)).Position
+		S.fx("Ability", { Character = char, Act = ACT, Move = "MengerSponge", Phase = "Crumble", Target = target, Duration = c.Time, DoublePos = doublePos, Leash = c.Leash })
 		local ticks = math.floor(c.Time / c.Tick)
 		for i = 1, ticks do
 			task.delay(i * c.Tick, function()
 				local t = target:FindFirstChild("HumanoidRootPart")
-				if not t or (target:GetAttribute("MengerUntil") or 0) < untilT - 0.01 then
+				if not t or target:GetAttribute("MengerCast") ~= token or not target:GetAttribute("MengerUntil") then
+					return
+				end
+				-- Got away from their double: it's over.
+				if (t.Position - doublePos).Magnitude > c.Leash then
+					target:SetAttribute("MengerUntil", nil)
+					local hum = target:FindFirstChildOfClass("Humanoid")
+					if hum then
+						S.Adapter.setMoveModifier(hum, "Menger", nil)
+					end
+					S.fx("Ability", { Act = ACT, Move = "MengerSponge", Phase = "Escape", Position = t.Position, Target = target, DoublePos = doublePos })
 					return
 				end
 				local last = i == ticks
@@ -246,7 +309,9 @@ local function mengerSponge(S, player, state, aim)
 				})
 				if last then
 					target:SetAttribute("MengerUntil", nil)
-					S.fx("Ability", { Act = ACT, Move = "MengerSponge", Phase = "Burst", Position = t.Position, Target = target })
+					-- The burst catches whoever's right next to them.
+					Moves.aoe(S, player, t.Position, c.BurstRadius, { Damage = c.BurstDamage, Stun = 0.5, Knockback = 20, Source = "ValentineMenger" }, 6, { [target] = true })
+					S.fx("Ability", { Act = ACT, Move = "MengerSponge", Phase = "Burst", Position = t.Position, Target = target, Radius = c.BurstRadius })
 				end
 			end)
 		end
@@ -348,6 +413,7 @@ function Valentine.Ultimate(S, player, state, aim)
 end
 
 function Valentine.Cleanup(S, player, state)
+	state.HopReturn = nil
 	local character = state.Character
 	if character then
 		character:SetAttribute("Armored", nil)

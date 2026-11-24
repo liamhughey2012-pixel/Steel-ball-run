@@ -689,12 +689,14 @@ TuskConfig.Valentine = {
 		Range = 40, Cone = 80, -- finds an enemy in front this close
 		Distance = 26, -- with nobody to hop to, he goes this far ahead
 		Damage = 5, Stun = 0.6, Knockback = 10, StrikeRange = 7,
+		ReturnWindow = 4, -- press again within this long to hop back through the flag he left
 	},
 	ParallelClone = { -- a Valentine from another world joins the fight for a while
 		Cooldown = 12, Windup = 0.3,
 		Duration = 6, Speed = 20, Range = 50,
 		PunchRange = 4.5, PunchEvery = 0.8, MaxPunches = 5,
 		Damage = 3.5, Stun = 0.45, Knockback = 4,
+		SwapAt = 0.25, SwapHeal = 0.3, -- nearly beaten while it's out: they swap places and he's healed
 	},
 	MengerSponge = { -- their other-world self appears beside them: they crumble into cubes
 		Cooldown = 13, MissCooldown = 3, Windup = 0.3,
@@ -702,6 +704,8 @@ TuskConfig.Valentine = {
 		Damage = 4, Stun = 0.6,
 		Time = 3, Tick = 0.4, TickDamage = 1, TickGrowth = 0.08, Slow = 0.55,
 		FinalDamage = 6, FinalKnockback = 25, FinalStun = 0.7,
+		DoubleOffset = 3.5, Leash = 10, -- they only crumble near their double: run from it to escape
+		BurstRadius = 7, BurstDamage = 5, -- the burst hits enemies right next to them too
 	},
 	Ultimate = { -- D4C LOVE TRAIN: a wall of light; hits on him are cancelled and the misfortune lands on someone else
 		Windup = 0.7, Duration = 6,
