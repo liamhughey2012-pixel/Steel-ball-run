@@ -1291,8 +1291,10 @@ TuskConfig.Race = {
 		-- FIGHTING (from FightFromStage on): Brawlers (that share of the
 		-- jockeys) ride at rivals close by and lash them with a whip in
 		-- passing: other jockeys, and you (PlayerChance of the time).
-		FightFromStage = 2, Brawlers = 0.6, SeekRange = 18, FightRange = 9, FightEvery = { 2.5, 4.5 },
-		FightPlayers = true, PlayerChance = 0.5,
+		-- Fighting is OFF (Brawlers = 0, FightPlayers = false): jockeys just race.
+		-- To turn it back on: Brawlers = 0.6, FightPlayers = true.
+		FightFromStage = 2, Brawlers = 0, SeekRange = 18, FightRange = 9, FightEvery = { 2.5, 4.5 },
+		FightPlayers = false, PlayerChance = 0.5,
 		Damage = 6, Stun = 0.45, Knockback = 26,
 	},
 	-- RECORDS: your best total time (all 9 stages) and your wins are saved (DataService).

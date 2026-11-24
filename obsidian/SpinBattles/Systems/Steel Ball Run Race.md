@@ -181,3 +181,5 @@ The race now has **its own giant world** (`RaceMap`, `TuskConfig.Race.Map`). The
 - **They come for you too:** when a player's in reach, a brawler picks the player about half the time (`PlayerChance`, re-decided every 4 s). Set `FightPlayers = false` to keep them off players.
 - **Whips use the normal combat rules:** a stand-in "player" per jockey, so blocking, dodging, i-frames and hit effects all work. Everyone sees the whip crack; you get "WHIPPED BY ...!" when it's you.
 - A jockey taken down is out of the race.
+
+- **Fighting turned OFF (2026-11-24):** `Brawlers = 0`, `FightPlayers = false`. Jockeys just race. Set them back to 0.6 / true to turn it on again.
