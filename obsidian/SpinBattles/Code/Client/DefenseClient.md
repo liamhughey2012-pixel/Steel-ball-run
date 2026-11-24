@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `StarterPlayer › StarterPlayerScripts › SpinClient` |
 | **Exact name** | `DefenseClient` (capitals matter) |
 
-**What it does:** Block and Dash on the client, for every character: input: hold F (controller L2) to block, Q (controller R2) to dash, on-screen buttons on mobile. Intents only: the server decides. DASH: when the server grants it, this client moves its own character (smooth, and it replicates). Everyone sees a dust burst, a wind ring, body-shaped afterimages in the character's colour, wind streaks, a landing puff and a dash pose (forward / back / left / right); speed lines for the dasher. A dash that cancels an attack flashes white. PERFECT DODGE: a gold ghost and "PERFECT DODGE", a blue slowed-down flash and COUNTER READY for the dodger. BLOCK: anyone blocking braces into a guard pose (and sags into a weak guard when the guard bar is low). A curved barrier of glowing tiles in their character's colour builds in front of them; it shimmers, its tiles darken, flicker and crack red as the guard bar drains, and it scatters away on release. A blocked hit makes them recoil, lights the tile it struck, sends a ripple across the barrier and throws sparks. PERFECT BLOCK: gold flash and "PERFECT!" on the defender, the attacker reels. GUARD BREAK: the shield shatters, "GUARD BREAK" and a stagger.
+**What it does:** Block and Dash on the client, for every character: input: hold F (controller L2) to block, Q (controller R2) to dash, on-screen buttons on mobile. Intents only: the server decides. DASH: when the server grants it, this client moves its own character (smooth, and it replicates). Everyone sees a dust burst, a wind ring, body-shaped afterimages in the character's colour, wind streaks, a landing puff and a dash pose (forward / back / left / right); speed lines for the dasher. A dash that cancels an attack flashes white. PERFECT DODGE: a gold ghost and "PERFECT DODGE", a blue slowed-down flash and COUNTER READY for the dodger. BLOCK: anyone blocking braces into a guard pose (and sags into a weak guard when the guard bar is low). A curved barrier of glowing tiles in their character's colour builds in front of them; it shimmers, its tiles darken, flicker and crack red as the guard bar drains, and it scatters away on release. A blocked hit makes them recoil, lights the tile it struck, sends a ripple across the barrier and throws sparks. PERFECT BLOCK: gold flash and "PERFECT!" on the defender, the attacker reels. GUARD BREAK: the shield shatters, "GUARD BREAK" and a stagger. the popup words are in the bounty board's style (UI.UITheme): tilted Bangers with a chunky dark-wood outline. The mobile BLOCK / DASH buttons are ContextActionService's own.
 
 ## How to add it
 1. In Studio's Explorer, find **SpinClient** (StarterPlayer › StarterPlayerScripts › SpinClient).
@@ -45,6 +45,9 @@ Back to [[Where To Put Code]]
 	    tile it struck, sends a ripple across the barrier and throws sparks.
 	  * PERFECT BLOCK: gold flash and "PERFECT!" on the defender, the attacker
 	    reels. GUARD BREAK: the shield shatters, "GUARD BREAK" and a stagger.
+	  * the popup words are in the bounty board's style (UI.UITheme): tilted
+	    Bangers with a chunky dark-wood outline. The mobile BLOCK / DASH
+	    buttons are ContextActionService's own.
 ]]
 
 local ContextActionService = game:GetService("ContextActionService")
@@ -56,6 +59,7 @@ local TuskConfig = require(Shared.TuskConfig)
 local Net = require(Shared.Net)
 local VFXLib = require(script.Parent.VFXLib)
 local CameraFX = require(script.Parent.CameraFX)
+local UITheme = require(script.Parent.UI.UITheme)
 local TuskVFX = require(script.Parent.TuskVFX)
 local TuskAnimation = require(script.Parent.TuskAnimation)
 local Fighters = require(script.Parent.Fighters)
@@ -234,6 +238,36 @@ local function onDashFX(data)
 	CameraFX.speedLines(time + 0.15, light)
 end
 
+-- Popup words (PERFECT DODGE, COUNTER READY, PERFECT!, GUARD BREAK) in the
+-- bounty board's style: Bangers with a chunky dark-wood outline, a soft
+-- light-to-shade gradient and a slight comic tilt. Returns the label and a
+-- function that fades it (0 = solid, 1 = gone).
+local function popupLabel(parent, text, color)
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = UITheme.Font.Title
+	label.TextScaled = true
+	label.Text = text
+	label.TextColor3 = color
+	label.TextStrokeTransparency = 1
+	label.Rotation = -4
+	local outline = Instance.new("UIStroke")
+	outline.Color = UITheme.C.WOOD_EDGE
+	outline.Thickness = 3
+	outline.LineJoinMode = Enum.LineJoinMode.Round
+	outline.Parent = label
+	local shade = Instance.new("UIGradient")
+	shade.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(215, 205, 190))
+	shade.Rotation = 90
+	shade.Parent = label
+	label.Parent = parent
+	return label, function(t)
+		label.TextTransparency = t
+		outline.Transparency = t
+	end
+end
+
 -- PERFECT DODGE: a gold ghost left where the attack landed, the word over
 -- their head; for the dodger a flash of slowed-down blue and COUNTER READY.
 local function floatingText(character, text, color)
@@ -246,20 +280,12 @@ local function floatingText(character, text, color)
 	bb.Size = UDim2.fromOffset(220, 50)
 	bb.StudsOffset = Vector3.new(0, 2.6, 0)
 	bb.AlwaysOnTop = true
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromScale(1, 1)
-	label.Font = Enum.Font.Bangers
-	label.TextScaled = true
-	label.Text = text
-	label.TextColor3 = color
-	label.TextStrokeTransparency = 0
-	label.Parent = bb
+	bb.LightInfluence = 0
+	local _, fade = popupLabel(bb, text, color)
 	bb.Parent = VFXLib.Folder
 	VFXLib.animate(0.9, function(a)
 		bb.StudsOffset = Vector3.new(0, 2.6 + a * 1.2, 0)
-		label.TextTransparency = math.max(0, (a - 0.6) / 0.4)
-		label.TextStrokeTransparency = math.max(0, (a - 0.6) / 0.4)
+		fade(math.max(0, (a - 0.6) / 0.4))
 	end, function()
 		bb:Destroy()
 	end)
@@ -500,20 +526,11 @@ local function popText(position, text, color)
 	gui.AlwaysOnTop = true
 	gui.LightInfluence = 0
 	gui.Parent = carrier
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromScale(1, 1)
-	label.Font = Enum.Font.Bangers
-	label.TextScaled = true
-	label.Text = text
-	label.TextColor3 = color
-	label.TextStrokeTransparency = 0
-	label.Parent = gui
+	local _, fade = popupLabel(gui, text, color)
 	local start = carrier.Position
 	VFXLib.animate(0.9, function(a)
 		carrier.Position = start + Vector3.new(0, a * 2, 0)
-		label.TextTransparency = math.max(0, (a - 0.6) / 0.4)
-		label.TextStrokeTransparency = label.TextTransparency
+		fade(math.max(0, (a - 0.6) / 0.4))
 		local pop = a < 0.12 and 1 + (0.12 - a) * 5 or 1
 		gui.Size = UDim2.fromOffset(220 * pop, 60 * pop)
 	end)

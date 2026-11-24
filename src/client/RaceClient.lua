@@ -2,16 +2,21 @@
 	RaceClient  (StarterPlayerScripts.SpinClient.RaceClient)
 
 	The Steel Ball Run on the client (RaceService runs it):
-	  * ENTRY: a wanted-poster style banner at the top, "THE STEEL BALL RUN
-	    · ENTRY OPEN 0:38" with a JOIN button (LEAVE once you're in) and how
-	    many riders have entered. A minute before entry opens, a small chip
-	    counts down to it
-	  * COUNTDOWN: a big 3, 2, 1, GO!
-	  * RACING (riders): a race card top-right (your position, gate x / N,
-	    the time, the top five) with a LEAVE button; a tall golden beacon
+	  * Look: the bounty board's style (UI.UITheme) - dark wood boards with
+	    planks, nails and steel corner brackets, pinned parchment, Bangers
+	    titles, chunky buttons that bounce on hover/press.
+	  * ENTRY: a wooden board at the top with a pinned parchment notice,
+	    "THE STEEL BALL RUN · ENTRY OPEN 0:38", a JOIN button (LEAVE once
+	    you're in) and how many riders have entered. A minute before entry
+	    opens, a small nailed plank counts down to it
+	  * COUNTDOWN: a big outlined gold 3, 2, 1, GO!
+	  * RACING (riders): a framed race card top-right (a parchment sheet with
+	    your position, gate x / N, the time, the top five) with a LEAVE
+	    button; a tall golden beacon (with a wooden distance plaque)
 	    on your next gate with its number and distance, and a gold arrow
 	    ahead of your horse pointing at it
 	  * the winner and the results for everyone
+	  * horse names float over them on little wooden plaques
 	  * every horse gallops: legs in a four-beat stride that speeds up with
 	    the horse, the neck nods, the tail streams out, the body bobs; riders
 	    (and NPC jockeys) sit astride, legs round its sides, hands on the reins
@@ -31,6 +36,7 @@ local TuskConfig = require(Shared.TuskConfig)
 local Net = require(Shared.Net)
 local VFXLib = require(script.Parent.VFXLib)
 local CameraFX = require(script.Parent.CameraFX)
+local UITheme = require(script.Parent.UI.UITheme)
 local TuskAnimation = require(script.Parent.TuskAnimation)
 
 local RaceClient = {}
@@ -38,12 +44,12 @@ local player = Players.LocalPlayer
 local cfg = TuskConfig.Race or {}
 local Remote
 
-local PAPER = Color3.fromRGB(234, 205, 160)
-local INK = Color3.fromRGB(60, 36, 20)
-local RED = Color3.fromRGB(176, 40, 36)
-local GREEN = Color3.fromRGB(60, 150, 70)
-local GOLD = Color3.fromRGB(255, 205, 90)
-local WOOD_DARK = Color3.fromRGB(78, 50, 30)
+local C = UITheme.C
+local PAPER = C.PAPER
+local INK = C.INK
+local RED = C.RED
+local GREEN = C.GREEN
+local GOLD = C.GOLD
 
 local gui, entryPanel, entryTitle, entryInfo, entryButton, soonChip, countdownLabel, card, cardRows, banner
 local entered = false
@@ -67,11 +73,31 @@ local function corner(p, r)
 end
 
 local function label(parent, props)
-	local l = new("TextLabel", { BackgroundTransparency = 1, Font = Enum.Font.GothamBlack, TextColor3 = INK, TextScaled = true }, parent)
-	for k, v in pairs(props) do
-		l[k] = v
-	end
-	return l
+	return UITheme.label(parent, props)
+end
+
+-- A chunky dark outline round text (a UIStroke on the glyphs, thicker and
+-- cleaner than TextStroke), plus a light-to-shade gradient for depth.
+local function inkOutline(l, thickness, color)
+	l.TextStrokeTransparency = 1
+	new("UIStroke", { Color = color or C.WOOD_EDGE, Thickness = thickness or 2, LineJoinMode = Enum.LineJoinMode.Round }, l)
+	new("UIGradient", { Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(215, 205, 190)), Rotation = 90 }, l)
+end
+
+-- A red map pin with a shine (as on the bounty posters).
+local function pin(parent, position)
+	local p = new("Frame", { BackgroundColor3 = C.RED, Size = UDim2.fromOffset(12, 12), Position = position, ZIndex = (parent.ZIndex or 1) + 2 }, parent)
+	corner(p, 99)
+	new("Frame", { BackgroundColor3 = C.WHITE, BackgroundTransparency = 0.4, Size = UDim2.fromOffset(4, 4), Position = UDim2.fromOffset(3, 3), ZIndex = p.ZIndex }, p)
+	return p
+end
+
+-- A small nailed wooden plaque filling a BillboardGui, with Bangers text.
+local function plaque(bb, color)
+	local f = new("Frame", { Name = "Plaque", Size = UDim2.fromScale(1, 1) }, bb)
+	UITheme.wood(f, { Planks = 1, Border = 2, Radius = 5 })
+	local text = label(f, { Name = "Text", Position = UDim2.new(0, 10, 0, 2), Size = UDim2.new(1, -20, 1, -4), Text = "", Font = UITheme.Font.Title, TextColor3 = color or C.GOLD, TextStrokeTransparency = 0.5, TextStrokeColor3 = C.WOOD_EDGE, ZIndex = 3 })
+	return text
 end
 
 local function mmss(seconds)
@@ -107,56 +133,63 @@ end
 -- UI
 ---------------------------------------------------------------------------
 local function buildUI()
-	gui = new("ScreenGui", { Name = "SteelBallRun", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 7 }, player:WaitForChild("PlayerGui"))
-	-- Entry banner.
-	entryPanel = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 64), Size = UDim2.fromOffset(420, 92), BackgroundColor3 = PAPER, Visible = false }, gui)
-	corner(entryPanel, 8)
-	new("UIStroke", { Color = WOOD_DARK, Thickness = 3 }, entryPanel)
-	new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(205, 172, 125)), ColorSequenceKeypoint.new(0.4, PAPER), ColorSequenceKeypoint.new(1, Color3.fromRGB(205, 172, 125)) }), Rotation = 80 }, entryPanel)
+	gui = new("ScreenGui", { Name = "SteelBallRun", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 7, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, player:WaitForChild("PlayerGui"))
+	-- Entry banner: a wooden board with a parchment notice and a JOIN button.
+	entryPanel = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 64), Size = UDim2.fromOffset(420, 92), Visible = false }, gui)
+	UITheme.wood(entryPanel, { Planks = 2, Border = 5, Brackets = true, BracketSize = 14 })
 	new("UISizeConstraint", { MaxSize = Vector2.new(420, 92) }, entryPanel)
-	local strip = new("Frame", { Size = UDim2.new(0, 8, 1, 0), BackgroundColor3 = RED, BorderSizePixel = 0 }, entryPanel)
-	corner(strip, 8)
-	entryTitle = label(entryPanel, { Position = UDim2.fromOffset(18, 6), Size = UDim2.new(1, -150, 0, 30), Text = "THE STEEL BALL RUN", Font = Enum.Font.Bangers, TextXAlignment = Enum.TextXAlignment.Left })
-	entryInfo = label(entryPanel, { Position = UDim2.fromOffset(18, 38), Size = UDim2.new(1, -150, 0, 18), Text = "", Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left })
-	label(entryPanel, { Position = UDim2.fromOffset(18, 60), Size = UDim2.new(1, -150, 0, 24), Text = "Race round the map on horseback. Top 3 win Cash; the winner gets a Saint's Corpse part.", Font = Enum.Font.GothamMedium, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = INK:Lerp(PAPER, 0.25) })
-	entryButton = new("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0), Size = UDim2.fromOffset(118, 56), BackgroundColor3 = GREEN, Text = "JOIN", Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, entryPanel)
-	corner(entryButton, 8)
-	new("UIPadding", { PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8) }, entryButton)
-	new("UIStroke", { Color = GREEN:Lerp(Color3.new(0, 0, 0), 0.4), Thickness = 2 }, entryButton)
+	local notice = new("Frame", { Name = "Notice", Position = UDim2.fromOffset(16, 10), Size = UDim2.new(1, -158, 1, -20), ZIndex = 3 }, entryPanel)
+	UITheme.paper(notice, { Radius = 3 })
+	pin(notice, UDim2.new(0, 6, 0, -4))
+	local strip = new("Frame", { Size = UDim2.new(0, 5, 1, 0), BackgroundColor3 = C.RED, BorderSizePixel = 0, ZIndex = 4 }, notice)
+	corner(strip, 3)
+	entryTitle = label(notice, { Position = UDim2.fromOffset(12, 2), Size = UDim2.new(1, -16, 0, 28), Text = "THE STEEL BALL RUN", Font = UITheme.Font.Title, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
+	entryInfo = label(notice, { Position = UDim2.fromOffset(12, 30), Size = UDim2.new(1, -16, 0, 16), Text = "", Font = UITheme.Font.Body, TextColor3 = C.RED, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
+	label(notice, { Position = UDim2.fromOffset(12, 48), Size = UDim2.new(1, -16, 0, 22), Text = "Race round the map on horseback. Top 3 win Cash; the winner gets a Saint's Corpse part.", Font = UITheme.Font.Plain, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.INK:Lerp(C.PAPER, 0.25), ZIndex = 4 })
+	entryButton = UITheme.button(entryPanel, "JOIN", C.GREEN, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -16, 0.5, 0), Size = UDim2.fromOffset(112, 54), ZIndex = 4 })
 	entryButton.Activated:Connect(function()
 		Remote:FireServer(entered and "Leave" or "Join")
 	end)
-	-- "STEEL BALL RUN IN 0:45" chip.
-	soonChip = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 64), Size = UDim2.fromOffset(230, 26), BackgroundColor3 = WOOD_DARK, BackgroundTransparency = 0.15, Visible = false }, gui)
-	corner(soonChip, 8)
-	label(soonChip, { Name = "Text", Size = UDim2.fromScale(1, 1), Text = "", TextColor3 = GOLD, Font = Enum.Font.GothamBlack })
-	-- Countdown.
-	countdownLabel = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.35), Size = UDim2.fromOffset(400, 150), Text = "", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0, Visible = false })
+	-- "STEEL BALL RUN IN 0:45": a small nailed plank.
+	soonChip = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 64), Size = UDim2.fromOffset(230, 28), Visible = false }, gui)
+	UITheme.wood(soonChip, { Planks = 1, Border = 3, Radius = 6 })
+	label(soonChip, { Name = "Text", Position = UDim2.fromOffset(12, 3), Size = UDim2.new(1, -24, 1, -6), Text = "", TextColor3 = C.GOLD, Font = UITheme.Font.Title, ZIndex = 3 })
+	-- Countdown: huge gold Bangers with a chunky dark outline.
+	countdownLabel = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.35), Size = UDim2.fromOffset(400, 150), Text = "", Font = UITheme.Font.Title, TextColor3 = C.GOLD, Visible = false })
+	inkOutline(countdownLabel, 5)
 	new("UIScale", { Scale = 1 }, countdownLabel)
-	-- Race card (top right).
-	card = new("Frame", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 64), Size = UDim2.fromOffset(230, 200), BackgroundColor3 = PAPER, Visible = false }, gui)
-	corner(card, 8)
-	new("UIStroke", { Color = WOOD_DARK, Thickness = 3 }, card)
-	label(card, { Position = UDim2.fromOffset(10, 4), Size = UDim2.new(1, -60, 0, 22), Text = "STEEL BALL RUN", Font = Enum.Font.Bangers, TextColor3 = RED, TextXAlignment = Enum.TextXAlignment.Left })
-	label(card, { Name = "Pos", Position = UDim2.fromOffset(10, 28), Size = UDim2.fromOffset(90, 40), Text = "-", Font = Enum.Font.Bangers, TextXAlignment = Enum.TextXAlignment.Left })
-	label(card, { Name = "Gate", Position = UDim2.fromOffset(104, 30), Size = UDim2.fromOffset(116, 18), Text = "", Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Right })
-	label(card, { Name = "Time", Position = UDim2.fromOffset(104, 50), Size = UDim2.fromOffset(116, 16), Text = "", Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = INK:Lerp(PAPER, 0.3) })
-	cardRows = new("Frame", { Position = UDim2.fromOffset(10, 74), Size = UDim2.new(1, -20, 0, 100), BackgroundTransparency = 1 }, card)
-	local leave = new("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), Size = UDim2.fromOffset(46, 18), BackgroundColor3 = RED, Text = "LEAVE", Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, card)
-	corner(leave, 5)
+	-- Race card (top right): a framed board with a parchment standings sheet.
+	card = new("Frame", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 64), Size = UDim2.fromOffset(230, 200), Visible = false }, gui)
+	UITheme.wood(card, { Planks = 4, Border = 5, Brackets = true, BracketSize = 14 })
+	label(card, { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -84, 0, 22), Text = "STEEL BALL RUN", Font = UITheme.Font.Title, TextColor3 = C.GOLD, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 })
+	local sheet = new("Frame", { Name = "Sheet", Position = UDim2.fromOffset(9, 32), Size = UDim2.new(1, -18, 1, -46), ZIndex = 2 }, card)
+	UITheme.paper(sheet, { Radius = 3 })
+	label(card, { Name = "Pos", Position = UDim2.fromOffset(16, 34), Size = UDim2.fromOffset(90, 38), Text = "-", Font = UITheme.Font.Title, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 })
+	label(card, { Name = "Gate", Position = UDim2.fromOffset(104, 37), Size = UDim2.fromOffset(110, 17), Text = "", Font = UITheme.Font.Body, TextColor3 = C.RED, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 3 })
+	label(card, { Name = "Time", Position = UDim2.fromOffset(104, 55), Size = UDim2.fromOffset(110, 15), Text = "", Font = UITheme.Font.Body, TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = C.INK:Lerp(C.PAPER, 0.3), ZIndex = 3 })
+	new("Frame", { Position = UDim2.fromOffset(16, 74), Size = UDim2.new(1, -32, 0, 2), BackgroundColor3 = C.BURNT, BackgroundTransparency = 0.5, BorderSizePixel = 0, ZIndex = 3 }, card)
+	cardRows = new("Frame", { Position = UDim2.fromOffset(14, 77), Size = UDim2.new(1, -28, 0, 95), BackgroundTransparency = 1, ZIndex = 3 }, card)
+	local leave = UITheme.button(card, "LEAVE", C.RED, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 7), Size = UDim2.fromOffset(54, 22), ZIndex = 4 })
 	leave.Activated:Connect(function()
 		Remote:FireServer("Leave")
 	end)
-	label(card, { Name = "Hint", Position = UDim2.new(0, 10, 1, -22), Size = UDim2.new(1, -20, 0, 16), Text = "Ride through the gates in order", Font = Enum.Font.GothamMedium, TextColor3 = INK:Lerp(PAPER, 0.35) })
-	-- Big banner.
-	banner = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.24), Size = UDim2.fromOffset(640, 70), Text = "", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0, Visible = false })
+	label(card, { Name = "Hint", Position = UDim2.new(0, 14, 1, -28), Size = UDim2.new(1, -28, 0, 13), Text = "Ride through the gates in order", Font = UITheme.Font.Plain, TextColor3 = C.INK:Lerp(C.PAPER, 0.35), ZIndex = 3 })
+	-- Big banner: Bangers with a chunky dark outline (like the bounty banner).
+	banner = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.24), Size = UDim2.fromOffset(640, 70), Text = "", Font = UITheme.Font.Title, TextColor3 = C.GOLD, Visible = false })
+	inkOutline(banner, 3)
 	new("UIScale", { Scale = 1 }, banner)
 end
 
 local function setEntered(on)
 	entered = on
 	entryButton.Text = on and "LEAVE" or "JOIN"
-	entryButton.BackgroundColor3 = on and RED or GREEN
+	local color = on and RED or GREEN
+	entryButton.BackgroundColor3 = color
+	local edge = entryButton:FindFirstChildOfClass("UIStroke")
+	if edge then
+		edge.Color = color:Lerp(Color3.new(0, 0, 0), 0.45)
+	end
+	UITheme.pop(entryButton, 0.8)
 end
 
 local function fillStandings()
@@ -170,10 +203,13 @@ local function fillStandings()
 		end
 		if i <= 5 then
 			local me = row.UserId == player.UserId
-			local line = new("Frame", { Position = UDim2.fromOffset(0, (i - 1) * 20), Size = UDim2.new(1, 0, 0, 18), BackgroundColor3 = me and GOLD or PAPER, BackgroundTransparency = me and 0.2 or 1 }, cardRows)
+			local line = new("Frame", { Position = UDim2.fromOffset(0, (i - 1) * 19), Size = UDim2.new(1, 0, 0, 17), BackgroundColor3 = me and GOLD or PAPER, BackgroundTransparency = me and 0.15 or 1, ZIndex = 3 }, cardRows)
 			corner(line, 4)
-			label(line, { Position = UDim2.fromOffset(4, 1), Size = UDim2.new(0.7, -4, 1, -2), Text = i .. ". " .. string.upper(row.Name or "?"), Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd })
-			label(line, { Position = UDim2.new(0.7, 0, 0, 1), Size = UDim2.new(0.3, -4, 1, -2), Text = row.Finished and "DONE" or ("GATE " .. math.min(row.Next or 1, totalGates)), Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = row.Finished and GREEN or INK })
+			if me then
+				UITheme.stroke(line, C.BURNT, 1.5, 0.2)
+			end
+			label(line, { Position = UDim2.fromOffset(4, 1), Size = UDim2.new(0.7, -4, 1, -2), Text = i .. ". " .. string.upper(row.Name or "?"), Font = i <= 3 and UITheme.Font.Heavy or UITheme.Font.Body, TextColor3 = i == 1 and C.RED or INK, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 4 })
+			label(line, { Position = UDim2.new(0.7, 0, 0, 1), Size = UDim2.new(0.3, -4, 1, -2), Text = row.Finished and "DONE" or ("GATE " .. math.min(row.Next or 1, totalGates)), Font = UITheme.Font.Body, TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = row.Finished and GREEN or INK, ZIndex = 4 })
 		end
 	end
 	if mine then
@@ -226,12 +262,12 @@ local function stepGuide()
 		local pillar = VFXLib.part({ Size = Vector3.new(80, 3, 3), Color = GOLD, Material = Enum.Material.Neon, Transparency = 0.5, Shape = Enum.PartType.Cylinder })
 		pillar.Parent = m
 		local bb = Instance.new("BillboardGui")
-		bb.Size = UDim2.fromOffset(160, 44)
+		bb.Size = UDim2.fromOffset(160, 36)
 		bb.StudsOffset = Vector3.new(0, 20, 0)
 		bb.AlwaysOnTop = true
 		bb.LightInfluence = 0
 		bb.Adornee = pillar
-		local text = label(bb, { Size = UDim2.fromScale(1, 1), Text = "", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0 })
+		local text = plaque(bb, GOLD)
 		bb.Parent = m
 		beacon = { Model = m, Pillar = pillar, Text = text }
 	end
@@ -328,19 +364,12 @@ local function stepHorses(dt)
 					local bb = Instance.new("BillboardGui")
 					bb.Name = "HorseNameplate"
 					bb.Adornee = headPart
-					bb.Size = UDim2.fromOffset(160, 26)
+					bb.Size = UDim2.fromOffset(150, 26)
 					bb.StudsOffset = Vector3.new(0, 2.2, 0)
 					bb.MaxDistance = 80
 					bb.LightInfluence = 0
-					local text = Instance.new("TextLabel")
-					text.BackgroundTransparency = 1
-					text.Size = UDim2.fromScale(1, 1)
-					text.Font = Enum.Font.Bangers
-					text.TextScaled = true
+					local text = plaque(bb, Color3.fromRGB(255, 225, 150))
 					text.Text = string.upper(name)
-					text.TextColor3 = Color3.fromRGB(255, 225, 150)
-					text.TextStrokeTransparency = 0.2
-					text.Parent = bb
 					bb.Parent = VFXLib.Folder
 					h.Plate = bb
 				end

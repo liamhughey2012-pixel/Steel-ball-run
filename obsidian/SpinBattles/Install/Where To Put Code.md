@@ -170,6 +170,7 @@ Controls, effects, the Tusk Stand, HUD, NPC speech bubbles.
 | 45 | [[CombatUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
 | 46 | [[SettingsUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
 | 47 | [[TuskUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
+| 48 | [[UITheme]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
 
 ## Tools: ServerStorage › SpinTools
 Only used in Studio, to build the map once.

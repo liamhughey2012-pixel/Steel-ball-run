@@ -2409,37 +2409,48 @@ __modules["CharacterCard"] = function()
 --[[
 	CharacterCard  (StarterPlayerScripts.SpinClient.UI.CharacterCard)
 
-	Top-left character card:
-	  * portrait: your uploaded image (TuskConfig.Character.PortraitImage),
-	    or a live 3D view of your own avatar
-	  * JOHNNY JOESTAR name plate (TuskConfig.Character.Name)
-	  * current Stand ("TUSK ACT 2") in that Act's colour
-	  * four Act pips that light up as Tusk awakens
-	  * health bar with numbers
-	Pops and flashes when Tusk evolves.
+	Top-left character card, in the bounty-board style:
+	  * a small framed wooden board (planks, grain, metal corner brackets)
+	    that bounces when you hover or press it
+	  * portrait in a parchment mat with a nail on top: your uploaded image
+	    (TuskConfig.Character.PortraitImage), or a live 3D view of your own
+	    avatar, on a backing in your character's Roster colour
+	  * JOHNNY JOESTAR name plate: a burnt-edge parchment strip, Bangers ink
+	  * current Stand ("TUSK ACT 2") on a dark inset in that Act's colour
+	  * four brass-rimmed Act pips that light up as Tusk awakens
+	  * wood-framed health meter with numbers (green -> red)
+	Pops and flashes the planks in the Act colour when Tusk evolves.
 
 	DROPDOWN: tap/click the card to open the character list
-	(TuskConfig.Roster): one row per character with a colour badge, name,
-	Stand and a status chip; rows light up on hover and the whole row is
-	clickable. Your current character is outlined and listed first. Characters whose scripts
-	aren't in the game are shown as NOT INSTALLED, and characters that aren't
-	finished as IN DEVELOPMENT (neither is selectable).
+	(TuskConfig.Roster) on a wooden board: one parchment row per character
+	with a Roster-colour badge, name, Stand and a status chip (green
+	PLAYING, red SELECT, grey NOT INSTALLED / IN DEVELOPMENT); rows light
+	up, take a Roster-colour outline and bounce on hover, and the whole row
+	is clickable. Your current character is outlined and listed first.
+	Characters whose scripts aren't in the game are shown as NOT INSTALLED,
+	and characters that aren't finished as IN DEVELOPMENT (neither is
+	selectable).
 ]]
 
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 
 local Shared = nil -- (bundled: modules are inlined)
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
 local Registry = __require("TuskActRegistry")
 local VFXLib = __require("VFXLib")
+local UITheme = __require("UITheme")
+local C = UITheme.C
+local F = UITheme.Font
 
 local CharacterCard = {}
 
 local player = Players.LocalPlayer
-local DARK = Color3.fromRGB(14, 12, 20)
-local GOLD = Color3.fromRGB(255, 205, 90)
+local GOLD = C.GOLD
+local PIP_OFF = Color3.fromRGB(58, 40, 26)
+local FADED_INK = Color3.fromRGB(150, 122, 96)
 
-local gui, card, portrait, viewport, nameLabel, standLabel, pips, hpFill, hpText, scale, arrow
+local gui, card, portrait, viewport, photo, nameLabel, standLabel, pips, hpFill, hpText, scale, arrow, flash, cardStroke
 local dropdown, dropdownList, rosterRows
 -- Declared up here so init() can call them (they are defined further down).
 local buildDropdown, refreshDropdown
@@ -2448,18 +2459,11 @@ local open = false
 local Net = __require("Net")
 
 local function corner(p, r)
-	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, r)
-	c.Parent = p
+	return UITheme.corner(p, r)
 end
 
 local function stroke(p, color, t)
-	local s = Instance.new("UIStroke")
-	s.Color = color
-	s.Thickness = t
-	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	s.Parent = p
-	return s
+	return UITheme.stroke(p, color, t)
 end
 
 local function label(parent, props)
@@ -2467,11 +2471,41 @@ local function label(parent, props)
 	l.BackgroundTransparency = 1
 	l.TextXAlignment = Enum.TextXAlignment.Left
 	l.TextStrokeTransparency = 0.4
+	l.TextStrokeColor3 = C.SHADOW
+	l.ZIndex = 3
 	for k, v in pairs(props) do
 		l[k] = v
 	end
 	l.Parent = parent
 	return l
+end
+
+local function tweenTo(obj, info, props)
+	TweenService:Create(obj, info, props):Play()
+end
+
+-- Parchment without UITheme.paper's stroke (rows need their own outline).
+local function parchment(frame, rotation)
+	frame.BackgroundColor3 = C.PAPER
+	frame.BackgroundTransparency = 0
+	frame.BorderSizePixel = 0
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, C.PAPER_DARK), ColorSequenceKeypoint.new(0.38, C.PAPER), ColorSequenceKeypoint.new(1, C.PAPER_DARK) })
+	g.Rotation = rotation or 70
+	g.Parent = frame
+end
+
+local function nail(parent, pos, z)
+	local n = Instance.new("Frame")
+	n.AnchorPoint = Vector2.new(0.5, 0.5)
+	n.Position = pos
+	n.Size = UDim2.fromOffset(7, 7)
+	n.BackgroundColor3 = C.NAIL
+	n.ZIndex = z or 5
+	n.Parent = parent
+	corner(n, 99)
+	stroke(n, C.STEEL_DARK, 1)
+	return n
 end
 
 -- Live 3D portrait of your own avatar (head and shoulders).
@@ -2525,8 +2559,9 @@ local function buildPips(parent)
 	pips = {}
 	local row = Instance.new("Frame")
 	row.BackgroundTransparency = 1
-	row.Position = UDim2.fromOffset(98, 52)
-	row.Size = UDim2.fromOffset(120, 12)
+	row.Position = UDim2.fromOffset(98, 53)
+	row.Size = UDim2.fromOffset(124, 12)
+	row.ZIndex = 3
 	row.Parent = parent
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
@@ -2534,11 +2569,13 @@ local function buildPips(parent)
 	layout.Parent = row
 	for i = 1, 4 do
 		local pip = Instance.new("Frame")
-		pip.Size = UDim2.fromOffset(24, 8)
-		pip.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+		pip.Size = UDim2.fromOffset(25, 9)
+		pip.BackgroundColor3 = PIP_OFF
 		pip.BorderSizePixel = 0
+		pip.ZIndex = 3
 		pip.Parent = row
 		corner(pip, 4)
+		stroke(pip, C.BRASS, 1.5).Transparency = 0.15
 		pips[i] = pip
 	end
 end
@@ -2549,44 +2586,59 @@ function CharacterCard.init()
 	gui.Name = "CharacterCard"
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 3
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = player:WaitForChild("PlayerGui")
 
+	-- The card: a framed wooden board with metal corner brackets.
 	card = Instance.new("Frame")
 	card.Name = "Card"
 	card.Position = UDim2.fromOffset(12, 10)
 	card.Size = UDim2.fromOffset(330, 96)
-	card.BackgroundColor3 = DARK
-	card.BackgroundTransparency = 0.12
 	card.Parent = gui
-	corner(card, 12)
-	stroke(card, GOLD, 2)
+	local planks = UITheme.wood(card, { Planks = 3, Border = 5, Radius = 10, Brackets = true, BracketSize = 12, Nails = false })
+	cardStroke = card:FindFirstChildOfClass("UIStroke")
 	scale = Instance.new("UIScale")
 	scale.Parent = card
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new(Color3.fromRGB(70, 40, 110), Color3.fromRGB(20, 18, 30))
-	gradient.Rotation = 20
-	gradient.Parent = card
+	-- Evolve flash over the planks (see CharacterCard.pop).
+	flash = Instance.new("Frame")
+	flash.Name = "Flash"
+	flash.BorderSizePixel = 0
+	flash.Size = UDim2.fromScale(1, 1)
+	flash.BackgroundColor3 = GOLD
+	flash.BackgroundTransparency = 1
+	flash.ZIndex = 2
+	flash.Parent = planks
 
-	-- Portrait frame.
+	-- Portrait: a parchment mat, the picture on a Roster-colour backing.
 	local frame = Instance.new("Frame")
+	frame.Name = "Portrait"
 	frame.Position = UDim2.fromOffset(8, 8)
 	frame.Size = UDim2.fromOffset(80, 80)
-	frame.BackgroundColor3 = Color3.fromRGB(240, 200, 120)
-	frame.ClipsDescendants = true
+	frame.ZIndex = 3
 	frame.Parent = card
-	corner(frame, 10)
-	stroke(frame, Color3.fromRGB(30, 20, 10), 2)
-	local frameGradient = Instance.new("UIGradient")
-	frameGradient.Color = ColorSequence.new(Color3.fromRGB(255, 220, 140), Color3.fromRGB(190, 110, 200))
-	frameGradient.Rotation = 90
-	frameGradient.Parent = frame
+	UITheme.paper(frame, { Radius = 6, Stroke = 2 })
+	photo = Instance.new("Frame")
+	photo.Name = "Photo"
+	photo.Position = UDim2.fromOffset(5, 5)
+	photo.Size = UDim2.new(1, -10, 1, -10)
+	photo.BackgroundColor3 = (TuskConfig.Roster and TuskConfig.Roster[1] and TuskConfig.Roster[1].Color) or GOLD
+	photo.ClipsDescendants = true
+	photo.ZIndex = 3
+	photo.Parent = frame
+	corner(photo, 4)
+	stroke(photo, C.INK, 1.5)
+	local photoShade = Instance.new("UIGradient")
+	photoShade.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(95, 80, 70))
+	photoShade.Rotation = 90
+	photoShade.Parent = photo
 	if config.PortraitImage ~= "" then
 		portrait = Instance.new("ImageLabel")
 		portrait.BackgroundTransparency = 1
 		portrait.Size = UDim2.fromScale(1, 1)
 		portrait.Image = config.PortraitImage
 		portrait.ScaleType = Enum.ScaleType.Crop
-		portrait.Parent = frame
+		portrait.ZIndex = 3
+		portrait.Parent = photo
 	else
 		viewport = Instance.new("ViewportFrame")
 		viewport.BackgroundTransparency = 1
@@ -2594,83 +2646,122 @@ function CharacterCard.init()
 		viewport.Ambient = Color3.fromRGB(170, 160, 150)
 		viewport.LightColor = Color3.fromRGB(255, 240, 220)
 		viewport.LightDirection = Vector3.new(-1, -1, -1)
-		viewport.Parent = frame
+		viewport.ZIndex = 3
+		viewport.Parent = photo
 	end
+	nail(frame, UDim2.new(0.5, 0, 0, 1), 5)
 
-	nameLabel = label(card, {
-		Position = UDim2.fromOffset(98, 6),
-		Size = UDim2.new(1, -130, 0, 28),
-		Font = Enum.Font.Bangers,
+	-- Name plate: a burnt-edge parchment strip.
+	local plate = Instance.new("Frame")
+	plate.Name = "NamePlate"
+	plate.Position = UDim2.fromOffset(96, 7)
+	plate.Size = UDim2.new(1, -132, 0, 26)
+	plate.Rotation = -1
+	plate.ZIndex = 3
+	plate.Parent = card
+	UITheme.paper(plate, { Radius = 4, Stroke = 2 })
+	nameLabel = label(plate, {
+		Position = UDim2.fromOffset(6, 1),
+		Size = UDim2.new(1, -12, 1, -2),
+		Font = F.Title,
 		TextScaled = true, -- long names ("FUNNY VALENTINE") shrink to fit
-		TextColor3 = GOLD,
+		TextColor3 = C.INK,
+		TextStrokeTransparency = 1,
 		Text = config.Name,
 	})
 	local nameLimit = Instance.new("UITextSizeConstraint")
-	nameLimit.MaxTextSize = 28
-	nameLimit.MinTextSize = 14
+	nameLimit.MaxTextSize = 26
+	nameLimit.MinTextSize = 12
 	nameLimit.Parent = nameLabel
-	standLabel = label(card, {
-		Position = UDim2.fromOffset(98, 33),
-		Size = UDim2.new(1, -106, 0, 16),
-		Font = Enum.Font.GothamBlack,
+
+	-- Stand: a dark inset so the Act colour reads on the wood.
+	local inset = Instance.new("Frame")
+	inset.Name = "StandInset"
+	inset.Position = UDim2.fromOffset(96, 35)
+	inset.Size = UDim2.new(1, -104, 0, 16)
+	inset.BackgroundColor3 = C.SHADOW
+	inset.BackgroundTransparency = 0.3
+	inset.BorderSizePixel = 0
+	inset.ZIndex = 3
+	inset.Parent = card
+	corner(inset, 4)
+	standLabel = label(inset, {
+		Position = UDim2.fromOffset(6, 0),
+		Size = UDim2.new(1, -10, 1, 0),
+		Font = F.Heavy,
 		TextSize = 12,
 		TextColor3 = Color3.fromRGB(200, 220, 255),
+		TextStrokeTransparency = 0.2,
 		Text = config.Title,
 	})
 	buildPips(card)
 
-	local hp = Instance.new("Frame")
-	hp.Position = UDim2.fromOffset(98, 70)
-	hp.Size = UDim2.new(1, -108, 0, 14)
-	hp.BackgroundColor3 = Color3.fromRGB(40, 20, 25)
-	hp.Parent = card
-	corner(hp, 5)
-	hpFill = Instance.new("Frame")
-	hpFill.BorderSizePixel = 0
-	hpFill.BackgroundColor3 = Color3.fromRGB(90, 220, 120)
-	hpFill.Size = UDim2.fromScale(1, 1)
-	hpFill.Parent = hp
-	corner(hpFill, 5)
+	-- Health: a wood-framed meter with the numbers on top.
+	local hp
+	hp, hpFill = UITheme.bar(card, Color3.fromRGB(90, 220, 120), {
+		Name = "Health",
+		Position = UDim2.fromOffset(96, 68),
+		Size = UDim2.new(1, -104, 0, 20),
+		ZIndex = 3,
+	})
 	hpText = label(hp, {
 		Size = UDim2.fromScale(1, 1),
-		Font = Enum.Font.GothamBold,
-		TextSize = 11,
+		Font = F.Heavy,
+		TextSize = 12,
 		TextColor3 = Color3.new(1, 1, 1),
+		TextStrokeTransparency = 0.1,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		Text = "",
-		ZIndex = 2,
+		ZIndex = 5,
 	})
 
 	-- The whole card is a button that opens the character dropdown.
-	arrow = label(card, {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -8, 0, 8),
-		Size = UDim2.fromOffset(20, 20),
-		Font = Enum.Font.GothamBlack,
-		TextSize = 14,
-		TextColor3 = GOLD,
+	local knob = Instance.new("Frame")
+	knob.Name = "Arrow"
+	knob.AnchorPoint = Vector2.new(1, 0)
+	knob.Position = UDim2.new(1, -9, 0, 9)
+	knob.Size = UDim2.fromOffset(22, 22)
+	knob.BackgroundColor3 = GOLD
+	knob.ZIndex = 3
+	knob.Parent = card
+	corner(knob, 99)
+	stroke(knob, C.WOOD_EDGE, 2)
+	arrow = label(knob, {
+		Size = UDim2.fromScale(1, 1),
+		Font = F.Heavy,
+		TextSize = 12,
+		TextColor3 = C.INK,
+		TextStrokeTransparency = 1,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		Text = "▼",
-		ZIndex = 3,
+		ZIndex = 4,
 	})
 	local hit = Instance.new("TextButton")
 	hit.Name = "OpenCharacters"
 	hit.BackgroundTransparency = 1
 	hit.Text = ""
 	hit.Size = UDim2.fromScale(1, 1)
-	hit.ZIndex = 4
+	hit.ZIndex = 8
 	hit.Parent = card
 	hit.Activated:Connect(CharacterCard.toggle)
-	local cardStroke = card:FindFirstChildOfClass("UIStroke")
+	-- Hover / press: the board bounces and its rim turns gold.
 	hit.MouseEnter:Connect(function()
+		tweenTo(scale, UITheme.FAST, { Scale = 1.03 })
 		if cardStroke then
-			cardStroke.Thickness = 3
+			cardStroke.Color = GOLD
 		end
 	end)
 	hit.MouseLeave:Connect(function()
+		tweenTo(scale, UITheme.SOFT, { Scale = 1 })
 		if cardStroke then
-			cardStroke.Thickness = 2
+			cardStroke.Color = C.WOOD_EDGE
 		end
+	end)
+	hit.MouseButton1Down:Connect(function()
+		tweenTo(scale, UITheme.SOFT, { Scale = 0.97 })
+	end)
+	hit.MouseButton1Up:Connect(function()
+		tweenTo(scale, UITheme.FAST, { Scale = 1 })
 	end)
 	buildDropdown()
 
@@ -2691,11 +2782,12 @@ end
 local ROW_W = 330
 local ROW_H = 54
 local dropdownHeight = 0
-local ROW_BG = Color3.fromRGB(26, 23, 38)
-local ROW_HOVER = Color3.fromRGB(40, 35, 58)
-local GREEN = Color3.fromRGB(46, 150, 86)
-local BLUE = Color3.fromRGB(52, 104, 220)
-local GREY = Color3.fromRGB(58, 56, 70)
+local ROW_BG = C.PAPER
+local ROW_HOVER = Color3.fromRGB(255, 236, 196)
+local GREEN = C.GREEN
+local RED = C.RED
+local GREY = Color3.fromRGB(120, 104, 88)
+local REST_EDGE = C.BURNT
 
 -- "JOHNNY JOESTAR" -> "JJ", "SANDMAN" -> "S".
 local function initials(name)
@@ -2714,60 +2806,64 @@ local function tween(duration, step)
 	end)
 end
 
+-- A row's outline: burnt parchment edge at rest, the character's colour
+-- when hovered or playing.
+local function setOutline(info, on)
+	info.Outline.Color = on and info.Entry.Color or REST_EDGE
+	info.Outline.Thickness = on and 3 or 2
+	info.Outline.Transparency = on and 0 or 0.2
+end
+
 function buildDropdown()
 	dropdown = Instance.new("Frame")
 	dropdown.Name = "CharacterList"
 	dropdown.Position = UDim2.fromOffset(12, 112)
 	dropdown.Size = UDim2.fromOffset(ROW_W, 0)
-	dropdown.BackgroundColor3 = DARK
-	dropdown.BackgroundTransparency = 0.06
 	dropdown.ClipsDescendants = true
 	dropdown.Visible = false
 	dropdown.Parent = gui
-	corner(dropdown, 12)
-	stroke(dropdown, GOLD, 1.5)
-	local bg = Instance.new("UIGradient")
-	bg.Color = ColorSequence.new(Color3.fromRGB(34, 26, 52), Color3.fromRGB(14, 12, 20))
-	bg.Rotation = 90
-	bg.Parent = dropdown
+	UITheme.wood(dropdown, { Planks = 6, Border = 5, Radius = 10, Nails = true })
 
-	-- Header (stays put while the list scrolls).
+	-- Header (stays put while the list scrolls): a painted title on the planks.
 	label(dropdown, {
-		Position = UDim2.fromOffset(12, 8),
-		Size = UDim2.new(1, -24, 0, 22),
-		Font = Enum.Font.Bangers,
-		TextSize = 22,
-		TextColor3 = GOLD,
+		Position = UDim2.fromOffset(14, 7),
+		Size = UDim2.new(1, -28, 0, 24),
+		Font = F.Title,
+		TextSize = 24,
+		TextColor3 = C.PAPER,
+		TextStrokeTransparency = 0.2,
 		Text = "CHARACTERS",
 	})
 	label(dropdown, {
-		Position = UDim2.fromOffset(12, 30),
-		Size = UDim2.new(1, -24, 0, 14),
-		Font = Enum.Font.GothamBold,
+		Position = UDim2.fromOffset(14, 31),
+		Size = UDim2.new(1, -28, 0, 14),
+		Font = F.Body,
 		TextSize = 10,
-		TextColor3 = Color3.fromRGB(165, 158, 190),
-		TextStrokeTransparency = 1,
+		TextColor3 = GOLD,
+		TextStrokeTransparency = 0.5,
 		Text = "Scroll for more  ·  BLOCK (F)  ·  DASH (Q)",
 	})
 	local line = Instance.new("Frame")
 	line.Position = UDim2.fromOffset(12, 49)
-	line.Size = UDim2.new(1, -24, 0, 1)
-	line.BackgroundColor3 = GOLD
-	line.BackgroundTransparency = 0.6
+	line.Size = UDim2.new(1, -24, 0, 2)
+	line.BackgroundColor3 = C.WOOD_EDGE
+	line.BackgroundTransparency = 0.2
 	line.BorderSizePixel = 0
+	line.ZIndex = 3
 	line.Parent = dropdown
 
 	dropdownList = Instance.new("ScrollingFrame")
 	dropdownList.BackgroundTransparency = 1
 	dropdownList.BorderSizePixel = 0
 	dropdownList.Position = UDim2.fromOffset(0, 52)
-	dropdownList.Size = UDim2.new(1, 0, 1, -52)
+	dropdownList.Size = UDim2.new(1, 0, 1, -56)
 	dropdownList.CanvasSize = UDim2.new()
 	dropdownList.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	dropdownList.ScrollBarThickness = 6
 	dropdownList.ScrollingDirection = Enum.ScrollingDirection.Y
 	dropdownList.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 	dropdownList.ScrollBarImageColor3 = GOLD
+	dropdownList.ZIndex = 3
 	dropdownList.Parent = dropdown
 	local layout = Instance.new("UIListLayout")
 	layout.Padding = UDim.new(0, 5)
@@ -2776,43 +2872,48 @@ function buildDropdown()
 	local pad = Instance.new("UIPadding")
 	pad.PaddingTop = UDim.new(0, 6)
 	pad.PaddingBottom = UDim.new(0, 8)
-	pad.PaddingLeft = UDim.new(0, 8)
-	pad.PaddingRight = UDim.new(0, 10)
+	pad.PaddingLeft = UDim.new(0, 10)
+	pad.PaddingRight = UDim.new(0, 12)
 	pad.Parent = dropdownList
 
 	rosterRows = {}
 	for order, entry in ipairs(TuskConfig.Roster or {}) do
-		-- The whole row is the button.
+		-- The whole row is the button: a parchment strip.
 		local row = Instance.new("TextButton")
 		row.Name = entry.Id
 		row.LayoutOrder = order
 		row.Text = ""
 		row.AutoButtonColor = false
 		row.Size = UDim2.new(1, 0, 0, ROW_H)
-		row.BackgroundColor3 = ROW_BG
+		row.ZIndex = 3
 		row.Parent = dropdownList
-		corner(row, 9)
-		local outline = stroke(row, entry.Color, 1.5)
-		outline.Transparency = 1
+		parchment(row, 80)
+		corner(row, 6)
+		local outline = stroke(row, REST_EDGE, 2)
+		outline.Transparency = 0.2
+		local rowScale = Instance.new("UIScale")
+		rowScale.Parent = row
 
-		-- Colour badge with initials.
+		-- Colour badge with initials (the character's Roster colour).
 		local badge = Instance.new("Frame")
 		badge.Position = UDim2.fromOffset(7, 7)
 		badge.Size = UDim2.fromOffset(40, 40)
 		badge.BackgroundColor3 = entry.Color
+		badge.ZIndex = 3
 		badge.Parent = row
 		corner(badge, 8)
+		stroke(badge, C.WOOD_EDGE, 2)
 		local shade = Instance.new("UIGradient")
 		shade.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(150, 150, 150))
 		shade.Rotation = 90
 		shade.Parent = badge
 		label(badge, {
 			Size = UDim2.fromScale(1, 1),
-			Font = Enum.Font.Bangers,
+			Font = F.Title,
 			TextSize = 22,
 			TextColor3 = Color3.new(1, 1, 1),
 			TextXAlignment = Enum.TextXAlignment.Center,
-			TextStrokeTransparency = 0.3,
+			TextStrokeTransparency = 0.2,
 			Text = initials(entry.Name),
 		})
 
@@ -2820,9 +2921,10 @@ function buildDropdown()
 		local nameText = label(row, {
 			Position = UDim2.fromOffset(55, 6),
 			Size = UDim2.new(1, -150, 0, 24),
-			Font = Enum.Font.Bangers,
+			Font = F.Title,
 			TextScaled = true,
-			TextColor3 = entry.Available and Color3.new(1, 1, 1) or Color3.fromRGB(150, 145, 160),
+			TextStrokeTransparency = 1,
+			TextColor3 = entry.Available and C.INK or FADED_INK,
 			Text = entry.Name,
 		})
 		local nameLimit = Instance.new("UITextSizeConstraint")
@@ -2832,10 +2934,11 @@ function buildDropdown()
 		local standText = label(row, {
 			Position = UDim2.fromOffset(55, 30),
 			Size = UDim2.new(1, -150, 0, 14),
-			Font = Enum.Font.GothamBold,
+			Font = F.Heavy,
 			TextScaled = true,
 			TextStrokeTransparency = 1,
-			TextColor3 = entry.Color,
+			-- The Roster colour, darkened so it reads on parchment.
+			TextColor3 = entry.Color:Lerp(Color3.new(0, 0, 0), 0.4),
 			Text = "STAND: " .. entry.Stand,
 		})
 		local standLimit = Instance.new("UITextSizeConstraint")
@@ -2847,30 +2950,39 @@ function buildDropdown()
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, -8, 0.5, 0),
 			Size = UDim2.fromOffset(86, 26),
-			Font = Enum.Font.GothamBlack,
-			TextSize = 11,
+			Font = F.Title,
+			TextScaled = true,
 			TextColor3 = Color3.new(1, 1, 1),
 			TextXAlignment = Enum.TextXAlignment.Center,
-			TextStrokeTransparency = 1,
+			TextStrokeTransparency = 0.6,
 			BackgroundTransparency = 0,
 			BackgroundColor3 = GREY,
 			Text = entry.Available and "SELECT" or "IN DEVELOPMENT",
 		})
 		corner(status, 7)
+		local statusStroke = stroke(status, C.WOOD_EDGE, 2)
+		local statusPad = Instance.new("UIPadding")
+		statusPad.PaddingTop = UDim.new(0, 4)
+		statusPad.PaddingBottom = UDim.new(0, 3)
+		statusPad.PaddingLeft = UDim.new(0, 4)
+		statusPad.PaddingRight = UDim.new(0, 4)
+		statusPad.Parent = status
+		local statusLimit = Instance.new("UITextSizeConstraint")
+		statusLimit.MaxTextSize = 17
+		statusLimit.Parent = status
 
-		local info = { Row = row, Order = order, Status = status, Entry = entry, Outline = outline, Name = nameText, Selectable = false, Playing = false }
+		local info = { Row = row, Order = order, Status = status, StatusStroke = statusStroke, Entry = entry, Outline = outline, Name = nameText, Selectable = false, Playing = false }
 		rosterRows[entry.Id] = info
 
-		-- Hover: the row lights up and the outline shows in the character's colour.
+		-- Hover: the row lights up, bounces, and the outline shows in the character's colour.
 		local function hover(on)
 			local from = row.BackgroundColor3
 			local to = on and ROW_HOVER or ROW_BG
-			local fromT = outline.Transparency
-			local toT = (on or info.Playing) and 0 or 1
 			tween(0.12, function(a)
 				row.BackgroundColor3 = from:Lerp(to, a)
-				outline.Transparency = fromT + (toT - fromT) * a
 			end)
+			setOutline(info, on or info.Playing)
+			tweenTo(rowScale, on and UITheme.FAST or UITheme.SOFT, { Scale = on and 1.02 or 1 })
 		end
 		row.MouseEnter:Connect(function()
 			hover(true)
@@ -2923,12 +3035,13 @@ function refreshDropdown(act)
 		row.Playing = playing
 		if row.Entry.Available then
 			row.Status.Text = playing and "PLAYING" or (missing and "NOT INSTALLED" or "SELECT")
-			row.Status.BackgroundColor3 = playing and GREEN or (missing and GREY or BLUE)
-			row.Status.TextColor3 = missing and Color3.fromRGB(190, 185, 200) or Color3.new(1, 1, 1)
+			row.Status.BackgroundColor3 = playing and GREEN or (missing and GREY or RED)
+			row.Status.TextColor3 = missing and Color3.fromRGB(225, 212, 196) or Color3.new(1, 1, 1)
 			row.Selectable = not playing and not missing
 		end
-		row.Outline.Transparency = playing and 0 or 1
-		row.Name.TextColor3 = (row.Entry.Available and not missing) and (playing and GOLD or Color3.new(1, 1, 1)) or Color3.fromRGB(150, 145, 160)
+		row.StatusStroke.Color = row.Status.BackgroundColor3:Lerp(Color3.new(0, 0, 0), 0.5)
+		setOutline(row, playing)
+		row.Name.TextColor3 = (row.Entry.Available and not missing) and (playing and RED or C.INK) or FADED_INK
 		row.Row.LayoutOrder = playing and 0 or row.Order
 	end
 end
@@ -2962,12 +3075,20 @@ function CharacterCard.toggle()
 end
 
 function CharacterCard.pop(color)
+	-- The board bounces and its planks flash in the Act colour.
+	flash.BackgroundColor3 = color
+	if cardStroke then
+		cardStroke.Color = color
+	end
 	VFXLib.animate(0.5, function(a)
 		scale.Scale = 1 + 0.12 * math.sin(a * math.pi)
-		card.BackgroundColor3 = color:Lerp(DARK, a)
+		flash.BackgroundTransparency = 0.35 + 0.65 * a
 	end, function()
 		scale.Scale = 1
-		card.BackgroundColor3 = DARK
+		flash.BackgroundTransparency = 1
+		if cardStroke then
+			cardStroke.Color = C.WOOD_EDGE
+		end
 	end)
 end
 
@@ -2994,6 +3115,7 @@ function CharacterCard.step()
 		for _, entry in ipairs(TuskConfig.Roster or {}) do
 			if entry.Id == who then
 				nameLabel.Text = entry.Name
+				photo.BackgroundColor3 = entry.Color
 			end
 		end
 		if info and info.CardTitle then
@@ -3007,7 +3129,7 @@ function CharacterCard.step()
 			pip.Visible = not isGyro
 			local on = act ~= nil and i <= act
 			local theme = Registry.get(i) and Registry.get(i).Theme.Primary or GOLD
-			pip.BackgroundColor3 = on and theme or Color3.fromRGB(60, 60, 80)
+			pip.BackgroundColor3 = on and theme or PIP_OFF
 		end
 		if isGyro then
 			evolved = false
@@ -3029,16 +3151,20 @@ __modules["CombatUI"] = function()
 --[[
 	CombatUI  (StarterPlayerScripts.SpinClient.UI.CombatUI)
 
-	Battlegrounds-style fight feedback:
-	  * TARGET BAR: hit someone and their name + health bar appears at the
-	    top of the screen. The bar drains smoothly, with a white "chunk" that
-	    catches up a moment later so big hits read. Fades after a few seconds.
+	Battlegrounds-style fight feedback, in the bounty-board style:
+	  * TARGET BAR: hit someone and a nailed wooden plank pops in at the top
+	    of the screen with their name in Bangers and a wood-framed health
+	    meter (green -> gold -> red). The meter drains smoothly, with a white
+	    "chunk" that catches up a moment later so big hits read. Shrinks
+	    away after a few seconds.
 	  * DAMAGE EDGES: the screen edges flash red when you get hit, and pulse
 	    while your health is low.
-	  * GUARD BAR: under your character while you block (or while it
-	    refills); it turns red as it runs out and shows BROKEN after a
-	    guard break.
-	  * DASH / BLOCK chips (bottom right): the dash cooldown sweeps back.
+	  * GUARD BAR: a small wood-framed meter under your character while you
+	    block (or while it refills); it turns red as it runs out and shows
+	    GUARD BROKEN after a guard break.
+	  * DASH / BLOCK chips (bottom right): little wooden planks with a brass
+	    key cap; the dash cooldown sweeps back as a dark shadow, and the
+	    BLOCK plank glows steel-blue while you block.
 	Driven by the shared "Hit" event (CombatAdapter).
 ]]
 
@@ -3046,14 +3172,17 @@ local Players = game:GetService("Players")
 
 local Shared = nil -- (bundled: modules are inlined)
 local Net = __require("Net")
+local UITheme = __require("UITheme")
+local C = UITheme.C
+local F = UITheme.Font
 
 local CombatUI = {}
 local player = Players.LocalPlayer
-local DARK = Color3.fromRGB(14, 12, 20)
-local GOLD = Color3.fromRGB(255, 205, 90)
+local GOLD = C.GOLD
 local RED = Color3.fromRGB(230, 50, 60)
+local BLOCK_BLUE = Color3.fromRGB(110, 180, 255)
 
-local gui, bar, nameLabel, fill, chunk, hpText, edges
+local gui, bar, barScale, nameLabel, fill, chunk, hpText, edges
 local target -- the model shown in the bar
 local shownUntil = 0
 local fillValue, chunkValue = 1, 1
@@ -3063,9 +3192,20 @@ local guardGui, guardFill, guardText, chips
 local stepDefense -- (defined further down)
 
 local function corner(p, r)
-	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, r)
-	c.Parent = p
+	return UITheme.corner(p, r)
+end
+
+local function text(parent, props)
+	local l = Instance.new("TextLabel")
+	l.BackgroundTransparency = 1
+	l.TextStrokeColor3 = C.SHADOW
+	l.TextStrokeTransparency = 0.3
+	l.ZIndex = 4
+	for k, v in pairs(props) do
+		l[k] = v
+	end
+	l.Parent = parent
+	return l
 end
 
 local function nameOf(model)
@@ -3086,63 +3226,61 @@ local function build()
 	gui.ResetOnSpawn = false
 	gui.IgnoreGuiInset = true
 	gui.DisplayOrder = 4
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = player:WaitForChild("PlayerGui")
 
-	-- Target bar (top centre).
+	-- Target bar (top centre): a nailed wooden plank.
 	bar = Instance.new("Frame")
+	bar.Name = "TargetBar"
 	bar.AnchorPoint = Vector2.new(0.5, 0)
 	bar.Position = UDim2.new(0.5, 0, 0, 58)
-	bar.Size = UDim2.fromOffset(340, 46)
-	bar.BackgroundColor3 = DARK
-	bar.BackgroundTransparency = 0.15
+	bar.Size = UDim2.fromOffset(340, 50)
 	bar.Visible = false
 	bar.Parent = gui
-	corner(bar, 10)
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = GOLD
-	stroke.Thickness = 1.5
-	stroke.Parent = bar
-	nameLabel = Instance.new("TextLabel")
-	nameLabel.BackgroundTransparency = 1
-	nameLabel.Position = UDim2.fromOffset(12, 3)
-	nameLabel.Size = UDim2.new(1, -90, 0, 20)
-	nameLabel.Font = Enum.Font.Bangers
-	nameLabel.TextSize = 20
-	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-	nameLabel.TextColor3 = GOLD
-	nameLabel.TextStrokeTransparency = 0.5
-	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-	nameLabel.Parent = bar
-	hpText = Instance.new("TextLabel")
-	hpText.BackgroundTransparency = 1
-	hpText.AnchorPoint = Vector2.new(1, 0)
-	hpText.Position = UDim2.new(1, -12, 0, 5)
-	hpText.Size = UDim2.fromOffset(80, 16)
-	hpText.Font = Enum.Font.GothamBlack
-	hpText.TextSize = 12
-	hpText.TextXAlignment = Enum.TextXAlignment.Right
-	hpText.TextColor3 = Color3.new(1, 1, 1)
-	hpText.Parent = bar
-	local back = Instance.new("Frame")
-	back.Position = UDim2.fromOffset(12, 26)
-	back.Size = UDim2.new(1, -24, 0, 12)
-	back.BackgroundColor3 = Color3.fromRGB(40, 36, 50)
-	back.Parent = bar
-	corner(back, 6)
+	UITheme.wood(bar, { Planks = 2, Border = 4, Radius = 8, Nails = true, Brackets = true, BracketSize = 10 })
+	barScale = Instance.new("UIScale")
+	barScale.Scale = 1
+	barScale.Parent = bar
+	nameLabel = text(bar, {
+		Position = UDim2.fromOffset(14, 4),
+		Size = UDim2.new(1, -100, 0, 21),
+		Font = F.Title,
+		TextSize = 21,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = C.PAPER,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+	})
+	hpText = text(bar, {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -14, 0, 6),
+		Size = UDim2.fromOffset(80, 16),
+		Font = F.Heavy,
+		TextSize = 12,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		TextColor3 = GOLD,
+	})
+	local back
+	back, fill = UITheme.bar(bar, RED, {
+		Name = "Health",
+		Position = UDim2.fromOffset(12, 26),
+		Size = UDim2.new(1, -24, 0, 17),
+		ZIndex = 3,
+	})
+	-- The white "chunk" sits under the fill, inside the meter's well.
 	chunk = Instance.new("Frame")
+	chunk.Name = "Chunk"
+	chunk.BorderSizePixel = 0
 	chunk.Size = UDim2.fromScale(1, 1)
-	chunk.BackgroundColor3 = Color3.new(1, 1, 1)
-	chunk.Parent = back
-	corner(chunk, 6)
-	fill = Instance.new("Frame")
-	fill.Size = UDim2.fromScale(1, 1)
-	fill.BackgroundColor3 = RED
-	fill.Parent = back
-	corner(fill, 6)
-	local shine = Instance.new("UIGradient")
-	shine.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 190))
-	shine.Rotation = 90
-	shine.Parent = fill
+	chunk.BackgroundColor3 = Color3.fromRGB(255, 244, 220)
+	chunk.ZIndex = 3
+	chunk.Parent = fill.Parent
+	corner(chunk, 3)
+	fill.ZIndex = 4
+	for _, d in ipairs(fill:GetChildren()) do
+		if d:IsA("GuiObject") then
+			d.ZIndex = 4
+		end
+	end
 
 	-- Red damage edges (four gradients round the screen).
 	edges = {}
@@ -3180,7 +3318,13 @@ local function showTarget(model)
 		nameLabel.Text = string.upper(nameOf(model))
 	end
 	shownUntil = os.clock() + 4
-	bar.Visible = true
+	if not bar.Visible then
+		bar.Visible = true
+		UITheme.pop(bar, 0.7)
+	elseif barScale.Scale < 0.99 then
+		-- Hit again while it was shrinking away: bounce back up.
+		UITheme.pop(bar, barScale.Scale)
+	end
 end
 
 function CombatUI.step(dt)
@@ -3204,8 +3348,11 @@ function CombatUI.step(dt)
 		chunk.Size = UDim2.fromScale(chunkValue, 1)
 		fill.BackgroundColor3 = k > 0.5 and Color3.fromRGB(90, 220, 110):Lerp(GOLD, (1 - k) * 2) or GOLD:Lerp(RED, (0.5 - k) * 2)
 		hpText.Text = humanoid.Health <= 0 and "K.O." or (math.ceil(humanoid.Health) .. " / " .. math.floor(humanoid.MaxHealth))
+		-- Shrinks away over its last 0.4 s (a fade would mean fading every plank).
 		local fade = math.clamp((shownUntil - now) / 0.4, 0, 1)
-		bar.BackgroundTransparency = 1 - 0.85 * fade
+		if fade < 1 then
+			barScale.Scale = 0.6 + 0.4 * fade
+		end
 		bar.Visible = fade > 0
 	else
 		bar.Visible = false
@@ -3230,39 +3377,53 @@ local function chip(name, key, order)
 	f.AnchorPoint = Vector2.new(1, 1)
 	f.Position = UDim2.new(1, -16, 1, -16 - order * 38)
 	f.Size = UDim2.fromOffset(112, 32)
-	f.BackgroundColor3 = DARK
-	f.BackgroundTransparency = 0.15
 	f.ClipsDescendants = true
 	f.Parent = gui
-	corner(f, 8)
+	local planks = UITheme.wood(f, { Planks = 1, Border = 3, Radius = 7, Nails = false, Stroke = 2 })
+	local edge = f:FindFirstChildOfClass("UIStroke")
+	-- Steel-blue glow while blocking.
+	local tint = Instance.new("Frame")
+	tint.Name = "Tint"
+	tint.BorderSizePixel = 0
+	tint.Size = UDim2.fromScale(1, 1)
+	tint.BackgroundColor3 = BLOCK_BLUE
+	tint.BackgroundTransparency = 1
+	tint.ZIndex = 2
+	tint.Parent = planks
+	-- Cooldown: a dark shadow that sweeps back.
 	local sweep = Instance.new("Frame")
 	sweep.Name = "Sweep"
 	sweep.BorderSizePixel = 0
 	sweep.Size = UDim2.fromScale(0, 1)
-	sweep.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
-	sweep.BackgroundTransparency = 0.3
-	sweep.Parent = f
-	local keyLabel = Instance.new("TextLabel")
-	keyLabel.BackgroundColor3 = GOLD
-	keyLabel.Position = UDim2.fromOffset(5, 5)
-	keyLabel.Size = UDim2.fromOffset(22, 22)
-	keyLabel.Font = Enum.Font.GothamBlack
-	keyLabel.TextSize = 13
-	keyLabel.TextColor3 = DARK
-	keyLabel.Text = key
-	keyLabel.Parent = f
+	sweep.BackgroundColor3 = C.SHADOW
+	sweep.BackgroundTransparency = 0.35
+	sweep.ZIndex = 2
+	sweep.Parent = planks
+	-- Brass key cap.
+	local keyLabel = text(f, {
+		Name = "Key",
+		BackgroundTransparency = 0,
+		BackgroundColor3 = GOLD,
+		Position = UDim2.fromOffset(5, 5),
+		Size = UDim2.fromOffset(22, 22),
+		Font = F.Title,
+		TextSize = 17,
+		TextColor3 = C.INK,
+		TextStrokeTransparency = 1,
+		Text = key,
+	})
 	corner(keyLabel, 5)
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Position = UDim2.fromOffset(34, 0)
-	label.Size = UDim2.new(1, -38, 1, 0)
-	label.Font = Enum.Font.GothamBlack
-	label.TextSize = 13
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.Text = name
-	label.Parent = f
-	return { Frame = f, Sweep = sweep, Label = label, Name = name }
+	UITheme.stroke(keyLabel, C.WOOD_EDGE, 2)
+	local label = text(f, {
+		Position = UDim2.fromOffset(33, 0),
+		Size = UDim2.new(1, -37, 1, 0),
+		Font = F.Heavy,
+		TextSize = 13,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = C.PAPER,
+		Text = name,
+	})
+	return { Frame = f, Sweep = sweep, Tint = tint, Edge = edge, Label = label, Name = name }
 end
 
 local function buildDefense()
@@ -3277,33 +3438,24 @@ local function buildDefense()
 	}
 	guardGui = Instance.new("BillboardGui")
 	guardGui.Name = "GuardBar"
-	guardGui.Size = UDim2.fromOffset(90, 12)
+	guardGui.Size = UDim2.fromOffset(96, 15)
 	guardGui.StudsOffset = Vector3.new(0, -3.4, 0)
 	guardGui.AlwaysOnTop = true
 	guardGui.LightInfluence = 0
 	guardGui.Enabled = false
+	guardGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	guardGui.Parent = gui
-	local back = Instance.new("Frame")
-	back.Size = UDim2.fromScale(1, 1)
-	back.BackgroundColor3 = DARK
-	back.BackgroundTransparency = 0.2
-	back.Parent = guardGui
-	corner(back, 6)
-	guardFill = Instance.new("Frame")
-	guardFill.Position = UDim2.fromOffset(2, 2)
-	guardFill.Size = UDim2.new(1, -4, 1, -4)
-	guardFill.BackgroundColor3 = Color3.fromRGB(110, 180, 255)
-	guardFill.Parent = back
-	corner(guardFill, 5)
-	guardText = Instance.new("TextLabel")
-	guardText.BackgroundTransparency = 1
-	guardText.Size = UDim2.fromScale(1, 1)
-	guardText.Font = Enum.Font.GothamBlack
-	guardText.TextSize = 9
-	guardText.TextColor3 = Color3.new(1, 1, 1)
-	guardText.TextStrokeTransparency = 0.4
-	guardText.Text = ""
-	guardText.Parent = back
+	local back
+	back, guardFill = UITheme.bar(guardGui, BLOCK_BLUE, { Name = "Guard", Size = UDim2.fromScale(1, 1) })
+	guardText = text(back, {
+		Size = UDim2.fromScale(1, 1),
+		Font = F.Title,
+		TextSize = 12,
+		TextColor3 = C.PAPER,
+		TextStrokeTransparency = 0.2,
+		Text = "",
+		ZIndex = 5,
+	})
 end
 
 function stepDefense()
@@ -3332,11 +3484,11 @@ function stepDefense()
 		local left = nextAt - t
 		dashChip.Sweep.Size = UDim2.fromScale(math.clamp(left / (d.DashCooldown or 2.2), 0, 1), 1)
 		dashChip.Label.Text = string.format("DASH %s %.1f", pips, left)
-		dashChip.Label.TextColor3 = have > 0 and Color3.new(1, 1, 1) or Color3.fromRGB(170, 170, 185)
+		dashChip.Label.TextColor3 = have > 0 and C.PAPER or Color3.fromRGB(175, 150, 120)
 	else
 		dashChip.Sweep.Size = UDim2.fromScale(0, 1)
 		dashChip.Label.Text = "DASH " .. pips
-		dashChip.Label.TextColor3 = Color3.new(1, 1, 1)
+		dashChip.Label.TextColor3 = C.PAPER
 	end
 	if counter then
 		dashChip.Label.Text = "COUNTER!"
@@ -3349,14 +3501,17 @@ function stepDefense()
 	local max = d.MaxMeter or 100
 	local blockChip = chips.Block
 	blockChip.Label.Text = broken and "BROKEN" or (blockingNow and "BLOCKING" or "BLOCK")
-	blockChip.Label.TextColor3 = broken and RED or (blockingNow and Color3.fromRGB(150, 205, 255) or Color3.new(1, 1, 1))
-	blockChip.Frame.BackgroundColor3 = blockingNow and Color3.fromRGB(30, 50, 90) or DARK
+	blockChip.Label.TextColor3 = broken and RED or (blockingNow and Color3.fromRGB(190, 225, 255) or C.PAPER)
+	blockChip.Tint.BackgroundTransparency = blockingNow and 0.6 or 1
+	if blockChip.Edge then
+		blockChip.Edge.Color = broken and RED or (blockingNow and BLOCK_BLUE or C.WOOD_EDGE)
+	end
 	if root and (blockingNow or broken or (meter and meter < max)) then
 		guardGui.Adornee = root
 		guardGui.Enabled = true
 		local k = broken and 0 or math.clamp((meter or max) / max, 0, 1)
-		guardFill.Size = UDim2.new(k, k > 0 and -4 or 0, 1, -4)
-		guardFill.BackgroundColor3 = Color3.fromRGB(110, 180, 255):Lerp(RED, 1 - k)
+		guardFill.Size = UDim2.fromScale(k, 1)
+		guardFill.BackgroundColor3 = BLOCK_BLUE:Lerp(RED, 1 - k)
 		guardText.Text = broken and "GUARD BROKEN" or ""
 	else
 		guardGui.Enabled = false
@@ -3392,15 +3547,19 @@ __modules["CorpseClient"] = function()
 
 	Client side of the SAINT'S CORPSE (server: CorpseService, CorpseMoves).
 	  * the relics float, turn and bob (tag "SpinCorpse")
-	  * a panel in the bottom-left corner while you hold parts: each part with its boost,
-	    and your CORPSE MOVE button (V / D-pad right, or tap it) with its
-	    cooldown
-	  * announcements: you took a part (big), someone else took one or a
-	    part fell where someone died (a line at the top)
+	  * a panel in the bottom-left corner while you hold parts, in the bounty
+	    board's style (UI.UITheme): a framed wooden board with steel corner
+	    brackets, a parchment strip per part with its boost, and your chunky
+	    red CORPSE MOVE button (V / D-pad right, or tap it; bounces on hover)
+	    with its cooldown shade
+	  * announcements: you took a part (big outlined gold Bangers), someone
+	    else took one or a part fell where someone died (a nailed parchment
+	    ribbon at the top)
+	  * the relic compass's distance sits on a little wooden plaque
 	  * the visuals for every character's corpse move, with its name popping
 	    up over the caster
 	  * the COMPLETE corpse: a server-wide announcement, a gold halo over the
-	    holder, the panel turns gold and V is THE SAINT'S MIRACLE (golden sky,
+	    holder, the board's frame turns gold and V is THE SAINT'S MIRACLE (golden sky,
 	    a giant halo, pillars of light on every enemy, a final blast)
 ]]
 
@@ -3416,6 +3575,7 @@ local Net = __require("Net")
 local VFXLib = __require("VFXLib")
 local TuskVFX = __require("TuskVFX")
 local CameraFX = __require("CameraFX")
+local UITheme = __require("UITheme")
 local Common = __require("TuskActCommon")
 local TuskAnimation = __require("TuskAnimation")
 
@@ -3423,12 +3583,14 @@ local CorpseClient = {}
 
 local player = Players.LocalPlayer
 local cfg
-local GOLD = Color3.fromRGB(255, 205, 90)
-local INK = Color3.fromRGB(40, 26, 14)
-local PANEL = Color3.fromRGB(26, 20, 16)
+local T = UITheme.C
+local GOLD = T.GOLD
+local INK = T.INK
+local MOVE_RED = T.RED -- the corpse move button
+local MOVE_GOLD = Color3.fromRGB(226, 182, 70) -- ... once the corpse is complete
 local partInfo = {}
 
-local gui, panel, panelTitle, list, moveButton, moveName, moveFill, moveTime, feed, banner
+local gui, panel, panelTitle, list, moveButton, moveName, moveFill, moveTime, feed, feedText, banner
 local shown = "" -- the parts string the panel was built for
 
 ---------------------------------------------------------------------------
@@ -3453,6 +3615,24 @@ local function label(parent, props)
 		l[k] = v
 	end
 	return l
+end
+
+-- A chunky dark outline round text (UIStroke on the glyphs) with a
+-- light-to-shade gradient, like the bounty board's banners.
+local function inkOutline(l, thickness)
+	l.TextStrokeTransparency = 1
+	local stroke = new("UIStroke", { Color = T.WOOD_EDGE, Thickness = thickness or 2, LineJoinMode = Enum.LineJoinMode.Round }, l)
+	new("UIGradient", { Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(215, 205, 190)), Rotation = 90 }, l)
+	return stroke
+end
+
+-- Recolour a chunky button (fill + its darker edge).
+local function tintButton(b, color)
+	b.BackgroundColor3 = color
+	local edge = b:FindFirstChildOfClass("UIStroke")
+	if edge then
+		edge.Color = color:Lerp(Color3.new(0, 0, 0), 0.45)
+	end
 end
 
 local function myCharacterName()
@@ -3506,12 +3686,15 @@ local function rebuildPanel(parts)
 	end
 	for i, id in ipairs(ids) do
 		local info = partInfo[id]
-		local row = new("Frame", { LayoutOrder = i, BackgroundColor3 = Color3.fromRGB(46, 36, 26), Size = UDim2.new(1, 0, 0, 30) }, list)
-		corner(row, 6)
-		local icon = new("Frame", { Position = UDim2.fromOffset(5, 5), Size = UDim2.fromOffset(20, 20), BackgroundColor3 = Color3.fromRGB(122, 90, 60), Rotation = 45 }, row)
-		new("UIStroke", { Color = GOLD, Thickness = 1.5 }, icon)
-		label(row, { Position = UDim2.fromOffset(34, 2), Size = UDim2.new(1, -40, 0, 14), Text = info and info.Name or id, TextColor3 = GOLD })
-		label(row, { Position = UDim2.fromOffset(34, 16), Size = UDim2.new(1, -40, 0, 11), Text = info and info.Text or "", Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(230, 220, 200) })
+		-- Each part: a strip of parchment with a brass relic diamond.
+		local row = new("Frame", { LayoutOrder = i, Size = UDim2.new(1, 0, 0, 30), ZIndex = 3 }, list)
+		UITheme.paper(row, { Radius = 3, Stroke = 1.5 })
+		local icon = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(16, 15), Size = UDim2.fromOffset(16, 16), BackgroundColor3 = T.BRASS, Rotation = 45, ZIndex = 4 }, row)
+		corner(icon, 3)
+		new("UIStroke", { Color = T.INK, Thickness = 1.5 }, icon)
+		new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(6, 6), BackgroundColor3 = GOLD, BorderSizePixel = 0, ZIndex = 4 }, icon)
+		label(row, { Position = UDim2.fromOffset(32, 2), Size = UDim2.new(1, -38, 0, 15), Text = info and info.Name or id, Font = UITheme.Font.Title, TextColor3 = T.INK, ZIndex = 4 })
+		label(row, { Position = UDim2.fromOffset(32, 17), Size = UDim2.new(1, -38, 0, 11), Text = info and info.Text or "", Font = Enum.Font.GothamBold, TextColor3 = T.RED:Lerp(T.INK, 0.35), ZIndex = 4 })
 	end
 	panel.Size = UDim2.fromOffset(240, 44 + #ids * 34 + 52)
 	local who = myCharacterName()
@@ -3520,45 +3703,67 @@ local function rebuildPanel(parts)
 		who = "Miracle"
 	end
 	moveName.Text = (cfg.MoveNames and who and cfg.MoveNames[who]) or "CORPSE MOVE"
-	-- The complete corpse: the panel turns gold.
-	panel.BackgroundColor3 = complete and Color3.fromRGB(70, 52, 16) or PANEL
-	moveButton.BackgroundColor3 = complete and Color3.fromRGB(226, 182, 70) or Color3.fromRGB(150, 110, 40)
+	-- The complete corpse: the board's frame and edge turn gold.
+	panel.BackgroundColor3 = complete and T.BRASS or T.WOOD_DARK
+	local edge = panel:FindFirstChildOfClass("UIStroke")
+	if edge then
+		edge.Color = complete and GOLD or T.WOOD_EDGE
+		edge.Thickness = complete and 4 or 3
+	end
+	tintButton(moveButton, complete and MOVE_GOLD or MOVE_RED)
 	panelTitle.Text = complete and "COMPLETE SAINT'S CORPSE" or "SAINT'S CORPSE"
 end
 
 local function buildUI()
-	gui = new("ScreenGui", { Name = "CorpseHUD", ResetOnSpawn = false, DisplayOrder = 4 }, player:WaitForChild("PlayerGui"))
-	-- Bottom-left corner (lifted above the thumbstick on touch screens).
+	gui = new("ScreenGui", { Name = "CorpseHUD", ResetOnSpawn = false, DisplayOrder = 4, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, player:WaitForChild("PlayerGui"))
+	-- Bottom-left corner (lifted above the thumbstick on touch screens): a
+	-- framed wooden board, a parchment strip per part, the move button.
 	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-	panel = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, touch and -230 or -12), Size = UDim2.fromOffset(240, 120), BackgroundColor3 = PANEL, BackgroundTransparency = 0.08, Visible = false }, gui)
-	corner(panel, 10)
-	new("UIStroke", { Color = GOLD, Thickness = 2 }, panel)
-	panelTitle = label(panel, { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -24, 0, 22), Text = "SAINT'S CORPSE", Font = Enum.Font.Bangers, TextColor3 = GOLD })
-	label(panel, { Position = UDim2.fromOffset(12, 26), Size = UDim2.new(1, -24, 0, 11), Text = "Boosts last until you die", Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(190, 175, 150) })
-	list = new("Frame", { Position = UDim2.fromOffset(8, 42), Size = UDim2.new(1, -16, 1, -96), BackgroundTransparency = 1 }, panel)
+	panel = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, touch and -230 or -12), Size = UDim2.fromOffset(240, 120), Visible = false }, gui)
+	UITheme.wood(panel, { Planks = 4, Border = 5, Brackets = true, BracketSize = 14 })
+	panelTitle = label(panel, { Position = UDim2.fromOffset(14, 7), Size = UDim2.new(1, -28, 0, 21), Text = "SAINT'S CORPSE", Font = UITheme.Font.Title, TextColor3 = GOLD, TextStrokeColor3 = T.WOOD_EDGE, TextStrokeTransparency = 0.4, ZIndex = 3 })
+	label(panel, { Position = UDim2.fromOffset(14, 27), Size = UDim2.new(1, -28, 0, 11), Text = "Boosts last until you die", Font = Enum.Font.GothamBold, TextColor3 = T.PAPER_DARK, ZIndex = 3 })
+	list = new("Frame", { Name = "List", Position = UDim2.fromOffset(9, 42), Size = UDim2.new(1, -18, 1, -96), BackgroundTransparency = 1, ZIndex = 3 }, panel)
 	new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, list)
-	-- The corpse move: a button with a cooldown fill.
-	moveButton = new("TextButton", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 8, 1, -8), Size = UDim2.new(1, -16, 0, 40), BackgroundColor3 = Color3.fromRGB(150, 110, 40), Text = "", AutoButtonColor = true }, panel)
+	-- The corpse move: a chunky button (bounces on hover / press) with a
+	-- cooldown shade sweeping over it.
+	moveButton = new("TextButton", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 14, 1, -10), Size = UDim2.new(1, -28, 0, 40), BackgroundColor3 = MOVE_RED, Text = "", AutoButtonColor = false, ClipsDescendants = false, ZIndex = 3 }, panel)
 	corner(moveButton, 8)
-	new("UIStroke", { Color = GOLD, Thickness = 2 }, moveButton)
-	moveFill = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Size = UDim2.fromScale(0, 1), BorderSizePixel = 0 }, moveButton)
+	new("UIStroke", { Color = MOVE_RED:Lerp(Color3.new(0, 0, 0), 0.45), Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, moveButton)
+	new("UIGradient", { Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(200, 200, 200)), Rotation = 90 }, moveButton)
+	UITheme.hover(moveButton, 1.04)
+	moveFill = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Size = UDim2.fromScale(0, 1), BorderSizePixel = 0, ZIndex = 4 }, moveButton)
 	corner(moveFill, 8)
-	local key = new("Frame", { Position = UDim2.fromOffset(6, 7), Size = UDim2.fromOffset(26, 26), BackgroundColor3 = GOLD }, moveButton)
+	-- The key: a little dark plank with a gold V.
+	local key = new("Frame", { Position = UDim2.fromOffset(6, 7), Size = UDim2.fromOffset(26, 26), BackgroundColor3 = T.WOOD_DARK, ZIndex = 5 }, moveButton)
 	corner(key, 6)
-	label(key, { Size = UDim2.fromScale(1, 1), Text = "V", TextColor3 = INK, TextXAlignment = Enum.TextXAlignment.Center })
-	moveName = label(moveButton, { Position = UDim2.fromOffset(40, 6), Size = UDim2.new(1, -86, 0, 28), Text = "", Font = Enum.Font.Bangers })
+	new("UIStroke", { Color = GOLD, Thickness = 1.5, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, key)
+	label(key, { Size = UDim2.fromScale(1, 1), Text = "V", Font = UITheme.Font.Title, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 5 })
+	moveName = label(moveButton, { Position = UDim2.fromOffset(40, 6), Size = UDim2.new(1, -86, 0, 28), Text = "", Font = UITheme.Font.Title, TextStrokeColor3 = T.WOOD_EDGE, TextStrokeTransparency = 0.3, ZIndex = 5 })
 	new("UITextSizeConstraint", { MaxTextSize = 22, MinTextSize = 10 }, moveName)
-	moveTime = label(moveButton, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 10), Size = UDim2.fromOffset(40, 20), Text = "", TextXAlignment = Enum.TextXAlignment.Right })
+	moveTime = label(moveButton, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 8), Size = UDim2.fromOffset(40, 24), Text = "", Font = UITheme.Font.Title, TextColor3 = GOLD, TextStrokeColor3 = T.WOOD_EDGE, TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 })
 	moveButton.Activated:Connect(useMove)
-	-- Announcements.
-	feed = label(gui, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 120), Size = UDim2.fromOffset(520, 22), Text = "", Font = Enum.Font.GothamBold, TextColor3 = GOLD, TextStrokeTransparency = 0.3, TextXAlignment = Enum.TextXAlignment.Center, Visible = false })
-	banner = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.34), Size = UDim2.fromOffset(620, 70), Text = "", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center, Visible = false })
+	-- Announcements: a parchment ribbon at the top that fits its line...
+	feed = new("Frame", { Name = "Feed", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 118), Size = UDim2.fromOffset(0, 26), AutomaticSize = Enum.AutomaticSize.X, Visible = false }, gui)
+	UITheme.paper(feed, { Radius = 4 })
+	new("UISizeConstraint", { MaxSize = Vector2.new(560, 26) }, feed)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 22), PaddingRight = UDim.new(0, 22) }, feed)
+	for _, x in ipairs({ 0, 1 }) do
+		local nail = new("Frame", { AnchorPoint = Vector2.new(x, 0.5), Position = UDim2.new(x, x == 0 and -14 or 14, 0.5, 0), Size = UDim2.fromOffset(6, 6), BackgroundColor3 = T.NAIL, ZIndex = 2 }, feed)
+		corner(nail, 99)
+	end
+	feedText = label(feed, { Size = UDim2.fromScale(0, 1), AutomaticSize = Enum.AutomaticSize.X, TextScaled = false, TextSize = 15, Text = "", Font = Enum.Font.GothamBold, TextColor3 = T.INK, TextXAlignment = Enum.TextXAlignment.Center, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 2 })
+	new("UISizeConstraint", { MaxSize = Vector2.new(516, 26) }, feedText)
+	-- ... and a big outlined gold banner.
+	banner = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.34), Size = UDim2.fromOffset(620, 70), Text = "", Font = UITheme.Font.Title, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Center, Visible = false })
+	inkOutline(banner, 3)
 end
 
 local feedToken, bannerToken
 local function showFeed(text)
-	feed.Text = text
+	feedText.Text = text
 	feed.Visible = true
+	UITheme.pop(feed, 0.85)
 	local token = {}
 	feedToken = token
 	task.delay(3.5, function()
@@ -3637,11 +3842,12 @@ local function callout(character, who)
 		return
 	end
 	local bb = new("BillboardGui", { Adornee = head, Size = UDim2.fromOffset(240, 40), StudsOffset = Vector3.new(0, 3.4, 0), AlwaysOnTop = true, LightInfluence = 0 }, VFXLib.Folder)
-	local l = label(bb, { Size = UDim2.fromScale(1, 1), Text = (cfg.MoveNames and cfg.MoveNames[who] or "CORPSE MOVE") .. "!", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center })
+	local l = label(bb, { Size = UDim2.fromScale(1, 1), Text = (cfg.MoveNames and cfg.MoveNames[who] or "CORPSE MOVE") .. "!", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Center })
+	local outline = inkOutline(l, 3)
 	VFXLib.animate(1.3, function(a)
 		bb.StudsOffset = Vector3.new(0, 3.4 + a * 1.2, 0)
 		l.TextTransparency = math.max(0, (a - 0.6) / 0.4)
-		l.TextStrokeTransparency = l.TextTransparency
+		outline.Transparency = l.TextTransparency
 	end, function()
 		bb:Destroy()
 	end)
@@ -4107,18 +4313,25 @@ local function stepCompass()
 		local head = VFXLib.part({ Size = Vector3.new(1.1, 0.3, 0.9), Color = Color3.fromRGB(255, 236, 160), Material = Enum.Material.Neon })
 		head.Parent = m
 		local bb = Instance.new("BillboardGui")
-		bb.Size = UDim2.fromOffset(110, 26)
+		bb.Size = UDim2.fromOffset(120, 26)
 		bb.StudsOffset = Vector3.new(0, 1, 0)
 		bb.AlwaysOnTop = true
+		bb.LightInfluence = 0
 		bb.Adornee = shaft
+		-- A little nailed wooden plaque with the part and distance.
+		local board = new("Frame", { Size = UDim2.fromScale(1, 1) }, bb)
+		UITheme.wood(board, { Planks = 1, Border = 2, Radius = 5 })
 		local label = Instance.new("TextLabel")
 		label.BackgroundTransparency = 1
-		label.Size = UDim2.fromScale(1, 1)
-		label.Font = Enum.Font.GothamBlack
+		label.Position = UDim2.fromOffset(10, 2)
+		label.Size = UDim2.new(1, -20, 1, -4)
+		label.ZIndex = 3
+		label.Font = Enum.Font.Bangers
 		label.TextScaled = true
 		label.TextColor3 = Color3.fromRGB(255, 220, 120)
-		label.TextStrokeTransparency = 0.2
-		label.Parent = bb
+		label.TextStrokeColor3 = T.WOOD_EDGE
+		label.TextStrokeTransparency = 0.4
+		label.Parent = board
 		bb.Parent = m
 		compass = { Model = m, Shaft = shaft, Head = head, Label = label }
 	end
@@ -4217,6 +4430,9 @@ __modules["DefenseClient"] = function()
 	    tile it struck, sends a ripple across the barrier and throws sparks.
 	  * PERFECT BLOCK: gold flash and "PERFECT!" on the defender, the attacker
 	    reels. GUARD BREAK: the shield shatters, "GUARD BREAK" and a stagger.
+	  * the popup words are in the bounty board's style (UI.UITheme): tilted
+	    Bangers with a chunky dark-wood outline. The mobile BLOCK / DASH
+	    buttons are ContextActionService's own.
 ]]
 
 local ContextActionService = game:GetService("ContextActionService")
@@ -4228,6 +4444,7 @@ local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("Tu
 local Net = __require("Net")
 local VFXLib = __require("VFXLib")
 local CameraFX = __require("CameraFX")
+local UITheme = __require("UITheme")
 local TuskVFX = __require("TuskVFX")
 local TuskAnimation = __require("TuskAnimation")
 local Fighters = __require("Fighters")
@@ -4406,6 +4623,36 @@ local function onDashFX(data)
 	CameraFX.speedLines(time + 0.15, light)
 end
 
+-- Popup words (PERFECT DODGE, COUNTER READY, PERFECT!, GUARD BREAK) in the
+-- bounty board's style: Bangers with a chunky dark-wood outline, a soft
+-- light-to-shade gradient and a slight comic tilt. Returns the label and a
+-- function that fades it (0 = solid, 1 = gone).
+local function popupLabel(parent, text, color)
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = UITheme.Font.Title
+	label.TextScaled = true
+	label.Text = text
+	label.TextColor3 = color
+	label.TextStrokeTransparency = 1
+	label.Rotation = -4
+	local outline = Instance.new("UIStroke")
+	outline.Color = UITheme.C.WOOD_EDGE
+	outline.Thickness = 3
+	outline.LineJoinMode = Enum.LineJoinMode.Round
+	outline.Parent = label
+	local shade = Instance.new("UIGradient")
+	shade.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(215, 205, 190))
+	shade.Rotation = 90
+	shade.Parent = label
+	label.Parent = parent
+	return label, function(t)
+		label.TextTransparency = t
+		outline.Transparency = t
+	end
+end
+
 -- PERFECT DODGE: a gold ghost left where the attack landed, the word over
 -- their head; for the dodger a flash of slowed-down blue and COUNTER READY.
 local function floatingText(character, text, color)
@@ -4418,20 +4665,12 @@ local function floatingText(character, text, color)
 	bb.Size = UDim2.fromOffset(220, 50)
 	bb.StudsOffset = Vector3.new(0, 2.6, 0)
 	bb.AlwaysOnTop = true
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromScale(1, 1)
-	label.Font = Enum.Font.Bangers
-	label.TextScaled = true
-	label.Text = text
-	label.TextColor3 = color
-	label.TextStrokeTransparency = 0
-	label.Parent = bb
+	bb.LightInfluence = 0
+	local _, fade = popupLabel(bb, text, color)
 	bb.Parent = VFXLib.Folder
 	VFXLib.animate(0.9, function(a)
 		bb.StudsOffset = Vector3.new(0, 2.6 + a * 1.2, 0)
-		label.TextTransparency = math.max(0, (a - 0.6) / 0.4)
-		label.TextStrokeTransparency = math.max(0, (a - 0.6) / 0.4)
+		fade(math.max(0, (a - 0.6) / 0.4))
 	end, function()
 		bb:Destroy()
 	end)
@@ -4672,20 +4911,11 @@ local function popText(position, text, color)
 	gui.AlwaysOnTop = true
 	gui.LightInfluence = 0
 	gui.Parent = carrier
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromScale(1, 1)
-	label.Font = Enum.Font.Bangers
-	label.TextScaled = true
-	label.Text = text
-	label.TextColor3 = color
-	label.TextStrokeTransparency = 0
-	label.Parent = gui
+	local _, fade = popupLabel(gui, text, color)
 	local start = carrier.Position
 	VFXLib.animate(0.9, function(a)
 		carrier.Position = start + Vector3.new(0, a * 2, 0)
-		label.TextTransparency = math.max(0, (a - 0.6) / 0.4)
-		label.TextStrokeTransparency = label.TextTransparency
+		fade(math.max(0, (a - 0.6) / 0.4))
 		local pop = a < 0.12 and 1 + (0.12 - a) * 5 or 1
 		gui.Size = UDim2.fromOffset(220 * pop, 60 * pop)
 	end)
@@ -5447,16 +5677,21 @@ __modules["RaceClient"] = function()
 	RaceClient  (StarterPlayerScripts.SpinClient.RaceClient)
 
 	The Steel Ball Run on the client (RaceService runs it):
-	  * ENTRY: a wanted-poster style banner at the top, "THE STEEL BALL RUN
-	    · ENTRY OPEN 0:38" with a JOIN button (LEAVE once you're in) and how
-	    many riders have entered. A minute before entry opens, a small chip
-	    counts down to it
-	  * COUNTDOWN: a big 3, 2, 1, GO!
-	  * RACING (riders): a race card top-right (your position, gate x / N,
-	    the time, the top five) with a LEAVE button; a tall golden beacon
+	  * Look: the bounty board's style (UI.UITheme) - dark wood boards with
+	    planks, nails and steel corner brackets, pinned parchment, Bangers
+	    titles, chunky buttons that bounce on hover/press.
+	  * ENTRY: a wooden board at the top with a pinned parchment notice,
+	    "THE STEEL BALL RUN · ENTRY OPEN 0:38", a JOIN button (LEAVE once
+	    you're in) and how many riders have entered. A minute before entry
+	    opens, a small nailed plank counts down to it
+	  * COUNTDOWN: a big outlined gold 3, 2, 1, GO!
+	  * RACING (riders): a framed race card top-right (a parchment sheet with
+	    your position, gate x / N, the time, the top five) with a LEAVE
+	    button; a tall golden beacon (with a wooden distance plaque)
 	    on your next gate with its number and distance, and a gold arrow
 	    ahead of your horse pointing at it
 	  * the winner and the results for everyone
+	  * horse names float over them on little wooden plaques
 	  * every horse gallops: legs in a four-beat stride that speeds up with
 	    the horse, the neck nods, the tail streams out, the body bobs; riders
 	    (and NPC jockeys) sit astride, legs round its sides, hands on the reins
@@ -5476,6 +5711,7 @@ local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("Tu
 local Net = __require("Net")
 local VFXLib = __require("VFXLib")
 local CameraFX = __require("CameraFX")
+local UITheme = __require("UITheme")
 local TuskAnimation = __require("TuskAnimation")
 
 local RaceClient = {}
@@ -5483,12 +5719,12 @@ local player = Players.LocalPlayer
 local cfg = TuskConfig.Race or {}
 local Remote
 
-local PAPER = Color3.fromRGB(234, 205, 160)
-local INK = Color3.fromRGB(60, 36, 20)
-local RED = Color3.fromRGB(176, 40, 36)
-local GREEN = Color3.fromRGB(60, 150, 70)
-local GOLD = Color3.fromRGB(255, 205, 90)
-local WOOD_DARK = Color3.fromRGB(78, 50, 30)
+local C = UITheme.C
+local PAPER = C.PAPER
+local INK = C.INK
+local RED = C.RED
+local GREEN = C.GREEN
+local GOLD = C.GOLD
 
 local gui, entryPanel, entryTitle, entryInfo, entryButton, soonChip, countdownLabel, card, cardRows, banner
 local entered = false
@@ -5512,11 +5748,31 @@ local function corner(p, r)
 end
 
 local function label(parent, props)
-	local l = new("TextLabel", { BackgroundTransparency = 1, Font = Enum.Font.GothamBlack, TextColor3 = INK, TextScaled = true }, parent)
-	for k, v in pairs(props) do
-		l[k] = v
-	end
-	return l
+	return UITheme.label(parent, props)
+end
+
+-- A chunky dark outline round text (a UIStroke on the glyphs, thicker and
+-- cleaner than TextStroke), plus a light-to-shade gradient for depth.
+local function inkOutline(l, thickness, color)
+	l.TextStrokeTransparency = 1
+	new("UIStroke", { Color = color or C.WOOD_EDGE, Thickness = thickness or 2, LineJoinMode = Enum.LineJoinMode.Round }, l)
+	new("UIGradient", { Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(215, 205, 190)), Rotation = 90 }, l)
+end
+
+-- A red map pin with a shine (as on the bounty posters).
+local function pin(parent, position)
+	local p = new("Frame", { BackgroundColor3 = C.RED, Size = UDim2.fromOffset(12, 12), Position = position, ZIndex = (parent.ZIndex or 1) + 2 }, parent)
+	corner(p, 99)
+	new("Frame", { BackgroundColor3 = C.WHITE, BackgroundTransparency = 0.4, Size = UDim2.fromOffset(4, 4), Position = UDim2.fromOffset(3, 3), ZIndex = p.ZIndex }, p)
+	return p
+end
+
+-- A small nailed wooden plaque filling a BillboardGui, with Bangers text.
+local function plaque(bb, color)
+	local f = new("Frame", { Name = "Plaque", Size = UDim2.fromScale(1, 1) }, bb)
+	UITheme.wood(f, { Planks = 1, Border = 2, Radius = 5 })
+	local text = label(f, { Name = "Text", Position = UDim2.new(0, 10, 0, 2), Size = UDim2.new(1, -20, 1, -4), Text = "", Font = UITheme.Font.Title, TextColor3 = color or C.GOLD, TextStrokeTransparency = 0.5, TextStrokeColor3 = C.WOOD_EDGE, ZIndex = 3 })
+	return text
 end
 
 local function mmss(seconds)
@@ -5552,56 +5808,63 @@ end
 -- UI
 ---------------------------------------------------------------------------
 local function buildUI()
-	gui = new("ScreenGui", { Name = "SteelBallRun", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 7 }, player:WaitForChild("PlayerGui"))
-	-- Entry banner.
-	entryPanel = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 64), Size = UDim2.fromOffset(420, 92), BackgroundColor3 = PAPER, Visible = false }, gui)
-	corner(entryPanel, 8)
-	new("UIStroke", { Color = WOOD_DARK, Thickness = 3 }, entryPanel)
-	new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(205, 172, 125)), ColorSequenceKeypoint.new(0.4, PAPER), ColorSequenceKeypoint.new(1, Color3.fromRGB(205, 172, 125)) }), Rotation = 80 }, entryPanel)
+	gui = new("ScreenGui", { Name = "SteelBallRun", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 7, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, player:WaitForChild("PlayerGui"))
+	-- Entry banner: a wooden board with a parchment notice and a JOIN button.
+	entryPanel = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 64), Size = UDim2.fromOffset(420, 92), Visible = false }, gui)
+	UITheme.wood(entryPanel, { Planks = 2, Border = 5, Brackets = true, BracketSize = 14 })
 	new("UISizeConstraint", { MaxSize = Vector2.new(420, 92) }, entryPanel)
-	local strip = new("Frame", { Size = UDim2.new(0, 8, 1, 0), BackgroundColor3 = RED, BorderSizePixel = 0 }, entryPanel)
-	corner(strip, 8)
-	entryTitle = label(entryPanel, { Position = UDim2.fromOffset(18, 6), Size = UDim2.new(1, -150, 0, 30), Text = "THE STEEL BALL RUN", Font = Enum.Font.Bangers, TextXAlignment = Enum.TextXAlignment.Left })
-	entryInfo = label(entryPanel, { Position = UDim2.fromOffset(18, 38), Size = UDim2.new(1, -150, 0, 18), Text = "", Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left })
-	label(entryPanel, { Position = UDim2.fromOffset(18, 60), Size = UDim2.new(1, -150, 0, 24), Text = "Race round the map on horseback. Top 3 win Cash; the winner gets a Saint's Corpse part.", Font = Enum.Font.GothamMedium, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = INK:Lerp(PAPER, 0.25) })
-	entryButton = new("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0), Size = UDim2.fromOffset(118, 56), BackgroundColor3 = GREEN, Text = "JOIN", Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, entryPanel)
-	corner(entryButton, 8)
-	new("UIPadding", { PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8) }, entryButton)
-	new("UIStroke", { Color = GREEN:Lerp(Color3.new(0, 0, 0), 0.4), Thickness = 2 }, entryButton)
+	local notice = new("Frame", { Name = "Notice", Position = UDim2.fromOffset(16, 10), Size = UDim2.new(1, -158, 1, -20), ZIndex = 3 }, entryPanel)
+	UITheme.paper(notice, { Radius = 3 })
+	pin(notice, UDim2.new(0, 6, 0, -4))
+	local strip = new("Frame", { Size = UDim2.new(0, 5, 1, 0), BackgroundColor3 = C.RED, BorderSizePixel = 0, ZIndex = 4 }, notice)
+	corner(strip, 3)
+	entryTitle = label(notice, { Position = UDim2.fromOffset(12, 2), Size = UDim2.new(1, -16, 0, 28), Text = "THE STEEL BALL RUN", Font = UITheme.Font.Title, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
+	entryInfo = label(notice, { Position = UDim2.fromOffset(12, 30), Size = UDim2.new(1, -16, 0, 16), Text = "", Font = UITheme.Font.Body, TextColor3 = C.RED, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
+	label(notice, { Position = UDim2.fromOffset(12, 48), Size = UDim2.new(1, -16, 0, 22), Text = "Race round the map on horseback. Top 3 win Cash; the winner gets a Saint's Corpse part.", Font = UITheme.Font.Plain, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.INK:Lerp(C.PAPER, 0.25), ZIndex = 4 })
+	entryButton = UITheme.button(entryPanel, "JOIN", C.GREEN, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -16, 0.5, 0), Size = UDim2.fromOffset(112, 54), ZIndex = 4 })
 	entryButton.Activated:Connect(function()
 		Remote:FireServer(entered and "Leave" or "Join")
 	end)
-	-- "STEEL BALL RUN IN 0:45" chip.
-	soonChip = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 64), Size = UDim2.fromOffset(230, 26), BackgroundColor3 = WOOD_DARK, BackgroundTransparency = 0.15, Visible = false }, gui)
-	corner(soonChip, 8)
-	label(soonChip, { Name = "Text", Size = UDim2.fromScale(1, 1), Text = "", TextColor3 = GOLD, Font = Enum.Font.GothamBlack })
-	-- Countdown.
-	countdownLabel = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.35), Size = UDim2.fromOffset(400, 150), Text = "", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0, Visible = false })
+	-- "STEEL BALL RUN IN 0:45": a small nailed plank.
+	soonChip = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 64), Size = UDim2.fromOffset(230, 28), Visible = false }, gui)
+	UITheme.wood(soonChip, { Planks = 1, Border = 3, Radius = 6 })
+	label(soonChip, { Name = "Text", Position = UDim2.fromOffset(12, 3), Size = UDim2.new(1, -24, 1, -6), Text = "", TextColor3 = C.GOLD, Font = UITheme.Font.Title, ZIndex = 3 })
+	-- Countdown: huge gold Bangers with a chunky dark outline.
+	countdownLabel = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.35), Size = UDim2.fromOffset(400, 150), Text = "", Font = UITheme.Font.Title, TextColor3 = C.GOLD, Visible = false })
+	inkOutline(countdownLabel, 5)
 	new("UIScale", { Scale = 1 }, countdownLabel)
-	-- Race card (top right).
-	card = new("Frame", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 64), Size = UDim2.fromOffset(230, 200), BackgroundColor3 = PAPER, Visible = false }, gui)
-	corner(card, 8)
-	new("UIStroke", { Color = WOOD_DARK, Thickness = 3 }, card)
-	label(card, { Position = UDim2.fromOffset(10, 4), Size = UDim2.new(1, -60, 0, 22), Text = "STEEL BALL RUN", Font = Enum.Font.Bangers, TextColor3 = RED, TextXAlignment = Enum.TextXAlignment.Left })
-	label(card, { Name = "Pos", Position = UDim2.fromOffset(10, 28), Size = UDim2.fromOffset(90, 40), Text = "-", Font = Enum.Font.Bangers, TextXAlignment = Enum.TextXAlignment.Left })
-	label(card, { Name = "Gate", Position = UDim2.fromOffset(104, 30), Size = UDim2.fromOffset(116, 18), Text = "", Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Right })
-	label(card, { Name = "Time", Position = UDim2.fromOffset(104, 50), Size = UDim2.fromOffset(116, 16), Text = "", Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = INK:Lerp(PAPER, 0.3) })
-	cardRows = new("Frame", { Position = UDim2.fromOffset(10, 74), Size = UDim2.new(1, -20, 0, 100), BackgroundTransparency = 1 }, card)
-	local leave = new("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), Size = UDim2.fromOffset(46, 18), BackgroundColor3 = RED, Text = "LEAVE", Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, card)
-	corner(leave, 5)
+	-- Race card (top right): a framed board with a parchment standings sheet.
+	card = new("Frame", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 64), Size = UDim2.fromOffset(230, 200), Visible = false }, gui)
+	UITheme.wood(card, { Planks = 4, Border = 5, Brackets = true, BracketSize = 14 })
+	label(card, { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -84, 0, 22), Text = "STEEL BALL RUN", Font = UITheme.Font.Title, TextColor3 = C.GOLD, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 })
+	local sheet = new("Frame", { Name = "Sheet", Position = UDim2.fromOffset(9, 32), Size = UDim2.new(1, -18, 1, -46), ZIndex = 2 }, card)
+	UITheme.paper(sheet, { Radius = 3 })
+	label(card, { Name = "Pos", Position = UDim2.fromOffset(16, 34), Size = UDim2.fromOffset(90, 38), Text = "-", Font = UITheme.Font.Title, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 })
+	label(card, { Name = "Gate", Position = UDim2.fromOffset(104, 37), Size = UDim2.fromOffset(110, 17), Text = "", Font = UITheme.Font.Body, TextColor3 = C.RED, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 3 })
+	label(card, { Name = "Time", Position = UDim2.fromOffset(104, 55), Size = UDim2.fromOffset(110, 15), Text = "", Font = UITheme.Font.Body, TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = C.INK:Lerp(C.PAPER, 0.3), ZIndex = 3 })
+	new("Frame", { Position = UDim2.fromOffset(16, 74), Size = UDim2.new(1, -32, 0, 2), BackgroundColor3 = C.BURNT, BackgroundTransparency = 0.5, BorderSizePixel = 0, ZIndex = 3 }, card)
+	cardRows = new("Frame", { Position = UDim2.fromOffset(14, 77), Size = UDim2.new(1, -28, 0, 95), BackgroundTransparency = 1, ZIndex = 3 }, card)
+	local leave = UITheme.button(card, "LEAVE", C.RED, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 7), Size = UDim2.fromOffset(54, 22), ZIndex = 4 })
 	leave.Activated:Connect(function()
 		Remote:FireServer("Leave")
 	end)
-	label(card, { Name = "Hint", Position = UDim2.new(0, 10, 1, -22), Size = UDim2.new(1, -20, 0, 16), Text = "Ride through the gates in order", Font = Enum.Font.GothamMedium, TextColor3 = INK:Lerp(PAPER, 0.35) })
-	-- Big banner.
-	banner = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.24), Size = UDim2.fromOffset(640, 70), Text = "", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0, Visible = false })
+	label(card, { Name = "Hint", Position = UDim2.new(0, 14, 1, -28), Size = UDim2.new(1, -28, 0, 13), Text = "Ride through the gates in order", Font = UITheme.Font.Plain, TextColor3 = C.INK:Lerp(C.PAPER, 0.35), ZIndex = 3 })
+	-- Big banner: Bangers with a chunky dark outline (like the bounty banner).
+	banner = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.24), Size = UDim2.fromOffset(640, 70), Text = "", Font = UITheme.Font.Title, TextColor3 = C.GOLD, Visible = false })
+	inkOutline(banner, 3)
 	new("UIScale", { Scale = 1 }, banner)
 end
 
 local function setEntered(on)
 	entered = on
 	entryButton.Text = on and "LEAVE" or "JOIN"
-	entryButton.BackgroundColor3 = on and RED or GREEN
+	local color = on and RED or GREEN
+	entryButton.BackgroundColor3 = color
+	local edge = entryButton:FindFirstChildOfClass("UIStroke")
+	if edge then
+		edge.Color = color:Lerp(Color3.new(0, 0, 0), 0.45)
+	end
+	UITheme.pop(entryButton, 0.8)
 end
 
 local function fillStandings()
@@ -5615,10 +5878,13 @@ local function fillStandings()
 		end
 		if i <= 5 then
 			local me = row.UserId == player.UserId
-			local line = new("Frame", { Position = UDim2.fromOffset(0, (i - 1) * 20), Size = UDim2.new(1, 0, 0, 18), BackgroundColor3 = me and GOLD or PAPER, BackgroundTransparency = me and 0.2 or 1 }, cardRows)
+			local line = new("Frame", { Position = UDim2.fromOffset(0, (i - 1) * 19), Size = UDim2.new(1, 0, 0, 17), BackgroundColor3 = me and GOLD or PAPER, BackgroundTransparency = me and 0.15 or 1, ZIndex = 3 }, cardRows)
 			corner(line, 4)
-			label(line, { Position = UDim2.fromOffset(4, 1), Size = UDim2.new(0.7, -4, 1, -2), Text = i .. ". " .. string.upper(row.Name or "?"), Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd })
-			label(line, { Position = UDim2.new(0.7, 0, 0, 1), Size = UDim2.new(0.3, -4, 1, -2), Text = row.Finished and "DONE" or ("GATE " .. math.min(row.Next or 1, totalGates)), Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = row.Finished and GREEN or INK })
+			if me then
+				UITheme.stroke(line, C.BURNT, 1.5, 0.2)
+			end
+			label(line, { Position = UDim2.fromOffset(4, 1), Size = UDim2.new(0.7, -4, 1, -2), Text = i .. ". " .. string.upper(row.Name or "?"), Font = i <= 3 and UITheme.Font.Heavy or UITheme.Font.Body, TextColor3 = i == 1 and C.RED or INK, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 4 })
+			label(line, { Position = UDim2.new(0.7, 0, 0, 1), Size = UDim2.new(0.3, -4, 1, -2), Text = row.Finished and "DONE" or ("GATE " .. math.min(row.Next or 1, totalGates)), Font = UITheme.Font.Body, TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = row.Finished and GREEN or INK, ZIndex = 4 })
 		end
 	end
 	if mine then
@@ -5671,12 +5937,12 @@ local function stepGuide()
 		local pillar = VFXLib.part({ Size = Vector3.new(80, 3, 3), Color = GOLD, Material = Enum.Material.Neon, Transparency = 0.5, Shape = Enum.PartType.Cylinder })
 		pillar.Parent = m
 		local bb = Instance.new("BillboardGui")
-		bb.Size = UDim2.fromOffset(160, 44)
+		bb.Size = UDim2.fromOffset(160, 36)
 		bb.StudsOffset = Vector3.new(0, 20, 0)
 		bb.AlwaysOnTop = true
 		bb.LightInfluence = 0
 		bb.Adornee = pillar
-		local text = label(bb, { Size = UDim2.fromScale(1, 1), Text = "", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0 })
+		local text = plaque(bb, GOLD)
 		bb.Parent = m
 		beacon = { Model = m, Pillar = pillar, Text = text }
 	end
@@ -5773,19 +6039,12 @@ local function stepHorses(dt)
 					local bb = Instance.new("BillboardGui")
 					bb.Name = "HorseNameplate"
 					bb.Adornee = headPart
-					bb.Size = UDim2.fromOffset(160, 26)
+					bb.Size = UDim2.fromOffset(150, 26)
 					bb.StudsOffset = Vector3.new(0, 2.2, 0)
 					bb.MaxDistance = 80
 					bb.LightInfluence = 0
-					local text = Instance.new("TextLabel")
-					text.BackgroundTransparency = 1
-					text.Size = UDim2.fromScale(1, 1)
-					text.Font = Enum.Font.Bangers
-					text.TextScaled = true
+					local text = plaque(bb, Color3.fromRGB(255, 225, 150))
 					text.Text = string.upper(name)
-					text.TextColor3 = Color3.fromRGB(255, 225, 150)
-					text.TextStrokeTransparency = 0.2
-					text.Parent = bb
 					bb.Parent = VFXLib.Folder
 					h.Plate = bb
 				end
@@ -6000,7 +6259,10 @@ end
 __modules["SettingsUI"] = function()
 --[[
 	SettingsUI  (StarterPlayerScripts.SpinClient.UI.SettingsUI)
-	The small "VFX: MEDIUM" button (top right) that cycles Low / Medium / High.
+	The small "VFX: MEDIUM" button (top right) that cycles Low / Medium / High,
+	in the bounty-board style: a little nailed wooden plank with Bangers
+	parchment-coloured text and a lamp that glows red / gold / green for
+	Low / Medium / High. It bounces on hover and press and pops on change.
 	Phones start on Low to keep the frame rate smooth.
 ]]
 
@@ -6009,56 +6271,84 @@ local UserInputService = game:GetService("UserInputService")
 
 local Shared = nil -- (bundled: modules are inlined)
 local VFXQuality = __require("VFXQuality")
+local UITheme = __require("UITheme")
+local C = UITheme.C
 
 local SettingsUI = {}
-local DARK = Color3.fromRGB(22, 16, 10)
-local FONT = Enum.Font.GothamBlack
-local colors = { GoldLight = Color3.fromRGB(255, 238, 160), Gold = Color3.fromRGB(255, 196, 56) }
-
-local function corner(parent, radius)
-	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, radius or 6)
-	c.Parent = parent
-end
-
-local function stroke(parent, color, thickness)
-	local s = Instance.new("UIStroke")
-	s.Color = color
-	s.Thickness = thickness or 2
-	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	s.Parent = parent
-	return s
-end
+local LAMP = { Low = C.RED, Medium = C.GOLD, High = C.GREEN }
 
 function SettingsUI.init()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "SpinSettings"
 	gui.ResetOnSpawn = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
-	-- VFX quality toggle (top right, small).
+	-- VFX quality toggle (top right, small): a wooden plank button.
 	local qualityButton = Instance.new("TextButton")
 	qualityButton.Name = "VFXQuality"
 	qualityButton.AnchorPoint = Vector2.new(1, 0)
 	qualityButton.Position = UDim2.new(1, -12, 0, 12)
-	qualityButton.Size = UDim2.fromOffset(130, 28)
-	qualityButton.BackgroundColor3 = DARK
-	qualityButton.BackgroundTransparency = 0.2
-	qualityButton.Font = FONT
-	qualityButton.TextSize = 13
-	qualityButton.TextColor3 = colors.GoldLight
+	qualityButton.Size = UDim2.fromOffset(130, 30)
+	qualityButton.AutoButtonColor = false
+	qualityButton.Font = UITheme.Font.Title
+	qualityButton.TextSize = 15
+	-- The planks cover the button's own text, so a label on top shows it;
+	-- .Text is still kept up to date.
+	qualityButton.TextTransparency = 1
 	qualityButton.Parent = gui
-	corner(qualityButton, 6)
-	stroke(qualityButton, colors.Gold, 1.5)
+	UITheme.wood(qualityButton, { Planks = 1, Border = 3, Radius = 7, Nails = true, Stroke = 2 })
+	local edge = qualityButton:FindFirstChildOfClass("UIStroke")
+
+	local lamp = UITheme.new("Frame", {
+		Name = "Lamp",
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 12, 0.5, 0),
+		Size = UDim2.fromOffset(10, 10),
+		BackgroundColor3 = C.GOLD,
+		ZIndex = 3,
+	}, qualityButton)
+	UITheme.corner(lamp, 99)
+	UITheme.stroke(lamp, C.WOOD_EDGE, 2)
+	local text = UITheme.label(qualityButton, {
+		Name = "Label",
+		Position = UDim2.fromOffset(26, 0),
+		Size = UDim2.new(1, -34, 1, 0),
+		Font = UITheme.Font.Title,
+		TextScaled = false,
+		TextSize = 17,
+		TextColor3 = C.PAPER,
+		TextStrokeColor3 = C.SHADOW,
+		TextStrokeTransparency = 0.3,
+		ZIndex = 3,
+	})
+
+	UITheme.hover(qualityButton)
+	qualityButton.MouseEnter:Connect(function()
+		if edge then
+			edge.Color = C.GOLD
+		end
+	end)
+	qualityButton.MouseLeave:Connect(function()
+		if edge then
+			edge.Color = C.WOOD_EDGE
+		end
+	end)
+
 	local function refresh()
 		local _, name = VFXQuality.get()
 		qualityButton.Text = "VFX: " .. string.upper(name)
+		text.Text = qualityButton.Text
+		lamp.BackgroundColor3 = LAMP[name] or C.GOLD
 	end
 	refresh()
 	qualityButton.Activated:Connect(function()
 		VFXQuality.cycle()
 	end)
-	VFXQuality.Changed:Connect(refresh)
+	VFXQuality.Changed:Connect(function(...)
+		refresh()
+		UITheme.pop(lamp, 0.4)
+	end)
 
 	-- Touch devices start on Low to protect frame rate; players can raise it.
 	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
@@ -9937,20 +10227,26 @@ __modules["TuskUI"] = function()
 --[[
 	TuskUI  (StarterPlayerScripts.SpinClient.UI.TuskUI)
 
-	Battlegrounds-style move HUD (shown while Johnny or Gyro is equipped):
-	  * header: Act / character name with a slanted colour band + tagline
-	  * hotbar of move cards: M1, 1, 2, 3 and a big ULT card
-	      - key badge, a drawn icon for each move, the move name
+	Battlegrounds-style move HUD (shown while a Stand user is equipped),
+	dressed in the bounty-board house style (UITheme): dark wood plaques with
+	planks, grain and nails, aged parchment, Bangers titles, chunky strokes.
+	The Act's own Theme colours still show as an inlay rim, a painted stripe,
+	the key tags and the ready glow, so each character reads at a glance.
+	  * header: a small wooden name sign (theme stripe) + tagline
+	  * hotbar of wooden move cards: M1, 1, 2, 3 and a big ULT card
+	      - key tag, a drawn icon on a dark plate with a brass rim, the move
+	        name on a burnt parchment strip
 	      - cooldown shade that drains with a countdown, greys the icon,
-	        then a white "ready" flash and pop
-	      - cards squash when pressed (mouse, touch or keyboard)
-	      - hold moves show a charge bar (FULL when fully charged)
-	  * ULT card: rising meter, %, READY glow with a spinning shine,
-	    LOCKED timer after an awakening
-	  * sneak chip (Johnny), combo counter, toasts, awakening banner with
-	    menacing "ゴ" letters, Awakened timer bar
+	        then a golden "ready" flash and pop
+	      - cards bounce on hover and squash when pressed (mouse, touch, keys)
+	      - hold moves show a wood-framed charge bar (FULL when charged)
+	  * ULT card: meter rising up the planks, %, READY glow with a spinning
+	    shine on the rim, LOCKED timer after an awakening
+	  * wooden sneak chip, combo counter, parchment toasts, awakening banner
+	    with menacing "ゴ" letters, wood-framed Awakened timer bar
 	  * scales down on small screens
-	Act menu (T / MOVESET button): Studio test tool, one card per Act.
+	Act menu (T / MOVESET button): Studio test tool; a bracketed wooden
+	board with a hanging sign and one parchment poster per Act.
 ]]
 
 local Players = game:GetService("Players")
@@ -9962,24 +10258,28 @@ local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("Tu
 local Registry = __require("TuskActRegistry")
 local Net = __require("Net")
 local VFXLib = __require("VFXLib")
+local UITheme = __require("UITheme")
 
 local TuskUI = {}
 
 local player = Players.LocalPlayer
 local colors = TuskConfig.Colors
-local DARK = Color3.fromRGB(12, 16, 28)
-local DARK2 = Color3.fromRGB(26, 34, 56)
-local GREY = Color3.fromRGB(110, 118, 135)
+local C = UITheme.C
+local DARK = C.SHADOW -- icon plates (icon cut-outs are drawn in the same colour)
+local GREY = Color3.fromRGB(128, 116, 100)
 local WHITE = Color3.new(1, 1, 1)
-local FONT = Enum.Font.GothamBlack
-local TITLE_FONT = Enum.Font.Bangers
+local FONT = UITheme.Font.Heavy
+local TITLE_FONT = UITheme.Font.Title
+local NAME_INK = C.INK
+local NAME_FADED = C.INK:Lerp(C.PAPER_DARK, 0.6)
+local SNEAK_IDLE = C.BRASS
 
 local CARD_W, CARD_H, M1_W, ULT_W, GAP = 84, 96, 66, 112, 8
 
 local callbacks
-local gui, hud, hudScale, header, actLabel, actGradient, actBand, taglineLabel
+local gui, hud, hudScale, header, nameSign, actLabel, actGradient, actBand, taglineLabel
 local sneakChip, sneakHint, comboFrame, comboNumber, comboWord, comboDrain
-local toastFrame, toastLabel, toastAccent
+local toastFrame, toastLabel, toastAccent, toastStroke
 local bannerBand, banner, bannerSub, bannerGradient, menacing = nil, nil, nil, nil, {}
 local awakenBar, awakenFill
 local slots = {} -- [1..3] abilities, slots.M1, slots.Ult
@@ -10032,8 +10332,10 @@ local function text(parent, props)
 	local l = Instance.new("TextLabel")
 	l.BackgroundTransparency = 1
 	l.Font = FONT
-	l.TextColor3 = colors.Ice
+	l.TextColor3 = C.PAPER
+	l.TextStrokeColor3 = C.SHADOW
 	l.TextStrokeTransparency = 0.5
+
 	for k, v in pairs(props) do
 		l[k] = v
 	end
@@ -10406,57 +10708,70 @@ local function buildCard(parent, id, width, order)
 	button.Name = "Move_" .. tostring(id)
 	button.LayoutOrder = order
 	button.Size = UDim2.fromOffset(width, CARD_H)
-	button.BackgroundColor3 = DARK
-	button.BackgroundTransparency = 0.08
 	button.AutoButtonColor = false
 	button.Text = ""
 	button.ClipsDescendants = false
+	button.ZIndex = 1
 	button.Parent = parent
-	corner(button, 10)
-	gradient(button, Color3.fromRGB(200, 210, 230), Color3.fromRGB(120, 130, 150), 90)
-	local edge = stroke(button, WHITE, 2)
+	-- A dark wooden plaque: two planks with grain inside a dark border.
+	local planks = UITheme.wood(button, { Planks = 2, Border = 4, Radius = 9, Nails = false, Stroke = 3 })
+	-- Theme-coloured inlay on the wooden border (the ULT spins a shine around it).
+	local rim = frame(button, { Name = "Rim", Position = UDim2.fromOffset(2, 2), Size = UDim2.new(1, -4, 1, -4), BackgroundTransparency = 1, ZIndex = 2 })
+	corner(rim, 8)
+	local edge = stroke(rim, WHITE, 1.5)
 	local edgeGradient = gradient(edge, theme.Primary, theme.Secondary, 45)
 	local scale = Instance.new("UIScale")
 	scale.Scale = 1
 	scale.Parent = button
 
 	-- Glow behind the card (shown when an ability is ready / ultimate is ready).
-	local glow = frame(button, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, 8, 1, 8), BackgroundTransparency = 1, ZIndex = 0 })
-	corner(glow, 13)
+	local glow = frame(button, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, 10, 1, 10), BackgroundTransparency = 1, ZIndex = 0 })
+	corner(glow, 14)
 	local glowStroke = stroke(glow, theme.Primary, 4)
 	glowStroke.Transparency = 1
-	local accent = frame(button, { Size = UDim2.new(1, -16, 0, 3), Position = UDim2.fromOffset(8, 0), BackgroundColor3 = theme.Primary, ZIndex = 2 })
+	-- Painted theme stripe across the top plank.
+	local accent = frame(button, { Size = UDim2.new(1, -16, 0, 4), Position = UDim2.fromOffset(8, 5), BackgroundColor3 = theme.Primary, ZIndex = 3 })
 	corner(accent, 2)
+	stroke(accent, C.WOOD_EDGE, 1)
 
-	local badge = frame(button, { Position = UDim2.fromOffset(5, 6), Size = UDim2.fromOffset(26, 18), BackgroundColor3 = theme.Primary, ZIndex = 4 })
+	-- Key tag (theme colour, dark stroke, Bangers).
+	local badge = frame(button, { Position = UDim2.fromOffset(4, 4), Size = UDim2.fromOffset(26, 18), BackgroundColor3 = theme.Primary, Rotation = -4, ZIndex = 5 })
 	corner(badge, 5)
-	local key = text(badge, { Size = UDim2.fromScale(1, 1), TextSize = 12, TextColor3 = DARK, TextStrokeTransparency = 1, Text = "", ZIndex = 5 })
+	stroke(badge, C.WOOD_EDGE, 2)
+	local key = text(badge, { Size = UDim2.fromScale(1, 1), Font = TITLE_FONT, TextSize = 15, TextColor3 = C.INK, TextStrokeTransparency = 1, Text = "", ZIndex = 6 })
 
-	local icon = frame(button, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 18), Size = UDim2.fromOffset(40, 40), BackgroundTransparency = 1, ZIndex = 3 })
-	local name = text(button, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -5), Size = UDim2.new(1, -8, 0, 26), TextScaled = true, TextWrapped = true, Text = "", ZIndex = 3 })
+	-- Dark icon plate with a brass rim; the drawn icon sits on it.
+	local plate = frame(button, { Name = "IconPlate", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 13), Size = UDim2.fromOffset(48, 48), BackgroundColor3 = DARK, ZIndex = 3 })
+	corner(plate, 8)
+	local plateStroke = stroke(plate, C.BRASS, 2)
+	gradient(plate, Color3.fromRGB(255, 235, 210), Color3.fromRGB(150, 130, 115), 90)
+	local icon = frame(button, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 17), Size = UDim2.fromOffset(40, 40), BackgroundTransparency = 1, ZIndex = 4 })
+
+	-- Move name on a burnt parchment strip.
+	local strip = frame(button, { Name = "NameStrip", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -5), Size = UDim2.new(1, -10, 0, 28), ZIndex = 3 })
+	UITheme.paper(strip, { Radius = 4, Stroke = 2 })
+	local name = text(button, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -6), Size = UDim2.new(1, -14, 0, 26), TextScaled = true, TextWrapped = true, TextColor3 = NAME_INK, TextStrokeTransparency = 1, Text = "", ZIndex = 4 })
 	local nameLimit = Instance.new("UITextSizeConstraint")
 	nameLimit.MaxTextSize = 12
 	nameLimit.Parent = name
 
 	-- Cooldown shade: drains from the top down; countdown in the middle.
-	local shade = frame(button, { Size = UDim2.fromScale(1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.25, ZIndex = 6 })
-	corner(shade, 10)
-	local shadeEdge = frame(shade, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = theme.Primary, ZIndex = 7 })
-	local timer = text(button, { Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 22), TextSize = 26, TextStrokeTransparency = 0.2, Text = "", ZIndex = 8 })
-	local flash = frame(button, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = WHITE, BackgroundTransparency = 1, ZIndex = 9 })
-	corner(flash, 10)
+	local shade = frame(button, { Size = UDim2.fromScale(1, 0), BackgroundColor3 = C.SHADOW, BackgroundTransparency = 0.3, ZIndex = 7 })
+	corner(shade, 9)
+	local shadeEdge = frame(shade, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = theme.Primary, ZIndex = 8 })
+	local timer = text(button, { Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 18), Font = TITLE_FONT, TextSize = 32, TextColor3 = C.GOLD, TextStrokeTransparency = 0, Text = "", ZIndex = 9 })
+	local flash = frame(button, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.GLOW, BackgroundTransparency = 1, ZIndex = 10 })
+	corner(flash, 9)
 
-	-- Charge bar above the card (hold moves).
-	local chargeBack = frame(button, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -6), Size = UDim2.new(1, -6, 0, 7), BackgroundColor3 = DARK, Visible = false, ZIndex = 4 })
-	corner(chargeBack, 4)
-	stroke(chargeBack, WHITE, 1)
-	local chargeFill = frame(chargeBack, { Size = UDim2.fromScale(0, 1), BackgroundColor3 = theme.Primary, ZIndex = 5 })
-	corner(chargeFill, 4)
-	local chargeText = text(chargeBack, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -1), Size = UDim2.fromOffset(60, 14), TextSize = 11, Text = "", ZIndex = 5 })
+	-- Wood-framed charge bar above the card (hold moves).
+	local chargeBack, chargeFill = UITheme.bar(button, theme.Primary, { Name = "Charge", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -5), Size = UDim2.new(1, -4, 0, 12), Visible = false, ZIndex = 4 })
+	chargeFill.Size = UDim2.fromScale(0, 1)
+	local chargeText = text(chargeBack, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -1), Size = UDim2.fromOffset(80, 16), Font = TITLE_FONT, TextSize = 15, TextColor3 = C.GOLD, TextStrokeTransparency = 0.1, Text = "", ZIndex = 5 })
 
 	local card = {
 		Button = button, Scale = scale, Edge = edge, EdgeGradient = edgeGradient, Glow = glow, GlowStroke = glowStroke, Accent = accent,
-		Badge = badge, Key = key, Icon = icon, Name = name, Shade = shade, ShadeEdge = shadeEdge, Timer = timer,
+		Badge = badge, Key = key, Icon = icon, Plate = plate, PlateStroke = plateStroke, Planks = planks,
+ Name = name, Shade = shade, ShadeEdge = shadeEdge, Timer = timer,
 		Flash = flash, ChargeBack = chargeBack, ChargeFill = chargeFill, ChargeText = chargeText,
 		CooldownEnd = 0, CooldownDur = 0, Pressed = false, Pop = 0,
 	}
@@ -10497,17 +10812,18 @@ function TuskUI.toast(message, color)
 	color = color or Color3.fromRGB(255, 110, 100)
 	toastLabel.Text = message
 	toastAccent.BackgroundColor3 = color
-	toastLabel.TextColor3 = color:Lerp(WHITE, 0.45)
-	toastFrame.Size = UDim2.fromOffset(math.clamp(#message * 9 + 46, 160, 460), 32)
+	toastLabel.TextColor3 = color:Lerp(C.INK, 0.45)
+	toastFrame.Size = UDim2.fromOffset(math.clamp(#message * 9 + 50, 160, 460), 34)
 	toastFrame.Visible = true
 	animateJob("toast", 1.4, function(a)
 		local slide = a < 0.12 and (1 - a / 0.12) or 0
 		local fade = a < 0.75 and 0 or (a - 0.75) / 0.25
 		toastFrame.Position = UDim2.new(0.5, 0, 1, -20 + slide * 14)
-		toastFrame.BackgroundTransparency = 0.15 + fade * 0.85
+		toastFrame.BackgroundTransparency = fade
+		toastStroke.Transparency = math.max(0.2, fade)
 		toastAccent.BackgroundTransparency = fade
 		toastLabel.TextTransparency = fade
-		toastLabel.TextStrokeTransparency = math.max(0.5, fade)
+		toastLabel.TextStrokeTransparency = 1
 	end, function()
 		toastFrame.Visible = false
 	end)
@@ -10557,7 +10873,7 @@ local function bumpCombo()
 		return
 	end
 	comboNumber.Text = tostring(combo.Count)
-	local col = combo.Count >= 15 and colors.Gold or (combo.Count >= 8 and theme.Primary or colors.Ice)
+	local col = combo.Count >= 15 and C.GOLD or (combo.Count >= 8 and theme.Primary or C.PAPER)
 	comboNumber.TextColor3 = col
 	comboDrain.BackgroundColor3 = col
 	comboFrame.Visible = true
@@ -10585,84 +10901,76 @@ local function buildMenu()
 	menu.AnchorPoint = Vector2.new(0.5, 0.5)
 	menu.Position = UDim2.fromScale(0.5, 0.5)
 	menu.Size = UDim2.new(0.9, 0, 0, 330)
-	menu.BackgroundColor3 = DARK
-	menu.BackgroundTransparency = 0.05
 	menu.Visible = false
 	menu.ZIndex = 20
 	menu.Parent = gui
-	corner(menu, 12)
-	stroke(menu, colors.Cyan, 2)
+	-- A bracketed wooden board, like the bounty board.
+	UITheme.wood(menu, { Planks = 4, Border = 7, Radius = 10, Brackets = true, BracketSize = 20, Stroke = 4 })
 	local limit = Instance.new("UISizeConstraint")
 	limit.MaxSize = Vector2.new(860, 330)
 	limit.Parent = menu
 
-	text(menu, { Position = UDim2.fromOffset(18, 10), Size = UDim2.new(1, -80, 0, 36), Font = TITLE_FONT, TextSize = 34, TextXAlignment = Enum.TextXAlignment.Left, Text = "TUSK — CHOOSE YOUR ACT", ZIndex = 21 })
-	local close = Instance.new("TextButton")
-	close.AnchorPoint = Vector2.new(1, 0)
-	close.Position = UDim2.new(1, -12, 0, 12)
-	close.Size = UDim2.fromOffset(32, 32)
-	close.BackgroundColor3 = Color3.fromRGB(40, 50, 80)
-	close.Font = FONT
-	close.Text = "X"
-	close.TextSize = 16
-	close.TextColor3 = colors.Ice
-	close.ZIndex = 21
-	close.Parent = menu
-	corner(close, 6)
+	UITheme.sign(menu, "TUSK — CHOOSE YOUR ACT", nil, { Position = UDim2.new(0.5, 0, 0, -16), Size = UDim2.fromOffset(330, 46), ZIndex = 24 })
+	local close = UITheme.button(menu, "X", C.RED, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 12), Size = UDim2.fromOffset(34, 34), ZIndex = 24 })
 	close.Activated:Connect(function()
 		menu.Visible = false
 	end)
 
 	local row = Instance.new("ScrollingFrame")
-	row.Position = UDim2.fromOffset(14, 56)
-	row.Size = UDim2.new(1, -28, 1, -70)
+	row.Position = UDim2.fromOffset(16, 52)
+	row.Size = UDim2.new(1, -32, 1, -64)
 	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.ScrollingDirection = Enum.ScrollingDirection.X
 	row.AutomaticCanvasSize = Enum.AutomaticSize.X
 	row.CanvasSize = UDim2.new()
 	row.ScrollBarThickness = 4
+	row.ScrollBarImageColor3 = C.BRASS
 	row.ZIndex = 21
 	row.Parent = menu
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.Padding = UDim.new(0, 10)
+	layout.Padding = UDim.new(0, 12)
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
 	layout.Parent = row
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 6)
+	pad.PaddingRight = UDim.new(0, 6)
+	pad.Parent = row
 
 	for act = 1, 4 do
 		local info = Registry.get(act)
 		local ready = Registry.isImplemented(act)
+		-- A parchment poster per Act, pinned to the board.
 		local card = Instance.new("Frame")
-		card.Size = UDim2.fromOffset(196, 250)
-		card.BackgroundColor3 = Color3.fromRGB(20, 28, 48)
-		card.BackgroundTransparency = ready and 0 or 0.4
+		card.Size = UDim2.fromOffset(196, 240)
 		card.ZIndex = 22
 		card.Parent = row
-		corner(card, 10)
-		stroke(card, ready and info.Theme.Primary or Color3.fromRGB(70, 80, 100), 2)
-		text(card, { Position = UDim2.fromOffset(10, 8), Size = UDim2.new(1, -20, 0, 30), Font = TITLE_FONT, TextSize = 28, TextColor3 = ready and info.Theme.Primary or Color3.fromRGB(130, 140, 160), TextXAlignment = Enum.TextXAlignment.Left, Text = info.Name, ZIndex = 23 })
-		text(card, { Position = UDim2.fromOffset(10, 38), Size = UDim2.new(1, -20, 0, 16), TextSize = 12, TextColor3 = Color3.fromRGB(170, 185, 210), TextXAlignment = Enum.TextXAlignment.Left, Text = info.Tagline, ZIndex = 23 })
+		UITheme.paper(card, { Radius = 4, Stroke = 2 })
+		if not ready then
+			card.BackgroundColor3 = C.PAPER_DARK
+		end
+		local pin = frame(card, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 3), Size = UDim2.fromOffset(12, 12), BackgroundColor3 = C.RED, ZIndex = 24 })
+		corner(pin, 99)
+		stroke(pin, C.WOOD_EDGE, 1)
+		-- Theme stripe: the Act's own colours.
+		local stripe = frame(card, { Position = UDim2.fromOffset(8, 18), Size = UDim2.new(1, -16, 0, 5), BackgroundColor3 = ready and info.Theme.Primary or GREY, ZIndex = 23 })
+		corner(stripe, 2)
+		gradient(stripe, WHITE, ready and info.Theme.Secondary:Lerp(WHITE, 0.3) or GREY, 0)
+		text(card, { Position = UDim2.fromOffset(10, 26), Size = UDim2.new(1, -20, 0, 30), Font = TITLE_FONT, TextSize = 28, TextColor3 = ready and C.INK or NAME_FADED, TextStrokeTransparency = 1, TextXAlignment = Enum.TextXAlignment.Left, Text = info.Name, ZIndex = 23 })
+		text(card, { Position = UDim2.fromOffset(10, 56), Size = UDim2.new(1, -20, 0, 14), Font = UITheme.Font.Body, TextSize = 11, TextColor3 = ready and info.Theme.Primary:Lerp(C.INK, 0.55) or NAME_FADED, TextStrokeTransparency = 1, TextXAlignment = Enum.TextXAlignment.Left, Text = info.Tagline, ZIndex = 23 })
 		local moves = "M1  " .. info.M1 .. "\n1  " .. info.Abilities[1] .. "\n2  " .. info.Abilities[2] .. "\n3  " .. info.Abilities[3] .. "\nULT  " .. info.Ultimate
-		text(card, { Position = UDim2.fromOffset(10, 62), Size = UDim2.new(1, -20, 0, 120), TextSize = 12, TextColor3 = Color3.fromRGB(210, 220, 240), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, Text = moves, ZIndex = 23 })
+		text(card, { Position = UDim2.fromOffset(10, 76), Size = UDim2.new(1, -20, 0, 106), Font = UITheme.Font.Body, TextSize = 12, TextColor3 = C.INK, TextStrokeTransparency = 1, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, Text = moves, ZIndex = 23 })
 		if ready then
-			local pick = Instance.new("TextButton")
-			pick.AnchorPoint = Vector2.new(0.5, 1)
-			pick.Position = UDim2.new(0.5, 0, 1, -10)
-			pick.Size = UDim2.new(1, -20, 0, 36)
-			pick.BackgroundColor3 = info.Theme.Secondary
-			pick.Font = FONT
-			pick.TextSize = 15
-			pick.TextColor3 = Color3.new(1, 1, 1)
-			pick.Text = "SELECT"
-			pick.ZIndex = 23
-			pick.Parent = card
-			corner(pick, 8)
+			local pick = UITheme.button(card, "SELECT", info.Theme.Secondary, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -10), Size = UDim2.new(1, -24, 0, 38), ZIndex = 23 })
 			pick.Activated:Connect(function()
 				callbacks.Select(act)
 				menu.Visible = false
 			end)
 		else
-			text(card, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -10), Size = UDim2.new(1, -20, 0, 36), TextSize = 13, TextColor3 = Color3.fromRGB(150, 160, 180), Text = "IN DEVELOPMENT", ZIndex = 23 })
+			-- Stamped across the poster.
+			local stamp = text(card, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.new(1, -30, 0, 34), Font = TITLE_FONT, TextSize = 22, TextColor3 = C.RED, TextStrokeTransparency = 1, Rotation = -6, Text = "IN DEVELOPMENT", ZIndex = 23 })
+			stroke(stamp, C.RED, 2).Transparency = 0.3
 		end
 	end
 end
@@ -10685,16 +10993,15 @@ function TuskUI.init(cb)
 	hudScale = Instance.new("UIScale")
 	hudScale.Parent = hud
 
-	-- Header: slanted colour band + name + tagline.
+	-- Header: a small wooden name sign with a theme stripe, tagline under it.
 	header = frame(hud, { Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1 })
-	actBand = frame(header, { Position = UDim2.fromOffset(-6, 6), Size = UDim2.fromOffset(230, 30), BackgroundColor3 = theme.Primary, Rotation = -3, ZIndex = 1 })
-	corner(actBand, 4)
-	local bandGradient = Instance.new("UIGradient")
-	bandGradient.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(0.7, 0.55), NumberSequenceKeypoint.new(1, 1) })
-	bandGradient.Parent = actBand
-	actLabel = text(header, { Position = UDim2.fromOffset(4, 0), Size = UDim2.fromOffset(320, 34), Font = TITLE_FONT, TextSize = 34, TextColor3 = WHITE, TextStrokeTransparency = 0, TextStrokeColor3 = DARK, TextXAlignment = Enum.TextXAlignment.Left, Text = "", ZIndex = 2 })
+	nameSign = frame(header, { Name = "NameSign", Position = UDim2.fromOffset(0, 0), Size = UDim2.fromOffset(230, 32), Rotation = -1.5, ZIndex = 1 })
+	UITheme.wood(nameSign, { Planks = 1, Border = 3, Radius = 6, Nails = true, Stroke = 3 })
+	actBand = frame(nameSign, { Name = "ThemeStripe", AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 10, 1, -4), Size = UDim2.new(1, -20, 0, 3), BackgroundColor3 = theme.Primary, ZIndex = 2 })
+	corner(actBand, 2)
+	actLabel = text(nameSign, { Position = UDim2.fromOffset(12, 1), Size = UDim2.new(1, -24, 1, -6), Font = TITLE_FONT, TextSize = 28, TextColor3 = WHITE, TextStrokeTransparency = 0, TextStrokeColor3 = C.SHADOW, Text = "", ZIndex = 3 })
 	actGradient = gradient(actLabel, WHITE, theme.Primary, 90)
-	taglineLabel = text(header, { Position = UDim2.fromOffset(8, 32), Size = UDim2.fromOffset(320, 12), TextSize = 11, TextColor3 = Color3.fromRGB(190, 210, 235), TextXAlignment = Enum.TextXAlignment.Left, Text = "", ZIndex = 2 })
+	taglineLabel = text(header, { Position = UDim2.fromOffset(8, 33), Size = UDim2.fromOffset(320, 12), Font = UITheme.Font.Body, TextSize = 11, TextColor3 = C.PAPER, TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Left, Text = "", ZIndex = 2 })
 
 	-- Sneak chip (every character), right side of the header.
 	sneakChip = Instance.new("TextButton")
@@ -10702,23 +11009,25 @@ function TuskUI.init(cb)
 	sneakChip.AnchorPoint = Vector2.new(1, 0)
 	sneakChip.Position = UDim2.new(1, 0, 0, 8)
 	sneakChip.Size = UDim2.fromOffset(104, 26)
-	sneakChip.BackgroundColor3 = DARK
-	sneakChip.BackgroundTransparency = 0.1
 	sneakChip.AutoButtonColor = false
 	sneakChip.Text = ""
+	sneakChip.ZIndex = 1
 	sneakChip.Parent = header
-	corner(sneakChip, 13)
-	local sneakStroke = stroke(sneakChip, Color3.fromRGB(60, 80, 120), 2)
-	local sneakKey = frame(sneakChip, { Position = UDim2.fromOffset(4, 4), Size = UDim2.fromOffset(20, 18), BackgroundColor3 = Color3.fromRGB(60, 80, 120) })
-	corner(sneakKey, 9)
-	local sneakKeyText = text(sneakKey, { Size = UDim2.fromScale(1, 1), TextSize = 11, TextColor3 = WHITE, TextStrokeTransparency = 1, Text = "C" })
-	local sneakText = text(sneakChip, { Position = UDim2.fromOffset(28, 0), Size = UDim2.new(1, -32, 1, 0), TextSize = 13, TextColor3 = Color3.fromRGB(150, 170, 200), Text = "SNEAK" })
+	-- A little wooden plank with a brass key tag.
+	UITheme.wood(sneakChip, { Planks = 1, Border = 2, Radius = 7, Nails = false, Stroke = 2 })
+	local sneakStroke = sneakChip:FindFirstChildOfClass("UIStroke")
+	local sneakKey = frame(sneakChip, { Position = UDim2.fromOffset(4, 4), Size = UDim2.fromOffset(20, 18), BackgroundColor3 = SNEAK_IDLE, ZIndex = 2 })
+	corner(sneakKey, 5)
+	stroke(sneakKey, C.WOOD_EDGE, 1.5)
+	local sneakKeyText = text(sneakKey, { Size = UDim2.fromScale(1, 1), Font = TITLE_FONT, TextSize = 14, TextColor3 = C.INK, TextStrokeTransparency = 1, Text = "C", ZIndex = 3 })
+	local sneakText = text(sneakChip, { Position = UDim2.fromOffset(28, 0), Size = UDim2.new(1, -32, 1, 0), Font = TITLE_FONT, TextSize = 17, TextColor3 = C.PAPER, TextStrokeTransparency = 0.3, Text = "SNEAK", ZIndex = 2 })
+	UITheme.hover(sneakChip)
 	sneakChip:SetAttribute("Built", true)
 	sneakChip.Activated:Connect(function()
 		callbacks.Sneak()
 	end)
 	slots.SneakParts = { Stroke = sneakStroke, Key = sneakKey, KeyText = sneakKeyText, Text = sneakText }
-	sneakHint = text(hud, { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 0, -2), Size = UDim2.fromOffset(240, 16), TextSize = 12, TextColor3 = colors.Cyan, TextXAlignment = Enum.TextXAlignment.Right, Text = "", Visible = false })
+	sneakHint = text(hud, { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 0, -2), Size = UDim2.fromOffset(240, 16), Font = UITheme.Font.Body, TextSize = 12, TextColor3 = C.GOLD, TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Right, Text = "", Visible = false })
 
 	-- Hotbar.
 	local row = frame(hud, { Position = UDim2.fromOffset(0, 52), Size = UDim2.new(1, 0, 0, CARD_H), BackgroundTransparency = 1 })
@@ -10744,42 +11053,46 @@ function TuskUI.init(cb)
 	local ult = buildCard(row, "Ult", ULT_W, 4)
 	slots.Ult = ult
 	-- Ultimate meter rises from the bottom of the card.
-	ult.Meter = frame(ult.Button, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 0), BackgroundColor3 = WHITE, BackgroundTransparency = 0.35, ZIndex = 1 })
-	corner(ult.Meter, 10)
+	-- (inside the planks, so the wood grain shows through it).
+	ult.Meter = frame(ult.Planks, { Name = "Meter", AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 0), BackgroundColor3 = WHITE, BackgroundTransparency = 0.4, ZIndex = 2 })
 	ult.MeterGradient = gradient(ult.Meter, theme.Primary, theme.Secondary, 90)
-	ult.Percent = text(ult.Button, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), Size = UDim2.fromOffset(50, 16), TextSize = 13, TextXAlignment = Enum.TextXAlignment.Right, Text = "0%", ZIndex = 4 })
+	frame(ult.Meter, { Name = "Top", Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = C.GOLD, BackgroundTransparency = 0.2, ZIndex = 2 })
+	ult.Percent = text(ult.Button, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 5), Size = UDim2.fromOffset(54, 18), Font = TITLE_FONT, TextSize = 17, TextColor3 = C.GOLD, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Right, Text = "0%", ZIndex = 6 })
 	ult.Icon.Size = UDim2.fromOffset(46, 46)
+	ult.Icon.Position = UDim2.new(0.5, 0, 0, 15)
+	ult.Plate.Size = UDim2.fromOffset(54, 52)
+	ult.Plate.Position = UDim2.new(0.5, 0, 0, 12)
 	drawIcon(ult.Icon, "star")
 	ult.Button.Activated:Connect(function()
 		callbacks.Ultimate()
 	end)
 
 	-- Awakened timer bar under the hotbar.
-	awakenBar = frame(hud, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 52 + CARD_H + 6), Size = UDim2.new(1, 0, 0, 5), BackgroundColor3 = DARK, Visible = false })
-	corner(awakenBar, 3)
-	awakenFill = frame(awakenBar, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = colors.Cyan })
-	corner(awakenFill, 3)
+	awakenBar, awakenFill = UITheme.bar(hud, theme.Primary, { Name = "AwakenBar", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 52 + CARD_H + 4), Size = UDim2.new(1, 0, 0, 10), Visible = false })
 
 	-- Combo counter (right middle of the screen).
 	comboFrame = frame(gui, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -28, 0.42, 0), Size = UDim2.fromOffset(200, 90), BackgroundTransparency = 1, Visible = false })
-	comboNumber = text(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.fromOffset(200, 60), Font = TITLE_FONT, TextSize = 58, TextStrokeTransparency = 0.15, TextXAlignment = Enum.TextXAlignment.Right, Text = "" })
-	comboWord = text(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 58), Size = UDim2.fromOffset(200, 18), Font = TITLE_FONT, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Right, Text = "HIT COMBO!" })
-	comboDrain = frame(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 80), Size = UDim2.new(1, 0, 0, 4), BackgroundColor3 = colors.Ice })
+	comboNumber = text(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.fromOffset(200, 60), Font = TITLE_FONT, TextSize = 58, TextStrokeTransparency = 0.15, TextStrokeColor3 = C.WOOD_EDGE, TextXAlignment = Enum.TextXAlignment.Right, Text = "" })
+	comboWord = text(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 58), Size = UDim2.fromOffset(200, 18), Font = TITLE_FONT, TextSize = 21, TextColor3 = C.RED:Lerp(WHITE, 0.15), TextStrokeTransparency = 0.1, TextXAlignment = Enum.TextXAlignment.Right, Text = "HIT COMBO!" })
+	comboDrain = frame(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 80), Size = UDim2.new(1, 0, 0, 4), BackgroundColor3 = C.PAPER })
 	corner(comboDrain, 2)
+	stroke(comboDrain, C.WOOD_EDGE, 1)
 
 	-- Toast pill above the hotbar.
 	local toastHolder = frame(gui, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -190), Size = UDim2.fromOffset(10, 10), BackgroundTransparency = 1 })
-	toastFrame = frame(toastHolder, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0), Size = UDim2.fromOffset(260, 32), BackgroundColor3 = DARK, BackgroundTransparency = 0.15, Visible = false })
-	corner(toastFrame, 16)
-	toastAccent = frame(toastFrame, { Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(16, 16), BackgroundColor3 = Color3.fromRGB(255, 110, 100), Rotation = 45 })
-	corner(toastAccent, 3)
-	toastLabel = text(toastFrame, { Position = UDim2.fromOffset(32, 0), Size = UDim2.new(1, -40, 1, 0), TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left, Text = "" })
+	-- A torn parchment note with a coloured pin.
+	toastFrame = frame(toastHolder, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0), Size = UDim2.fromOffset(260, 34), Visible = false })
+	UITheme.paper(toastFrame, { Radius = 5, Stroke = 2 })
+	toastStroke = toastFrame:FindFirstChildOfClass("UIStroke")
+	toastAccent = frame(toastFrame, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 9, 0.5, 0), Size = UDim2.fromOffset(14, 14), BackgroundColor3 = Color3.fromRGB(255, 110, 100), ZIndex = 2 })
+	corner(toastAccent, 99)
+	toastLabel = text(toastFrame, { Position = UDim2.fromOffset(32, 0), Size = UDim2.new(1, -40, 1, 0), TextSize = 15, TextStrokeTransparency = 1, TextXAlignment = Enum.TextXAlignment.Left, Text = "", ZIndex = 2 })
 
 	-- Awakening banner: black slash band, gradient title, menacing ゴ letters.
-	bannerBand = frame(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.26), Size = UDim2.new(1.4, 0, 0, 110), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, Rotation = -4 })
-	banner = text(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.26), Size = UDim2.fromOffset(800, 84), Font = TITLE_FONT, TextSize = 78, TextColor3 = WHITE, TextTransparency = 1, TextStrokeTransparency = 1, Text = "", ZIndex = 3 })
+	bannerBand = frame(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.26), Size = UDim2.new(1.4, 0, 0, 110), BackgroundColor3 = C.SHADOW, BackgroundTransparency = 1, Rotation = -4 })
+	banner = text(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.26), Size = UDim2.fromOffset(800, 84), Font = TITLE_FONT, TextSize = 78, TextColor3 = WHITE, TextStrokeColor3 = C.SHADOW, TextTransparency = 1, TextStrokeTransparency = 1, Text = "", ZIndex = 3 })
 	bannerGradient = gradient(banner, WHITE, colors.Cyan, 90)
-	bannerSub = text(banner, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.fromOffset(600, 22), TextSize = 17, TextTransparency = 1, TextStrokeTransparency = 1, Text = "", ZIndex = 3 })
+	bannerSub = text(banner, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.fromOffset(600, 22), TextSize = 17, TextColor3 = C.GOLD, TextTransparency = 1, TextStrokeTransparency = 1, Text = "", ZIndex = 3 })
 	for i, spot in ipairs({ { 0.2, -20 }, { 0.27, 25 }, { 0.73, -25 }, { 0.8, 20 } }) do
 		local m = text(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(70, 70), TextSize = 56, Font = FONT, Text = "ゴ", TextTransparency = 1, TextStrokeTransparency = 0.6, TextStrokeColor3 = Color3.fromRGB(40, 0, 60), Rotation = (i % 2 == 0) and 12 or -12, ZIndex = 2 })
 		m:SetAttribute("X", spot[1])
@@ -10789,20 +11102,9 @@ function TuskUI.init(cb)
 
 	-- MOVESET button (opens the Act menu), Studio only in Awaken mode.
 	if TuskUI.menuAllowed() then
-		local moveset = Instance.new("TextButton")
-		moveset.AnchorPoint = Vector2.new(1, 0)
-		moveset.Position = UDim2.new(1, -12, 0, 46)
-		moveset.Size = UDim2.fromOffset(130, 28)
-		moveset.BackgroundColor3 = DARK
-		moveset.BackgroundTransparency = 0.2
-		moveset.Font = FONT
-		moveset.TextSize = 13
-		moveset.TextColor3 = colors.Ice
-		moveset.Text = "TUSK ACTS (T)"
-		moveset.Parent = gui
-		corner(moveset, 6)
-		stroke(moveset, colors.Cyan, 1.5)
+		local moveset = UITheme.button(gui, "TUSK ACTS (T)", C.WOOD_LIGHT, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 46), Size = UDim2.fromOffset(130, 30) })
 		moveset.Activated:Connect(TuskUI.toggleMenu)
+
 		buildMenu()
 	end
 
@@ -10882,6 +11184,8 @@ local function refreshAct(act)
 	local info = Registry.get(act)
 	theme = info.Theme
 	actLabel.Text = info.Name
+	nameSign.Size = UDim2.fromOffset(math.clamp(#info.Name * 14 + 40, 150, 300), 32)
+
 	actGradient.Color = ColorSequence.new(WHITE, theme.Primary:Lerp(WHITE, 0.2))
 	actBand.BackgroundColor3 = theme.Secondary
 	taglineLabel.Text = info.Tagline:upper()
@@ -10938,7 +11242,7 @@ end
 
 local function stepCard(card, now, dt, cooling)
 	-- Press squash + ready pop + hover.
-	local target = (card.Pressed and 0.9 or 1) + (card.Pop or 0) + (card.Hover and 0.03 or 0)
+	local target = (card.Pressed and 0.9 or 1) + (card.Pop or 0) + (card.Hover and 0.06 or 0)
 	card.Scale.Scale = card.Scale.Scale + (target - card.Scale.Scale) * math.min(1, dt * 18)
 	-- Cooldown shade.
 	if cooling then
@@ -10946,13 +11250,13 @@ local function stepCard(card, now, dt, cooling)
 		card.Shade.Size = UDim2.fromScale(1, math.clamp(left / math.max(card.CooldownDur, 0.01), 0, 1))
 		card.Timer.Text = left >= 10 and tostring(math.ceil(left)) or string.format("%.1f", left)
 		colorIcon(card.Icon, GREY)
-		card.Name.TextColor3 = GREY
+		card.Name.TextColor3 = NAME_FADED
 		card.Badge.BackgroundColor3 = GREY
 	elseif card.WasCooling then
 		card.Shade.Size = UDim2.fromScale(1, 0)
 		card.Timer.Text = ""
 		colorIcon(card.Icon, theme.Primary:Lerp(WHITE, 0.35))
-		card.Name.TextColor3 = colors.Ice
+		card.Name.TextColor3 = NAME_INK
 		card.Badge.BackgroundColor3 = theme.Primary
 		readyFlash(card)
 	end
@@ -11091,6 +11395,8 @@ function TuskUI.step(act)
 		ult.KeyPressed = false
 	end
 	stepCard(ult, now, dt, false)
+	-- The rim stays theme-coloured; the brass plate turns gold when the ULT is ready.
+	ult.PlateStroke.Color = (ready and lockLeft <= 0) and C.GOLD or C.BRASS
 
 	-- Sneak chip.
 	local sneaking = character and character:GetAttribute("TuskSneaking") == true
@@ -11101,11 +11407,12 @@ function TuskUI.step(act)
 	local SPOT = Color3.fromRGB(255, 90, 80)
 	sp.KeyText.Text = keyName("Sneak") ~= "" and keyName("Sneak") or "C"
 	local tint = spotted and SPOT or theme.Primary
-	sp.Stroke.Color = sneaking and tint or Color3.fromRGB(60, 80, 120)
-	sp.Key.BackgroundColor3 = sneaking and tint or Color3.fromRGB(60, 80, 120)
-	sp.Text.TextColor3 = sneaking and tint or Color3.fromRGB(150, 170, 200)
+	sp.Stroke.Color = sneaking and tint or C.WOOD_EDGE
+	sp.Key.BackgroundColor3 = sneaking and tint or SNEAK_IDLE
+	sp.Text.TextColor3 = sneaking and tint:Lerp(WHITE, 0.25) or C.PAPER
 	sp.Text.Text = spotted and "SPOTTED!" or (sneaking and "HIDDEN" or "SNEAK")
-	sneakChip.BackgroundColor3 = sneaking and DARK2 or DARK
+	sneakChip.BackgroundColor3 = sneaking and C.SHADOW or C.WOOD_DARK
+
 	sneakHint.Visible = sneaking and sneakChip.Visible
 	sneakHint.Text = Registry.characterOf(act) == "Johnny" and "M1 / TAP: SNEAK ATTACK" or "ATTACK: AMBUSH (+50% FIRST HIT)"
 end
@@ -12435,6 +12742,259 @@ return TuskVFX
 end
 
 -- ======================================================================
+-- MODULE: UITheme
+-- ======================================================================
+__modules["UITheme"] = function()
+--[[
+	UITheme  (StarterPlayerScripts.SpinClient.UI.UITheme)
+
+	The house style, taken from the bounty board, so every screen matches:
+	dark wood frames with planks, grain, nails and metal corner brackets;
+	aged parchment with burnt edges; Bangers titles; gold, red and green
+	accents; chunky dark strokes; buttons that pop when you hover or press.
+
+	Colours: UITheme.C (WOOD, WOOD_DARK, WOOD_LIGHT, WOOD_EDGE, PAPER,
+	PAPER_DARK, INK, BURNT, RED, GREEN, GOLD, BRASS, NAIL, STEEL, SHADOW).
+	Fonts:   UITheme.Font (Title = Bangers, Heavy = GothamBlack,
+	Body = GothamBold, Plain = GothamMedium).
+
+	Helpers (each returns the instance it makes):
+	  new(class, props, parent)          make an instance with properties
+	  corner(p, radius) / stroke(p, color, thickness, transparency)
+	  label(parent, props)               a scaled text label (ink by default)
+	  wood(frame, opts)                  turn a frame into a framed wooden
+	                                     board: returns the inner plank area.
+	                                     opts: Planks (rows), Brackets (bool),
+	                                     Nails (bool), Border (px), Radius
+	  paper(frame, opts)                 aged parchment: gradient + burnt edge
+	  sign(parent, title, subtitle, props) a hanging wooden title sign
+	  button(parent, text, color, props) a chunky button that pops on hover
+	  chip(parent, text, color, props)   a small rounded tag
+	  bar(parent, color, props)          a wood-framed meter; returns
+	                                     frame, fill (set fill.Size X scale)
+	  pop(guiObject, from)               bounce something in (needs a UIScale)
+	  hover(button, scaleTo)             hover/press bounce on any button
+]]
+
+local TweenService = game:GetService("TweenService")
+
+local UITheme = {}
+
+local C = {
+	WOOD = Color3.fromRGB(112, 74, 44),
+	WOOD_DARK = Color3.fromRGB(78, 50, 30),
+	WOOD_LIGHT = Color3.fromRGB(134, 90, 56),
+	WOOD_MID = Color3.fromRGB(122, 82, 50),
+	WOOD_EDGE = Color3.fromRGB(45, 28, 16),
+	GRAIN = Color3.fromRGB(78, 50, 30),
+	PAPER = Color3.fromRGB(234, 205, 160),
+	PAPER_DARK = Color3.fromRGB(205, 172, 125),
+	INK = Color3.fromRGB(60, 36, 20),
+	BURNT = Color3.fromRGB(120, 78, 40),
+	RED = Color3.fromRGB(190, 40, 35),
+	GREEN = Color3.fromRGB(60, 150, 70),
+	GOLD = Color3.fromRGB(255, 205, 90),
+	GLOW = Color3.fromRGB(255, 214, 110),
+	BRASS = Color3.fromRGB(196, 160, 90),
+	NAIL = Color3.fromRGB(70, 70, 76),
+	STEEL = Color3.fromRGB(90, 92, 100),
+	STEEL_DARK = Color3.fromRGB(40, 40, 46),
+	SHADOW = Color3.fromRGB(30, 18, 10),
+	WHITE = Color3.new(1, 1, 1),
+}
+UITheme.C = C
+
+UITheme.Font = {
+	Title = Enum.Font.Bangers,
+	Heavy = Enum.Font.GothamBlack,
+	Body = Enum.Font.GothamBold,
+	Plain = Enum.Font.GothamMedium,
+}
+
+UITheme.FAST = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+UITheme.SOFT = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+function UITheme.new(class, props, parent)
+	local o = Instance.new(class)
+	for k, v in pairs(props or {}) do
+		o[k] = v
+	end
+	o.Parent = parent
+	return o
+end
+local new = UITheme.new
+
+function UITheme.corner(p, r)
+	return new("UICorner", { CornerRadius = UDim.new(0, r or 6) }, p)
+end
+
+function UITheme.stroke(p, color, thickness, transparency)
+	return new("UIStroke", { Color = color or C.WOOD_EDGE, Thickness = thickness or 2, Transparency = transparency or 0, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, p)
+end
+
+function UITheme.label(parent, props)
+	local l = new("TextLabel", { BackgroundTransparency = 1, TextColor3 = C.INK, Font = UITheme.Font.Heavy, TextScaled = true }, parent)
+	for k, v in pairs(props or {}) do
+		l[k] = v
+	end
+	return l
+end
+
+-- Turn `frame` into a framed wooden board. Returns the inner plank area
+-- (put content in there, or on top of `frame` with a higher ZIndex).
+function UITheme.wood(frame, opts)
+	opts = opts or {}
+	local border = opts.Border or 6
+	local radius = opts.Radius or 8
+	local z = frame.ZIndex
+	frame.BackgroundColor3 = C.WOOD_DARK
+	frame.BackgroundTransparency = 0
+	frame.BorderSizePixel = 0
+	UITheme.corner(frame, radius)
+	UITheme.stroke(frame, C.WOOD_EDGE, opts.Stroke or 3)
+	local inner = new("Frame", { Name = "Planks", BackgroundColor3 = C.WOOD, BorderSizePixel = 0, Position = UDim2.fromOffset(border, border), Size = UDim2.new(1, -border * 2, 1, -border * 2), ClipsDescendants = true, ZIndex = z }, frame)
+	UITheme.corner(inner, math.max(radius - 3, 2))
+	local rows = opts.Planks or 3
+	local tones = { C.WOOD_LIGHT, C.WOOD, C.WOOD_MID }
+	for i = 0, rows - 1 do
+		local plank = new("Frame", { BackgroundColor3 = tones[i % 3 + 1], BorderSizePixel = 0, Position = UDim2.fromScale(0, i / rows), Size = UDim2.new(1, 0, 1 / rows, 0), ZIndex = z }, inner)
+		-- Grain lines that fade at their ends, and a dark seam under each plank.
+		for g = 1, 2 do
+			local line = new("Frame", { BackgroundColor3 = C.GRAIN, BorderSizePixel = 0, BackgroundTransparency = 0.6, Position = UDim2.new(((i * 7 + g * 13) % 10) / 20, 0, 0.25 + g * 0.22, 0), Size = UDim2.new(0.5 + ((i + g) % 4) * 0.1, 0, 0, 2), ZIndex = z }, plank)
+			new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0), NumberSequenceKeypoint.new(0.7, 0), NumberSequenceKeypoint.new(1, 1) }) }, line)
+		end
+		if i < rows - 1 then
+			new("Frame", { BackgroundColor3 = Color3.fromRGB(50, 32, 18), BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, -1), Size = UDim2.new(1, 0, 0, 2), ZIndex = z }, plank)
+		end
+		if opts.Nails ~= false then
+			for _, x in ipairs({ 0, 1 }) do
+				local nail = new("Frame", { BackgroundColor3 = C.NAIL, AnchorPoint = Vector2.new(x, 0.5), Position = UDim2.new(x, x == 0 and 5 or -5, 0.5, 0), Size = UDim2.fromOffset(4, 4), ZIndex = z }, plank)
+				UITheme.corner(nail, 99)
+			end
+		end
+	end
+	-- Dark edges over the planks.
+	local shade = new("Frame", { Name = "Shade", BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = z }, inner)
+	new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(0.18, 1), NumberSequenceKeypoint.new(0.82, 1), NumberSequenceKeypoint.new(1, 0.6) }), Rotation = opts.ShadeRotation or 0 }, shade)
+	if opts.Brackets then
+		local size = opts.BracketSize or 18
+		for _, c in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do
+			local bracket = new("Frame", { Name = "Bracket", AnchorPoint = Vector2.new(c[1], c[2]), Position = UDim2.fromScale(c[1], c[2]), Size = UDim2.fromOffset(size, size), BackgroundColor3 = C.STEEL, ZIndex = z + 2 }, frame)
+			UITheme.corner(bracket, 4)
+			UITheme.stroke(bracket, C.STEEL_DARK, 2)
+			local bolt = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(math.max(4, size * 0.28), math.max(4, size * 0.28)), BackgroundColor3 = Color3.fromRGB(170, 172, 180), ZIndex = z + 2 }, bracket)
+			UITheme.corner(bolt, 99)
+		end
+	end
+	return inner
+end
+
+-- Aged parchment: lighter middle, browner edges, a burnt border.
+function UITheme.paper(frame, opts)
+	opts = opts or {}
+	frame.BackgroundColor3 = C.PAPER
+	frame.BackgroundTransparency = 0
+	frame.BorderSizePixel = 0
+	UITheme.corner(frame, opts.Radius or 4)
+	new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, C.PAPER_DARK), ColorSequenceKeypoint.new(0.38, C.PAPER), ColorSequenceKeypoint.new(1, C.PAPER_DARK) }), Rotation = opts.Rotation or 70 }, frame)
+	UITheme.stroke(frame, C.BURNT, opts.Stroke or 2, 0.2)
+	return frame
+end
+
+-- A hanging wooden title sign with ropes.
+function UITheme.sign(parent, title, subtitle, props)
+	local sign = new("Frame", { Name = "Sign", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.fromOffset(240, 44) }, parent)
+	for k, v in pairs(props or {}) do
+		sign[k] = v
+	end
+	local z = sign.ZIndex
+	UITheme.wood(sign, { Planks = 1, Border = 3, Radius = 6, Nails = true })
+	UITheme.label(sign, { Name = "Title", Size = UDim2.new(1, 0, subtitle and 0.72 or 1, 0), Text = title, Font = UITheme.Font.Title, TextColor3 = C.PAPER, TextStrokeTransparency = 0.4, ZIndex = z + 1 })
+	if subtitle then
+		UITheme.label(sign, { Name = "Subtitle", Position = UDim2.fromScale(0, 0.68), Size = UDim2.fromScale(1, 0.26), Text = subtitle, Font = UITheme.Font.Body, TextColor3 = C.GOLD, ZIndex = z + 1 })
+	end
+	return sign
+end
+
+-- Hover / press bounce on any button (adds a UIScale if it has none).
+function UITheme.hover(b, scaleTo)
+	local s = b:FindFirstChildOfClass("UIScale") or new("UIScale", { Scale = 1 }, b)
+	b.MouseEnter:Connect(function()
+		TweenService:Create(s, UITheme.FAST, { Scale = scaleTo or 1.06 }):Play()
+	end)
+	b.MouseLeave:Connect(function()
+		TweenService:Create(s, UITheme.SOFT, { Scale = 1 }):Play()
+	end)
+	b.MouseButton1Down:Connect(function()
+		TweenService:Create(s, UITheme.SOFT, { Scale = 0.94 }):Play()
+	end)
+	b.MouseButton1Up:Connect(function()
+		TweenService:Create(s, UITheme.FAST, { Scale = scaleTo or 1.06 }):Play()
+	end)
+	return s
+end
+
+-- A chunky button: bold colour, dark stroke, Bangers text, pops on hover.
+function UITheme.button(parent, text, color, props)
+	color = color or C.RED
+	local b = new("TextButton", { AutoButtonColor = false, BackgroundColor3 = color, Text = text, Font = UITheme.Font.Title, TextScaled = true, TextColor3 = C.WHITE, TextStrokeTransparency = 0.6 }, parent)
+	for k, v in pairs(props or {}) do
+		b[k] = v
+	end
+	UITheme.corner(b, 8)
+	UITheme.stroke(b, color:Lerp(Color3.new(0, 0, 0), 0.45), 2)
+	new("UIGradient", { Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(200, 200, 200)), Rotation = 90 }, b)
+	new("UIPadding", { PaddingTop = UDim.new(0.14, 0), PaddingBottom = UDim.new(0.14, 0), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6) }, b)
+	UITheme.hover(b)
+	return b
+end
+
+-- A small rounded tag.
+function UITheme.chip(parent, text, color, props)
+	color = color or C.GOLD
+	local f = new("Frame", { BackgroundColor3 = color, Size = UDim2.fromOffset(80, 22) }, parent)
+	for k, v in pairs(props or {}) do
+		f[k] = v
+	end
+	UITheme.corner(f, 6)
+	UITheme.stroke(f, color:Lerp(Color3.new(0, 0, 0), 0.5), 2)
+	local light = (color.R * 0.3 + color.G * 0.59 + color.B * 0.11) > 0.55
+	UITheme.label(f, { Name = "Text", Size = UDim2.fromScale(1, 1), Text = text, Font = UITheme.Font.Title, TextColor3 = light and C.INK or C.WHITE, ZIndex = f.ZIndex })
+	new("UIPadding", { PaddingTop = UDim.new(0.12, 0), PaddingBottom = UDim.new(0.12, 0), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4) }, f)
+	return f
+end
+
+-- A wood-framed meter. Returns the frame and the fill (size its X scale 0..1).
+function UITheme.bar(parent, color, props)
+	local frame = new("Frame", { Name = "Bar", BackgroundColor3 = C.WOOD_DARK, Size = UDim2.fromOffset(200, 16) }, parent)
+	for k, v in pairs(props or {}) do
+		frame[k] = v
+	end
+	local z = frame.ZIndex
+	UITheme.corner(frame, 5)
+	UITheme.stroke(frame, C.WOOD_EDGE, 2)
+	local well = new("Frame", { Name = "Well", BackgroundColor3 = C.SHADOW, BorderSizePixel = 0, Position = UDim2.fromOffset(3, 3), Size = UDim2.new(1, -6, 1, -6), ClipsDescendants = true, ZIndex = z }, frame)
+	UITheme.corner(well, 3)
+	local fill = new("Frame", { Name = "Fill", BackgroundColor3 = color or C.GREEN, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = z }, well)
+	UITheme.corner(fill, 3)
+	new("UIGradient", { Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(170, 170, 170)), Rotation = 90 }, fill)
+	-- A shine along the top.
+	new("Frame", { Name = "Shine", BackgroundColor3 = C.WHITE, BackgroundTransparency = 0.75, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0.35, 0), ZIndex = z }, fill)
+	return frame, fill
+end
+
+-- Bounce something in from `from` (default 0.6) to full size.
+function UITheme.pop(obj, from)
+	local s = obj:FindFirstChildOfClass("UIScale") or new("UIScale", { Scale = 1 }, obj)
+	s.Scale = from or 0.6
+	TweenService:Create(s, UITheme.FAST, { Scale = 1 }):Play()
+	return s
+end
+
+return UITheme
+end
+
+-- ======================================================================
 -- MODULE: VFXLib
 -- ======================================================================
 __modules["VFXLib"] = function()
@@ -12947,8 +13507,10 @@ __modules["WeatherClient"] = function()
 	Draws the server's rain (WeatherService sets ReplicatedStorage
 	SpinRaining): falling streaks around your camera, a grey-blue tint and
 	fog, an optional looping rain sound (TuskConfig.Sounds.Rain), and a
-	banner when it starts and stops. Everything fades in and out.
-	Blackmore players get a hint: double-jump to walk on the raindrops.
+	banner when it starts and stops: a nailed wooden sign in the bounty
+	board's style (UI.UITheme) that pops in and fades out. Everything fades
+	in and out. Blackmore players get a hint on a pinned parchment strip
+	under it: double-jump to walk on the raindrops.
 ]]
 
 local Players = game:GetService("Players")
@@ -12958,6 +13520,7 @@ local Lighting = game:GetService("Lighting")
 
 local Shared = nil -- (bundled: modules are inlined)
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local UITheme = __require("UITheme")
 
 local WeatherClient = {}
 
@@ -12972,8 +13535,9 @@ local pool = {}
 local intensity = 0 -- 0 = clear, 1 = full rain
 local tint, sound
 local clear -- the lighting before the rain (restored after)
-local banner, bannerTitle, bannerSub
+local banner, bannerTitle, bannerSub, bannerHint
 local bannerToken
+local bannerParts = {} -- { Object, Property, Base } faded together
 
 function WeatherClient.isRaining()
 	return ReplicatedStorage:GetAttribute("SpinRaining") == true
@@ -13009,7 +13573,9 @@ local function showBanner(title, sub)
 	bannerToken = token
 	bannerTitle.Text = title
 	bannerSub.Text = sub or ""
+	bannerHint.Visible = (sub or "") ~= ""
 	banner.Visible = true
+	UITheme.pop(banner, 0.7)
 	local start = os.clock()
 	local conn
 	conn = RunService.RenderStepped:Connect(function()
@@ -13026,9 +13592,10 @@ local function showBanner(title, sub)
 		else
 			alpha = math.max(0, 1 - (t - 3.6) / 0.6)
 		end
-		bannerTitle.TextTransparency = 1 - alpha
-		bannerTitle.TextStrokeTransparency = 1 - alpha * 0.6
-		bannerSub.TextTransparency = 1 - alpha
+		-- The whole sign (wood, parchment, text, strokes) fades as one.
+		for _, e in ipairs(bannerParts) do
+			e[1][e[2]] = e[3] + (1 - e[3]) * (1 - alpha)
+		end
 		banner.Position = UDim2.new(0.5, 0, 0, 70 - 12 * (1 - math.min(t / 0.4, 1)))
 		if t > 4.2 then
 			banner.Visible = false
@@ -13163,37 +13730,36 @@ function WeatherClient.init()
 		sound.Parent = game:GetService("SoundService")
 	end
 
-	-- Banner at the top of the screen.
+	-- Banner at the top of the screen: a nailed wooden sign with the news,
+	-- and (for Blackmore) a pinned parchment hint under it.
+	local new = UITheme.new
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "WeatherBanner"
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 4
 	gui.IgnoreGuiInset = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = player:WaitForChild("PlayerGui")
-	banner = Instance.new("Frame")
-	banner.AnchorPoint = Vector2.new(0.5, 0)
-	banner.Position = UDim2.new(0.5, 0, 0, 70)
-	banner.Size = UDim2.fromOffset(460, 60)
-	banner.BackgroundTransparency = 1
-	banner.Visible = false
-	banner.Parent = gui
-	bannerTitle = Instance.new("TextLabel")
-	bannerTitle.BackgroundTransparency = 1
-	bannerTitle.Size = UDim2.new(1, 0, 0, 36)
-	bannerTitle.Font = Enum.Font.Bangers
-	bannerTitle.TextSize = 36
-	bannerTitle.TextColor3 = Color3.fromRGB(190, 220, 255)
-	bannerTitle.TextStrokeColor3 = Color3.fromRGB(20, 30, 50)
-	bannerTitle.Parent = banner
-	bannerSub = Instance.new("TextLabel")
-	bannerSub.BackgroundTransparency = 1
-	bannerSub.Position = UDim2.fromOffset(0, 36)
-	bannerSub.Size = UDim2.new(1, 0, 0, 18)
-	bannerSub.Font = Enum.Font.GothamBold
-	bannerSub.TextSize = 13
-	bannerSub.TextColor3 = Color3.fromRGB(225, 235, 255)
-	bannerSub.TextStrokeTransparency = 0.5
-	bannerSub.Parent = banner
+	banner = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 70), Size = UDim2.fromOffset(460, 72), BackgroundTransparency = 1, Visible = false }, gui)
+	local sign = new("Frame", { Name = "Sign", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0), Size = UDim2.fromOffset(280, 42) }, banner)
+	UITheme.wood(sign, { Planks = 1, Border = 4, Radius = 7, Brackets = true, BracketSize = 12 })
+	bannerTitle = UITheme.label(sign, { Name = "Title", Position = UDim2.fromOffset(18, 4), Size = UDim2.new(1, -36, 1, -8), Text = "", Font = UITheme.Font.Title, TextColor3 = Color3.fromRGB(190, 220, 255), TextStrokeColor3 = UITheme.C.WOOD_EDGE, TextStrokeTransparency = 0.3, ZIndex = 3 })
+	bannerHint = new("Frame", { Name = "Hint", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 46), Size = UDim2.fromOffset(380, 22), Visible = false }, banner)
+	UITheme.paper(bannerHint, { Radius = 3 })
+	local pin = new("Frame", { BackgroundColor3 = UITheme.C.RED, Size = UDim2.fromOffset(10, 10), Position = UDim2.new(0, 8, 0, -3), ZIndex = 3 }, bannerHint)
+	UITheme.corner(pin, 99)
+	bannerSub = UITheme.label(bannerHint, { Name = "Text", Position = UDim2.fromOffset(22, 3), Size = UDim2.new(1, -30, 1, -6), Text = "", Font = UITheme.Font.Body, TextColor3 = UITheme.C.INK, ZIndex = 2 })
+	-- Remember every visible bit's resting transparency, to fade them together.
+	for _, d in ipairs(banner:GetDescendants()) do
+		if d:IsA("TextLabel") then
+			table.insert(bannerParts, { d, "TextTransparency", d.TextTransparency or 0 })
+			table.insert(bannerParts, { d, "TextStrokeTransparency", d.TextStrokeTransparency or 0 })
+		elseif d:IsA("Frame") then
+			table.insert(bannerParts, { d, "BackgroundTransparency", d.BackgroundTransparency or 0 })
+		elseif d:IsA("UIStroke") then
+			table.insert(bannerParts, { d, "Transparency", d.Transparency or 0 })
+		end
+	end
 
 	ReplicatedStorage:GetAttributeChangedSignal("SpinRaining"):Connect(onRainChanged)
 	if WeatherClient.isRaining() then

@@ -3,15 +3,19 @@
 
 	Client side of the SAINT'S CORPSE (server: CorpseService, CorpseMoves).
 	  * the relics float, turn and bob (tag "SpinCorpse")
-	  * a panel in the bottom-left corner while you hold parts: each part with its boost,
-	    and your CORPSE MOVE button (V / D-pad right, or tap it) with its
-	    cooldown
-	  * announcements: you took a part (big), someone else took one or a
-	    part fell where someone died (a line at the top)
+	  * a panel in the bottom-left corner while you hold parts, in the bounty
+	    board's style (UI.UITheme): a framed wooden board with steel corner
+	    brackets, a parchment strip per part with its boost, and your chunky
+	    red CORPSE MOVE button (V / D-pad right, or tap it; bounces on hover)
+	    with its cooldown shade
+	  * announcements: you took a part (big outlined gold Bangers), someone
+	    else took one or a part fell where someone died (a nailed parchment
+	    ribbon at the top)
+	  * the relic compass's distance sits on a little wooden plaque
 	  * the visuals for every character's corpse move, with its name popping
 	    up over the caster
 	  * the COMPLETE corpse: a server-wide announcement, a gold halo over the
-	    holder, the panel turns gold and V is THE SAINT'S MIRACLE (golden sky,
+	    holder, the board's frame turns gold and V is THE SAINT'S MIRACLE (golden sky,
 	    a giant halo, pillars of light on every enemy, a final blast)
 ]]
 
@@ -27,6 +31,7 @@ local Net = require(Shared.Net)
 local VFXLib = require(script.Parent.VFXLib)
 local TuskVFX = require(script.Parent.TuskVFX)
 local CameraFX = require(script.Parent.CameraFX)
+local UITheme = require(script.Parent.UI.UITheme)
 local Common = require(script.Parent.TuskActCommon)
 local TuskAnimation = require(script.Parent.TuskAnimation)
 
@@ -34,12 +39,14 @@ local CorpseClient = {}
 
 local player = Players.LocalPlayer
 local cfg
-local GOLD = Color3.fromRGB(255, 205, 90)
-local INK = Color3.fromRGB(40, 26, 14)
-local PANEL = Color3.fromRGB(26, 20, 16)
+local T = UITheme.C
+local GOLD = T.GOLD
+local INK = T.INK
+local MOVE_RED = T.RED -- the corpse move button
+local MOVE_GOLD = Color3.fromRGB(226, 182, 70) -- ... once the corpse is complete
 local partInfo = {}
 
-local gui, panel, panelTitle, list, moveButton, moveName, moveFill, moveTime, feed, banner
+local gui, panel, panelTitle, list, moveButton, moveName, moveFill, moveTime, feed, feedText, banner
 local shown = "" -- the parts string the panel was built for
 
 ---------------------------------------------------------------------------
@@ -64,6 +71,24 @@ local function label(parent, props)
 		l[k] = v
 	end
 	return l
+end
+
+-- A chunky dark outline round text (UIStroke on the glyphs) with a
+-- light-to-shade gradient, like the bounty board's banners.
+local function inkOutline(l, thickness)
+	l.TextStrokeTransparency = 1
+	local stroke = new("UIStroke", { Color = T.WOOD_EDGE, Thickness = thickness or 2, LineJoinMode = Enum.LineJoinMode.Round }, l)
+	new("UIGradient", { Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(215, 205, 190)), Rotation = 90 }, l)
+	return stroke
+end
+
+-- Recolour a chunky button (fill + its darker edge).
+local function tintButton(b, color)
+	b.BackgroundColor3 = color
+	local edge = b:FindFirstChildOfClass("UIStroke")
+	if edge then
+		edge.Color = color:Lerp(Color3.new(0, 0, 0), 0.45)
+	end
 end
 
 local function myCharacterName()
@@ -117,12 +142,15 @@ local function rebuildPanel(parts)
 	end
 	for i, id in ipairs(ids) do
 		local info = partInfo[id]
-		local row = new("Frame", { LayoutOrder = i, BackgroundColor3 = Color3.fromRGB(46, 36, 26), Size = UDim2.new(1, 0, 0, 30) }, list)
-		corner(row, 6)
-		local icon = new("Frame", { Position = UDim2.fromOffset(5, 5), Size = UDim2.fromOffset(20, 20), BackgroundColor3 = Color3.fromRGB(122, 90, 60), Rotation = 45 }, row)
-		new("UIStroke", { Color = GOLD, Thickness = 1.5 }, icon)
-		label(row, { Position = UDim2.fromOffset(34, 2), Size = UDim2.new(1, -40, 0, 14), Text = info and info.Name or id, TextColor3 = GOLD })
-		label(row, { Position = UDim2.fromOffset(34, 16), Size = UDim2.new(1, -40, 0, 11), Text = info and info.Text or "", Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(230, 220, 200) })
+		-- Each part: a strip of parchment with a brass relic diamond.
+		local row = new("Frame", { LayoutOrder = i, Size = UDim2.new(1, 0, 0, 30), ZIndex = 3 }, list)
+		UITheme.paper(row, { Radius = 3, Stroke = 1.5 })
+		local icon = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(16, 15), Size = UDim2.fromOffset(16, 16), BackgroundColor3 = T.BRASS, Rotation = 45, ZIndex = 4 }, row)
+		corner(icon, 3)
+		new("UIStroke", { Color = T.INK, Thickness = 1.5 }, icon)
+		new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(6, 6), BackgroundColor3 = GOLD, BorderSizePixel = 0, ZIndex = 4 }, icon)
+		label(row, { Position = UDim2.fromOffset(32, 2), Size = UDim2.new(1, -38, 0, 15), Text = info and info.Name or id, Font = UITheme.Font.Title, TextColor3 = T.INK, ZIndex = 4 })
+		label(row, { Position = UDim2.fromOffset(32, 17), Size = UDim2.new(1, -38, 0, 11), Text = info and info.Text or "", Font = Enum.Font.GothamBold, TextColor3 = T.RED:Lerp(T.INK, 0.35), ZIndex = 4 })
 	end
 	panel.Size = UDim2.fromOffset(240, 44 + #ids * 34 + 52)
 	local who = myCharacterName()
@@ -131,45 +159,67 @@ local function rebuildPanel(parts)
 		who = "Miracle"
 	end
 	moveName.Text = (cfg.MoveNames and who and cfg.MoveNames[who]) or "CORPSE MOVE"
-	-- The complete corpse: the panel turns gold.
-	panel.BackgroundColor3 = complete and Color3.fromRGB(70, 52, 16) or PANEL
-	moveButton.BackgroundColor3 = complete and Color3.fromRGB(226, 182, 70) or Color3.fromRGB(150, 110, 40)
+	-- The complete corpse: the board's frame and edge turn gold.
+	panel.BackgroundColor3 = complete and T.BRASS or T.WOOD_DARK
+	local edge = panel:FindFirstChildOfClass("UIStroke")
+	if edge then
+		edge.Color = complete and GOLD or T.WOOD_EDGE
+		edge.Thickness = complete and 4 or 3
+	end
+	tintButton(moveButton, complete and MOVE_GOLD or MOVE_RED)
 	panelTitle.Text = complete and "COMPLETE SAINT'S CORPSE" or "SAINT'S CORPSE"
 end
 
 local function buildUI()
-	gui = new("ScreenGui", { Name = "CorpseHUD", ResetOnSpawn = false, DisplayOrder = 4 }, player:WaitForChild("PlayerGui"))
-	-- Bottom-left corner (lifted above the thumbstick on touch screens).
+	gui = new("ScreenGui", { Name = "CorpseHUD", ResetOnSpawn = false, DisplayOrder = 4, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, player:WaitForChild("PlayerGui"))
+	-- Bottom-left corner (lifted above the thumbstick on touch screens): a
+	-- framed wooden board, a parchment strip per part, the move button.
 	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-	panel = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, touch and -230 or -12), Size = UDim2.fromOffset(240, 120), BackgroundColor3 = PANEL, BackgroundTransparency = 0.08, Visible = false }, gui)
-	corner(panel, 10)
-	new("UIStroke", { Color = GOLD, Thickness = 2 }, panel)
-	panelTitle = label(panel, { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -24, 0, 22), Text = "SAINT'S CORPSE", Font = Enum.Font.Bangers, TextColor3 = GOLD })
-	label(panel, { Position = UDim2.fromOffset(12, 26), Size = UDim2.new(1, -24, 0, 11), Text = "Boosts last until you die", Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(190, 175, 150) })
-	list = new("Frame", { Position = UDim2.fromOffset(8, 42), Size = UDim2.new(1, -16, 1, -96), BackgroundTransparency = 1 }, panel)
+	panel = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, touch and -230 or -12), Size = UDim2.fromOffset(240, 120), Visible = false }, gui)
+	UITheme.wood(panel, { Planks = 4, Border = 5, Brackets = true, BracketSize = 14 })
+	panelTitle = label(panel, { Position = UDim2.fromOffset(14, 7), Size = UDim2.new(1, -28, 0, 21), Text = "SAINT'S CORPSE", Font = UITheme.Font.Title, TextColor3 = GOLD, TextStrokeColor3 = T.WOOD_EDGE, TextStrokeTransparency = 0.4, ZIndex = 3 })
+	label(panel, { Position = UDim2.fromOffset(14, 27), Size = UDim2.new(1, -28, 0, 11), Text = "Boosts last until you die", Font = Enum.Font.GothamBold, TextColor3 = T.PAPER_DARK, ZIndex = 3 })
+	list = new("Frame", { Name = "List", Position = UDim2.fromOffset(9, 42), Size = UDim2.new(1, -18, 1, -96), BackgroundTransparency = 1, ZIndex = 3 }, panel)
 	new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, list)
-	-- The corpse move: a button with a cooldown fill.
-	moveButton = new("TextButton", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 8, 1, -8), Size = UDim2.new(1, -16, 0, 40), BackgroundColor3 = Color3.fromRGB(150, 110, 40), Text = "", AutoButtonColor = true }, panel)
+	-- The corpse move: a chunky button (bounces on hover / press) with a
+	-- cooldown shade sweeping over it.
+	moveButton = new("TextButton", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 14, 1, -10), Size = UDim2.new(1, -28, 0, 40), BackgroundColor3 = MOVE_RED, Text = "", AutoButtonColor = false, ClipsDescendants = false, ZIndex = 3 }, panel)
 	corner(moveButton, 8)
-	new("UIStroke", { Color = GOLD, Thickness = 2 }, moveButton)
-	moveFill = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Size = UDim2.fromScale(0, 1), BorderSizePixel = 0 }, moveButton)
+	new("UIStroke", { Color = MOVE_RED:Lerp(Color3.new(0, 0, 0), 0.45), Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, moveButton)
+	new("UIGradient", { Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(200, 200, 200)), Rotation = 90 }, moveButton)
+	UITheme.hover(moveButton, 1.04)
+	moveFill = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Size = UDim2.fromScale(0, 1), BorderSizePixel = 0, ZIndex = 4 }, moveButton)
 	corner(moveFill, 8)
-	local key = new("Frame", { Position = UDim2.fromOffset(6, 7), Size = UDim2.fromOffset(26, 26), BackgroundColor3 = GOLD }, moveButton)
+	-- The key: a little dark plank with a gold V.
+	local key = new("Frame", { Position = UDim2.fromOffset(6, 7), Size = UDim2.fromOffset(26, 26), BackgroundColor3 = T.WOOD_DARK, ZIndex = 5 }, moveButton)
 	corner(key, 6)
-	label(key, { Size = UDim2.fromScale(1, 1), Text = "V", TextColor3 = INK, TextXAlignment = Enum.TextXAlignment.Center })
-	moveName = label(moveButton, { Position = UDim2.fromOffset(40, 6), Size = UDim2.new(1, -86, 0, 28), Text = "", Font = Enum.Font.Bangers })
+	new("UIStroke", { Color = GOLD, Thickness = 1.5, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, key)
+	label(key, { Size = UDim2.fromScale(1, 1), Text = "V", Font = UITheme.Font.Title, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 5 })
+	moveName = label(moveButton, { Position = UDim2.fromOffset(40, 6), Size = UDim2.new(1, -86, 0, 28), Text = "", Font = UITheme.Font.Title, TextStrokeColor3 = T.WOOD_EDGE, TextStrokeTransparency = 0.3, ZIndex = 5 })
 	new("UITextSizeConstraint", { MaxTextSize = 22, MinTextSize = 10 }, moveName)
-	moveTime = label(moveButton, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 10), Size = UDim2.fromOffset(40, 20), Text = "", TextXAlignment = Enum.TextXAlignment.Right })
+	moveTime = label(moveButton, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 8), Size = UDim2.fromOffset(40, 24), Text = "", Font = UITheme.Font.Title, TextColor3 = GOLD, TextStrokeColor3 = T.WOOD_EDGE, TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 })
 	moveButton.Activated:Connect(useMove)
-	-- Announcements.
-	feed = label(gui, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 120), Size = UDim2.fromOffset(520, 22), Text = "", Font = Enum.Font.GothamBold, TextColor3 = GOLD, TextStrokeTransparency = 0.3, TextXAlignment = Enum.TextXAlignment.Center, Visible = false })
-	banner = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.34), Size = UDim2.fromOffset(620, 70), Text = "", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center, Visible = false })
+	-- Announcements: a parchment ribbon at the top that fits its line...
+	feed = new("Frame", { Name = "Feed", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 118), Size = UDim2.fromOffset(0, 26), AutomaticSize = Enum.AutomaticSize.X, Visible = false }, gui)
+	UITheme.paper(feed, { Radius = 4 })
+	new("UISizeConstraint", { MaxSize = Vector2.new(560, 26) }, feed)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 22), PaddingRight = UDim.new(0, 22) }, feed)
+	for _, x in ipairs({ 0, 1 }) do
+		local nail = new("Frame", { AnchorPoint = Vector2.new(x, 0.5), Position = UDim2.new(x, x == 0 and -14 or 14, 0.5, 0), Size = UDim2.fromOffset(6, 6), BackgroundColor3 = T.NAIL, ZIndex = 2 }, feed)
+		corner(nail, 99)
+	end
+	feedText = label(feed, { Size = UDim2.fromScale(0, 1), AutomaticSize = Enum.AutomaticSize.X, TextScaled = false, TextSize = 15, Text = "", Font = Enum.Font.GothamBold, TextColor3 = T.INK, TextXAlignment = Enum.TextXAlignment.Center, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 2 })
+	new("UISizeConstraint", { MaxSize = Vector2.new(516, 26) }, feedText)
+	-- ... and a big outlined gold banner.
+	banner = label(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.34), Size = UDim2.fromOffset(620, 70), Text = "", Font = UITheme.Font.Title, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Center, Visible = false })
+	inkOutline(banner, 3)
 end
 
 local feedToken, bannerToken
 local function showFeed(text)
-	feed.Text = text
+	feedText.Text = text
 	feed.Visible = true
+	UITheme.pop(feed, 0.85)
 	local token = {}
 	feedToken = token
 	task.delay(3.5, function()
@@ -248,11 +298,12 @@ local function callout(character, who)
 		return
 	end
 	local bb = new("BillboardGui", { Adornee = head, Size = UDim2.fromOffset(240, 40), StudsOffset = Vector3.new(0, 3.4, 0), AlwaysOnTop = true, LightInfluence = 0 }, VFXLib.Folder)
-	local l = label(bb, { Size = UDim2.fromScale(1, 1), Text = (cfg.MoveNames and cfg.MoveNames[who] or "CORPSE MOVE") .. "!", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center })
+	local l = label(bb, { Size = UDim2.fromScale(1, 1), Text = (cfg.MoveNames and cfg.MoveNames[who] or "CORPSE MOVE") .. "!", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Center })
+	local outline = inkOutline(l, 3)
 	VFXLib.animate(1.3, function(a)
 		bb.StudsOffset = Vector3.new(0, 3.4 + a * 1.2, 0)
 		l.TextTransparency = math.max(0, (a - 0.6) / 0.4)
-		l.TextStrokeTransparency = l.TextTransparency
+		outline.Transparency = l.TextTransparency
 	end, function()
 		bb:Destroy()
 	end)
@@ -718,18 +769,25 @@ local function stepCompass()
 		local head = VFXLib.part({ Size = Vector3.new(1.1, 0.3, 0.9), Color = Color3.fromRGB(255, 236, 160), Material = Enum.Material.Neon })
 		head.Parent = m
 		local bb = Instance.new("BillboardGui")
-		bb.Size = UDim2.fromOffset(110, 26)
+		bb.Size = UDim2.fromOffset(120, 26)
 		bb.StudsOffset = Vector3.new(0, 1, 0)
 		bb.AlwaysOnTop = true
+		bb.LightInfluence = 0
 		bb.Adornee = shaft
+		-- A little nailed wooden plaque with the part and distance.
+		local board = new("Frame", { Size = UDim2.fromScale(1, 1) }, bb)
+		UITheme.wood(board, { Planks = 1, Border = 2, Radius = 5 })
 		local label = Instance.new("TextLabel")
 		label.BackgroundTransparency = 1
-		label.Size = UDim2.fromScale(1, 1)
-		label.Font = Enum.Font.GothamBlack
+		label.Position = UDim2.fromOffset(10, 2)
+		label.Size = UDim2.new(1, -20, 1, -4)
+		label.ZIndex = 3
+		label.Font = Enum.Font.Bangers
 		label.TextScaled = true
 		label.TextColor3 = Color3.fromRGB(255, 220, 120)
-		label.TextStrokeTransparency = 0.2
-		label.Parent = bb
+		label.TextStrokeColor3 = T.WOOD_EDGE
+		label.TextStrokeTransparency = 0.4
+		label.Parent = board
 		bb.Parent = m
 		compass = { Model = m, Shaft = shaft, Head = head, Label = label }
 	end

@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `StarterPlayer › StarterPlayerScripts › SpinClient` |
 | **Exact name** | `WeatherClient` (capitals matter) |
 
-**What it does:** Draws the server's rain (WeatherService sets ReplicatedStorage SpinRaining): falling streaks around your camera, a grey-blue tint and fog, an optional looping rain sound (TuskConfig.Sounds.Rain), and a banner when it starts and stops. Everything fades in and out. Blackmore players get a hint: double-jump to walk on the raindrops.
+**What it does:** Draws the server's rain (WeatherService sets ReplicatedStorage SpinRaining): falling streaks around your camera, a grey-blue tint and fog, an optional looping rain sound (TuskConfig.Sounds.Rain), and a banner when it starts and stops: a nailed wooden sign in the bounty board's style (UI.UITheme) that pops in and fades out. Everything fades in and out. Blackmore players get a hint on a pinned parchment strip under it: double-jump to walk on the raindrops.
 
 ## How to add it
 1. In Studio's Explorer, find **SpinClient** (StarterPlayer › StarterPlayerScripts › SpinClient).
@@ -30,8 +30,10 @@ Back to [[Where To Put Code]]
 	Draws the server's rain (WeatherService sets ReplicatedStorage
 	SpinRaining): falling streaks around your camera, a grey-blue tint and
 	fog, an optional looping rain sound (TuskConfig.Sounds.Rain), and a
-	banner when it starts and stops. Everything fades in and out.
-	Blackmore players get a hint: double-jump to walk on the raindrops.
+	banner when it starts and stops: a nailed wooden sign in the bounty
+	board's style (UI.UITheme) that pops in and fades out. Everything fades
+	in and out. Blackmore players get a hint on a pinned parchment strip
+	under it: double-jump to walk on the raindrops.
 ]]
 
 local Players = game:GetService("Players")
@@ -41,6 +43,7 @@ local Lighting = game:GetService("Lighting")
 
 local Shared = ReplicatedStorage:WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
+local UITheme = require(script.Parent.UI.UITheme)
 
 local WeatherClient = {}
 
@@ -55,8 +58,9 @@ local pool = {}
 local intensity = 0 -- 0 = clear, 1 = full rain
 local tint, sound
 local clear -- the lighting before the rain (restored after)
-local banner, bannerTitle, bannerSub
+local banner, bannerTitle, bannerSub, bannerHint
 local bannerToken
+local bannerParts = {} -- { Object, Property, Base } faded together
 
 function WeatherClient.isRaining()
 	return ReplicatedStorage:GetAttribute("SpinRaining") == true
@@ -92,7 +96,9 @@ local function showBanner(title, sub)
 	bannerToken = token
 	bannerTitle.Text = title
 	bannerSub.Text = sub or ""
+	bannerHint.Visible = (sub or "") ~= ""
 	banner.Visible = true
+	UITheme.pop(banner, 0.7)
 	local start = os.clock()
 	local conn
 	conn = RunService.RenderStepped:Connect(function()
@@ -109,9 +115,10 @@ local function showBanner(title, sub)
 		else
 			alpha = math.max(0, 1 - (t - 3.6) / 0.6)
 		end
-		bannerTitle.TextTransparency = 1 - alpha
-		bannerTitle.TextStrokeTransparency = 1 - alpha * 0.6
-		bannerSub.TextTransparency = 1 - alpha
+		-- The whole sign (wood, parchment, text, strokes) fades as one.
+		for _, e in ipairs(bannerParts) do
+			e[1][e[2]] = e[3] + (1 - e[3]) * (1 - alpha)
+		end
 		banner.Position = UDim2.new(0.5, 0, 0, 70 - 12 * (1 - math.min(t / 0.4, 1)))
 		if t > 4.2 then
 			banner.Visible = false
@@ -246,37 +253,36 @@ function WeatherClient.init()
 		sound.Parent = game:GetService("SoundService")
 	end
 
-	-- Banner at the top of the screen.
+	-- Banner at the top of the screen: a nailed wooden sign with the news,
+	-- and (for Blackmore) a pinned parchment hint under it.
+	local new = UITheme.new
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "WeatherBanner"
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 4
 	gui.IgnoreGuiInset = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = player:WaitForChild("PlayerGui")
-	banner = Instance.new("Frame")
-	banner.AnchorPoint = Vector2.new(0.5, 0)
-	banner.Position = UDim2.new(0.5, 0, 0, 70)
-	banner.Size = UDim2.fromOffset(460, 60)
-	banner.BackgroundTransparency = 1
-	banner.Visible = false
-	banner.Parent = gui
-	bannerTitle = Instance.new("TextLabel")
-	bannerTitle.BackgroundTransparency = 1
-	bannerTitle.Size = UDim2.new(1, 0, 0, 36)
-	bannerTitle.Font = Enum.Font.Bangers
-	bannerTitle.TextSize = 36
-	bannerTitle.TextColor3 = Color3.fromRGB(190, 220, 255)
-	bannerTitle.TextStrokeColor3 = Color3.fromRGB(20, 30, 50)
-	bannerTitle.Parent = banner
-	bannerSub = Instance.new("TextLabel")
-	bannerSub.BackgroundTransparency = 1
-	bannerSub.Position = UDim2.fromOffset(0, 36)
-	bannerSub.Size = UDim2.new(1, 0, 0, 18)
-	bannerSub.Font = Enum.Font.GothamBold
-	bannerSub.TextSize = 13
-	bannerSub.TextColor3 = Color3.fromRGB(225, 235, 255)
-	bannerSub.TextStrokeTransparency = 0.5
-	bannerSub.Parent = banner
+	banner = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 70), Size = UDim2.fromOffset(460, 72), BackgroundTransparency = 1, Visible = false }, gui)
+	local sign = new("Frame", { Name = "Sign", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0), Size = UDim2.fromOffset(280, 42) }, banner)
+	UITheme.wood(sign, { Planks = 1, Border = 4, Radius = 7, Brackets = true, BracketSize = 12 })
+	bannerTitle = UITheme.label(sign, { Name = "Title", Position = UDim2.fromOffset(18, 4), Size = UDim2.new(1, -36, 1, -8), Text = "", Font = UITheme.Font.Title, TextColor3 = Color3.fromRGB(190, 220, 255), TextStrokeColor3 = UITheme.C.WOOD_EDGE, TextStrokeTransparency = 0.3, ZIndex = 3 })
+	bannerHint = new("Frame", { Name = "Hint", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 46), Size = UDim2.fromOffset(380, 22), Visible = false }, banner)
+	UITheme.paper(bannerHint, { Radius = 3 })
+	local pin = new("Frame", { BackgroundColor3 = UITheme.C.RED, Size = UDim2.fromOffset(10, 10), Position = UDim2.new(0, 8, 0, -3), ZIndex = 3 }, bannerHint)
+	UITheme.corner(pin, 99)
+	bannerSub = UITheme.label(bannerHint, { Name = "Text", Position = UDim2.fromOffset(22, 3), Size = UDim2.new(1, -30, 1, -6), Text = "", Font = UITheme.Font.Body, TextColor3 = UITheme.C.INK, ZIndex = 2 })
+	-- Remember every visible bit's resting transparency, to fade them together.
+	for _, d in ipairs(banner:GetDescendants()) do
+		if d:IsA("TextLabel") then
+			table.insert(bannerParts, { d, "TextTransparency", d.TextTransparency or 0 })
+			table.insert(bannerParts, { d, "TextStrokeTransparency", d.TextStrokeTransparency or 0 })
+		elseif d:IsA("Frame") then
+			table.insert(bannerParts, { d, "BackgroundTransparency", d.BackgroundTransparency or 0 })
+		elseif d:IsA("UIStroke") then
+			table.insert(bannerParts, { d, "Transparency", d.Transparency or 0 })
+		end
+	end
 
 	ReplicatedStorage:GetAttributeChangedSignal("SpinRaining"):Connect(onRainChanged)
 	if WeatherClient.isRaining() then
