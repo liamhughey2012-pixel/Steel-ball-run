@@ -31,3 +31,22 @@ Every character (and the Stand-user NPCs). Server: `DefenseService` + `CombatAda
 - **Blocked hit:** the tile it struck lights up white, a ripple runs across the tiles, sparks fly off forward, a small ring and a "tink" sound play, and the blocker's camera nudges.
 - **Perfect block:** the whole barrier flashes gold (on top of the PERFECT! effects).
 - **Guard break:** the tiles shatter, turn red-hot and fly off with gravity.
+
+## Dash upgrade (2026-11-24)
+- **2 charges:** chain two dashes (0.3 s apart at least). Each charge comes back 2.2 s after the previous one. The HUD chip shows pips: `DASH ●○ 1.4`.
+- **Dash-cancel:** a dash cuts off the recovery after an M1 hit, and the combo starts again. Recovery from any other move can't be cancelled.
+- **PERFECT DODGE:** an attack that would have hit you lands within 0.22 s of starting a dash:
+  - the dash charge comes back;
+  - the attacker is slowed to 50% for 0.8 s;
+  - you get +8 ultimate meter;
+  - **COUNTER:** your next hit within 1.5 s does +40%.
+  - Visuals: a gold body ghost and PERFECT DODGE text; the dodger gets a blue slowed-down flash and COUNTER READY.
+- **Visuals:**
+  - a wind ring at the feet;
+  - body-shaped afterimages in the character's colour;
+  - wind streaks along the path;
+  - a landing puff;
+  - speed lines for the dasher;
+  - a white flash on a dash-cancel.
+- Numbers are in `TuskConfig.Defense`: DashCharges, DashGap, DashCancelM1, PerfectDodge*, Counter*.
+- CombatAdapter now has events (`Adapter.on` / `Adapter.emit`): Hit, PerfectBlock, PerfectDodge. The perfect-dodge check runs before `canBeHit`, using `DashDodgeUntil` and `DashDodged`.

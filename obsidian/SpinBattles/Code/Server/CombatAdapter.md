@@ -260,6 +260,24 @@ end
 -- Adapter.DodgeHandlers[attributeName] = function(attackerPlayer, target, info)
 Adapter.DodgeHandlers = {}
 
+-- Simple events other systems listen to (bounty jobs, the dash):
+--   "Hit" (attackerPlayer, target, damage, info)
+--   "PerfectBlock" (defenderCharacter, attackerPlayer)
+--   "PerfectDodge" (dodgerCharacter, attackerPlayer)
+Adapter.Listeners = {}
+function Adapter.on(name, fn)
+	Adapter.Listeners[name] = Adapter.Listeners[name] or {}
+	table.insert(Adapter.Listeners[name], fn)
+end
+function Adapter.emit(name, ...)
+	for _, fn in ipairs(Adapter.Listeners[name] or {}) do
+		local ok, err = pcall(fn, ...)
+		if not ok then
+			warn("[CombatAdapter] " .. name .. " listener: " .. tostring(err))
+		end
+	end
+end
+
 function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	if targetCharacter and attackerPlayer and targetCharacter ~= attackerPlayer.Character then
 		for attribute, handler in pairs(Adapter.DodgeHandlers) do
@@ -268,6 +286,15 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 				return false
 			end
 		end
+	end
+	-- PERFECT DODGE: an attack that would have hit lands during a dash's
+	-- dodge window (once per dash).
+	if attackerPlayer and targetCharacter and targetCharacter ~= attackerPlayer.Character
+		and (targetCharacter:GetAttribute("DashDodgeUntil") or 0) > workspace:GetServerTimeNow()
+		and not targetCharacter:GetAttribute("DashDodged") then
+		targetCharacter:SetAttribute("DashDodged", true)
+		Adapter.emit("PerfectDodge", targetCharacter, attackerPlayer)
+		return false
 	end
 	if not Adapter.canBeHit(attackerPlayer, targetCharacter) then
 		return false
@@ -294,6 +321,7 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 				end
 			end
 			FX:FireAllClients("Parry", { Defender = targetCharacter, Attacker = attacker, Position = info.Position })
+			Adapter.emit("PerfectBlock", targetCharacter, attackerPlayer)
 			return false
 		end
 		-- The guard bar takes the hit; when it runs out the guard breaks.
@@ -319,6 +347,12 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 			attackerCharacter:SetAttribute("AmbushUntil", nil)
 			damage = damage * ((TuskConfig.Sneak and TuskConfig.Sneak.AmbushMultiplier) or 1.5)
 			info.Ambush = true
+		end
+		-- Counter after a perfect dodge: the next hit lands harder (used up).
+		if (attackerCharacter:GetAttribute("CounterUntil") or 0) > workspace:GetServerTimeNow() then
+			attackerCharacter:SetAttribute("CounterUntil", nil)
+			damage = damage * ((TuskConfig.Defense and TuskConfig.Defense.CounterMultiplier) or 1.4)
+			info.Counter = true
 		end
 	end
 	damage = damage * (targetCharacter:GetAttribute("CorpseResist") or 1)
@@ -360,6 +394,7 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 			Perfect = info.Perfect,
 		})
 	end
+	Adapter.emit("Hit", attackerPlayer, targetCharacter, damage, info)
 	return true, damage
 end
 

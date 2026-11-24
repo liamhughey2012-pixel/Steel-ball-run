@@ -21,23 +21,27 @@ __modules["Valentine"] = function()
 	out again somewhere else; he brings people across from other worlds;
 	and with Love Train, misfortune can't reach him: it lands on someone
 	else. Registered as "Act" 13 so it reuses the Tusk ability system.
-	  M1        DIRTY DEEDS COMBO: D4C chops with him
+	  M1        DIRTY DEEDS COMBO: D4C chops with him; the 4th hit wraps them
+	            in a flag (a long stun, little knockback: follow up!)
 	  Ability 1 DIMENSION HOP: a flag sweeps over him (he can't be hit while
 	            he's between worlds) and he steps out behind the nearest enemy
-	            in front, striking them; with nobody there, he hops ahead. He
-	            leaves a flag where he was: press again within 4 s to hop back
+	            in front, D4C chopping them twice; with nobody there, he hops
+	            ahead. He leaves a flag where he was: press again within 4 s
+	            to hop back, and the flag slams shut on whoever's near it
 	  Ability 2 PARALLEL VALENTINE: a Valentine from another world joins the
 	            fight for a few seconds, chasing and punching the nearest enemy.
-	            If he's nearly beaten while it's out, they SWAP: he takes its
-	            place (healed) and it's gone
+	            Press 2 again to TRADE PLACES with it (once). If he's nearly
+	            beaten while it's out, they swap: he takes its place (healed)
 	  Ability 3 MENGER SPONGE: the nearest enemy's other-world self appears
 	            beside them: two of the same person can't exist together, so
 	            they crumble into cubes (slowed, ticks of damage), then burst,
-	            hitting whoever's next to them. They only crumble near their
-	            double: running away from it ends it
+	            hitting whoever's next to them, and the cubes spread to the
+	            nearest other enemy. They only crumble near their double:
+	            running away from it ends it
 	  Ultimate  D4C LOVE TRAIN: a wall of light: every hit on him is
 	            cancelled and the misfortune lands on the nearest enemy
-	            instead; he moves faster; it ends with a pulse of light
+	            instead (healing him a little); he moves faster; it ends with
+	            a pulse of light that grows with every hit it turned away
 Numbers: TuskConfig.Valentine. All damage goes through S.hit (CombatAdapter).
 ]]
 
@@ -141,6 +145,10 @@ local function dimensionHop(S, player, state, aim)
 			return back.Pos
 		end, function()
 			return back.Pos + back.Facing
+		end, function(_, dest)
+			-- The flag slams shut on whoever's standing near it.
+			Moves.aoe(S, player, dest, c.FlagSlamRadius, { Damage = c.FlagSlamDamage, Stun = c.FlagSlamStun, Knockback = 18, Source = "ValentineHop" }, 6)
+			S.fx("Ability", { Act = ACT, Move = "DimensionHop", Phase = "FlagSlam", Position = dest, Radius = c.FlagSlamRadius })
 		end)
 		return
 	end
@@ -186,6 +194,14 @@ local function dimensionHop(S, player, state, aim)
 		-- Out of the other world: a strike at whoever he came for.
 		if target and tr and (tr.Position - dest).Magnitude <= c.StrikeRange then
 			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = tr.Position - dest, Position = tr.Position, Source = "ValentineHop" })
+			-- D4C follows up with a second chop.
+			task.delay(c.SecondDelay, function()
+				local _, _, r2 = alive(S, player)
+				if r2 and tr.Parent and (tr.Position - r2.Position).Magnitude <= c.StrikeRange + 2 then
+					S.hit(player, target, { Damage = c.SecondDamage, Stun = c.Stun, Knockback = c.SecondKnockback, Direction = tr.Position - r2.Position, Position = tr.Position, Source = "ValentineHop" })
+					S.fx("Ability", { Character = char, Act = ACT, Move = "DimensionHop", Phase = "Chop", Position = tr.Position })
+				end
+			end)
 		end
 	end)
 end
@@ -197,6 +213,12 @@ local nextClone = 0
 
 local function parallelClone(S, player, state)
 	local c = cfg.ParallelClone
+	-- Pressed again while it's out: trade places with it (once).
+	local ctl = state.CloneCtl
+	if ctl and ctl.Swap and not S.isBusy(state) and not state.Charging then
+		ctl.Swap()
+		return
+	end
 	if not ready(S, player, state, "ParallelClone", 2) then
 		return
 	end
@@ -220,6 +242,30 @@ local function parallelClone(S, player, state)
 		local punches, nextPunch, target = 0, 0, nil
 		local step = 0.1
 		local swapped = false
+		local ctl = {}
+		state.CloneCtl = ctl
+		ctl.Swap = function()
+			local _, _, myRoot = alive(S, player)
+			if not myRoot or state.Life ~= life then
+				return
+			end
+			ctl.Swap = nil -- once
+			local old = myRoot.Position
+			local at = Vector3.new(pos.X, old.Y, pos.Z)
+			local iframes = S.Adapter.Settings.IFrameAttribute
+			char:SetAttribute(iframes, true)
+			task.delay(c.ManualSwapIFrames, function()
+				char:SetAttribute(iframes, nil)
+			end)
+			char:PivotTo(CFrame.lookAt(at, at + Moves.flat(myRoot.CFrame.LookVector)))
+			pos = Vector3.new(old.X, pos.Y, old.Z)
+			S.fx("Ability", { Character = char, Act = ACT, Move = "ParallelClone", Phase = "Trade", Id = id, From = old, To = at })
+		end
+		local function finished()
+			if state.CloneCtl == ctl then
+				state.CloneCtl = nil
+			end
+		end
 		local function tick()
 			local _, myHum, myRoot = alive(S, player)
 			-- Nearly beaten while his other self is out: they swap places.
@@ -231,11 +277,13 @@ local function parallelClone(S, player, state)
 				char:PivotTo(CFrame.lookAt(at, at + Moves.flat(myRoot.CFrame.LookVector)))
 				char:SetAttribute("ParallelCloneUntil", nil)
 				S.fx("Ability", { Character = char, Act = ACT, Move = "ParallelClone", Phase = "Swap", Id = id, From = old, To = at })
+				finished()
 				return
 			end
 			if not myRoot or state.Life ~= life or now() - born > c.Duration or punches >= c.MaxPunches then
 				char:SetAttribute("ParallelCloneUntil", nil)
 				S.fx("Ability", { Act = ACT, Move = "ParallelClone", Phase = "Leave", Id = id, Position = pos })
+				finished()
 				return
 			end
 			-- Pick the enemy nearest to Valentine (re-picked as they move).
@@ -327,6 +375,38 @@ local function mengerSponge(S, player, state, aim)
 					-- The burst catches whoever's right next to them.
 					Moves.aoe(S, player, t.Position, c.BurstRadius, { Damage = c.BurstDamage, Stun = 0.5, Knockback = 20, Source = "ValentineMenger" }, 6, { [target] = true })
 					S.fx("Ability", { Act = ACT, Move = "MengerSponge", Phase = "Burst", Position = t.Position, Target = target, Radius = c.BurstRadius })
+					-- ...and the cubes start crumbling the nearest other enemy.
+					local myChar = alive(S, player)
+					local from = t.Position
+					local victim
+					if myChar then
+						local bestD
+						for _, other in ipairs(S.Hitbox.inRadius(myChar, from, c.SpreadRange, 6)) do
+							local orr = other:FindFirstChild("HumanoidRootPart")
+							if other ~= target and orr and S.Adapter.canBeHit(nil, other) then
+								local d = (orr.Position - from).Magnitude
+								if not bestD or d < bestD then
+									victim, bestD = other, d
+								end
+							end
+						end
+					end
+					if victim then
+						S.fx("Ability", { Act = ACT, Move = "MengerSponge", Phase = "Spread", From = from, Target = victim, Duration = c.SpreadTime })
+						local spreadTicks = math.max(1, math.floor(c.SpreadTime / c.Tick))
+						for k = 1, spreadTicks do
+							task.delay(k * c.Tick, function()
+								local vr = victim:FindFirstChild("HumanoidRootPart")
+								if vr then
+									local fin = k == spreadTicks
+									S.hit(player, victim, { Damage = fin and c.SpreadFinal or c.SpreadTickDamage, Stun = fin and 0.5 or 0.2, Knockback = fin and 15 or 0, Direction = vr.Position - from, Position = vr.Position, Source = "ValentineMenger" })
+									if fin then
+										S.fx("Ability", { Act = ACT, Move = "MengerSponge", Phase = "Burst", Position = vr.Position, Target = victim, Radius = 4 })
+									end
+								end
+							end)
+						end
+					end
 				end
 			end)
 		end
@@ -387,6 +467,7 @@ function Valentine.Ultimate(S, player, state, aim)
 		character:SetAttribute("LoveTrain", true)
 		S.Adapter.setMoveModifier(humanoid, "LoveTrain", u.SpeedMultiplier)
 		local lastRedirect = -math.huge
+		local redirects = 0
 		-- Misfortune can't reach him: it lands on the nearest enemy instead.
 		trains[character] = function(attackerPlayer, info)
 			-- (Misfortune already bounced once is just cancelled: no ping-pong
@@ -395,10 +476,13 @@ function Valentine.Ultimate(S, player, state, aim)
 				return
 			end
 			lastRedirect = now()
-			local _, _, r = alive(S, player)
+			local _, hum, r = alive(S, player)
 			if not r then
 				return
 			end
+			-- Each hit it turns away heals him a little and feeds the final pulse.
+			redirects = redirects + 1
+			hum.Health = math.min(hum.MaxHealth, hum.Health + (u.RedirectHeal or 0))
 			local victim = nearest(S, character, r, u.RedirectRange)
 			local vr = victim and victim:FindFirstChild("HumanoidRootPart")
 			S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Redirect", From = r.Position, To = vr and vr.Position, Victim = victim })
@@ -420,8 +504,9 @@ function Valentine.Ultimate(S, player, state, aim)
 			end
 			local _, _, r = alive(S, player)
 			if r then
-				Moves.aoe(S, player, r.Position, u.PulseRadius, { Damage = u.PulseDamage, Stun = u.PulseStun, Knockback = u.PulseKnockback, Source = "ValentineLoveTrain" }, 8)
-				S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Pulse", Position = r.Position, Radius = u.PulseRadius })
+				local bonus = math.min(redirects * (u.PulsePerRedirect or 0), u.PulseBonusMax or 0)
+				Moves.aoe(S, player, r.Position, u.PulseRadius, { Damage = u.PulseDamage + bonus, Stun = u.PulseStun, Knockback = u.PulseKnockback, Source = "ValentineLoveTrain" }, 8)
+				S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Pulse", Position = r.Position, Radius = u.PulseRadius, Redirects = redirects })
 			end
 		end)
 	end)
@@ -429,6 +514,7 @@ end
 
 function Valentine.Cleanup(S, player, state)
 	state.HopReturn = nil
+	state.CloneCtl = nil
 	local character = state.Character
 	if character then
 		character:SetAttribute("Armored", nil)

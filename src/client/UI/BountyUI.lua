@@ -206,6 +206,10 @@ end
 -- Board
 ---------------------------------------------------------------------------
 local lastList = {}
+local lastJobs, lastShop, jobsUntil = {}, {}, 0
+local placeAmount = 100
+local placeButton -- "PUT $100 ON THEIR HEAD" on a player's contract
+local jobsTimer -- "NEW JOBS IN m:ss"
 local filter = "ALL"
 local tabs = {}
 local cashLabel, huntingLabel, countLabel
@@ -297,6 +301,13 @@ local function showConfirm(entry)
 		or (entry.Corpse and ("Carrying the Saint's Corpse: " .. entry.Corpse .. ". Take them down and the parts drop."))
 		or (minutes .. " minutes to find them. Land the final hit to claim the reward.")
 	body:FindFirstChild("Stamp").Visible = false
+	if placeButton then
+		placeButton.Visible = entry.Kind == "Player"
+		placeButton:FindFirstChild("Top").Text = "+$" .. placeAmount
+	end
+	if entry.Placed then
+		body:FindFirstChild("Note").Text = "Includes a $" .. entry.Placed .. " price on their head. " .. body:FindFirstChild("Note").Text
+	end
 	confirmEntry = entry
 	local scale = confirm:FindFirstChildOfClass("UIScale")
 	scale.Scale = 0.6
@@ -352,6 +363,11 @@ local function makePoster(entry, index)
 		corner(tagC, 4)
 		label(tagC, { Size = UDim2.fromScale(1, 1), Text = "SAINT'S CORPSE", Font = Enum.Font.GothamBlack, TextColor3 = INK, TextScaled = true, ZIndex = 4 })
 	end
+	if entry.Placed then
+		local priceTag = new("Frame", { AnchorPoint = Vector2.new(0, 0), Position = UDim2.new(0, -8, 0, -8), Size = UDim2.fromOffset(62, 22), BackgroundColor3 = GOLD, Rotation = -10, ZIndex = 3 }, paper)
+		corner(priceTag, 6)
+		label(priceTag, { Size = UDim2.fromScale(1, 1), Text = "+$" .. entry.Placed, Font = Enum.Font.Bangers, TextColor3 = INK, ZIndex = 3 })
+	end
 	if (entry.Streak or 0) > 0 then
 		local badge = new("Frame", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 6, 0, -6), Size = UDim2.fromOffset(46, 22), BackgroundColor3 = INK, Rotation = 8, ZIndex = 3 }, paper)
 		corner(badge, 6)
@@ -397,11 +413,110 @@ local function makePoster(entry, index)
 	end)
 end
 
+---------------------------------------------------------------------------
+-- JOBS and SHOP (drawn in the same space as the posters)
+---------------------------------------------------------------------------
+local function paperCard(parent, pos, size, tilt)
+	local card = new("Frame", { Position = pos, Size = size, BackgroundColor3 = PAPER, Rotation = tilt or 0 }, parent)
+	corner(card, 4)
+	new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, PAPER_DARK), ColorSequenceKeypoint.new(0.4, PAPER), ColorSequenceKeypoint.new(1, PAPER_DARK) }), Rotation = 80 }, card)
+	new("UIStroke", { Color = BURNT, Thickness = 2, Transparency = 0.25 }, card)
+	local pin = new("Frame", { BackgroundColor3 = RED, Size = UDim2.fromOffset(12, 12), Position = UDim2.new(0, 10, 0, -4), ZIndex = 3 }, card)
+	corner(pin, 99)
+	return card
+end
+
+local function showJobs()
+	local y = 16
+	for i, job in ipairs(lastJobs) do
+		local card = paperCard(grid, UDim2.fromOffset(14, y), UDim2.new(1, -40, 0, 92), ((i * 37) % 5 - 2) * 0.4)
+		label(card, { Position = UDim2.fromOffset(16, 8), Size = UDim2.fromOffset(60, 20), Text = "JOB", Font = Enum.Font.Bangers, TextColor3 = RED, TextXAlignment = Enum.TextXAlignment.Left })
+		local text = label(card, { Position = UDim2.fromOffset(16, 28), Size = UDim2.new(1, -170, 0, 24), Text = string.upper(job.Text), TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
+		new("UITextSizeConstraint", { MaxTextSize = 18, MinTextSize = 9 }, text)
+		-- Progress bar.
+		local bar = new("Frame", { Position = UDim2.fromOffset(16, 60), Size = UDim2.new(1, -170, 0, 16), BackgroundColor3 = PAPER_DARK }, card)
+		corner(bar, 6)
+		new("UIStroke", { Color = INK, Thickness = 1, Transparency = 0.4 }, bar)
+		local k = math.clamp((job.Progress or 0) / math.max(job.Goal or 1, 1), 0, 1)
+		local fill = new("Frame", { Size = UDim2.fromScale(k, 1), BackgroundColor3 = job.Done and GREEN or GOLD }, bar)
+		corner(fill, 6)
+		label(bar, { Size = UDim2.fromScale(1, 1), Text = (job.Progress or 0) .. " / " .. (job.Goal or 1), Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = INK })
+		local ribbon = new("Frame", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -16, 0.5, 0), Size = UDim2.fromOffset(120, 44), BackgroundColor3 = job.Done and GREEN or RED }, card)
+		corner(ribbon, 6)
+		label(ribbon, { Size = UDim2.fromScale(1, 1), Text = job.Done and "PAID" or ("$" .. (job.Reward or 0)), Font = Enum.Font.Bangers, TextColor3 = PAPER })
+		if job.Done then
+			local stamp = label(card, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.42, 0.5), Size = UDim2.fromOffset(160, 50), Rotation = -12, Text = "DONE", Font = Enum.Font.Bangers, TextColor3 = GREEN, TextTransparency = 0.15, ZIndex = 3 })
+			new("UIStroke", { Color = GREEN, Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Transparency = 0.3 }, stamp)
+		end
+		y = y + 104
+	end
+	jobsTimer = new("Frame", { Position = UDim2.fromOffset(14, y), Size = UDim2.new(1, -40, 0, 28), BackgroundTransparency = 1 }, grid)
+	label(jobsTimer, { Name = "Text", Size = UDim2.fromScale(1, 1), Text = "", TextColor3 = PAPER, Font = Enum.Font.GothamBold })
+	label(jobsTimer, { Position = UDim2.fromOffset(0, 26), Size = UDim2.new(1, 0, 0, 18), Text = "Progress counts on its own. You're paid the moment a job's done.", TextColor3 = PAPER_DARK, Font = Enum.Font.GothamMedium })
+	grid.CanvasSize = UDim2.fromOffset(0, y + 60)
+	return #lastJobs
+end
+
+local function showShop()
+	local cash = 0
+	local ls = player:FindFirstChild("leaderstats")
+	local cv = ls and ls:FindFirstChild("Cash")
+	cash = cv and cv.Value or 0
+	for i, item in ipairs(lastShop) do
+		local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
+		local card = paperCard(grid, UDim2.fromOffset(14 + col * 316, 16 + row * 134), UDim2.fromOffset(300, 122), ((i * 53) % 5 - 2) * 0.5)
+		local badge = new("Frame", { Position = UDim2.fromOffset(12, 14), Size = UDim2.fromOffset(54, 54), BackgroundColor3 = item.Id == "ClearName" and INK or WOOD_DARK }, card)
+		corner(badge, 99)
+		new("UIStroke", { Color = GOLD, Thickness = 2 }, badge)
+		label(badge, { Size = UDim2.fromScale(1, 1), Text = item.Icon or "?", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextScaled = true })
+		local name = label(card, { Position = UDim2.fromOffset(76, 10), Size = UDim2.new(1, -86, 0, 22), Text = item.Name, Font = Enum.Font.Bangers, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
+		new("UITextSizeConstraint", { MaxTextSize = 20, MinTextSize = 10 }, name)
+		local desc = label(card, { Position = UDim2.fromOffset(76, 34), Size = UDim2.new(1, -86, 0, 36), Text = item.Text, Font = Enum.Font.GothamMedium, TextWrapped = true, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
+		new("UITextSizeConstraint", { MaxTextSize = 13, MinTextSize = 8 }, desc)
+		local clean = item.Clean
+		local price = item.Price or 0
+		local afford = cash >= price and not clean
+		local buy = new("TextButton", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -12, 1, -10), Size = UDim2.fromOffset(150, 36), BackgroundColor3 = afford and GREEN or Color3.fromRGB(130, 120, 110), Text = clean and "ALREADY CLEAN" or ("BUY  $" .. price), Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), AutoButtonColor = afford }, card)
+		corner(buy, 8)
+		new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, buy)
+		new("UIStroke", { Color = (afford and GREEN or INK):Lerp(Color3.new(0, 0, 0), 0.4), Thickness = 2 }, buy)
+		if item.Active then
+			local left = math.max(0, item.Active - workspace:GetServerTimeNow())
+			label(card, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, -12), Size = UDim2.fromOffset(120, 18), Text = string.format("ACTIVE %d:%02d", math.floor(left / 60), math.floor(left % 60)), Font = Enum.Font.GothamBlack, TextColor3 = GREEN, TextXAlignment = Enum.TextXAlignment.Left })
+		end
+		buy.Activated:Connect(function()
+			if clean then
+				return
+			end
+			local s = buy:FindFirstChildOfClass("UIScale") or new("UIScale", { Scale = 1 }, buy)
+			s.Scale = 0.9
+			TweenService:Create(s, FAST, { Scale = 1 }):Play()
+			Remote:FireServer("Buy", item.Id)
+		end)
+	end
+	grid.CanvasSize = UDim2.fromOffset(0, 30 + math.ceil(#lastShop / 2) * 134)
+	return #lastShop
+end
+
 local function fillGrid()
 	for _, c in ipairs(grid:GetChildren()) do
 		if c:IsA("Frame") then
 			c:Destroy()
 		end
+	end
+	jobsTimer = nil
+	if filter == "JOBS" or filter == "SHOP" then
+		local n = filter == "JOBS" and showJobs() or showShop()
+		local empty = grid:FindFirstChild("Empty")
+		empty.Visible = n == 0
+		empty.Text = filter == "JOBS" and "No jobs right now." or "The shop is closed."
+		for name, tab in pairs(tabs) do
+			local on = name == filter
+			tab.BackgroundColor3 = on and GOLD or WOOD_DARK
+			tab.TextColor3 = on and INK or PAPER
+		end
+		countLabel.Text = filter == "JOBS" and "PAID TASKS" or "SPEND YOUR CASH"
+		return
 	end
 	local shown = {}
 	for _, entry in ipairs(lastList) do
@@ -464,6 +579,8 @@ local function openBoard(data)
 	confirmLayer.Visible = false
 	current = data.Active or current
 	lastList = data.Bounties or {}
+	lastJobs, lastShop, jobsUntil = data.Jobs or {}, data.Shop or {}, data.JobsUntil or 0
+	placeAmount = data.PlaceAmount or placeAmount
 	cashLabel.Text = cashText()
 	huntingLabel.Text = current and ("HUNTING: " .. string.upper(current.Name)) or "NO ACTIVE BOUNTY"
 	fillGrid()
@@ -529,11 +646,12 @@ local function buildBoard()
 	-- Header strip: cash, tabs, current bounty.
 	local strip = new("Frame", { Position = UDim2.fromOffset(22, 78), Size = UDim2.new(1, -44, 0, 34), BackgroundColor3 = Color3.fromRGB(40, 26, 15), BackgroundTransparency = 0.25, ZIndex = 4 }, board)
 	corner(strip, 8)
-	local cashChip = new("Frame", { Position = UDim2.fromOffset(6, 4), Size = UDim2.fromOffset(110, 26), BackgroundColor3 = GOLD, ZIndex = 4 }, strip)
+	local cashChip = new("Frame", { Position = UDim2.fromOffset(6, 4), Size = UDim2.fromOffset(86, 26), BackgroundColor3 = GOLD, ZIndex = 4 }, strip)
 	corner(cashChip, 6)
 	cashLabel = label(cashChip, { Size = UDim2.fromScale(1, 1), Text = "$0", Font = Enum.Font.Bangers, ZIndex = 4 })
-	for i, name in ipairs({ "ALL", "PLAYERS", "NPCS", "CORPSE" }) do
-		local tab = new("TextButton", { Position = UDim2.fromOffset(124 + (i - 1) * 78, 4), Size = UDim2.fromOffset(72, 26), BackgroundColor3 = WOOD_DARK, Text = name, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = PAPER, ZIndex = 4 }, strip)
+	for i, name in ipairs({ "ALL", "PLAYERS", "NPCS", "CORPSE", "JOBS", "SHOP" }) do
+		local x = 98 + (i - 1) * 60 + (i >= 5 and 8 or 0) -- a little gap before JOBS / SHOP
+		local tab = new("TextButton", { Position = UDim2.fromOffset(x, 4), Size = UDim2.fromOffset(56, 26), BackgroundColor3 = WOOD_DARK, Text = name, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = PAPER, ZIndex = 4 }, strip)
 		corner(tab, 6)
 		new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, tab)
 		tab.Activated:Connect(function()
@@ -542,8 +660,8 @@ local function buildBoard()
 		end)
 		tabs[name] = tab
 	end
-	huntingLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 2), Size = UDim2.fromOffset(200, 16), Text = "", TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
-	countLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 18), Size = UDim2.fromOffset(200, 12), Text = "", Font = Enum.Font.GothamBold, TextColor3 = PAPER_DARK, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+	huntingLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 2), Size = UDim2.fromOffset(170, 16), Text = "", TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+	countLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 18), Size = UDim2.fromOffset(170, 12), Text = "", Font = Enum.Font.GothamBold, TextColor3 = PAPER_DARK, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
 	grid = new("ScrollingFrame", { Name = "Grid", BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(22, 118), Size = UDim2.new(1, -44, 1, -136), ScrollBarThickness = 6, ScrollBarImageColor3 = PAPER_DARK, CanvasSize = UDim2.new(), ZIndex = 4 }, board)
 	label(grid, { Name = "Empty", Position = UDim2.fromScale(0.08, 0.32), Size = UDim2.fromScale(0.84, 0.14), Text = "", TextColor3 = PAPER, Visible = false, ZIndex = 4 })
 
@@ -604,6 +722,18 @@ local function buildBoard()
 		end)
 		return b
 	end
+	-- PUT A PRICE ON THEIR HEAD (players only).
+	placeButton = new("TextButton", { Name = "Place", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 66), Size = UDim2.fromOffset(96, 58), BackgroundColor3 = GOLD, Text = "", AutoButtonColor = true, Visible = false, ZIndex = 3 }, body)
+	corner(placeButton, 8)
+	new("UIStroke", { Color = WOOD_DARK, Thickness = 2 }, placeButton)
+	label(placeButton, { Name = "Top", Position = UDim2.fromOffset(4, 4), Size = UDim2.new(1, -8, 0, 22), Text = "+$100", Font = Enum.Font.Bangers, TextScaled = true, ZIndex = 3 })
+	label(placeButton, { Position = UDim2.fromOffset(4, 28), Size = UDim2.new(1, -8, 0, 24), Text = "PUT A PRICE ON THEIR HEAD", Font = Enum.Font.GothamBlack, TextScaled = true, TextWrapped = true, ZIndex = 3 })
+	placeButton.Activated:Connect(function()
+		if confirmEntry and confirmEntry.Kind == "Player" then
+			Remote:FireServer("Place", confirmEntry.Key)
+			confirmLayer.Visible = false
+		end
+	end)
 	local accepting = false
 	button("ACCEPT", GREEN, 0.06).Activated:Connect(function()
 		if accepting or not confirmEntry then
@@ -719,6 +849,13 @@ local function showBanner(text, color)
 end
 
 function BountyUI.step()
+	if jobsTimer and jobsTimer.Parent then
+		local left = math.max(0, jobsUntil - workspace:GetServerTimeNow())
+		jobsTimer:FindFirstChild("Text").Text = string.format("NEW JOBS IN %d:%02d", math.floor(left / 60), math.floor(left % 60))
+	end
+	if cashLabel and dim and dim.Visible then
+		cashLabel.Text = cashText()
+	end
 	if not current or not tracker then
 		return
 	end
@@ -752,9 +889,28 @@ function BountyUI.init()
 		elseif kind == "Active" then
 			showActive(data)
 			showBanner("BOUNTY ACCEPTED: " .. string.upper(data.Name or ""), PAPER)
+		elseif kind == "Complete" and data.Price then
+			showBanner("PRICE ON THEIR HEAD!  +$" .. tostring(data.Reward), GOLD)
 		elseif kind == "Complete" then
 			clearActive()
 			showBanner("BOUNTY CLAIMED!  +$" .. tostring(data.Reward), GOLD)
+		elseif kind == "Refresh" then
+			lastList = data.Bounties or lastList
+			lastJobs, lastShop, jobsUntil = data.Jobs or lastJobs, data.Shop or lastShop, data.JobsUntil or jobsUntil
+			cashLabel.Text = cashText()
+			if dim.Visible then
+				fillGrid()
+			end
+		elseif kind == "JobDone" then
+			showBanner("JOB DONE!  +$" .. tostring(data.Reward), GREEN:Lerp(Color3.new(1, 1, 1), 0.4))
+		elseif kind == "Bought" then
+			showBanner("BOUGHT: " .. tostring(data.Name), GOLD)
+		elseif kind == "Placed" then
+			showBanner("$" .. tostring(data.Total) .. " ON " .. string.upper(tostring(data.Name)) .. "'S HEAD", GOLD)
+		elseif kind == "Warned" then
+			showBanner(string.upper(tostring(data.By)) .. " PUT A PRICE ON YOUR HEAD!  ($" .. tostring(data.Total) .. ")", Color3.fromRGB(255, 140, 120))
+		elseif kind == "Denied" then
+			showBanner(string.upper(tostring(data.Reason or "CAN'T DO THAT")), Color3.fromRGB(255, 160, 140))
 		elseif kind == "Lost" then
 			clearActive()
 			showBanner(data.Reason or "BOUNTY LOST", Color3.fromRGB(255, 140, 120))

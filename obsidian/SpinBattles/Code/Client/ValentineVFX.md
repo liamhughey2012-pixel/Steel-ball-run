@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
 | **Exact name** | `ValentineVFX` (capitals matter) |
 
-**What it does:** Client visuals for Funny Valentine / D4C. Blocky. the D4C Stand (D4CStand) floats behind him with a pale-blue aura and strikes with his moves DIMENSION HOP: a striped flag sweeps round him and he's gone; where he steps out, a flag unfurls and falls away; a flag on a pole stays planted where he left from while he can hop back to it PARALLEL VALENTINE: a shimmering Valentine from another world (pink coat, blond ringlets) steps out of a flag, chases the nearest enemy and punches, then leaves; when they SWAP, flags flash at both spots MENGER SPONGE: the target's other-world double stands where it appeared, flickering; near it their body crumbles into little cubes (Menger sponges orbit them), then bursts; get away and the double shatters D4C LOVE TRAIN: a column of light falls on him and a shell of light surrounds him; every hit on him bounces off as a bolt of light into someone else; it ends with a ring of light
+**What it does:** Client visuals for Funny Valentine / D4C. Blocky. the D4C Stand (D4CStand) floats behind him with a pale-blue aura and strikes with his moves DIMENSION HOP: a striped flag sweeps round him and he's gone; where he steps out, a flag unfurls and falls away; a flag on a pole stays planted where he left from while he can hop back to it PARALLEL VALENTINE: a shimmering Valentine from another world (pink coat, blond ringlets) steps out of a flag, chases the nearest enemy and punches, then leaves; when they SWAP or TRADE places, flags flash at both spots flags: the 4th M1 hit wraps them in one; D4C's second chop after a hop; hopping back slams the left flag shut with a ring of light the Menger cubes fly on to the next enemy and crumble them too MENGER SPONGE: the target's other-world double stands where it appeared, flickering; near it their body crumbles into little cubes (Menger sponges orbit them), then bursts; get away and the double shatters D4C LOVE TRAIN: a column of light falls on him and a shell of light surrounds him; every hit on him bounces off as a bolt of light into someone else; it ends with a ring of light
 
 ## How to add it
 1. In Studio's Explorer, find **TuskActVFX** (StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX).
@@ -35,7 +35,11 @@ Back to [[Where To Put Code]]
 	    planted where he left from while he can hop back to it
 	  * PARALLEL VALENTINE: a shimmering Valentine from another world (pink
 	    coat, blond ringlets) steps out of a flag, chases the nearest enemy
-	    and punches, then leaves; when they SWAP, flags flash at both spots
+	    and punches, then leaves; when they SWAP or TRADE places, flags
+	    flash at both spots
+	  * flags: the 4th M1 hit wraps them in one; D4C's second chop after a
+	    hop; hopping back slams the left flag shut with a ring of light
+	  * the Menger cubes fly on to the next enemy and crumble them too
 	  * MENGER SPONGE: the target's other-world double stands where it
 	    appeared, flickering; near it their body crumbles into little cubes
 	    (Menger sponges orbit them), then bursts; get away and the double
@@ -212,10 +216,6 @@ local function onM1(data)
 	Common.swipe(root, index % 2 == 1 and 1 or -1, index % 2 == 1 and pal.Main or pal.Second)
 end
 
-local function onFinisher(data)
-	Common.finisher(data, pal)
-end
-
 -- The flag sweeps round him and he slips away.
 local function flagWrap(position)
 	local flag = buildFlag(6, 4)
@@ -241,6 +241,14 @@ local function flagUnfurl(position)
 		flag.Model:Destroy()
 	end)
 	flash(position + Vector3.new(0, 1, 0), 3.5)
+end
+
+local function onFinisher(data)
+	Common.finisher(data, pal)
+	-- The 4th hit wraps them in a flag.
+	if data.Position then
+		flagWrap(data.Position)
+	end
 end
 
 local function cloneStep(dt)
@@ -271,7 +279,7 @@ local function cloneStep(dt)
 end
 
 -- The target's other-world double flickers beside them; their body crumbles into cubes.
-local function startCrumble(target, duration, doublePos, leash)
+local function startCrumble(target, duration, doublePos, leash, noDouble)
 	local tr = Common.rootOf(target)
 	if not tr then
 		return
@@ -286,11 +294,13 @@ local function startCrumble(target, duration, doublePos, leash)
 	local torso = target:FindFirstChild("UpperTorso") or target:FindFirstChild("Torso")
 	local color = torso and torso.Color or Color3.fromRGB(150, 150, 160)
 	local dm = newModel("OtherWorldDouble")
-	box(dm, Vector3.new(2, 2, 1), CFrame.new(0, 0, 0), color, Enum.Material.Glass, 0.4)
-	box(dm, Vector3.new(1.2, 1.2, 1.2), CFrame.new(0, 1.6, 0), color:Lerp(WHITE, 0.4), Enum.Material.Glass, 0.4)
-	for _, side in ipairs({ -1, 1 }) do
-		box(dm, Vector3.new(1, 2, 1), CFrame.new(side * 1.5, 0, 0), color, Enum.Material.Glass, 0.4)
-		box(dm, Vector3.new(1, 2, 1), CFrame.new(side * 0.5, -2, 0), color:Lerp(Color3.new(0, 0, 0), 0.3), Enum.Material.Glass, 0.4)
+	if not noDouble then
+		box(dm, Vector3.new(2, 2, 1), CFrame.new(0, 0, 0), color, Enum.Material.Glass, 0.4)
+		box(dm, Vector3.new(1.2, 1.2, 1.2), CFrame.new(0, 1.6, 0), color:Lerp(WHITE, 0.4), Enum.Material.Glass, 0.4)
+		for _, side in ipairs({ -1, 1 }) do
+			box(dm, Vector3.new(1, 2, 1), CFrame.new(side * 1.5, 0, 0), color, Enum.Material.Glass, 0.4)
+			box(dm, Vector3.new(1, 2, 1), CFrame.new(side * 0.5, -2, 0), color:Lerp(Color3.new(0, 0, 0), 0.3), Enum.Material.Glass, 0.4)
+		end
 	end
 	local sponges = {}
 	for i = 1, 4 do
@@ -397,6 +407,24 @@ local function onAbility(data)
 			plantAnchor(character, data.Position, data.Duration)
 		elseif phase == "AnchorGone" and character then
 			removeAnchor(character)
+		elseif phase == "Chop" and data.Position then
+			-- D4C's second chop.
+			TuskStand.action(character, "Lunge", { Target = CFrame.new(-0.8, 1.2, -3.2), Duration = 0.22 })
+			TuskVFX.CreateImpactStar(data.Position, { Size = 3, Rays = 7, Color = pal.Main, Color2 = WHITE, Duration = 0.12 })
+		elseif phase == "FlagSlam" and data.Position then
+			-- Hopping back: the flag slams shut, a ring of light where it stood.
+			flagWrap(data.Position)
+			flash(data.Position + Vector3.new(0, 1, 0), 5)
+			local ring = VFXLib.part({ Size = Vector3.new(0.3, 1, 1), Color = LIGHT, Material = Enum.Material.Neon, Transparency = 0.2, Shape = Enum.PartType.Cylinder })
+			VFXLib.animate(0.35, function(a)
+				local d = (data.Radius or 7) * 2 * a
+				ring.Size = Vector3.new(0.3, d, d)
+				ring.CFrame = CFrame.new(data.Position - Vector3.new(0, 2.5, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+				ring.Transparency = 0.2 + 0.8 * a
+			end, function()
+				ring:Destroy()
+			end)
+			CameraFX.shakeAt(data.Position, 0.4, 40)
 		elseif phase == "Unwrap" then
 			flagUnfurl(data.Position)
 			TuskStand.action(character, "Lunge", { Duration = 0.35 })
@@ -424,6 +452,19 @@ local function onAbility(data)
 			end
 			if data.Position then
 				TuskVFX.CreateImpactStar(data.Position, { Size = 2.6, Rays = 6, Color = pal.Main, Color2 = WHITE, Duration = 0.12 })
+			end
+		elseif phase == "Trade" then
+			-- Pressed 2 again: he and his other self trade places in a flash of flags.
+			local c = clones[data.Id]
+			if c and data.From then
+				c.Pos = data.From
+			end
+			flagWrap(data.From)
+			flagWrap(data.To)
+			flagUnfurl(data.To)
+			flash(data.To + Vector3.new(0, 1, 0), 4)
+			if character and Common.isLocal(character) then
+				CameraFX.fovPunch(5, 0.2)
 			end
 		elseif phase == "Swap" then
 			-- They trade places: flags at both spots, and the other one is gone.
@@ -461,6 +502,22 @@ local function onAbility(data)
 				end
 				c.Double.Model:Destroy()
 				VFXLib.burst(at, { Count = 24, Color = CUBE, Speed = 16, Lifetime = 0.45 })
+			end
+		elseif phase == "Spread" and data.Target and data.From then
+			-- The cubes fly over to the next enemy and start crumbling them.
+			local tr = Common.rootOf(data.Target)
+			if tr then
+				for k = 1, 10 do
+					local cube = VFXLib.part({ Size = Vector3.new(0.4, 0.4, 0.4), Color = CUBE, Material = Enum.Material.SmoothPlastic })
+					local from = data.From + Vector3.new((math.random() - 0.5) * 2, math.random() * 2, (math.random() - 0.5) * 2)
+					VFXLib.animate(0.35 + k * 0.02, function(a)
+						local to = tr.Parent and tr.Position or from
+						cube.CFrame = CFrame.new(from:Lerp(to, a) + Vector3.new(0, math.sin(a * math.pi) * 3, 0)) * CFrame.Angles(a * 6, a * 4, 0)
+					end, function()
+						cube:Destroy()
+					end)
+				end
+				startCrumble(data.Target, data.Duration or 1.6, tr.Position, 1000, true)
 			end
 		elseif phase == "Burst" and data.Position then
 			VFXLib.burst(data.Position, { Count = 30, Color = CUBE, Speed = 22, Lifetime = 0.5 })

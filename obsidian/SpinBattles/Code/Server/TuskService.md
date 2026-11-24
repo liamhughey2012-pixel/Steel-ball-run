@@ -67,6 +67,7 @@ TuskService.Adapter = Adapter
 TuskService.Projectiles = Projectiles
 
 local states = {} -- [player] = state
+TuskService.States = states -- (read-only use: who owns a character, e.g. NPC perfect dodges)
 local rate = {}
 local actModules = {}
 local Defense -- DefenseService (block / dash), loaded in init
@@ -173,6 +174,10 @@ function TuskService.addUlt(player, amount)
 	-- Saint's Corpse (Ears): the ultimate charges faster.
 	local character = player.Character
 	amount = amount * (character and character:GetAttribute("CorpseUltGain") or 1)
+	-- Bounty board shop (Lucky Horseshoe).
+	if character and (character:GetAttribute("ShopUltUntil") or 0) > workspace:GetServerTimeNow() then
+		amount = amount * (character:GetAttribute("ShopUltGain") or 1)
+	end
 	local current = player:GetAttribute("TuskUlt") or 0
 	player:SetAttribute("TuskUlt", math.clamp(current + amount, 0, max))
 end

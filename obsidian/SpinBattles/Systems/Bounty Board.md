@@ -41,3 +41,28 @@ Server: `BountyService` (built into Spin_Server). Client: `UI/BountyUI` (built i
 
 ## Corpse contracts mixed in (2026-11-24)
 - In the **ALL** tab, RETRIEVE contracts are **spread evenly among the other bounties** (players and NPCs stay sorted by reward) instead of sitting together. The **CORPSE** tab still groups them all. (BountyUI `fillGrid`)
+
+## More uses (2026-11-24)
+The tabs are now ALL · PLAYERS · NPCS · CORPSE · **JOBS** · **SHOP**.
+- **JOBS:** 3 paid tasks, the same for everyone, with new ones every 10 minutes (the board shows a countdown). Progress counts automatically and you're paid the moment one's done (a JOB DONE banner). The task types are:
+  - take down NPCs;
+  - defeat players;
+  - deal damage;
+  - perfect blocks;
+  - perfect dodges;
+  - claim bounties;
+  - take a corpse part.
+  
+  NPCs don't earn job progress. Settings: `TuskConfig.Bounty.Jobs`.
+- **SHOP:**
+  - Bandages ($60): heal 40;
+  - Snake-Oil Tonic ($90): +15% speed for 2 minutes;
+  - Lucky Horseshoe ($120): +25% ultimate charge for 2 minutes;
+  - Corpse Compass ($100): a gold arrow points to the nearest corpse part, with the distance, for 60 s;
+  - **Clear Your Name:** $50 + $50 per kill in your streak + any price on your head. It wipes both.
+  
+  Settings: `TuskConfig.Bounty.Shop`.
+- **Put a price on their head:** a player's contract card has a gold **+$100** button. It raises their bounty (up to $2000), and they're warned who did it.
+  - Whoever takes them down next is paid it. That's included in the reward if they had a contract on that player, or paid on its own if not.
+  - It's gone when they die.
+  - Posters show a gold +$X tag.

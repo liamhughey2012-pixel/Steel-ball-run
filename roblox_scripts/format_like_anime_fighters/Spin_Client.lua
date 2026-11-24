@@ -1367,6 +1367,10 @@ end
 -- Board
 ---------------------------------------------------------------------------
 local lastList = {}
+local lastJobs, lastShop, jobsUntil = {}, {}, 0
+local placeAmount = 100
+local placeButton -- "PUT $100 ON THEIR HEAD" on a player's contract
+local jobsTimer -- "NEW JOBS IN m:ss"
 local filter = "ALL"
 local tabs = {}
 local cashLabel, huntingLabel, countLabel
@@ -1458,6 +1462,13 @@ local function showConfirm(entry)
 		or (entry.Corpse and ("Carrying the Saint's Corpse: " .. entry.Corpse .. ". Take them down and the parts drop."))
 		or (minutes .. " minutes to find them. Land the final hit to claim the reward.")
 	body:FindFirstChild("Stamp").Visible = false
+	if placeButton then
+		placeButton.Visible = entry.Kind == "Player"
+		placeButton:FindFirstChild("Top").Text = "+$" .. placeAmount
+	end
+	if entry.Placed then
+		body:FindFirstChild("Note").Text = "Includes a $" .. entry.Placed .. " price on their head. " .. body:FindFirstChild("Note").Text
+	end
 	confirmEntry = entry
 	local scale = confirm:FindFirstChildOfClass("UIScale")
 	scale.Scale = 0.6
@@ -1513,6 +1524,11 @@ local function makePoster(entry, index)
 		corner(tagC, 4)
 		label(tagC, { Size = UDim2.fromScale(1, 1), Text = "SAINT'S CORPSE", Font = Enum.Font.GothamBlack, TextColor3 = INK, TextScaled = true, ZIndex = 4 })
 	end
+	if entry.Placed then
+		local priceTag = new("Frame", { AnchorPoint = Vector2.new(0, 0), Position = UDim2.new(0, -8, 0, -8), Size = UDim2.fromOffset(62, 22), BackgroundColor3 = GOLD, Rotation = -10, ZIndex = 3 }, paper)
+		corner(priceTag, 6)
+		label(priceTag, { Size = UDim2.fromScale(1, 1), Text = "+$" .. entry.Placed, Font = Enum.Font.Bangers, TextColor3 = INK, ZIndex = 3 })
+	end
 	if (entry.Streak or 0) > 0 then
 		local badge = new("Frame", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 6, 0, -6), Size = UDim2.fromOffset(46, 22), BackgroundColor3 = INK, Rotation = 8, ZIndex = 3 }, paper)
 		corner(badge, 6)
@@ -1558,11 +1574,110 @@ local function makePoster(entry, index)
 	end)
 end
 
+---------------------------------------------------------------------------
+-- JOBS and SHOP (drawn in the same space as the posters)
+---------------------------------------------------------------------------
+local function paperCard(parent, pos, size, tilt)
+	local card = new("Frame", { Position = pos, Size = size, BackgroundColor3 = PAPER, Rotation = tilt or 0 }, parent)
+	corner(card, 4)
+	new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, PAPER_DARK), ColorSequenceKeypoint.new(0.4, PAPER), ColorSequenceKeypoint.new(1, PAPER_DARK) }), Rotation = 80 }, card)
+	new("UIStroke", { Color = BURNT, Thickness = 2, Transparency = 0.25 }, card)
+	local pin = new("Frame", { BackgroundColor3 = RED, Size = UDim2.fromOffset(12, 12), Position = UDim2.new(0, 10, 0, -4), ZIndex = 3 }, card)
+	corner(pin, 99)
+	return card
+end
+
+local function showJobs()
+	local y = 16
+	for i, job in ipairs(lastJobs) do
+		local card = paperCard(grid, UDim2.fromOffset(14, y), UDim2.new(1, -40, 0, 92), ((i * 37) % 5 - 2) * 0.4)
+		label(card, { Position = UDim2.fromOffset(16, 8), Size = UDim2.fromOffset(60, 20), Text = "JOB", Font = Enum.Font.Bangers, TextColor3 = RED, TextXAlignment = Enum.TextXAlignment.Left })
+		local text = label(card, { Position = UDim2.fromOffset(16, 28), Size = UDim2.new(1, -170, 0, 24), Text = string.upper(job.Text), TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
+		new("UITextSizeConstraint", { MaxTextSize = 18, MinTextSize = 9 }, text)
+		-- Progress bar.
+		local bar = new("Frame", { Position = UDim2.fromOffset(16, 60), Size = UDim2.new(1, -170, 0, 16), BackgroundColor3 = PAPER_DARK }, card)
+		corner(bar, 6)
+		new("UIStroke", { Color = INK, Thickness = 1, Transparency = 0.4 }, bar)
+		local k = math.clamp((job.Progress or 0) / math.max(job.Goal or 1, 1), 0, 1)
+		local fill = new("Frame", { Size = UDim2.fromScale(k, 1), BackgroundColor3 = job.Done and GREEN or GOLD }, bar)
+		corner(fill, 6)
+		label(bar, { Size = UDim2.fromScale(1, 1), Text = (job.Progress or 0) .. " / " .. (job.Goal or 1), Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = INK })
+		local ribbon = new("Frame", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -16, 0.5, 0), Size = UDim2.fromOffset(120, 44), BackgroundColor3 = job.Done and GREEN or RED }, card)
+		corner(ribbon, 6)
+		label(ribbon, { Size = UDim2.fromScale(1, 1), Text = job.Done and "PAID" or ("$" .. (job.Reward or 0)), Font = Enum.Font.Bangers, TextColor3 = PAPER })
+		if job.Done then
+			local stamp = label(card, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.42, 0.5), Size = UDim2.fromOffset(160, 50), Rotation = -12, Text = "DONE", Font = Enum.Font.Bangers, TextColor3 = GREEN, TextTransparency = 0.15, ZIndex = 3 })
+			new("UIStroke", { Color = GREEN, Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Transparency = 0.3 }, stamp)
+		end
+		y = y + 104
+	end
+	jobsTimer = new("Frame", { Position = UDim2.fromOffset(14, y), Size = UDim2.new(1, -40, 0, 28), BackgroundTransparency = 1 }, grid)
+	label(jobsTimer, { Name = "Text", Size = UDim2.fromScale(1, 1), Text = "", TextColor3 = PAPER, Font = Enum.Font.GothamBold })
+	label(jobsTimer, { Position = UDim2.fromOffset(0, 26), Size = UDim2.new(1, 0, 0, 18), Text = "Progress counts on its own. You're paid the moment a job's done.", TextColor3 = PAPER_DARK, Font = Enum.Font.GothamMedium })
+	grid.CanvasSize = UDim2.fromOffset(0, y + 60)
+	return #lastJobs
+end
+
+local function showShop()
+	local cash = 0
+	local ls = player:FindFirstChild("leaderstats")
+	local cv = ls and ls:FindFirstChild("Cash")
+	cash = cv and cv.Value or 0
+	for i, item in ipairs(lastShop) do
+		local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
+		local card = paperCard(grid, UDim2.fromOffset(14 + col * 316, 16 + row * 134), UDim2.fromOffset(300, 122), ((i * 53) % 5 - 2) * 0.5)
+		local badge = new("Frame", { Position = UDim2.fromOffset(12, 14), Size = UDim2.fromOffset(54, 54), BackgroundColor3 = item.Id == "ClearName" and INK or WOOD_DARK }, card)
+		corner(badge, 99)
+		new("UIStroke", { Color = GOLD, Thickness = 2 }, badge)
+		label(badge, { Size = UDim2.fromScale(1, 1), Text = item.Icon or "?", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextScaled = true })
+		local name = label(card, { Position = UDim2.fromOffset(76, 10), Size = UDim2.new(1, -86, 0, 22), Text = item.Name, Font = Enum.Font.Bangers, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
+		new("UITextSizeConstraint", { MaxTextSize = 20, MinTextSize = 10 }, name)
+		local desc = label(card, { Position = UDim2.fromOffset(76, 34), Size = UDim2.new(1, -86, 0, 36), Text = item.Text, Font = Enum.Font.GothamMedium, TextWrapped = true, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
+		new("UITextSizeConstraint", { MaxTextSize = 13, MinTextSize = 8 }, desc)
+		local clean = item.Clean
+		local price = item.Price or 0
+		local afford = cash >= price and not clean
+		local buy = new("TextButton", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -12, 1, -10), Size = UDim2.fromOffset(150, 36), BackgroundColor3 = afford and GREEN or Color3.fromRGB(130, 120, 110), Text = clean and "ALREADY CLEAN" or ("BUY  $" .. price), Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), AutoButtonColor = afford }, card)
+		corner(buy, 8)
+		new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, buy)
+		new("UIStroke", { Color = (afford and GREEN or INK):Lerp(Color3.new(0, 0, 0), 0.4), Thickness = 2 }, buy)
+		if item.Active then
+			local left = math.max(0, item.Active - workspace:GetServerTimeNow())
+			label(card, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, -12), Size = UDim2.fromOffset(120, 18), Text = string.format("ACTIVE %d:%02d", math.floor(left / 60), math.floor(left % 60)), Font = Enum.Font.GothamBlack, TextColor3 = GREEN, TextXAlignment = Enum.TextXAlignment.Left })
+		end
+		buy.Activated:Connect(function()
+			if clean then
+				return
+			end
+			local s = buy:FindFirstChildOfClass("UIScale") or new("UIScale", { Scale = 1 }, buy)
+			s.Scale = 0.9
+			TweenService:Create(s, FAST, { Scale = 1 }):Play()
+			Remote:FireServer("Buy", item.Id)
+		end)
+	end
+	grid.CanvasSize = UDim2.fromOffset(0, 30 + math.ceil(#lastShop / 2) * 134)
+	return #lastShop
+end
+
 local function fillGrid()
 	for _, c in ipairs(grid:GetChildren()) do
 		if c:IsA("Frame") then
 			c:Destroy()
 		end
+	end
+	jobsTimer = nil
+	if filter == "JOBS" or filter == "SHOP" then
+		local n = filter == "JOBS" and showJobs() or showShop()
+		local empty = grid:FindFirstChild("Empty")
+		empty.Visible = n == 0
+		empty.Text = filter == "JOBS" and "No jobs right now." or "The shop is closed."
+		for name, tab in pairs(tabs) do
+			local on = name == filter
+			tab.BackgroundColor3 = on and GOLD or WOOD_DARK
+			tab.TextColor3 = on and INK or PAPER
+		end
+		countLabel.Text = filter == "JOBS" and "PAID TASKS" or "SPEND YOUR CASH"
+		return
 	end
 	local shown = {}
 	for _, entry in ipairs(lastList) do
@@ -1625,6 +1740,8 @@ local function openBoard(data)
 	confirmLayer.Visible = false
 	current = data.Active or current
 	lastList = data.Bounties or {}
+	lastJobs, lastShop, jobsUntil = data.Jobs or {}, data.Shop or {}, data.JobsUntil or 0
+	placeAmount = data.PlaceAmount or placeAmount
 	cashLabel.Text = cashText()
 	huntingLabel.Text = current and ("HUNTING: " .. string.upper(current.Name)) or "NO ACTIVE BOUNTY"
 	fillGrid()
@@ -1690,11 +1807,12 @@ local function buildBoard()
 	-- Header strip: cash, tabs, current bounty.
 	local strip = new("Frame", { Position = UDim2.fromOffset(22, 78), Size = UDim2.new(1, -44, 0, 34), BackgroundColor3 = Color3.fromRGB(40, 26, 15), BackgroundTransparency = 0.25, ZIndex = 4 }, board)
 	corner(strip, 8)
-	local cashChip = new("Frame", { Position = UDim2.fromOffset(6, 4), Size = UDim2.fromOffset(110, 26), BackgroundColor3 = GOLD, ZIndex = 4 }, strip)
+	local cashChip = new("Frame", { Position = UDim2.fromOffset(6, 4), Size = UDim2.fromOffset(86, 26), BackgroundColor3 = GOLD, ZIndex = 4 }, strip)
 	corner(cashChip, 6)
 	cashLabel = label(cashChip, { Size = UDim2.fromScale(1, 1), Text = "$0", Font = Enum.Font.Bangers, ZIndex = 4 })
-	for i, name in ipairs({ "ALL", "PLAYERS", "NPCS", "CORPSE" }) do
-		local tab = new("TextButton", { Position = UDim2.fromOffset(124 + (i - 1) * 78, 4), Size = UDim2.fromOffset(72, 26), BackgroundColor3 = WOOD_DARK, Text = name, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = PAPER, ZIndex = 4 }, strip)
+	for i, name in ipairs({ "ALL", "PLAYERS", "NPCS", "CORPSE", "JOBS", "SHOP" }) do
+		local x = 98 + (i - 1) * 60 + (i >= 5 and 8 or 0) -- a little gap before JOBS / SHOP
+		local tab = new("TextButton", { Position = UDim2.fromOffset(x, 4), Size = UDim2.fromOffset(56, 26), BackgroundColor3 = WOOD_DARK, Text = name, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = PAPER, ZIndex = 4 }, strip)
 		corner(tab, 6)
 		new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, tab)
 		tab.Activated:Connect(function()
@@ -1703,8 +1821,8 @@ local function buildBoard()
 		end)
 		tabs[name] = tab
 	end
-	huntingLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 2), Size = UDim2.fromOffset(200, 16), Text = "", TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
-	countLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 18), Size = UDim2.fromOffset(200, 12), Text = "", Font = Enum.Font.GothamBold, TextColor3 = PAPER_DARK, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+	huntingLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 2), Size = UDim2.fromOffset(170, 16), Text = "", TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+	countLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 18), Size = UDim2.fromOffset(170, 12), Text = "", Font = Enum.Font.GothamBold, TextColor3 = PAPER_DARK, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
 	grid = new("ScrollingFrame", { Name = "Grid", BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(22, 118), Size = UDim2.new(1, -44, 1, -136), ScrollBarThickness = 6, ScrollBarImageColor3 = PAPER_DARK, CanvasSize = UDim2.new(), ZIndex = 4 }, board)
 	label(grid, { Name = "Empty", Position = UDim2.fromScale(0.08, 0.32), Size = UDim2.fromScale(0.84, 0.14), Text = "", TextColor3 = PAPER, Visible = false, ZIndex = 4 })
 
@@ -1765,6 +1883,18 @@ local function buildBoard()
 		end)
 		return b
 	end
+	-- PUT A PRICE ON THEIR HEAD (players only).
+	placeButton = new("TextButton", { Name = "Place", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 66), Size = UDim2.fromOffset(96, 58), BackgroundColor3 = GOLD, Text = "", AutoButtonColor = true, Visible = false, ZIndex = 3 }, body)
+	corner(placeButton, 8)
+	new("UIStroke", { Color = WOOD_DARK, Thickness = 2 }, placeButton)
+	label(placeButton, { Name = "Top", Position = UDim2.fromOffset(4, 4), Size = UDim2.new(1, -8, 0, 22), Text = "+$100", Font = Enum.Font.Bangers, TextScaled = true, ZIndex = 3 })
+	label(placeButton, { Position = UDim2.fromOffset(4, 28), Size = UDim2.new(1, -8, 0, 24), Text = "PUT A PRICE ON THEIR HEAD", Font = Enum.Font.GothamBlack, TextScaled = true, TextWrapped = true, ZIndex = 3 })
+	placeButton.Activated:Connect(function()
+		if confirmEntry and confirmEntry.Kind == "Player" then
+			Remote:FireServer("Place", confirmEntry.Key)
+			confirmLayer.Visible = false
+		end
+	end)
 	local accepting = false
 	button("ACCEPT", GREEN, 0.06).Activated:Connect(function()
 		if accepting or not confirmEntry then
@@ -1880,6 +2010,13 @@ local function showBanner(text, color)
 end
 
 function BountyUI.step()
+	if jobsTimer and jobsTimer.Parent then
+		local left = math.max(0, jobsUntil - workspace:GetServerTimeNow())
+		jobsTimer:FindFirstChild("Text").Text = string.format("NEW JOBS IN %d:%02d", math.floor(left / 60), math.floor(left % 60))
+	end
+	if cashLabel and dim and dim.Visible then
+		cashLabel.Text = cashText()
+	end
 	if not current or not tracker then
 		return
 	end
@@ -1913,9 +2050,28 @@ function BountyUI.init()
 		elseif kind == "Active" then
 			showActive(data)
 			showBanner("BOUNTY ACCEPTED: " .. string.upper(data.Name or ""), PAPER)
+		elseif kind == "Complete" and data.Price then
+			showBanner("PRICE ON THEIR HEAD!  +$" .. tostring(data.Reward), GOLD)
 		elseif kind == "Complete" then
 			clearActive()
 			showBanner("BOUNTY CLAIMED!  +$" .. tostring(data.Reward), GOLD)
+		elseif kind == "Refresh" then
+			lastList = data.Bounties or lastList
+			lastJobs, lastShop, jobsUntil = data.Jobs or lastJobs, data.Shop or lastShop, data.JobsUntil or jobsUntil
+			cashLabel.Text = cashText()
+			if dim.Visible then
+				fillGrid()
+			end
+		elseif kind == "JobDone" then
+			showBanner("JOB DONE!  +$" .. tostring(data.Reward), GREEN:Lerp(Color3.new(1, 1, 1), 0.4))
+		elseif kind == "Bought" then
+			showBanner("BOUGHT: " .. tostring(data.Name), GOLD)
+		elseif kind == "Placed" then
+			showBanner("$" .. tostring(data.Total) .. " ON " .. string.upper(tostring(data.Name)) .. "'S HEAD", GOLD)
+		elseif kind == "Warned" then
+			showBanner(string.upper(tostring(data.By)) .. " PUT A PRICE ON YOUR HEAD!  ($" .. tostring(data.Total) .. ")", Color3.fromRGB(255, 140, 120))
+		elseif kind == "Denied" then
+			showBanner(string.upper(tostring(data.Reason or "CAN'T DO THAT")), Color3.fromRGB(255, 160, 140))
 		elseif kind == "Lost" then
 			clearActive()
 			showBanner(data.Reason or "BOUNTY LOST", Color3.fromRGB(255, 140, 120))
@@ -3020,18 +3176,33 @@ function stepDefense()
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	local d = TuskConfig.Defense or {}
 	local t = workspace:GetServerTimeNow()
-	-- Dash chip: grey sweep while on cooldown.
+	-- Dash chip: a pip per charge; grey sweep while the next one comes back.
+	local maxCharges = d.DashCharges or 1
 	local readyAt = character and character:GetAttribute("DashReadyAt") or 0
-	local left = readyAt - t
+	local fullAt = character and character:GetAttribute("DashFullAt") or readyAt
+	local have = maxCharges
+	if maxCharges >= 2 then
+		have = (readyAt <= t and 1 or 0) + (fullAt <= t and maxCharges - 1 or 0)
+	elseif readyAt > t then
+		have = 0
+	end
+	local pips = string.rep("●", have) .. string.rep("○", maxCharges - have)
 	local dashChip = chips.Dash
-	if left > 0 then
+	local counter = character and (character:GetAttribute("CounterUntil") or 0) > t
+	if have < maxCharges then
+		local nextAt = have == 0 and readyAt or fullAt
+		local left = nextAt - t
 		dashChip.Sweep.Size = UDim2.fromScale(math.clamp(left / (d.DashCooldown or 2.2), 0, 1), 1)
-		dashChip.Label.Text = string.format("DASH %.1f", left)
-		dashChip.Label.TextColor3 = Color3.fromRGB(170, 170, 185)
+		dashChip.Label.Text = string.format("DASH %s %.1f", pips, left)
+		dashChip.Label.TextColor3 = have > 0 and Color3.new(1, 1, 1) or Color3.fromRGB(170, 170, 185)
 	else
 		dashChip.Sweep.Size = UDim2.fromScale(0, 1)
-		dashChip.Label.Text = "DASH"
+		dashChip.Label.Text = "DASH " .. pips
 		dashChip.Label.TextColor3 = Color3.new(1, 1, 1)
+	end
+	if counter then
+		dashChip.Label.Text = "COUNTER!"
+		dashChip.Label.TextColor3 = Color3.fromRGB(255, 210, 80)
 	end
 	-- Block chip + guard bar.
 	local blockingNow = character and character:GetAttribute("Blocking") == true
@@ -3741,6 +3912,68 @@ local function onMove(data)
 end
 
 ---------------------------------------------------------------------------
+-- CORPSE COMPASS (bounty board shop): while it lasts, a gold arrow floats
+-- ahead of you pointing at the nearest part lying out in the desert, with
+-- how far it is.
+---------------------------------------------------------------------------
+local compass
+local function stepCompass()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local active = root and (character:GetAttribute("CompassUntil") or 0) > workspace:GetServerTimeNow()
+	local best, bestD
+	if active then
+		for _, relic in ipairs(CollectionService:GetTagged("SpinCorpse")) do
+			if relic.Parent then
+				local d = (relic:GetPivot().Position - root.Position).Magnitude
+				if not bestD or d < bestD then
+					best, bestD = relic, d
+				end
+			end
+		end
+	end
+	if not best then
+		if compass then
+			compass.Model:Destroy()
+			compass = nil
+		end
+		return
+	end
+	if not compass then
+		local m = Instance.new("Model")
+		m.Name = "CorpseCompass"
+		m.Parent = VFXLib.Folder
+		local shaft = VFXLib.part({ Size = Vector3.new(0.3, 0.3, 2.2), Color = Color3.fromRGB(255, 210, 90), Material = Enum.Material.Neon })
+		shaft.Parent = m
+		local head = VFXLib.part({ Size = Vector3.new(1.1, 0.3, 0.9), Color = Color3.fromRGB(255, 236, 160), Material = Enum.Material.Neon })
+		head.Parent = m
+		local bb = Instance.new("BillboardGui")
+		bb.Size = UDim2.fromOffset(110, 26)
+		bb.StudsOffset = Vector3.new(0, 1, 0)
+		bb.AlwaysOnTop = true
+		bb.Adornee = shaft
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.fromScale(1, 1)
+		label.Font = Enum.Font.GothamBlack
+		label.TextScaled = true
+		label.TextColor3 = Color3.fromRGB(255, 220, 120)
+		label.TextStrokeTransparency = 0.2
+		label.Parent = bb
+		bb.Parent = m
+		compass = { Model = m, Shaft = shaft, Head = head, Label = label }
+	end
+	local to = best:GetPivot().Position - root.Position
+	local flat = Vector3.new(to.X, 0, to.Z)
+	flat = flat.Magnitude > 0.1 and flat.Unit or Vector3.new(0, 0, -1)
+	local at = root.Position + flat * 4 + Vector3.new(0, 2.2 + math.sin(os.clock() * 3) * 0.15, 0)
+	local cf = CFrame.lookAt(at, at + flat)
+	compass.Shaft.CFrame = cf
+	compass.Head.CFrame = cf * CFrame.new(0, 0, -1.3) * CFrame.Angles(0, math.pi / 4, 0)
+	compass.Label.Text = string.format("%s  %dm", string.upper(best:GetAttribute("PartId") or "PART"), math.floor(bestD))
+end
+
+---------------------------------------------------------------------------
 function CorpseClient.init()
 	cfg = TuskConfig.Corpse
 	if not cfg or cfg.Enabled == false then
@@ -3793,6 +4026,7 @@ function CorpseClient.init()
 		stepPanel()
 		stepRelics(os.clock())
 		stepHalos(os.clock())
+		stepCompass()
 	end)
 end
 
@@ -3810,8 +4044,12 @@ __modules["DefenseClient"] = function()
 	  * input: hold F (controller L2) to block, Q (controller R2) to dash,
 	    on-screen buttons on mobile. Intents only: the server decides.
 	  * DASH: when the server grants it, this client moves its own character
-	    (smooth, and it replicates). Everyone sees a dust burst, afterimages
-	    and a dash pose (forward / back / left / right).
+	    (smooth, and it replicates). Everyone sees a dust burst, a wind ring,
+	    body-shaped afterimages in the character's colour, wind streaks, a
+	    landing puff and a dash pose (forward / back / left / right); speed
+	    lines for the dasher. A dash that cancels an attack flashes white.
+	  * PERFECT DODGE: a gold ghost and "PERFECT DODGE", a blue slowed-down
+	    flash and COUNTER READY for the dodger.
 	  * BLOCK: anyone blocking braces into a guard pose (and sags into a weak
 	    guard when the guard bar is low). A curved barrier of glowing tiles in
 	    their character's colour builds in front of them; it shimmers, its
@@ -3892,6 +4130,50 @@ local function dashPose(root, direction)
 	return r >= 0 and "DashR" or "DashL"
 end
 
+local BODY = { "Head", "UpperTorso", "LowerTorso", "Torso", "LeftUpperArm", "LeftLowerArm", "RightUpperArm", "RightLowerArm", "LeftUpperLeg", "LeftLowerLeg", "RightUpperLeg", "RightLowerLeg", "Left Arm", "Right Arm", "Left Leg", "Right Leg" }
+
+local function dashColour(character)
+	local act = character:GetAttribute("TuskAct")
+	local pal = act and Common.palette(act)
+	return pal and pal.Main or SHIELD_LIGHT, pal and pal.Light or Color3.new(1, 1, 1)
+end
+
+-- A see-through copy of the body (every limb), in a colour, fading out.
+local function bodyGhost(character, color, life, startT)
+	if not VFXLib.acquire() then
+		return
+	end
+	local parts = {}
+	for _, name in ipairs(BODY) do
+		local limb = character:FindFirstChild(name)
+		if limb and limb:IsA("BasePart") then
+			table.insert(parts, VFXLib.part({ Size = limb.Size * 1.02, CFrame = limb.CFrame, Color = color, Material = Enum.Material.Neon, Transparency = startT or 0.45 }))
+		end
+	end
+	VFXLib.animate(life or 0.25, function(a)
+		for _, g in ipairs(parts) do
+			g.Transparency = (startT or 0.45) + (1 - (startT or 0.45)) * a
+		end
+	end, function()
+		for _, g in ipairs(parts) do
+			g:Destroy()
+		end
+		VFXLib.release()
+	end)
+end
+
+local function groundRing(position, radius, color, time)
+	local ring = VFXLib.part({ Size = Vector3.new(0.2, 1, 1), Color = color, Material = Enum.Material.Neon, Transparency = 0.3, Shape = Enum.PartType.Cylinder })
+	VFXLib.animate(time or 0.3, function(a)
+		local d = radius * 2 * VFXLib.easeOut(a)
+		ring.Size = Vector3.new(0.2, d, d)
+		ring.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.pi / 2)
+		ring.Transparency = 0.3 + 0.7 * a
+	end, function()
+		ring:Destroy()
+	end)
+end
+
 local function onDashFX(data)
 	local character = data.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -3899,22 +4181,55 @@ local function onDashFX(data)
 		return
 	end
 	local dir = data.Direction
+	local color, light = dashColour(character)
+	local time = data.Time or 0.21
 	TuskAnimation.play(character, dashPose(root, dir))
-	VFXLib.burst(root.Position - Vector3.new(0, 2.6, 0), { Count = 12, Texture = VFXLib.Textures.Smoke, Color = Color3.fromRGB(215, 190, 150), LightEmission = 0, Speed = 14, Lifetime = 0.6, Spread = 60, Direction = -dir })
+	local feet = root.Position - Vector3.new(0, 2.6, 0)
+	-- Kick-off: a dust burst behind, a wind ring at the feet.
+	VFXLib.burst(feet, { Count = 14, Texture = VFXLib.Textures.Smoke, Color = Color3.fromRGB(215, 190, 150), LightEmission = 0, Speed = 16, Lifetime = 0.6, Spread = 60, Direction = -dir })
+	groundRing(feet + Vector3.new(0, 0.1, 0), 3.2, light, 0.28)
 	VFXLib.sound(sounds.Swing, root, 0.5, 0.8)
-	local steps = 4
-	for i = 1, steps do
-		task.delay(i * (data.Time or 0.2) / steps, function()
+	if data.Cancel then
+		-- Dash-cancelled out of an attack: a sharp white flash.
+		TuskVFX.CreateImpactStar(root.Position, { Size = 2.4, Rays = 6, Color = Color3.new(1, 1, 1), Color2 = color, Duration = 0.1 })
+	end
+	-- Coloured body afterimages along the way, and wind streaks.
+	local steps = 5
+	for i = 0, steps - 1 do
+		task.delay(i * time / steps, function()
 			if root.Parent then
-				VFXLib.afterimage(root.CFrame, 2.2, SHIELD_LIGHT)
+				bodyGhost(character, i % 2 == 0 and color or light, 0.22, 0.4 + i * 0.06)
 			end
 		end)
 	end
+	local start = root.Position
+	for k = 1, 3 do
+		local streak = VFXLib.part({ Size = Vector3.new(0.12, 0.12, 1), Color = light, Material = Enum.Material.Neon, Transparency = 0.3 })
+		local offset = Vector3.new((math.random() - 0.5) * 2, (k - 2) * 0.9, (math.random() - 0.5) * 2)
+		VFXLib.animate(time + 0.2, function(a)
+			if not root.Parent then
+				return
+			end
+			local from, to = start + offset, root.Position + offset - dir * 1.5
+			local len = math.max((to - from).Magnitude, 0.2)
+			streak.Size = Vector3.new(0.12, 0.12, len)
+			streak.CFrame = CFrame.lookAt((from + to) / 2, to)
+			streak.Transparency = 0.3 + 0.7 * math.max(0, (a - 0.5) * 2)
+		end, function()
+			streak:Destroy()
+		end)
+	end
+	-- Landing: a puff where the dash ends.
+	task.delay(time, function()
+		if root.Parent then
+			VFXLib.burst(root.Position - Vector3.new(0, 2.6, 0), { Count = 8, Texture = VFXLib.Textures.Smoke, Color = Color3.fromRGB(215, 190, 150), LightEmission = 0, Speed = 8, Lifetime = 0.5, Spread = 80, Direction = dir })
+		end
+	end)
 	if character ~= player.Character then
 		return
 	end
 	-- Our own character: move it ourselves (we own its physics).
-	local speed, time = data.Speed or 75, data.Time or 0.2
+	local speed = data.Speed or 80
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	VFXLib.animate(time, function()
 		if not root.Parent or (humanoid and humanoid.Health <= 0) then
@@ -3925,10 +4240,65 @@ local function onDashFX(data)
 	end, function()
 		if root.Parent then
 			local v = root.AssemblyLinearVelocity
-			root.AssemblyLinearVelocity = Vector3.new(dir.X * 12, v.Y, dir.Z * 12)
+			root.AssemblyLinearVelocity = Vector3.new(dir.X * 14, v.Y, dir.Z * 14)
 		end
 	end)
-	CameraFX.fovPunch(5, 0.2)
+	CameraFX.fovPunch(6, 0.22)
+	CameraFX.speedLines(time + 0.15, light)
+end
+
+-- PERFECT DODGE: a gold ghost left where the attack landed, the word over
+-- their head; for the dodger a flash of slowed-down blue and COUNTER READY.
+local function floatingText(character, text, color)
+	local head = character and character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local bb = Instance.new("BillboardGui")
+	bb.Adornee = head
+	bb.Size = UDim2.fromOffset(220, 50)
+	bb.StudsOffset = Vector3.new(0, 2.6, 0)
+	bb.AlwaysOnTop = true
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.Bangers
+	label.TextScaled = true
+	label.Text = text
+	label.TextColor3 = color
+	label.TextStrokeTransparency = 0
+	label.Parent = bb
+	bb.Parent = VFXLib.Folder
+	VFXLib.animate(0.9, function(a)
+		bb.StudsOffset = Vector3.new(0, 2.6 + a * 1.2, 0)
+		label.TextTransparency = math.max(0, (a - 0.6) / 0.4)
+		label.TextStrokeTransparency = math.max(0, (a - 0.6) / 0.4)
+	end, function()
+		bb:Destroy()
+	end)
+end
+
+local function onPerfectDodge(data)
+	local character = data.Character
+	if not character then
+		return
+	end
+	bodyGhost(character, GOLD, 0.55, 0.2)
+	if data.Position then
+		groundRing(data.Position - Vector3.new(0, 2.4, 0), 5, GOLD, 0.35)
+		TuskVFX.CreateImpactStar(data.Position, { Size = 3.2, Rays = 8, Color = GOLD, Color2 = Color3.new(1, 1, 1), Duration = 0.14 })
+	end
+	floatingText(character, "PERFECT DODGE", GOLD)
+	if character == player.Character then
+		TuskVFX.ScreenTint(0.25, { Tint = Color3.fromRGB(200, 225, 255), Saturation = -0.5, Brightness = 0.06, Contrast = 0.1, FadeOut = 0.3 })
+		CameraFX.fovPunch(-7, 0.3)
+		VFXLib.sound(sounds.ChargeFull, workspace.CurrentCamera, 0.5, 1.3)
+		task.delay(0.35, function()
+			floatingText(character, "COUNTER READY", Color3.fromRGB(255, 240, 200))
+		end)
+	elseif data.Attacker and data.Attacker == player.Character then
+		CameraFX.shake(0.25, 0.1)
+	end
 end
 
 ---------------------------------------------------------------------------
@@ -4236,6 +4606,8 @@ function DefenseClient.init()
 	Net.get("TuskFX").OnClientEvent:Connect(function(name, data)
 		if name == "Dash" and typeof(data) == "table" then
 			onDashFX(data)
+		elseif name == "PerfectDodge" and typeof(data) == "table" then
+			onPerfectDodge(data)
 		end
 	end)
 	Net.get("SpinFX").OnClientEvent:Connect(function(name, data)

@@ -5,8 +5,12 @@
 	  * input: hold F (controller L2) to block, Q (controller R2) to dash,
 	    on-screen buttons on mobile. Intents only: the server decides.
 	  * DASH: when the server grants it, this client moves its own character
-	    (smooth, and it replicates). Everyone sees a dust burst, afterimages
-	    and a dash pose (forward / back / left / right).
+	    (smooth, and it replicates). Everyone sees a dust burst, a wind ring,
+	    body-shaped afterimages in the character's colour, wind streaks, a
+	    landing puff and a dash pose (forward / back / left / right); speed
+	    lines for the dasher. A dash that cancels an attack flashes white.
+	  * PERFECT DODGE: a gold ghost and "PERFECT DODGE", a blue slowed-down
+	    flash and COUNTER READY for the dodger.
 	  * BLOCK: anyone blocking braces into a guard pose (and sags into a weak
 	    guard when the guard bar is low). A curved barrier of glowing tiles in
 	    their character's colour builds in front of them; it shimmers, its
@@ -87,6 +91,50 @@ local function dashPose(root, direction)
 	return r >= 0 and "DashR" or "DashL"
 end
 
+local BODY = { "Head", "UpperTorso", "LowerTorso", "Torso", "LeftUpperArm", "LeftLowerArm", "RightUpperArm", "RightLowerArm", "LeftUpperLeg", "LeftLowerLeg", "RightUpperLeg", "RightLowerLeg", "Left Arm", "Right Arm", "Left Leg", "Right Leg" }
+
+local function dashColour(character)
+	local act = character:GetAttribute("TuskAct")
+	local pal = act and Common.palette(act)
+	return pal and pal.Main or SHIELD_LIGHT, pal and pal.Light or Color3.new(1, 1, 1)
+end
+
+-- A see-through copy of the body (every limb), in a colour, fading out.
+local function bodyGhost(character, color, life, startT)
+	if not VFXLib.acquire() then
+		return
+	end
+	local parts = {}
+	for _, name in ipairs(BODY) do
+		local limb = character:FindFirstChild(name)
+		if limb and limb:IsA("BasePart") then
+			table.insert(parts, VFXLib.part({ Size = limb.Size * 1.02, CFrame = limb.CFrame, Color = color, Material = Enum.Material.Neon, Transparency = startT or 0.45 }))
+		end
+	end
+	VFXLib.animate(life or 0.25, function(a)
+		for _, g in ipairs(parts) do
+			g.Transparency = (startT or 0.45) + (1 - (startT or 0.45)) * a
+		end
+	end, function()
+		for _, g in ipairs(parts) do
+			g:Destroy()
+		end
+		VFXLib.release()
+	end)
+end
+
+local function groundRing(position, radius, color, time)
+	local ring = VFXLib.part({ Size = Vector3.new(0.2, 1, 1), Color = color, Material = Enum.Material.Neon, Transparency = 0.3, Shape = Enum.PartType.Cylinder })
+	VFXLib.animate(time or 0.3, function(a)
+		local d = radius * 2 * VFXLib.easeOut(a)
+		ring.Size = Vector3.new(0.2, d, d)
+		ring.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.pi / 2)
+		ring.Transparency = 0.3 + 0.7 * a
+	end, function()
+		ring:Destroy()
+	end)
+end
+
 local function onDashFX(data)
 	local character = data.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -94,22 +142,55 @@ local function onDashFX(data)
 		return
 	end
 	local dir = data.Direction
+	local color, light = dashColour(character)
+	local time = data.Time or 0.21
 	TuskAnimation.play(character, dashPose(root, dir))
-	VFXLib.burst(root.Position - Vector3.new(0, 2.6, 0), { Count = 12, Texture = VFXLib.Textures.Smoke, Color = Color3.fromRGB(215, 190, 150), LightEmission = 0, Speed = 14, Lifetime = 0.6, Spread = 60, Direction = -dir })
+	local feet = root.Position - Vector3.new(0, 2.6, 0)
+	-- Kick-off: a dust burst behind, a wind ring at the feet.
+	VFXLib.burst(feet, { Count = 14, Texture = VFXLib.Textures.Smoke, Color = Color3.fromRGB(215, 190, 150), LightEmission = 0, Speed = 16, Lifetime = 0.6, Spread = 60, Direction = -dir })
+	groundRing(feet + Vector3.new(0, 0.1, 0), 3.2, light, 0.28)
 	VFXLib.sound(sounds.Swing, root, 0.5, 0.8)
-	local steps = 4
-	for i = 1, steps do
-		task.delay(i * (data.Time or 0.2) / steps, function()
+	if data.Cancel then
+		-- Dash-cancelled out of an attack: a sharp white flash.
+		TuskVFX.CreateImpactStar(root.Position, { Size = 2.4, Rays = 6, Color = Color3.new(1, 1, 1), Color2 = color, Duration = 0.1 })
+	end
+	-- Coloured body afterimages along the way, and wind streaks.
+	local steps = 5
+	for i = 0, steps - 1 do
+		task.delay(i * time / steps, function()
 			if root.Parent then
-				VFXLib.afterimage(root.CFrame, 2.2, SHIELD_LIGHT)
+				bodyGhost(character, i % 2 == 0 and color or light, 0.22, 0.4 + i * 0.06)
 			end
 		end)
 	end
+	local start = root.Position
+	for k = 1, 3 do
+		local streak = VFXLib.part({ Size = Vector3.new(0.12, 0.12, 1), Color = light, Material = Enum.Material.Neon, Transparency = 0.3 })
+		local offset = Vector3.new((math.random() - 0.5) * 2, (k - 2) * 0.9, (math.random() - 0.5) * 2)
+		VFXLib.animate(time + 0.2, function(a)
+			if not root.Parent then
+				return
+			end
+			local from, to = start + offset, root.Position + offset - dir * 1.5
+			local len = math.max((to - from).Magnitude, 0.2)
+			streak.Size = Vector3.new(0.12, 0.12, len)
+			streak.CFrame = CFrame.lookAt((from + to) / 2, to)
+			streak.Transparency = 0.3 + 0.7 * math.max(0, (a - 0.5) * 2)
+		end, function()
+			streak:Destroy()
+		end)
+	end
+	-- Landing: a puff where the dash ends.
+	task.delay(time, function()
+		if root.Parent then
+			VFXLib.burst(root.Position - Vector3.new(0, 2.6, 0), { Count = 8, Texture = VFXLib.Textures.Smoke, Color = Color3.fromRGB(215, 190, 150), LightEmission = 0, Speed = 8, Lifetime = 0.5, Spread = 80, Direction = dir })
+		end
+	end)
 	if character ~= player.Character then
 		return
 	end
 	-- Our own character: move it ourselves (we own its physics).
-	local speed, time = data.Speed or 75, data.Time or 0.2
+	local speed = data.Speed or 80
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	VFXLib.animate(time, function()
 		if not root.Parent or (humanoid and humanoid.Health <= 0) then
@@ -120,10 +201,65 @@ local function onDashFX(data)
 	end, function()
 		if root.Parent then
 			local v = root.AssemblyLinearVelocity
-			root.AssemblyLinearVelocity = Vector3.new(dir.X * 12, v.Y, dir.Z * 12)
+			root.AssemblyLinearVelocity = Vector3.new(dir.X * 14, v.Y, dir.Z * 14)
 		end
 	end)
-	CameraFX.fovPunch(5, 0.2)
+	CameraFX.fovPunch(6, 0.22)
+	CameraFX.speedLines(time + 0.15, light)
+end
+
+-- PERFECT DODGE: a gold ghost left where the attack landed, the word over
+-- their head; for the dodger a flash of slowed-down blue and COUNTER READY.
+local function floatingText(character, text, color)
+	local head = character and character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local bb = Instance.new("BillboardGui")
+	bb.Adornee = head
+	bb.Size = UDim2.fromOffset(220, 50)
+	bb.StudsOffset = Vector3.new(0, 2.6, 0)
+	bb.AlwaysOnTop = true
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.Bangers
+	label.TextScaled = true
+	label.Text = text
+	label.TextColor3 = color
+	label.TextStrokeTransparency = 0
+	label.Parent = bb
+	bb.Parent = VFXLib.Folder
+	VFXLib.animate(0.9, function(a)
+		bb.StudsOffset = Vector3.new(0, 2.6 + a * 1.2, 0)
+		label.TextTransparency = math.max(0, (a - 0.6) / 0.4)
+		label.TextStrokeTransparency = math.max(0, (a - 0.6) / 0.4)
+	end, function()
+		bb:Destroy()
+	end)
+end
+
+local function onPerfectDodge(data)
+	local character = data.Character
+	if not character then
+		return
+	end
+	bodyGhost(character, GOLD, 0.55, 0.2)
+	if data.Position then
+		groundRing(data.Position - Vector3.new(0, 2.4, 0), 5, GOLD, 0.35)
+		TuskVFX.CreateImpactStar(data.Position, { Size = 3.2, Rays = 8, Color = GOLD, Color2 = Color3.new(1, 1, 1), Duration = 0.14 })
+	end
+	floatingText(character, "PERFECT DODGE", GOLD)
+	if character == player.Character then
+		TuskVFX.ScreenTint(0.25, { Tint = Color3.fromRGB(200, 225, 255), Saturation = -0.5, Brightness = 0.06, Contrast = 0.1, FadeOut = 0.3 })
+		CameraFX.fovPunch(-7, 0.3)
+		VFXLib.sound(sounds.ChargeFull, workspace.CurrentCamera, 0.5, 1.3)
+		task.delay(0.35, function()
+			floatingText(character, "COUNTER READY", Color3.fromRGB(255, 240, 200))
+		end)
+	elseif data.Attacker and data.Attacker == player.Character then
+		CameraFX.shake(0.25, 0.1)
+	end
 end
 
 ---------------------------------------------------------------------------
@@ -431,6 +567,8 @@ function DefenseClient.init()
 	Net.get("TuskFX").OnClientEvent:Connect(function(name, data)
 		if name == "Dash" and typeof(data) == "table" then
 			onDashFX(data)
+		elseif name == "PerfectDodge" and typeof(data) == "table" then
+			onPerfectDodge(data)
 		end
 	end)
 	Net.get("SpinFX").OnClientEvent:Connect(function(name, data)

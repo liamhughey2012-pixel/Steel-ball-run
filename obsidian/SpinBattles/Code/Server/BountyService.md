@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `BountyService` (capitals matter) |
 
-**What it does:** The BOUNTY BOARD by the spawn (owner's design): a blocky board: two brown posts with grass at their feet, a brown plank back, and parchment wanted posters pinned on it. The posters on the board show the faces of the current top bounties. walk up and press E ("View Bounties"): the client opens the board UI with a wanted poster for every other player and every Stand-user NPC accept one: you get a bounty tracker and a TARGET marker on them. Land the killing blow (your hit within KillCreditTime) and you're paid in Cash (leaderstats). Players are worth more the longer their kill streak. Bounties run out after Duration seconds. Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
+**What it does:** The BOUNTY BOARD by the spawn (owner's design): a blocky board: two brown posts with grass at their feet, a brown plank back, and parchment wanted posters pinned on it. The posters on the board show the faces of the current top bounties. walk up and press E ("View Bounties"): the client opens the board UI with a wanted poster for every other player and every Stand-user NPC accept one: you get a bounty tracker and a TARGET marker on them. Land the killing blow (your hit within KillCreditTime) and you're paid in Cash (leaderstats). Players are worth more the longer their kill streak. Bounties run out after Duration seconds. JOBS tab: a few paid tasks (the same for everyone, new ones every 10 minutes): take down NPCs, deal damage, perfect blocks / dodges, claim bounties, take a corpse part... Progress counts on its own; you're paid the moment one's done SHOP tab: spend Cash on bandages, a speed tonic, a lucky horseshoe (faster ultimate), a corpse compass, or CLEAR YOUR NAME (wipes your streak and any price on your head) PUT A PRICE ON THEIR HEAD: from a player's contract, pay to raise their bounty. Whoever takes them down next is paid it Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -37,6 +37,15 @@ Back to [[Where To Put Code]]
 	    Land the killing blow (your hit within KillCreditTime) and you're paid
 	    in Cash (leaderstats). Players are worth more the longer their kill
 	    streak. Bounties run out after Duration seconds.
+	  * JOBS tab: a few paid tasks (the same for everyone, new ones every 10
+	    minutes): take down NPCs, deal damage, perfect blocks / dodges,
+	    claim bounties, take a corpse part... Progress counts on its own;
+	    you're paid the moment one's done
+	  * SHOP tab: spend Cash on bandages, a speed tonic, a lucky horseshoe
+	    (faster ultimate), a corpse compass, or CLEAR YOUR NAME (wipes your
+	    streak and any price on your head)
+	  * PUT A PRICE ON THEIR HEAD: from a player's contract, pay to raise
+	    their bounty. Whoever takes them down next is paid it
 	Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
 ]]
 
@@ -47,6 +56,7 @@ local RunService = game:GetService("RunService")
 local Shared = game:GetService("ReplicatedStorage").SpinShared
 local TuskConfig = require(Shared.TuskConfig)
 local Net = require(Shared.Net)
+local Adapter = require(script.Parent.CombatAdapter)
 
 local BountyService = {}
 local cfg = TuskConfig.Bounty or {}
@@ -271,8 +281,9 @@ local function listBounties(viewer)
 				Kind = "Player",
 				UserId = p.UserId,
 				Name = p.DisplayName,
-				Reward = (cfg.BaseReward or 100) + streak * (cfg.StreakReward or 50) + bonus,
+				Reward = (cfg.BaseReward or 100) + streak * (cfg.StreakReward or 50) + bonus + (p:GetAttribute("PlacedBounty") or 0),
 				Streak = streak,
+				Placed = (p:GetAttribute("PlacedBounty") or 0) > 0 and p:GetAttribute("PlacedBounty") or nil,
 				Act = p.Character:GetAttribute("TuskAct"),
 				Corpse = #names > 0 and table.concat(names, ", ") or nil,
 			})
@@ -323,7 +334,213 @@ local function send(player, kind, data)
 end
 
 local function publicBounty(b)
-	return { Key = b.Key, Kind = b.Kind, UserId = b.UserId, Model = b.Model, Name = b.Name, Reward = b.Reward, Expires = b.Expires, Act = b.Act, Corpse = b.Corpse, Part = b.Part, HeldBy = b.HeldBy, Boost = b.Boost }
+	return { Key = b.Key, Kind = b.Kind, UserId = b.UserId, Model = b.Model, Name = b.Name, Reward = b.Reward, Expires = b.Expires, Act = b.Act, Corpse = b.Corpse, Part = b.Part, HeldBy = b.HeldBy, Boost = b.Boost, Placed = b.Placed }
+end
+
+---------------------------------------------------------------------------
+-- Cash
+---------------------------------------------------------------------------
+local function cashOf(player)
+	local cash = leaderstats(player):FindFirstChild("Cash")
+	return cash and cash.Value or 0
+end
+
+local function pay(player, amount)
+	local cash = leaderstats(player):FindFirstChild("Cash")
+	if cash then
+		cash.Value = cash.Value + math.floor(amount + 0.5)
+	end
+end
+
+local function spend(player, amount)
+	local cash = leaderstats(player):FindFirstChild("Cash")
+	if not cash or cash.Value < amount then
+		return false
+	end
+	cash.Value = cash.Value - amount
+	return true
+end
+
+local function isRealPlayer(p)
+	return typeof(p) == "Instance" and p:IsA("Player")
+end
+
+---------------------------------------------------------------------------
+-- JOBS
+---------------------------------------------------------------------------
+local jobs = {} -- the current jobs: { Key, Type, Text, Goal, Reward }
+local jobsUntil = 0
+local progress = setmetatable({}, { __mode = "k" }) -- [player] = { Count = {}, Done = {} }
+local jobSerial = 0
+
+local function rollJobs()
+	local jc = cfg.Jobs
+	if not jc or not jc.Types then
+		return
+	end
+	local pool = table.clone(jc.Types)
+	jobs = {}
+	for _ = 1, math.min(jc.Count or 3, #pool) do
+		local t = table.remove(pool, math.random(1, #pool))
+		local goal = math.random(t.Goal[1], t.Goal[2])
+		if goal >= 100 then
+			goal = math.floor(goal / 50 + 0.5) * 50
+		end
+		jobSerial = jobSerial + 1
+		table.insert(jobs, { Key = "J" .. jobSerial, Type = t.Id, Text = (goal == 1 and t.One) or string.format(t.Text, goal), Goal = goal, Reward = math.max(10, math.floor(goal * t.PayEach + 0.5)) })
+	end
+	jobsUntil = workspace:GetServerTimeNow() + (jc.RefreshEvery or 600)
+	progress = setmetatable({}, { __mode = "k" })
+end
+
+local function jobProgress(player, jobType, amount)
+	if not isRealPlayer(player) or not amount or amount <= 0 then
+		return
+	end
+	local p = progress[player]
+	if not p then
+		p = { Count = {}, Done = {} }
+		progress[player] = p
+	end
+	for _, job in ipairs(jobs) do
+		if job.Type == jobType and not p.Done[job.Key] then
+			p.Count[job.Key] = math.min(job.Goal, (p.Count[job.Key] or 0) + amount)
+			if p.Count[job.Key] >= job.Goal then
+				p.Done[job.Key] = true
+				pay(player, job.Reward)
+				send(player, "JobDone", { Text = job.Text, Reward = job.Reward })
+			end
+		end
+	end
+end
+BountyService.jobProgress = jobProgress
+
+local function jobsFor(player)
+	local p = progress[player] or { Count = {}, Done = {} }
+	local list = {}
+	for _, job in ipairs(jobs) do
+		table.insert(list, { Key = job.Key, Text = job.Text, Goal = job.Goal, Reward = job.Reward, Progress = math.floor(p.Count[job.Key] or 0), Done = p.Done[job.Key] == true })
+	end
+	return list
+end
+
+---------------------------------------------------------------------------
+-- SHOP
+---------------------------------------------------------------------------
+local function shopItem(id)
+	for _, item in ipairs(cfg.Shop or {}) do
+		if item.Id == id then
+			return item
+		end
+	end
+	return nil
+end
+
+local function clearCost(player, item)
+	local streak = player:GetAttribute("KillStreak") or 0
+	local placed = player:GetAttribute("PlacedBounty") or 0
+	if streak <= 0 and placed <= 0 then
+		return 0
+	end
+	return (item.BaseCost or 50) + streak * (item.PerStreak or 50) + placed
+end
+
+local function shopFor(player)
+	local list = {}
+	local character = player.Character
+	local t = workspace:GetServerTimeNow()
+	for _, item in ipairs(cfg.Shop or {}) do
+		local price = item.Id == "ClearName" and clearCost(player, item) or item.Price
+		local untilT = character and ({
+			Tonic = character:GetAttribute("ShopTonicUntil"),
+			Horseshoe = character:GetAttribute("ShopUltUntil"),
+			Compass = character:GetAttribute("CompassUntil"),
+		})[item.Id]
+		table.insert(list, {
+			Id = item.Id, Name = item.Name, Text = item.Text, Icon = item.Icon, Price = price,
+			Active = untilT and untilT > t and untilT or nil,
+			Clean = item.Id == "ClearName" and price == 0 or nil,
+		})
+	end
+	return list
+end
+
+local function buy(player, id)
+	local item = typeof(id) == "string" and shopItem(id)
+	if not item then
+		return
+	end
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local alive = humanoid and humanoid.Health > 0
+	local price = item.Id == "ClearName" and clearCost(player, item) or item.Price
+	if item.Id == "ClearName" and price <= 0 then
+		send(player, "Denied", { Reason = "Your name is already clean." })
+		return
+	end
+	if item.Id ~= "ClearName" and not alive then
+		send(player, "Denied", { Reason = "You can't use that right now." })
+		return
+	end
+	if item.Heal and humanoid.Health >= humanoid.MaxHealth then
+		send(player, "Denied", { Reason = "You're not hurt." })
+		return
+	end
+	if not spend(player, price) then
+		send(player, "Denied", { Reason = "Not enough Cash ($" .. price .. ")." })
+		return
+	end
+	local t = workspace:GetServerTimeNow()
+	if item.Heal then
+		humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + item.Heal)
+	elseif item.Speed then
+		local token = tostring({})
+		character:SetAttribute("ShopTonicUntil", t + item.Time)
+		character:SetAttribute("ShopTonicToken", token)
+		Adapter.setMoveModifier(humanoid, "ShopTonic", item.Speed)
+		task.delay(item.Time, function()
+			if humanoid.Parent and character:GetAttribute("ShopTonicToken") == token then
+				Adapter.setMoveModifier(humanoid, "ShopTonic", nil)
+				character:SetAttribute("ShopTonicUntil", nil)
+			end
+		end)
+	elseif item.UltGain then
+		character:SetAttribute("ShopUltGain", item.UltGain)
+		character:SetAttribute("ShopUltUntil", t + item.Time)
+	elseif item.Id == "Compass" then
+		character:SetAttribute("CompassUntil", t + item.Time)
+	elseif item.Id == "ClearName" then
+		player:SetAttribute("KillStreak", 0)
+		player:SetAttribute("PlacedBounty", nil)
+	end
+	send(player, "Bought", { Name = item.Name, Price = price })
+end
+
+---------------------------------------------------------------------------
+-- PUT A PRICE ON THEIR HEAD
+---------------------------------------------------------------------------
+local function place(player, key)
+	if typeof(key) ~= "string" or key:sub(1, 1) ~= "P" then
+		return
+	end
+	local target = Players:GetPlayerByUserId(tonumber(key:sub(2)) or 0)
+	if not target or target == player then
+		send(player, "Denied", { Reason = "You can't do that." })
+		return
+	end
+	local amount = cfg.PlaceAmount or 100
+	local placed = target:GetAttribute("PlacedBounty") or 0
+	if placed + amount > (cfg.PlaceMax or 2000) then
+		send(player, "Denied", { Reason = "There's already a huge price on " .. target.DisplayName .. "'s head." })
+		return
+	end
+	if not spend(player, amount) then
+		send(player, "Denied", { Reason = "Not enough Cash ($" .. amount .. ")." })
+		return
+	end
+	target:SetAttribute("PlacedBounty", placed + amount)
+	send(player, "Placed", { Name = target.DisplayName, Amount = amount, Total = placed + amount })
+	send(target, "Warned", { By = player.DisplayName, Total = placed + amount })
 end
 
 local function accept(player, key)
@@ -363,6 +580,18 @@ local function onDeath(model)
 	end
 	if killer and killer ~= victimPlayer then
 		killer:SetAttribute("KillStreak", (killer:GetAttribute("KillStreak") or 0) + 1)
+		jobProgress(killer, victimPlayer and "PlayerKills" or "NPCKills", 1)
+	end
+	-- A price on their head: whoever took them down gets it (a contract on
+	-- them already includes it), and it's gone.
+	local placed = victimPlayer and victimPlayer:GetAttribute("PlacedBounty") or 0
+	if victimPlayer and placed > 0 then
+		victimPlayer:SetAttribute("PlacedBounty", nil)
+		local b = killer and active[killer]
+		if killer and killer ~= victimPlayer and not (b and targetsThis(b, victimPlayer, model)) then
+			pay(killer, placed)
+			send(killer, "Complete", { Name = victimPlayer.DisplayName, Reward = placed, Price = true })
+		end
 	end
 	for hunter, b in pairs(active) do
 		if targetsThis(b, victimPlayer, model) then
@@ -377,6 +606,7 @@ local function onDeath(model)
 				end
 				active[hunter] = nil
 				send(hunter, "Complete", { Name = b.Name, Reward = b.Reward })
+				jobProgress(hunter, "Bounties", 1)
 			elseif b.Kind == "NPC" then
 				active[hunter] = nil
 				send(hunter, "Lost", { Reason = "Someone else took down " .. b.Name .. "." })
@@ -475,13 +705,35 @@ function BountyService.init()
 	local model, prompt = buildBoard(CFrame.lookAt(base, base + Vector3.new(facing.X, 0, facing.Z)))
 	model.Parent = map or workspace
 
+	rollJobs()
+	local function boardData(player)
+		return {
+			Bounties = listBounties(player),
+			Active = active[player] and publicBounty(active[player]) or nil,
+			Jobs = jobsFor(player),
+			JobsUntil = jobsUntil,
+			Shop = shopFor(player),
+			PlaceAmount = cfg.PlaceAmount or 100,
+		}
+	end
 	prompt.Triggered:Connect(function(player)
-		send(player, "Open", { Bounties = listBounties(player), Active = active[player] and publicBounty(active[player]) or nil })
+		send(player, "Open", boardData(player))
+	end)
+	-- Jobs progress from fights.
+	Adapter.on("Hit", function(attackerPlayer, _, damage)
+		jobProgress(attackerPlayer, "Damage", damage)
+	end)
+	Adapter.on("PerfectBlock", function(defender)
+		jobProgress(Players:GetPlayerFromCharacter(defender), "PerfectBlocks", 1)
+	end)
+	Adapter.on("PerfectDodge", function(dodger)
+		jobProgress(Players:GetPlayerFromCharacter(dodger), "PerfectDodges", 1)
 	end)
 	-- Retrieve contracts: paid the moment the hunter takes that part.
 	local C = corpseService()
 	if C and C.OnTaken then
 		table.insert(C.OnTaken, function(player, partId)
+			jobProgress(player, "Corpse", 1)
 			local b = active[player]
 			if b and b.Kind == "Corpse" and b.Part == partId then
 				local ls = leaderstats(player)
@@ -494,6 +746,7 @@ function BountyService.init()
 				end
 				active[player] = nil
 				send(player, "Complete", { Name = b.Name, Reward = b.Reward })
+				jobProgress(player, "Bounties", 1)
 			end
 		end)
 	end
@@ -503,6 +756,12 @@ function BountyService.init()
 		elseif action == "Abandon" then
 			active[player] = nil
 			send(player, "Cleared", {})
+		elseif action == "Buy" then
+			buy(player, key)
+			send(player, "Refresh", boardData(player))
+		elseif action == "Place" then
+			place(player, key)
+			send(player, "Refresh", boardData(player))
 		end
 	end)
 
@@ -541,6 +800,9 @@ function BountyService.init()
 		if acc >= 1 then
 			acc = 0
 			local now = workspace:GetServerTimeNow()
+			if now >= jobsUntil then
+				rollJobs()
+			end
 			for hunter, b in pairs(active) do
 				if now > b.Expires then
 					active[hunter] = nil

@@ -286,18 +286,33 @@ function stepDefense()
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	local d = TuskConfig.Defense or {}
 	local t = workspace:GetServerTimeNow()
-	-- Dash chip: grey sweep while on cooldown.
+	-- Dash chip: a pip per charge; grey sweep while the next one comes back.
+	local maxCharges = d.DashCharges or 1
 	local readyAt = character and character:GetAttribute("DashReadyAt") or 0
-	local left = readyAt - t
+	local fullAt = character and character:GetAttribute("DashFullAt") or readyAt
+	local have = maxCharges
+	if maxCharges >= 2 then
+		have = (readyAt <= t and 1 or 0) + (fullAt <= t and maxCharges - 1 or 0)
+	elseif readyAt > t then
+		have = 0
+	end
+	local pips = string.rep("●", have) .. string.rep("○", maxCharges - have)
 	local dashChip = chips.Dash
-	if left > 0 then
+	local counter = character and (character:GetAttribute("CounterUntil") or 0) > t
+	if have < maxCharges then
+		local nextAt = have == 0 and readyAt or fullAt
+		local left = nextAt - t
 		dashChip.Sweep.Size = UDim2.fromScale(math.clamp(left / (d.DashCooldown or 2.2), 0, 1), 1)
-		dashChip.Label.Text = string.format("DASH %.1f", left)
-		dashChip.Label.TextColor3 = Color3.fromRGB(170, 170, 185)
+		dashChip.Label.Text = string.format("DASH %s %.1f", pips, left)
+		dashChip.Label.TextColor3 = have > 0 and Color3.new(1, 1, 1) or Color3.fromRGB(170, 170, 185)
 	else
 		dashChip.Sweep.Size = UDim2.fromScale(0, 1)
-		dashChip.Label.Text = "DASH"
+		dashChip.Label.Text = "DASH " .. pips
 		dashChip.Label.TextColor3 = Color3.new(1, 1, 1)
+	end
+	if counter then
+		dashChip.Label.Text = "COUNTER!"
+		dashChip.Label.TextColor3 = Color3.fromRGB(255, 210, 80)
 	end
 	-- Block chip + guard bar.
 	local blockingNow = character and character:GetAttribute("Blocking") == true

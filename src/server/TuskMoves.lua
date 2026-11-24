@@ -194,6 +194,7 @@ function TuskMoves.m1(S, player, state, aim, m1cfg, act)
 	local hit = m1cfg.Hits[index]
 	local repeatTime = (hit.Repeat or 1) > 1 and (hit.Repeat - 1) * (hit.RepeatInterval or 0.08) or 0
 	S.lock(state, (index == 4 and m1cfg.EndLag or m1cfg.Interval) + repeatTime)
+	state.M1LockUntil = state.LockUntil -- (a dash can cancel this recovery)
 
 	local character, _, root = alive(S, player)
 	local direction = S.aim(aim, root)

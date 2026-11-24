@@ -9,9 +9,13 @@
 	    is a GUARD BREAK (stunned, can't block for a few seconds). Attacking or
 	    dashing drops the block. The bar refills while you aren't blocking.
 	  DASH (Q): a short burst in the direction you're moving, with a moment
-	    you can't be hit. The server checks the cooldown and grants it; the
-	    player's own client moves them (smooth, replicates to everyone).
-	    NPCs are moved by the server.
+	    you can't be hit. Two charges (chain them); each comes back after
+	    DashCooldown. A dash cancels the recovery after an M1 hit. Dash
+	    through an attack (it would have hit you) for a PERFECT DODGE: the
+	    charge comes back, the attacker is slowed, you get ultimate meter and
+	    your next hit within CounterTime does +40%. The server checks and
+	    grants it; the player's own client moves them (smooth, replicates to
+	    everyone). NPCs are moved by the server.
 	Numbers: TuskConfig.Defense.
 ]]
 
@@ -25,7 +29,6 @@ local TuskConfig = require(Shared.TuskConfig)
 local DefenseService = {}
 local S -- TuskService
 local cfg = TuskConfig.Defense or {}
-local dashReady = setmetatable({}, { __mode = "k" }) -- [player] = os.clock() when the next dash is allowed
 local lastRelease = setmetatable({}, { __mode = "k" }) -- [character] = server time of the last block release
 
 local function now()
@@ -80,17 +83,57 @@ function DefenseService.block(player, state, on)
 	S.Adapter.setMoveModifier(humanoid, "Block", cfg.BlockWalkSpeed or 0.45)
 end
 
+-- Dash charges per character: the server times each charge is ready again
+-- (sorted). Shown to the HUD as DashReadyAt (next) and DashFullAt (all).
+local charges = setmetatable({}, { __mode = "k" })
+
+local function chargeList(character)
+	local list = charges[character]
+	if not list then
+		list = {}
+		for i = 1, (cfg.DashCharges or 2) do
+			list[i] = 0
+		end
+		charges[character] = list
+	end
+	return list
+end
+
+local function publishCharges(character, list)
+	table.sort(list)
+	character:SetAttribute("DashReadyAt", list[1])
+	character:SetAttribute("DashFullAt", list[#list])
+	character:SetAttribute("DashCharges", #list)
+end
+
+-- Busy only because of an M1's recovery? Then a dash may cancel it.
+local function onlyM1Recovery(state)
+	return cfg.DashCancelM1 ~= false and state.M1LockUntil ~= nil and state.LockUntil <= state.M1LockUntil
+end
+
 function DefenseService.dash(player, state, direction)
 	local character, _, root = S.Adapter.getAlive(player)
 	if not character or typeof(direction) ~= "Vector3" or direction ~= direction then
 		return
 	end
-	if not S.Adapter.canAct(player) or state.Charging or S.isBusy(state) or state.Sneaking then
+	if not S.Adapter.canAct(player) or state.Charging or state.Sneaking then
 		return
 	end
-	local clock = os.clock()
-	if (dashReady[player] or 0) > clock then
+	local cancel = false
+	if S.isBusy(state) then
+		if not onlyM1Recovery(state) then
+			return
+		end
+		cancel = true
+	end
+	local t = now()
+	local list = chargeList(character)
+	table.sort(list)
+	if list[1] > t then
 		S.tell(player, "Denied", { Reason = "DashCooldown" })
+		return
+	end
+	if t - (character:GetAttribute("LastDashAt") or -math.huge) < (cfg.DashGap or 0.3) then
 		return
 	end
 	local flat = Vector3.new(direction.X, 0, direction.Z)
@@ -99,16 +142,31 @@ function DefenseService.dash(player, state, direction)
 	end
 	flat = flat.Unit
 	DefenseService.release(player, state)
+	if cancel then
+		-- Dash-cancel: the M1 recovery is over, the combo starts again.
+		state.LockUntil = os.clock()
+		state.M1LockUntil = nil
+		state.Combo = 0
+	end
+	-- Use a charge: it comes back DashCooldown after the last one queued.
 	local cooldown = cfg.DashCooldown or 2.2
-	dashReady[player] = clock + cooldown
-	character:SetAttribute("DashReadyAt", now() + cooldown)
+	table.remove(list, 1)
+	table.insert(list, math.max(t, list[#list] or t) + cooldown)
+	publishCharges(character, list)
+	character:SetAttribute("LastDashAt", t)
 	local iframes = S.Adapter.Settings.IFrameAttribute
+	local token = tostring({})
 	character:SetAttribute(iframes, true)
-	task.delay(cfg.DashIFrames or 0.2, function()
-		character:SetAttribute(iframes, nil)
+	character:SetAttribute("DashToken", token)
+	character:SetAttribute("DashDodgeUntil", t + (cfg.PerfectDodgeWindow or 0.22))
+	character:SetAttribute("DashDodged", nil)
+	task.delay(cfg.DashIFrames or 0.22, function()
+		if character:GetAttribute("DashToken") == token then
+			character:SetAttribute(iframes, nil)
+		end
 	end)
-	local speed, time = cfg.DashSpeed or 75, cfg.DashTime or 0.2
-	S.fx("Dash", { Character = character, Direction = flat, Speed = speed, Time = time })
+	local speed, time = cfg.DashSpeed or 80, cfg.DashTime or 0.21
+	S.fx("Dash", { Character = character, Direction = flat, Speed = speed, Time = time, Cancel = cancel })
 	-- NPCs have no client to move them: the server does it.
 	if typeof(player) ~= "Instance" then
 		local attachment = Instance.new("Attachment")
@@ -121,6 +179,48 @@ function DefenseService.dash(player, state, direction)
 		velocity.Parent = attachment
 		game:GetService("Debris"):AddItem(attachment, time)
 	end
+end
+
+-- PERFECT DODGE: an attack that would have hit landed during the dash.
+local function onPerfectDodge(character, attackerPlayer)
+	local t = now()
+	-- The dash charge comes back.
+	if cfg.PerfectDodgeRefund ~= false then
+		local list = chargeList(character)
+		table.sort(list)
+		list[#list] = math.min(list[#list], t)
+		publishCharges(character, list)
+	end
+	-- The next hit within CounterTime lands harder.
+	character:SetAttribute("CounterUntil", t + (cfg.CounterTime or 1.5))
+	-- Ultimate meter (players and NPCs).
+	local owner = Players:GetPlayerFromCharacter(character)
+	if not owner then
+		for p, st in pairs(S.States or {}) do
+			if st.Character == character then
+				owner = p
+			end
+		end
+	end
+	if owner and S.addUlt then
+		S.addUlt(owner, cfg.PerfectDodgeUlt or 8)
+	end
+	-- The attacker stumbles: slowed for a moment.
+	local attacker = attackerPlayer and attackerPlayer.Character
+	local ah = attacker and attacker:FindFirstChildOfClass("Humanoid")
+	if ah then
+		local token = tostring({})
+		attacker:SetAttribute("DodgedSlowToken", token)
+		S.Adapter.setMoveModifier(ah, "Dodged", cfg.PerfectDodgeSlow or 0.5)
+		task.delay(cfg.PerfectDodgeSlowTime or 0.8, function()
+			if ah.Parent and attacker:GetAttribute("DodgedSlowToken") == token then
+				S.Adapter.setMoveModifier(ah, "Dodged", nil)
+				attacker:SetAttribute("DodgedSlowToken", nil)
+			end
+		end)
+	end
+	local root = character:FindFirstChild("HumanoidRootPart")
+	S.fx("PerfectDodge", { Character = character, Attacker = attacker, Position = root and root.Position, Counter = cfg.CounterTime or 1.5 })
 end
 
 -- Guard bars refill while not blocking.
@@ -144,6 +244,9 @@ end
 
 function DefenseService.init(TuskService)
 	S = TuskService
+	if S.Adapter.on then
+		S.Adapter.on("PerfectDodge", onPerfectDodge)
+	end
 	local acc = 0
 	RunService.Heartbeat:Connect(function(dt)
 		acc = acc + dt

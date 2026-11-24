@@ -40,9 +40,18 @@ TuskConfig.Defense = {
 	ParryStun = 1.0, -- the attacker is stunned
 	ParryRetry = 0.6, -- block spam doesn't count: needs this long since the last release
 	-- DASH (Q): a quick burst in the direction you're moving (forward if standing still).
-	DashCooldown = 2.2,
-	DashSpeed = 75, DashTime = 0.2, -- about 15 studs
-	DashIFrames = 0.2, -- can't be hit during the dash
+	DashCharges = 2, -- dashes stored up: chain them
+	DashCooldown = 2.2, -- seconds for each charge to come back (one at a time)
+	DashGap = 0.3, -- seconds between two dashes in a row
+	DashSpeed = 80, DashTime = 0.21, -- about 17 studs
+	DashIFrames = 0.22, -- can't be hit during the dash
+	DashCancelM1 = true, -- a dash cancels the recovery after an M1 hit
+	-- PERFECT DODGE: an attack that would have hit you lands while you dash.
+	PerfectDodgeWindow = 0.22, -- seconds from the start of the dash
+	PerfectDodgeRefund = true, -- gives the dash charge back
+	PerfectDodgeUlt = 8, -- ultimate meter
+	PerfectDodgeSlow = 0.5, PerfectDodgeSlowTime = 0.8, -- the attacker is slowed
+	CounterTime = 1.5, CounterMultiplier = 1.4, -- your next hit within this long does +40%
 }
 
 ---------------------------------------------------------------------------
@@ -152,6 +161,32 @@ TuskConfig.Bounty = {
 	Duration = 300, -- seconds before an accepted bounty runs out
 	MaxPosters = 12,
 	StartingCash = 0,
+	-- PUT A PRICE ON THEIR HEAD: pay to raise another player's bounty. Whoever
+	-- takes them down next gets it (contract or not); it's gone when they die.
+	PlaceAmount = 100, PlaceMax = 2000,
+	-- JOBS: a few paid tasks on the board, the same for everyone, swapped for
+	-- new ones every RefreshEvery seconds. Progress counts on its own (no
+	-- need to accept); you're paid the moment one's done.
+	Jobs = {
+		Count = 3, RefreshEvery = 600,
+		Types = {
+			{ Id = "NPCKills", Text = "Take down %d Stand-user NPCs", Goal = { 2, 4 }, PayEach = 60 },
+			{ Id = "PlayerKills", Text = "Defeat %d players", One = "Defeat a player", Goal = { 1, 3 }, PayEach = 90 },
+			{ Id = "Damage", Text = "Deal %d damage", Goal = { 300, 600 }, PayEach = 0.35 },
+			{ Id = "PerfectBlocks", Text = "Land %d perfect blocks", Goal = { 2, 4 }, PayEach = 50 },
+			{ Id = "PerfectDodges", Text = "Perfect-dodge %d attacks (dash through them)", Goal = { 2, 4 }, PayEach = 50 },
+			{ Id = "Bounties", Text = "Claim %d bounties", One = "Claim a bounty", Goal = { 1, 2 }, PayEach = 120 },
+			{ Id = "Corpse", Text = "Take %d Saint's Corpse parts", One = "Take a Saint's Corpse part", Goal = { 1, 1 }, PayEach = 150 },
+		},
+	},
+	-- SHOP: spend Cash. Effects last until they run out or you die.
+	Shop = {
+		{ Id = "Bandages", Name = "BANDAGES", Price = 60, Text = "Heal 40 health right now", Icon = "+", Heal = 40 },
+		{ Id = "Tonic", Name = "SNAKE-OIL TONIC", Price = 90, Text = "+15% speed for 2 minutes", Icon = "~", Speed = 1.15, Time = 120 },
+		{ Id = "Horseshoe", Name = "LUCKY HORSESHOE", Price = 120, Text = "+25% ultimate charge for 2 minutes", Icon = "U", UltGain = 1.25, Time = 120 },
+		{ Id = "Compass", Name = "CORPSE COMPASS", Price = 100, Text = "Points you to the nearest Saint's Corpse part for 60 s", Icon = "N", Time = 60 },
+		{ Id = "ClearName", Name = "CLEAR YOUR NAME", Price = 0, Text = "Wipe your kill streak and any price on your head", Icon = "X", BaseCost = 50, PerStreak = 50 },
+	},
 }
 
 ---------------------------------------------------------------------------
@@ -712,29 +747,32 @@ TuskConfig.Axl = {
 -- Funny Valentine: D4C (Dirty Deeds Done Dirt Cheap)
 ---------------------------------------------------------------------------
 TuskConfig.Valentine = {
-	M1 = { -- DIRTY DEEDS COMBO: D4C's chops with him
+	M1 = { -- DIRTY DEEDS COMBO: D4C's chops with him; the 4th wraps them in a flag (a long stun, little knockback: follow up!)
 		Interval = 0.28, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.08,
 		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
 		Hits = {
 			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
 			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
 			{ Damage = 4, Stun = 0.45, Knockback = 5 },
-			{ Damage = 7, Stun = 0.5, Knockback = 42, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+			{ Damage = 6, Stun = 0.95, Knockback = 6, ShockwaveRadius = 6, AoeRadius = 6 },
 		},
 	},
 	DimensionHop = { -- a flag sweeps over him; he steps out of another world behind the nearest enemy
 		Cooldown = 7, Windup = 0.3, -- can't be hit while between worlds
 		Range = 40, Cone = 80, -- finds an enemy in front this close
 		Distance = 26, -- with nobody to hop to, he goes this far ahead
-		Damage = 5, Stun = 0.6, Knockback = 10, StrikeRange = 7,
+		Damage = 4, Stun = 0.6, Knockback = 4, StrikeRange = 7,
+		SecondDamage = 4, SecondDelay = 0.18, SecondKnockback = 16, -- D4C follows up with a second chop
 		ReturnWindow = 4, -- press again within this long to hop back through the flag he left
+		FlagSlamRadius = 7, FlagSlamDamage = 6, FlagSlamStun = 0.6, -- hopping back slams the flag shut on whoever's near it
 	},
 	ParallelClone = { -- a Valentine from another world joins the fight for a while
 		Cooldown = 12, Windup = 0.3,
-		Duration = 6, Speed = 20, Range = 50,
-		PunchRange = 4.5, PunchEvery = 0.8, MaxPunches = 5,
+		Duration = 7, Speed = 20, Range = 50,
+		PunchRange = 4.5, PunchEvery = 0.75, MaxPunches = 6,
 		Damage = 3.5, Stun = 0.45, Knockback = 4,
-		SwapAt = 0.25, SwapHeal = 0.3, -- nearly beaten while it's out: they swap places and he's healed
+		SwapAt = 0.25, SwapHeal = 0.3, -- nearly beaten while it's out: they swap places and he's healed (once)
+		ManualSwapIFrames = 0.25, -- press 2 again while it's out: trade places with it (once)
 	},
 	MengerSponge = { -- their other-world self appears beside them: they crumble into cubes
 		Cooldown = 13, MissCooldown = 3, Windup = 0.3,
@@ -744,12 +782,15 @@ TuskConfig.Valentine = {
 		FinalDamage = 6, FinalKnockback = 25, FinalStun = 0.7,
 		DoubleOffset = 3.5, Leash = 10, -- they only crumble near their double: run from it to escape
 		BurstRadius = 7, BurstDamage = 5, -- the burst hits enemies right next to them too
+		SpreadRange = 12, SpreadTime = 1.6, SpreadTickDamage = 1.2, SpreadFinal = 4, -- ...and the cubes start crumbling the nearest other enemy
 	},
 	Ultimate = { -- D4C LOVE TRAIN: a wall of light; hits on him are cancelled and the misfortune lands on someone else
 		Windup = 0.7, Duration = 6,
 		RedirectRange = 30, RedirectShare = 0.8, RedirectMin = 3, RedirectEvery = 0.15,
+		RedirectHeal = 2, -- each redirected hit heals him
 		SpeedMultiplier = 1.2,
 		PulseRadius = 14, PulseDamage = 8, PulseKnockback = 40, PulseStun = 0.6,
+		PulsePerRedirect = 1.5, PulseBonusMax = 12, -- the end pulse grows with every hit it turned away
 	},
 }
 

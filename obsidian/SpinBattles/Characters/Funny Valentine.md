@@ -37,3 +37,17 @@ It floats behind him with an ice-blue aura.
 - **Parallel Valentine:** if he drops to 25% HP while it's out, **they swap places**. He appears where it was, healed 30% of max HP, and it's gone (once per summon). It now looks like him: pink coat, blond ringlets, magenta trousers.
 - **Menger Sponge:** the double now **stays where it appeared** (3.5 studs beside them). They only crumble within 10 studs of it: **run from it and it shatters**, ending the effect and the slow. The burst also hits enemies within 7 studs (5).
 - Fixed: a second Menger Sponge or Guilt Membrane on the same target no longer lets the first one's leftover ticks act (per-cast token).
+
+## Moveset upgrade 2 (2026-11-24)
+- **M1 finisher: FLAG WRAP.** The 4th hit wraps them in a flag: a long stun (0.95 s) and almost no knockback, so you can follow up with an ability.
+- **Dimension Hop:**
+  - D4C chops **twice** when he steps out (4, then 4 with knockback);
+  - **hopping back slams the flag shut** on anyone within 7 studs of it (6 and a stun).
+- **Parallel Valentine:**
+  - lasts 7 s and lands up to 6 punches;
+  - **press 2 again to TRADE PLACES with it** (once, with a quarter-second where he can't be hit);
+  - the low-HP swap with a heal still works.
+- **Menger Sponge:** when it bursts, the cubes **fly on to the nearest other enemy within 12 studs** and crumble them too (1.6 s of ticks, then a small burst).
+- **Love Train:**
+  - every hit it turns away **heals him 2**;
+  - the end pulse does **+1.5 per hit turned away** (up to +12).

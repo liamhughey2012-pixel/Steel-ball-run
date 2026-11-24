@@ -661,6 +661,68 @@ local function onMove(data)
 end
 
 ---------------------------------------------------------------------------
+-- CORPSE COMPASS (bounty board shop): while it lasts, a gold arrow floats
+-- ahead of you pointing at the nearest part lying out in the desert, with
+-- how far it is.
+---------------------------------------------------------------------------
+local compass
+local function stepCompass()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local active = root and (character:GetAttribute("CompassUntil") or 0) > workspace:GetServerTimeNow()
+	local best, bestD
+	if active then
+		for _, relic in ipairs(CollectionService:GetTagged("SpinCorpse")) do
+			if relic.Parent then
+				local d = (relic:GetPivot().Position - root.Position).Magnitude
+				if not bestD or d < bestD then
+					best, bestD = relic, d
+				end
+			end
+		end
+	end
+	if not best then
+		if compass then
+			compass.Model:Destroy()
+			compass = nil
+		end
+		return
+	end
+	if not compass then
+		local m = Instance.new("Model")
+		m.Name = "CorpseCompass"
+		m.Parent = VFXLib.Folder
+		local shaft = VFXLib.part({ Size = Vector3.new(0.3, 0.3, 2.2), Color = Color3.fromRGB(255, 210, 90), Material = Enum.Material.Neon })
+		shaft.Parent = m
+		local head = VFXLib.part({ Size = Vector3.new(1.1, 0.3, 0.9), Color = Color3.fromRGB(255, 236, 160), Material = Enum.Material.Neon })
+		head.Parent = m
+		local bb = Instance.new("BillboardGui")
+		bb.Size = UDim2.fromOffset(110, 26)
+		bb.StudsOffset = Vector3.new(0, 1, 0)
+		bb.AlwaysOnTop = true
+		bb.Adornee = shaft
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.fromScale(1, 1)
+		label.Font = Enum.Font.GothamBlack
+		label.TextScaled = true
+		label.TextColor3 = Color3.fromRGB(255, 220, 120)
+		label.TextStrokeTransparency = 0.2
+		label.Parent = bb
+		bb.Parent = m
+		compass = { Model = m, Shaft = shaft, Head = head, Label = label }
+	end
+	local to = best:GetPivot().Position - root.Position
+	local flat = Vector3.new(to.X, 0, to.Z)
+	flat = flat.Magnitude > 0.1 and flat.Unit or Vector3.new(0, 0, -1)
+	local at = root.Position + flat * 4 + Vector3.new(0, 2.2 + math.sin(os.clock() * 3) * 0.15, 0)
+	local cf = CFrame.lookAt(at, at + flat)
+	compass.Shaft.CFrame = cf
+	compass.Head.CFrame = cf * CFrame.new(0, 0, -1.3) * CFrame.Angles(0, math.pi / 4, 0)
+	compass.Label.Text = string.format("%s  %dm", string.upper(best:GetAttribute("PartId") or "PART"), math.floor(bestD))
+end
+
+---------------------------------------------------------------------------
 function CorpseClient.init()
 	cfg = TuskConfig.Corpse
 	if not cfg or cfg.Enabled == false then
@@ -713,6 +775,7 @@ function CorpseClient.init()
 		stepPanel()
 		stepRelics(os.clock())
 		stepHalos(os.clock())
+		stepCompass()
 	end)
 end
 
