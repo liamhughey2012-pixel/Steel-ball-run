@@ -214,23 +214,24 @@ TuskConfig.StandBots = {
 	RainWalkChance = 0.05, -- Blackmore NPCs: chance per think tick to start a rain walk while it rains
 	Health = 200,
 	WalkSpeed = 15,
-	-- Where they hang out, scattered round the SBR map (offsets from the map's
-	-- origin, near its landmarks and away from the player spawn). Each NPC
-	-- takes a random free spot, and a new one when it respawns. Without the
-	-- map they gather Distance studs from the spawn instead.
+	-- Where they camp (offsets from the map's origin). NPC 1 always camps
+	-- at the first spot, NPC 2 at the second, and so on: the same place every
+	-- time they respawn. Every camp is at least 90 studs from every Saint's
+	-- Corpse spot (TuskConfig.Corpse.Spots) and 35 from the race course, on
+	-- open ground. Without the map they gather Distance studs from the spawn.
 	Spots = {
-		Vector3.new(-158, 0, -59), -- Dustwater ghost town (in the street)
-		Vector3.new(-285, 0, -300), -- the old mine
-		Vector3.new(-235, 0, 150), -- the oasis
-		Vector3.new(-165, 0, 275), -- gold-panning camp
-		Vector3.new(164, 0, 248), -- Lucky Horseshoe Ranch (beside the barn)
-		Vector3.new(305, 0, -10), -- edge of the western town
-		Vector3.new(150, 0, -150), -- open desert dunes
-		Vector3.new(45, 0, -250), -- by the mission church
-		Vector3.new(-40, 0, -420), -- outside Fort Dust
-		Vector3.new(-100, 0, -180), -- western desert
-		Vector3.new(215, 0, -185), -- south-east desert
-		Vector3.new(-230, 0, -230), -- south-west desert
+		Vector3.new(280, 0, 180), -- north-east flats
+		Vector3.new(-260, 0, 110), -- west, beyond the oasis road
+		Vector3.new(-140, 0, -310), -- south-west of the race track
+		Vector3.new(110, 0, 40), -- east of the race track
+		Vector3.new(-30, 0, 280), -- north of the spawn
+		Vector3.new(230, 0, -370), -- far south-east desert
+		Vector3.new(-340, 0, -130), -- far west desert
+		Vector3.new(260, 0, 380), -- north-east corner
+		Vector3.new(-120, 0, -160), -- western desert
+		Vector3.new(380, 0, -230), -- east edge
+		Vector3.new(-300, 0, 380), -- north-west corner
+		Vector3.new(-380, 0, 220), -- west edge
 	},
 	Distance = 70, -- (no map) studs from the spawn to their camp
 	Spacing = 14, -- (no map) studs between them at the camp
@@ -998,23 +999,36 @@ TuskConfig.Race = {
 	StudioFirstAfter = 20, -- in Studio the first race opens quickly so you can test it
 	EntryTime = 45, -- seconds entry stays open
 	Countdown = 4, -- seconds on the start line (3, 2, 1, GO!)
-	TimeLimit = 240, -- the race ends after this long no matter what
-	FinishGrace = 25, -- ...or this long after the winner crosses the line
-	-- The course (offsets from the map's origin; snapped to the ground).
-	-- It starts inside the map's fenced race track, behind its START arch,
-	-- runs south down the track, then loops round the open desert to the
-	-- east (no buildings in the way) and finishes by the spawn.
+	TimeLimit = 420, -- the race ends after this long no matter what (7 minutes)
+	FinishGrace = 40, -- ...or this long after the winner crosses the line
+	-- The course (offsets from the map's origin; snapped to the ground):
+	-- about 2,900 studs, a lap of the whole map. It starts inside the fenced
+	-- race track behind its START arch, runs south down the track, swings
+	-- west and right up the west side, across the north, down the east
+	-- side, then back up past Headquarters hill to finish by the spawn.
 	Start = Vector3.new(0, 0, 118), -- the front of the starting grid
 	StartFacing = Vector3.new(0, 0, -1), -- down the track
 	GridColumns = 4, GridSpacing = 4.5, GridRowGap = 7, -- riders line up 4 abreast inside the track
 	Checkpoints = {
 		Vector3.new(0, 0, -90), -- 1: down the race track
 		Vector3.new(0, 0, -262), -- 2: out past the end of the track
-		Vector3.new(110, 0, -300), -- 3: south desert, by the mission
-		Vector3.new(200, 0, -190), -- 4: under Headquarters hill
-		Vector3.new(185, 0, -40), -- 5: east desert, outside town
-		Vector3.new(160, 0, 110), -- 6: the north-east flats
-		Vector3.new(130, 0, 165), -- 7: the home stretch
+		Vector3.new(-100, 0, -250), -- 3: south desert, heading west
+		Vector3.new(-200, 0, -170), -- 4: western desert
+		Vector3.new(-290, 0, -90), -- 5: far west
+		Vector3.new(-340, 0, 60), -- 6: up the west side
+		Vector3.new(-320, 0, 200), -- 7: north-west
+		Vector3.new(-260, 0, 330), -- 8: north-west corner
+		Vector3.new(-100, 0, 360), -- 9: across the north
+		Vector3.new(50, 0, 330), -- 10: north
+		Vector3.new(200, 0, 330), -- 11: north-east
+		Vector3.new(330, 0, 300), -- 12: north-east corner
+		Vector3.new(350, 0, 150), -- 13: down the east side
+		Vector3.new(340, 0, -60), -- 14: past the western town
+		Vector3.new(320, 0, -230), -- 15: south-east
+		Vector3.new(200, 0, -190), -- 16: under Headquarters hill
+		Vector3.new(185, 0, -40), -- 17: east desert, outside town
+		Vector3.new(160, 0, 110), -- 18: the north-east flats
+		Vector3.new(130, 0, 165), -- 19: the home stretch
 		Vector3.new(45, 0, 175), -- FINISH, by the spawn
 	},
 	GateWidth = 34, -- studs between a gate's posts (wide enough to stand outside the track's fences)

@@ -21,19 +21,19 @@ A horse race round the map **every 10 minutes**.
    - everyone who entered is lined up at the start gate (6 to a row) on a horse with a random coat (bay, black, grey, chestnut, palomino or paint);
    - they're held still for a big **3, 2, 1, GO!**
 3. **The race:**
-   - ride through gates 1–6 in order, then the FINISH (passing within 20 studs counts). The route goes from the start (by the spawn) through the dunes, the mission church, the western desert, the Dustwater ghost town, the oasis and the gold-panning camp, then back to the finish by the spawn;
+   - ride through gates 1–19 in order, then the FINISH (passing within 20 studs counts). The course is about 2,900 studs, a lap of the whole map (made longer on 2026-11-24): south down the race track, west and up the west side, across the north, down the east side, then back up past Headquarters hill to the finish by the spawn;
    - horses run at 3.2× walk speed;
    - **everything else still works**: fight, dash, block and use your Stand on horseback;
    - going down (or resetting) puts you out of the race.
    - **Riders see:**
-     - a race card top-right: your place, gate x / 7, the time, the top five, and LEAVE;
+     - a race card top-right: your place, gate x / 20, the time, the top five, and LEAVE;
      - a golden beacon on the next gate with its distance;
      - a gold arrow ahead of the horse pointing at it.
 4. **Prizes:**
    - 1st $500, 2nd $250, 3rd $150, every other finisher $50;
    - the winner gets **a Saint's Corpse part at the finish** (one lying out in the desert is brought there; if every part is held, there's no part).
    - Everyone sees who won, then the top 3 results.
-5. **It ends** when everyone's finished, 25 s after the winner crosses, or at 4 minutes. Nobody entered: it's cancelled. The next one opens 10 minutes after this one opened.
+5. **It ends** when everyone's finished, 40 s after the winner crosses, or at 7 minutes. Nobody entered: it's cancelled. The next one opens 10 minutes after this one opened.
 
 ## The horse
 - **Built from blocks:**

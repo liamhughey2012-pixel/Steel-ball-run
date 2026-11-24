@@ -7092,7 +7092,9 @@ __modules["StandBots"] = function()
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
 	    any player who comes within AggroRange and walk back to their spot
 	    when the player gets away
-	  * each respawn picks a new free spot, so they move around over time
+	  * each NPC has its OWN fixed camp (slot 1 always camps at Spots[1], and
+	    so on) and respawns there; camps are kept well away from the Saint's
+	    Corpse spots and the race course
 	  * M1 combo up close, abilities on cooldown, ultimate when their meter is full
 	  * hold abilities are charged and released automatically
 	  * they block now and then, dash in to close the gap, and dash away when hurt
@@ -7165,8 +7167,9 @@ local function findHome(slot, count)
 				table.insert(free, i)
 			end
 		end
-		if #free > 0 then
-			local i = free[math.random(1, #free)]
+		-- Each slot always camps at its own spot (the same place every respawn).
+		local i = (spots[slot] and not usedSpots[slot]) and slot or free[1]
+		if i then
 			usedSpots[i] = slot
 			return groundAt(origin + spots[i]), i
 		end
