@@ -125,10 +125,20 @@ end
 function Adapter.setMoveModifier(humanoid, key, multiplier)
 	local state = moveMods[humanoid]
 	if not state then
-		state = { mods = {}, product = 1 }
+		state = { mods = {}, product = 1, base = humanoid.WalkSpeed }
 		moveMods[humanoid] = state
 	end
-	local base = humanoid.WalkSpeed / state.product
+	-- Work the base speed back out (other scripts may have changed WalkSpeed),
+	-- but never from a x0 modifier (0 / 0 would lose it for good: you'd be
+	-- stuck at 0 or NaN speed after John Rod's steering or snare ended).
+	local base = state.base or 16
+	if state.product > 1e-3 then
+		local derived = humanoid.WalkSpeed / state.product
+		if derived == derived and derived < math.huge then
+			base = derived
+		end
+	end
+	state.base = base
 	state.mods[key] = multiplier
 	local product = 1
 	for _, m in pairs(state.mods) do
