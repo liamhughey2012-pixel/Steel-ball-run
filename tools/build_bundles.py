@@ -570,16 +570,24 @@ do
 end
 """
 
-server_parts = write_parts("server", server_core)
-client_parts = write_parts("client", client_core)
-open(f"{out}/Spin_Server.lua", "w").write(bundle("server", SERVER_HEADER, {}, core_loader("server", server_parts) + SERVER_MAIN))
-open(f"{out}/Spin_Client.lua", "w").write(bundle("client", CLIENT_HEADER, {}, core_loader("client", client_parts) + CLIENT_MAIN))
+# The owner prefers ONE big Spin_Server / Spin_Client (set SPLIT_CORE = True to
+# split the core into SpinCore_* ModuleScript parts instead).
+SPLIT_CORE = False
+if SPLIT_CORE:
+    server_parts = write_parts("server", server_core)
+    client_parts = write_parts("client", client_core)
+    open(f"{out}/Spin_Server.lua", "w").write(bundle("server", SERVER_HEADER, {}, core_loader("server", server_parts) + SERVER_MAIN))
+    open(f"{out}/Spin_Client.lua", "w").write(bundle("client", CLIENT_HEADER, {}, core_loader("client", client_parts) + CLIENT_MAIN))
+else:
+    os.rmdir(f"{out}/core")
+    open(f"{out}/Spin_Server.lua", "w").write(bundle("server", SERVER_HEADER, server_core, SERVER_MAIN))
+    open(f"{out}/Spin_Client.lua", "w").write(bundle("client", CLIENT_HEADER, client_core, CLIENT_MAIN))
 for name, where in (("SpinConfig", "src/shared/SpinConfig.lua"), ("TuskConfig", "src/shared/TuskConfig.lua")):
     code = open(where).read()
     code = code.replace(f"({name}  (ReplicatedStorage.SpinShared.{name})", f"{name}  (ModuleScript in ReplicatedStorage)")
     code = code.replace(f"	{name}  (ReplicatedStorage.SpinShared.{name})", f"	{name}  (ModuleScript)\n	PUT IT IN: ReplicatedStorage")
     open(f"{out}/{name}.lua", "w").write(code)
-for d in (out, f"{out}/core", f"{out}/characters"):
+for d in [out] + ([f"{out}/core"] if SPLIT_CORE else []) + [f"{out}/characters"]:
     for f in sorted(os.listdir(d)):
         if f.endswith(".lua"):
             print(os.path.relpath(os.path.join(d, f), out), os.path.getsize(os.path.join(d, f)) // 1024, "KB")
