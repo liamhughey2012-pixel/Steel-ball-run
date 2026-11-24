@@ -227,6 +227,9 @@ TuskAnimation.Poses = {
 	DWThrowWind = { Root = { 0, 34, 0, -0.04 }, Waist = { -4, 34, 0 }, Neck = { 0, -28, 0 }, RightArm = { 70, 0, -70 }, RightElbow = { 100, 0, 0 }, LeftArm = { 40, 0, -20 }, LeftElbow = { 30, 0, 0 } },
 	DWThrow = { Root = { -4, -34, 0, -0.06, 0.3 }, Waist = { -8, -36, 0 }, Neck = { 0, 26, 0 }, RightArm = { 92, 0, 46 }, RightElbow = { 0, 0, 0 }, LeftArm = { 10, 0, -26 }, LeftElbow = { 20, 0, 0 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -18, 0, 0 } },
 	DWSpread = { Root = { 4, 0, 0, 0.06 }, Waist = { 10, 0, 0 }, Neck = { 14, 0, 0 }, RightArm = { 50, 0, 80 }, RightElbow = { 20, 0, 0 }, LeftArm = { 50, 0, -80 }, LeftElbow = { 20, 0, 0 } },
+	DWAim = { Root = { 0, -20, 0, 0 }, Waist = { 0, -20, 0 }, Neck = { 0, 20, 0 }, RightArm = { 90, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 82, 0, -34 }, LeftElbow = { 40, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { -8, 0, 0 } },
+	DWFan = { Root = { 0, -20, 0, 0 }, Waist = { 0, -20, 0 }, Neck = { 0, 20, 0 }, RightArm = { 96, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 70, 0, -30 }, LeftElbow = { 56, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { -8, 0, 0 } },
+	DWTwirl = { Root = { 0, -6, 0, 0 }, Waist = { 0, -6, 0 }, Neck = { 4, 10, 0 }, RightArm = { 40, 0, 50 }, RightElbow = { 70, 0, 0 }, LeftArm = { -4, 0, -16 }, LeftElbow = { 24, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
 	AxlStance = { Root = { -4, -8, 0, -0.04 }, Waist = { -6, -6, 4 }, Neck = { -10, 12, 8 }, RightArm = { -6, 0, 8 }, RightElbow = { 10, 0, 0 }, LeftArm = { -4, 0, -8 }, LeftElbow = { 14, 0, 0 }, RightHip = { 4, 0, 0 } },
 	AxlPoint = { Root = { 0, -14, 0, -0.04 }, Waist = { 0, -14, 0 }, Neck = { 6, 14, 0 }, RightArm = { 88, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 0, 0, -10 }, LeftElbow = { 20, 0, 0 } },
@@ -405,6 +408,8 @@ TuskAnimation.Actions = {
 	DWBarrage = { { 0, "DWStance" }, { 0.12, "AxlPoint", "Out" }, { 1.7, "AxlPoint", "Linear", 1 }, { 1.9, "DWStance", "Sine" } },
 	DWKnife = { { 0, "DWStance" }, { 0.14, "DWThrowWind", "In" }, { 0.22, "DWThrow", "Snap", 4 }, { 0.45, "DWStance", "Sine" } },
 	DWTimeStop = { { 0, "DWStance" }, { 0.35, "DWSpread", "Back", 3 }, { 0.95, "DWSpread", "Linear", 2 }, { 1.25, "DWStance", "Sine" } },
+
+	DWRevolver = { { 0, "DWStance" }, { 0.22, "DWAim", "Back", 2 }, { 0.38, "DWFan", "Snap", 3 }, { 0.45, "DWAim", "Out" }, { 0.52, "DWFan", "Snap", 3 }, { 0.59, "DWAim", "Out" }, { 0.66, "DWFan", "Snap", 3 }, { 0.73, "DWAim", "Out" }, { 0.80, "DWFan", "Snap", 3 }, { 0.87, "DWAim", "Out" }, { 0.94, "DWFan", "Snap", 3 }, { 1.01, "DWAim", "Out" }, { 1.08, "DWFan", "Snap", 3 }, { 1.15, "DWAim", "Out" }, { 1.32, "DWTwirl", "Out" }, { 1.62, "DWTwirl", "Linear" }, { 1.85, "DWStance", "Sine" } },
 
 	-- AXL RO
 	A_M1_1 = { { 0, "AxlStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.3, "AxlStance", "Sine" } },

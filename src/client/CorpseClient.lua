@@ -28,6 +28,7 @@ local VFXLib = require(script.Parent.VFXLib)
 local TuskVFX = require(script.Parent.TuskVFX)
 local CameraFX = require(script.Parent.CameraFX)
 local Common = require(script.Parent.TuskActCommon)
+local TuskAnimation = require(script.Parent.TuskAnimation)
 
 local CorpseClient = {}
 
@@ -278,6 +279,128 @@ local function streak(from, to, color, width, time)
 end
 
 -- A shell round someone for a while (cocoon / light).
+---------------------------------------------------------------------------
+-- Diego's six-shooter: a proper revolver, built in gun space (origin at the
+-- grip, barrel along -Z, top along +Y) and held in his right hand.
+---------------------------------------------------------------------------
+local revolvers = setmetatable({}, { __mode = "k" }) -- [character] = gun while it's out
+local drawRevolver
+local STEEL = Color3.fromRGB(64, 66, 76)
+local STEEL_LIGHT = Color3.fromRGB(150, 154, 166)
+local WOOD = Color3.fromRGB(132, 80, 42)
+local WOOD_DARK = Color3.fromRGB(92, 54, 28)
+local BRASS = Color3.fromRGB(214, 176, 90)
+local CYL_CENTER = Vector3.new(0, 0.42, -0.5)
+
+local function buildRevolver()
+	local pieces = {}
+	local function add(size, cf, color, material, shape, cylinderPart)
+		local p = VFXLib.part({ Size = size, Color = color, Material = material or Enum.Material.Metal })
+		if shape then
+			p.Shape = shape
+		end
+		table.insert(pieces, { Part = p, Offset = cf, Cylinder = cylinderPart })
+		return p
+	end
+	local alongZ = CFrame.Angles(0, math.pi / 2, 0) -- turns a cylinder's axis from X onto Z
+	-- Grip: curved wood with darker panels and a steel butt cap.
+	add(Vector3.new(0.24, 0.62, 0.32), CFrame.new(0, -0.06, 0.14) * CFrame.Angles(-0.32, 0, 0), WOOD, Enum.Material.Wood)
+	for _, side in ipairs({ -1, 1 }) do
+		add(Vector3.new(0.03, 0.46, 0.22), CFrame.new(side * 0.13, -0.08, 0.15) * CFrame.Angles(-0.32, 0, 0), WOOD_DARK, Enum.Material.Wood)
+	end
+	add(Vector3.new(0.26, 0.08, 0.34), CFrame.new(0, -0.38, 0.26) * CFrame.Angles(-0.32, 0, 0), STEEL)
+	-- Frame, top strap, hammer with its spur.
+	add(Vector3.new(0.22, 0.36, 0.62), CFrame.new(0, 0.36, -0.12), STEEL)
+	add(Vector3.new(0.16, 0.08, 0.78), CFrame.new(0, 0.6, -0.36), STEEL_LIGHT)
+	add(Vector3.new(0.08, 0.2, 0.1), CFrame.new(0, 0.64, 0.16) * CFrame.Angles(-0.5, 0, 0), STEEL)
+	add(Vector3.new(0.1, 0.05, 0.14), CFrame.new(0, 0.74, 0.24) * CFrame.Angles(-0.2, 0, 0), STEEL_LIGHT)
+	-- Trigger and trigger guard.
+	add(Vector3.new(0.05, 0.16, 0.05), CFrame.new(0, 0.12, -0.2) * CFrame.Angles(0.3, 0, 0), BRASS)
+	add(Vector3.new(0.07, 0.05, 0.38), CFrame.new(0, -0.03, -0.22), STEEL)
+	add(Vector3.new(0.07, 0.22, 0.05), CFrame.new(0, 0.07, -0.42), STEEL)
+	-- The cylinder: a fat drum with six chambers on its face and flutes.
+	add(Vector3.new(0.5, 0.5, 0.5), CFrame.new(CYL_CENTER) * alongZ, STEEL_LIGHT, Enum.Material.Metal, Enum.PartType.Cylinder, true)
+	add(Vector3.new(0.52, 0.42, 0.42), CFrame.new(CYL_CENTER) * alongZ, STEEL, Enum.Material.Metal, Enum.PartType.Cylinder, true)
+	for k = 0, 5 do
+		local a = k / 6 * math.pi * 2
+		local off = Vector3.new(math.cos(a) * 0.15, math.sin(a) * 0.15, 0)
+		add(Vector3.new(0.06, 0.11, 0.11), CFrame.new(CYL_CENTER + off + Vector3.new(0, 0, -0.25)) * alongZ, Color3.fromRGB(20, 20, 24), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder, true)
+		local flute = Vector3.new(math.cos(a + math.pi / 6) * 0.25, math.sin(a + math.pi / 6) * 0.25, 0)
+		add(Vector3.new(0.05, 0.05, 0.36), CFrame.new(CYL_CENTER + flute), STEEL, Enum.Material.Metal, nil, true)
+	end
+	-- An octagonal barrel (two square bars, one turned 45 degrees), the
+	-- ejector rod under it, a front sight and a dark muzzle.
+	add(Vector3.new(0.16, 0.16, 1.3), CFrame.new(0, 0.5, -1.38), STEEL)
+	add(Vector3.new(0.16, 0.16, 1.3), CFrame.new(0, 0.5, -1.38) * CFrame.Angles(0, 0, math.pi / 4), STEEL)
+	add(Vector3.new(0.06, 0.06, 0.95), CFrame.new(0, 0.34, -1.2), STEEL_LIGHT)
+	add(Vector3.new(0.1, 0.1, 0.22), CFrame.new(0, 0.34, -1.62), STEEL)
+	add(Vector3.new(0.04, 0.09, 0.12), CFrame.new(0, 0.62, -1.96), BRASS)
+	add(Vector3.new(0.04, 0.17, 0.17), CFrame.new(0, 0.5, -2.04) * alongZ, Color3.fromRGB(20, 20, 24), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+	return pieces
+end
+
+drawRevolver = function(character, data)
+	local old = revolvers[character]
+	if old then
+		old.Done()
+	end
+	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	if not hand then
+		return
+	end
+	local pieces = buildRevolver()
+	local gun = { Spin = 0, Kick = -1, Start = os.clock() }
+	local drawT = data.Draw or 0.35
+	local twirlAt = drawT + (data.Shots or 6) * (data.Every or 0.14) + 0.1
+	local total = data.Time or (twirlAt + 0.5)
+	local function gunCF()
+		local t = os.clock() - gun.Start
+		-- Held by the grip, barrel along the hand's pointing direction.
+		local grip = (hand.Name == "Right Arm") and hand.CFrame * CFrame.new(0, -hand.Size.Y / 2 + 0.1, 0) or hand.CFrame
+		local cf = grip * CFrame.Angles(-math.pi / 2, 0, 0) * CFrame.new(0, 0.1, 0.05)
+		-- Drawn: it swings up from pointing down.
+		if t < drawT then
+			cf = cf * CFrame.Angles(-(1 - t / drawT) * 1.6, 0, 0)
+		end
+		-- Recoil: the barrel kicks up and settles.
+		local k = math.max(0, 1 - (os.clock() - gun.Kick) / 0.1)
+		cf = cf * CFrame.Angles(k * 0.35, 0, 0)
+		-- Twirl round the trigger guard, then it's holstered.
+		if t > twirlAt then
+			local a = math.min((t - twirlAt) / 0.4, 1)
+			cf = cf * CFrame.new(0, 0.05, -0.3) * CFrame.Angles(a * math.pi * 4, 0, 0) * CFrame.new(0, -0.05, 0.3)
+		end
+		return cf
+	end
+	gun.Muzzle = function()
+		return (gunCF() * CFrame.new(0, 0.5, -2.1)).Position
+	end
+	local job
+	gun.Done = function()
+		if revolvers[character] == gun then
+			revolvers[character] = nil
+		end
+		VFXLib.cancel(job)
+		for _, e in ipairs(pieces) do
+			e.Part:Destroy()
+		end
+	end
+	revolvers[character] = gun
+	job = VFXLib.animate(total, function()
+		if not hand.Parent then
+			return
+		end
+		local cf = gunCF()
+		local spin = CFrame.new(CYL_CENTER) * CFrame.Angles(0, 0, gun.Spin) * CFrame.new(-CYL_CENTER)
+		local t = os.clock() - gun.Start
+		local fadeOut = math.clamp((t - (total - 0.15)) / 0.15, 0, 1)
+		for _, e in ipairs(pieces) do
+			e.Part.CFrame = cf * (e.Cylinder and spin * e.Offset or e.Offset)
+			e.Part.Transparency = fadeOut
+		end
+	end, gun.Done)
+end
+
 local function shell(character, color, material, time)
 	local p = VFXLib.part({ Size = Vector3.new(5, 7, 5), Color = color, Material = material, Transparency = 0.3 })
 	local start = os.clock()
@@ -497,45 +620,33 @@ local function onMove(data)
 		ring(data.Position, data.Radius or 22, pal.Main, 0.6)
 		VFXLib.burst(data.Position, { Count = 30, Color = Color3.fromRGB(150, 130, 170), Speed = 16, Lifetime = 0.6 })
 	elseif who == "DiegoAU" and data.Phase == "Draw" and character then
-		-- A blocky six-shooter in his right hand while he fires.
-		local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
-		if hand then
-			local steel, grip = Color3.fromRGB(70, 72, 80), Color3.fromRGB(120, 76, 44)
-			local pieces = {
-				{ Vector3.new(0.22, 0.26, 1.3), CFrame.new(0, 0.1, -0.75), steel }, -- barrel
-				{ Vector3.new(0.34, 0.36, 0.45), CFrame.new(0, 0.05, -0.15), steel }, -- cylinder
-				{ Vector3.new(0.26, 0.6, 0.28), CFrame.new(0, -0.3, 0.12) * CFrame.Angles(-0.35, 0, 0), grip }, -- grip
-				{ Vector3.new(0.08, 0.14, 0.2), CFrame.new(0, 0.3, 0.05), steel }, -- hammer
-				{ Vector3.new(0.06, 0.08, 0.06), CFrame.new(0, 0.26, -1.3), Color3.fromRGB(220, 200, 120) }, -- sight
-			}
-			local parts = {}
-			for _, pc in ipairs(pieces) do
-				table.insert(parts, { VFXLib.part({ Size = pc[1], Color = pc[3], Material = Enum.Material.Metal }), pc[2] })
-			end
-			VFXLib.animate(data.Time or 1.3, function()
-				if hand.Parent then
-					local base = hand.CFrame * CFrame.new(0, -hand.Size.Y / 2, -0.1)
-					for _, e in ipairs(parts) do
-						e[1].CFrame = base * e[2]
-					end
-				end
-			end, function()
-				for _, e in ipairs(parts) do
-					e[1]:Destroy()
-				end
-			end)
+		TuskAnimation.play(character, "DWRevolver")
+		drawRevolver(character, data)
+	elseif who == "DiegoAU" and data.Phase == "Shot" then
+		local gun = revolvers[character]
+		local muzzle = gun and gun.Muzzle and gun.Muzzle() or data.Position
+		if gun then
+			gun.Kick = os.clock()
+			gun.Spin = gun.Spin + math.pi / 3 -- the cylinder turns one chamber
 		end
-	elseif who == "DiegoAU" and data.Phase == "Shot" and data.Position then
-		-- Muzzle flash and a puff of smoke.
-		local flash = VFXLib.part({ Size = Vector3.new(0.9, 0.9, 0.9), CFrame = CFrame.new(data.Position), Color = Color3.fromRGB(255, 220, 120), Material = Enum.Material.Neon, Shape = Enum.PartType.Ball })
-		VFXLib.animate(0.08, function(a)
-			flash.Transparency = a
-		end, function()
-			flash:Destroy()
-		end)
-		VFXLib.burst(data.Position, { Count = 5, Color = Color3.fromRGB(200, 196, 190), Speed = 4, Lifetime = 0.4 })
+		if muzzle then
+			-- Muzzle flash (a bright star), a puff of smoke.
+			local dir = data.Direction or Vector3.new(0, 0, -1)
+			local flash = VFXLib.part({ Size = Vector3.new(0.9, 0.9, 0.9), CFrame = CFrame.new(muzzle), Color = Color3.fromRGB(255, 220, 120), Material = Enum.Material.Neon, Shape = Enum.PartType.Ball })
+			local cone = VFXLib.part({ Size = Vector3.new(0.5, 0.5, data.Last and 2.4 or 1.6), CFrame = CFrame.lookAt(muzzle, muzzle + dir) * CFrame.new(0, 0, -0.8), Color = Color3.fromRGB(255, 190, 80), Material = Enum.Material.Neon })
+			VFXLib.animate(0.09, function(a)
+				flash.Transparency = a
+				cone.Transparency = a
+			end, function()
+				flash:Destroy()
+				cone:Destroy()
+			end)
+			VFXLib.burst(muzzle, { Count = data.Last and 10 or 5, Color = Color3.fromRGB(200, 196, 190), Speed = 4, Lifetime = 0.45 })
+			-- A spent glint pops out sideways.
+			VFXLib.burst(muzzle, { Count = 1, Color = Color3.fromRGB(220, 180, 90), Speed = 10, Lifetime = 0.3, Direction = Vector3.new(0, 1, 0), Spread = 60 })
+		end
 		if local_ then
-			CameraFX.shake(0.15, 0.06)
+			CameraFX.shake(data.Last and 0.3 or 0.15, 0.06)
 		end
 	elseif who == "Valentine" then
 		if data.Phase == "Bless" then

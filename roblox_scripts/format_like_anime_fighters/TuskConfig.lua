@@ -758,42 +758,55 @@ TuskConfig.Valentine = {
 -- Diego Brando from another world (AU): THE WORLD
 ---------------------------------------------------------------------------
 TuskConfig.DiegoAU = {
-	M1 = { -- MUDA COMBO: The World punches with him
+	M1 = { -- MUDA COMBO: The World punches with him; the 4th hit is an uppercut that launches
 		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.08,
 		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
 		Hits = {
 			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
 			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
 			{ Damage = 4, Stun = 0.45, Knockback = 5 },
-			{ Damage = 7, Stun = 0.5, Knockback = 45, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+			{ Damage = 7, Stun = 0.55, Knockback = 30, Launch = 26, ShockwaveRadius = 7, AoeRadius = 6.5 },
 		},
 	},
-	StandGrab = { -- 1: The World lunges out, grabs the nearest enemy in front, lifts them and hurls them
+	StandGrab = { -- 1: The World grabs the nearest enemy in front, punches them while holding them up, then hurls them
 		Cooldown = 9, MissCooldown = 3, Windup = 0.2,
-		Range = 12, Cone = 70,
-		GrabDamage = 4, HoldTime = 0.55, -- held up in front of Diego this long
-		ThrowDamage = 8, Knockback = 80, Launch = 30, Stun = 1,
+		Range = 14, Cone = 70,
+		GrabDamage = 3, HoldTime = 0.9, -- held up in front of Diego this long...
+		HoldPunches = 3, PunchDamage = 2, -- ...while The World punches them this many times
+		ThrowDamage = 7, Knockback = 80, Launch = 30, Stun = 1,
 		SplashDelay = 0.4, SplashRadius = 7, SplashDamage = 5, -- whoever they're thrown into gets hit too
+		WallCheck = 20, WallDamage = 5, WallStun = 0.8, -- thrown into a wall this close: WALL SLAM
 	},
-	StandBarrage = { -- 2: The World rushes ahead of him with a storm of punches
+	StandBarrage = { -- 2: The World rushes ahead of him with a storm of punches, dragging them along
 		Cooldown = 12, Windup = 0.15,
 		Duration = 1.6, Tick = 0.1,
-		Damage = 0.9, Stun = 0.35, Knockback = 2,
+		Damage = 0.9, Stun = 0.35, Knockback = 0,
 		HitboxSize = Vector3.new(6, 6, 7), HitboxForward = 4, MaxTargets = 4,
-		WalkMultiplier = 0.45, -- Diego can still walk, slowly, while it punches
+		Drag = 6, -- enemies caught in it are pulled back in front of it (they can't slip out)
+		WalkMultiplier = 0.6, -- Diego can still walk while it punches (and it follows)
 		FinalDamage = 6, FinalKnockback = 50, FinalLaunch = 12, FinalStun = 0.6,
+		ShockwaveRadius = 8, ShockwaveDamage = 3, -- the last punch's shockwave hits everyone in front
 	},
-	KnifeThrow = { -- 3: three knives at once, fanned out
+	KnifeThrow = { -- 3: three knives at once, fanned out; press again soon for a second volley
 		Cooldown = 7, Windup = 0.18,
 		Count = 3, Spread = 8, -- degrees between knives
+		FollowUpWindow = 1.5, -- press again within this long for one more volley
 		Speed = 150, Radius = 0.7, Range = 110,
 		Damage = 4, Stun = 0.4, Knockback = 6,
+		StoppedCount = 8, StoppedSpread = 7, StoppedCooldown = 2.5, -- KNIFE WALL while time is stopped
 	},
-	Ultimate = { -- THE WORLD: TIME STOP. Everyone else nearby freezes; Diego moves freely
+	Ultimate = { -- THE WORLD: TIME STOP. Everyone else in the zone freezes; Diego moves freely
 		Windup = 0.8,
 		Duration = 6, -- seconds time stays stopped
 		BotDuration = 4, -- shorter when an NPC Diego does it
 		Range = 60, -- radius of the time-stop zone (shown as a dome); anyone inside freezes
+		SpeedMultiplier = 1.2, -- Diego moves faster in stopped time
+		ResetCooldowns = { "StandGrab", "KnifeThrow" }, -- ready the moment time stops
+	},
+	Revolver = { -- corpse move: a six-shooter
+		Draw = 0.35, Shots = 6, Every = 0.14,
+		Damage = 5, Stun = 0.3, Knockback = 4, Speed = 260, Range = 140,
+		LastShotDamage = 9, -- the sixth round hits harder
 	},
 }
 

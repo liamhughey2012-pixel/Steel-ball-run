@@ -1136,7 +1136,7 @@ __modules["CorpseMoves"] = function()
 	  Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow
 	  Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit
 	  Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse
-	  Diego (AU)   REVOLVER: draws a revolver and fans six shots where he aims
+	  Diego (AU)   REVOLVER: draws a six-shooter, fans six shots where he aims
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -1385,38 +1385,41 @@ USE.Valentine = function(S, player, state, character, root)
 	end)
 end
 
--- REVOLVER: he draws a revolver and fans six shots at where he's aiming.
+-- REVOLVER: he draws a six-shooter, aims and fans the hammer: six shots
+-- where he's aiming (the last hits hardest), then twirls it and holsters it.
 -- (In stopped time the bullets hang in the air like everything else.)
 USE.DiegoAU = function(S, player, state, character, root, aim)
-	if not S.fireKnife then
+	local g = TuskConfig.DiegoAU and TuskConfig.DiegoAU.Revolver
+	if not S.fireKnife or not g then
 		return false
 	end
-	local shots, every, draw = 6, 0.13, 0.25
-	S.lock(state, draw + shots * every + 0.2)
+	local total = g.Draw + g.Shots * g.Every
+	S.lock(state, total + 0.25)
 	local life = state.Life
-	fx({ Character = character, Who = "DiegoAU", Phase = "Draw", Time = draw + shots * every + 0.35 })
-	for i = 1, shots do
-		task.delay(draw + (i - 1) * every, function()
+	fx({ Character = character, Who = "DiegoAU", Phase = "Draw", Draw = g.Draw, Every = g.Every, Shots = g.Shots, Time = total + 0.6 })
+	for i = 1, g.Shots do
+		task.delay(g.Draw + (i - 1) * g.Every, function()
 			local char, _, r = S.Adapter.getAlive(player)
 			if not r or state.Life ~= life then
 				return
 			end
 			local dir = S.aim(aim, r)
 			-- A little spread as he fans the hammer.
-			dir = (CFrame.lookAt(Vector3.zero, dir) * CFrame.Angles(math.rad((math.random() - 0.5) * 3), math.rad((math.random() - 0.5) * 4), 0)).LookVector
-			local muzzle = S.origin(char, r, CFrame.new(1, 0.4, -2))
+			dir = (CFrame.lookAt(Vector3.zero, dir) * CFrame.Angles(math.rad((math.random() - 0.5) * 2.5), math.rad((math.random() - 0.5) * 3.5), 0)).LookVector
+			local muzzle = S.origin(char, r, CFrame.new(1, 0.6, -2.4))
+			local last = i == g.Shots
 			S.fireKnife(player, state, {
 				Origin = muzzle,
 				Direction = dir,
-				Speed = 260,
+				Speed = g.Speed,
 				Radius = 0.5,
-				Range = 140,
+				Range = g.Range,
 				Style = "Bullet",
 				OnHit = function(target, position)
-					S.hit(player, target, { Damage = 5, Stun = 0.3, Knockback = 4, Direction = dir, Position = position, Source = "DiegoAURevolver" })
+					S.hit(player, target, { Damage = last and g.LastShotDamage or g.Damage, Stun = g.Stun, Knockback = last and 20 or g.Knockback, Direction = dir, Position = position, Source = "DiegoAURevolver" })
 				end,
 			})
-			fx({ Character = char, Who = "DiegoAU", Phase = "Shot", Position = muzzle, Direction = dir })
+			fx({ Character = char, Who = "DiegoAU", Phase = "Shot", Index = i, Position = muzzle, Direction = dir, Last = last })
 		end)
 	end
 end

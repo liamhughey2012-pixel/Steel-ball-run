@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer › TuskActs` |
 | **Exact name** | `DiegoAU` (capitals matter) |
 
-**What it does:** Diego Brando from another world (AU): THE WORLD. Registered as "Act" 14 so it reuses the Tusk ability system. M1        MUDA COMBO: The World punches with him Ability 1 STAND GRAB: The World lunges out, grabs the nearest enemy in front, lifts them up and hurls them the way he's aiming; whoever they crash into is hit too Ability 2 STAND BARRAGE: The World rushes ahead of him with a storm of punches (he can still walk, slowly); a last big punch sends them flying Ability 3 KNIFE THROW: three knives at once, fanned out Ultimate  THE WORLD: TIME STOP: a zone (shown as a dome) round where he stands: everyone inside, and anyone who walks in, freezes for about 6 seconds (can't move, act, block or dodge) while Diego moves freely. Knives, bullets and every other projectile in the zone stop in the air (his own a few studs out) and fly on when time moves again. It ends early if he goes down Numbers: TuskConfig.DiegoAU. All damage goes through S.hit (CombatAdapter). Frozen characters carry the "TimeStopped" attribute (CombatAdapter.canAct refuses them) and have their root anchored by the server.
+**What it does:** Diego Brando from another world (AU): THE WORLD. Registered as "Act" 14 so it reuses the Tusk ability system. M1        MUDA COMBO: The World punches with him; the 4th is an uppercut Ability 1 STAND GRAB: The World grabs the nearest enemy in front, lifts them up and punches them three times, then hurls them the way he's facing; into a wall = WALL SLAM; whoever they crash into is hit too Ability 2 STAND BARRAGE: The World rushes ahead of him with a storm of punches that drags them along (he can still walk); the last big punch sends them flying with a shockwave Ability 3 KNIFE THROW: three knives at once, fanned out; press again within 1.5 s for a second volley. In stopped time: KNIFE WALL (eight knives, quick cooldown) Ultimate  THE WORLD: TIME STOP: a zone (shown as a dome) round where he stands: everyone inside, and anyone who walks in, freezes for about 6 seconds (can't move, act, block or dodge) while Diego moves freely. Knives, bullets and every other projectile in the zone stop in the air (his own a few studs out) and fly on when time moves again. He's 20% faster in it, and his grab and knives are ready the moment it starts. It ends early if he goes down Numbers: TuskConfig.DiegoAU. All damage goes through S.hit (CombatAdapter). Frozen characters carry the "TimeStopped" attribute (CombatAdapter.canAct refuses them) and have their root anchored by the server.
 
 ## How to add it
 1. In Studio's Explorer, find **TuskActs** (ServerScriptService › SpinServer › TuskActs).
@@ -29,20 +29,25 @@ Back to [[Where To Put Code]]
 
 	Diego Brando from another world (AU): THE WORLD. Registered as "Act" 14
 	so it reuses the Tusk ability system.
-	  M1        MUDA COMBO: The World punches with him
-	  Ability 1 STAND GRAB: The World lunges out, grabs the nearest enemy in
-	            front, lifts them up and hurls them the way he's aiming;
-	            whoever they crash into is hit too
+	  M1        MUDA COMBO: The World punches with him; the 4th is an uppercut
+	  Ability 1 STAND GRAB: The World grabs the nearest enemy in front, lifts
+	            them up and punches them three times, then hurls them the way
+	            he's facing; into a wall = WALL SLAM; whoever they crash into
+	            is hit too
 	  Ability 2 STAND BARRAGE: The World rushes ahead of him with a storm of
-	            punches (he can still walk, slowly); a last big punch sends
-	            them flying
-	  Ability 3 KNIFE THROW: three knives at once, fanned out
+	            punches that drags them along (he can still walk); the last
+	            big punch sends them flying with a shockwave
+	  Ability 3 KNIFE THROW: three knives at once, fanned out; press again
+	            within 1.5 s for a second volley. In stopped time: KNIFE WALL
+	            (eight knives, quick cooldown)
 	  Ultimate  THE WORLD: TIME STOP: a zone (shown as a dome) round where he
 	            stands: everyone inside, and anyone who walks in, freezes for
 	            about 6 seconds (can't move, act, block or dodge) while Diego
 	            moves freely. Knives, bullets and every other projectile in
 	            the zone stop in the air (his own a few studs out) and fly on
-	            when time moves again. It ends early if he goes down
+	            when time moves again. He's 20% faster in it, and his grab and
+	            knives are ready the moment it starts. It ends early if he
+	            goes down
 	Numbers: TuskConfig.DiegoAU. All damage goes through S.hit (CombatAdapter).
 	Frozen characters carry the "TimeStopped" attribute (CombatAdapter.canAct
 	refuses them) and have their root anchored by the server.
@@ -158,8 +163,19 @@ end
 local stops = setmetatable({}, { __mode = "k" }) -- [character] = the time stop he's holding
 
 ---------------------------------------------------------------------------
--- STAND GRAB: grab, lift, throw
+-- STAND GRAB: grab, punch them while they're held up, throw (WALL SLAM)
 ---------------------------------------------------------------------------
+local function wallAhead(S, from, direction, distance, ignore)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = ignore
+	local result = workspace:Raycast(from, direction * distance, params)
+	if result and result.Normal.Y < 0.6 then
+		return result.Position
+	end
+	return nil
+end
+
 local function standGrab(S, player, state, aim)
 	local c = cfg.StandGrab
 	if not ready(S, player, state, "StandGrab", 1) then
@@ -170,7 +186,7 @@ local function standGrab(S, player, state, aim)
 	local character, _, root = alive(S, player)
 	local direction = Moves.flat(S.aim(aim, root))
 	local life = state.Life
-	S.fx("Ability", { Character = character, Act = ACT, Move = "StandGrab", Phase = "Reach", Direction = direction, Windup = c.Windup, Range = c.Range })
+	S.fx("Ability", { Character = character, Act = ACT, Move = "StandGrab", Phase = "Reach", Direction = direction, Windup = c.Windup, Range = c.Range, Hold = c.HoldTime })
 	task.delay(c.Windup, function()
 		if not S.stillValid(player, state, life) then
 			return
@@ -183,10 +199,11 @@ local function standGrab(S, player, state, aim)
 			S.fx("Ability", { Character = char, Act = ACT, Move = "StandGrab", Phase = "Miss", Direction = direction })
 			return
 		end
-		-- Lifted up in front of Diego, held there.
+		-- Lifted up in front of Diego, held there while The World punches them.
 		pin(tr)
 		S.fx("Ability", { Character = char, Act = ACT, Move = "StandGrab", Phase = "Hold", Target = target, Duration = c.HoldTime })
 		local started = now()
+		local punches = 0
 		local function hold()
 			local _, _, myRoot = alive(S, player)
 			if not tr.Parent or not myRoot or not S.stillValid(player, state, life) then
@@ -195,18 +212,37 @@ local function standGrab(S, player, state, aim)
 				S.fx("Ability", { Act = ACT, Move = "StandGrab", Phase = "Drop", Character = character, Target = target })
 				return
 			end
-			if now() - started < c.HoldTime then
-				local lift = math.min((now() - started) / c.HoldTime, 1)
+			local held = now() - started
+			if held < c.HoldTime then
+				local lift = math.min(held / c.HoldTime, 1)
 				local at = (myRoot.CFrame * CFrame.new(0, 1.5 + lift * 2, -4.5)).Position
 				tr.CFrame = CFrame.lookAt(at, myRoot.Position + Vector3.new(0, 1.5 + lift * 2, 0))
+				-- MUDA: a punch every so often while they're held.
+				local due = math.floor(held / (c.HoldTime / (c.HoldPunches + 1)))
+				if punches < c.HoldPunches and due > punches then
+					punches = punches + 1
+					S.hit(player, target, { Damage = c.PunchDamage, Stun = c.Stun, Knockback = 0, Direction = myRoot.CFrame.LookVector, Position = tr.Position, Source = "DiegoAUGrab" })
+					S.fx("Ability", { Act = ACT, Move = "StandGrab", Phase = "Punch", Character = char, Position = tr.Position, Index = punches })
+				end
 				task.delay(0.03, hold)
 				return
 			end
-			-- Hurled the way he's aiming now.
+			-- Hurled the way he's facing now.
 			local throwDir = Moves.flat(myRoot.CFrame.LookVector)
 			unpin(tr)
 			S.hit(player, target, { Damage = c.ThrowDamage, Stun = c.Stun, Knockback = c.Knockback, Launch = c.Launch, Direction = throwDir, Position = tr.Position, Source = "DiegoAUThrow" })
 			S.fx("Ability", { Character = char, Act = ACT, Move = "StandGrab", Phase = "Throw", Target = target, Direction = throwDir, Position = tr.Position })
+			-- Straight into a wall: WALL SLAM.
+			local wall = wallAhead(S, tr.Position, throwDir, c.WallCheck, { char, target })
+			if wall then
+				local travel = (wall - tr.Position).Magnitude / 60
+				task.delay(math.clamp(travel, 0.1, 0.4), function()
+					if target.Parent then
+						S.hit(player, target, { Damage = c.WallDamage, Stun = c.WallStun, Knockback = 0, Direction = -throwDir, Position = wall, Source = "DiegoAUThrow" })
+						S.fx("Ability", { Act = ACT, Move = "StandGrab", Phase = "WallSlam", Position = wall, Normal = -throwDir })
+					end
+				end)
+			end
 			-- Whoever they crash into gets hit too.
 			task.delay(c.SplashDelay, function()
 				if tr.Parent then
@@ -220,7 +256,7 @@ local function standGrab(S, player, state, aim)
 end
 
 ---------------------------------------------------------------------------
--- STAND BARRAGE
+-- STAND BARRAGE: a storm of punches that drags them along
 ---------------------------------------------------------------------------
 local function standBarrage(S, player, state, aim)
 	local c = cfg.StandBarrage
@@ -260,10 +296,22 @@ local function standBarrage(S, player, state, aim)
 			local last = i == ticks
 			if last then
 				Moves.boxHit(S, player, boxCF, c.HitboxSize, { Damage = c.FinalDamage, Stun = c.FinalStun, Knockback = c.FinalKnockback, Launch = c.FinalLaunch, Direction = r.CFrame.LookVector, Source = "DiegoAUBarrage" }, c.MaxTargets)
-				S.fx("Ability", { Character = character, Act = ACT, Move = "StandBarrage", Phase = "Finish", Position = boxCF.Position })
+				-- The last punch's shockwave catches everyone in front.
+				local waveAt = (r.CFrame * CFrame.new(0, 0, -c.HitboxForward - 3)).Position
+				Moves.aoe(S, player, waveAt, c.ShockwaveRadius, { Damage = c.ShockwaveDamage, Stun = 0.4, Knockback = 30, Direction = r.CFrame.LookVector, Source = "DiegoAUBarrage" }, 6)
+				S.fx("Ability", { Character = character, Act = ACT, Move = "StandBarrage", Phase = "Finish", Position = boxCF.Position, Direction = r.CFrame.LookVector, Radius = c.ShockwaveRadius })
 				stop()
 			else
-				local count = Moves.boxHit(S, player, boxCF, c.HitboxSize, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = r.CFrame.LookVector, Source = "DiegoAUBarrage" }, c.MaxTargets)
+				local count, hitSet = Moves.boxHit(S, player, boxCF, c.HitboxSize, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = r.CFrame.LookVector, Source = "DiegoAUBarrage" }, c.MaxTargets)
+				-- Drag whoever's caught back in front of The World (they can't slip out).
+				for target in pairs(hitSet or {}) do
+					local tr = target:FindFirstChild("HumanoidRootPart")
+					if tr and not tr.Anchored then
+						local to = boxCF.Position - tr.Position
+						to = Vector3.new(to.X, 0, to.Z)
+						tr.AssemblyLinearVelocity = Vector3.new(to.X * c.Drag, tr.AssemblyLinearVelocity.Y, to.Z * c.Drag) + r.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
+					end
+				end
 				if count > 0 and i % 2 == 0 then
 					S.fx("Ability", { Act = ACT, Move = "StandBarrage", Phase = "Hit", Position = boxCF.Position })
 				end
@@ -273,7 +321,7 @@ local function standBarrage(S, player, state, aim)
 end
 
 ---------------------------------------------------------------------------
--- KNIFE THROW
+-- KNIFE THROW (a second volley on a quick re-press; KNIFE WALL in stopped time)
 ---------------------------------------------------------------------------
 local function throwKnife(S, player, state, origin, direction, source)
 	local c = cfg.KnifeThrow
@@ -300,16 +348,12 @@ local function fan(direction, count, spread)
 	return list
 end
 
-local function knifeThrow(S, player, state, aim)
+local function volley(S, player, state, aim, count, spread, wall)
 	local c = cfg.KnifeThrow
-	if not ready(S, player, state, "KnifeThrow", 3) then
-		return
-	end
-	S.startCooldown(player, state, "KnifeThrow", c.Cooldown, 3)
-	S.lock(state, c.Windup + 0.2)
-	local character, _, root = alive(S, player)
+	local character = alive(S, player)
 	local life = state.Life
-	S.fx("Ability", { Character = character, Act = ACT, Move = "KnifeThrow", Phase = "Wind", Windup = c.Windup })
+	S.lock(state, c.Windup + 0.2)
+	S.fx("Ability", { Character = character, Act = ACT, Move = "KnifeThrow", Phase = "Wind", Windup = c.Windup, Wall = wall })
 	task.delay(c.Windup, function()
 		if not S.stillValid(player, state, life) then
 			return
@@ -317,12 +361,38 @@ local function knifeThrow(S, player, state, aim)
 		local char, _, r = alive(S, player)
 		local direction = S.aim(aim, r)
 		local origin = S.origin(char, r, Moves.HAND)
-		S.fx("Ability", { Character = char, Act = ACT, Move = "KnifeThrow", Phase = "Throw", Direction = direction })
+		S.fx("Ability", { Character = char, Act = ACT, Move = "KnifeThrow", Phase = "Throw", Direction = direction, Wall = wall, Count = count })
 		-- (Inside stopped time they fly a few studs and hang there: ProjectileService.)
-		for _, dir in ipairs(fan(direction, c.Count, c.Spread)) do
+		for _, dir in ipairs(fan(direction, count, spread)) do
 			throwKnife(S, player, state, origin, dir)
 		end
 	end)
+end
+
+local function knifeThrow(S, player, state, aim)
+	local c = cfg.KnifeThrow
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	local character = alive(S, player)
+	-- Second volley: a quick re-press (no cooldown).
+	if state.KnifeFollowUntil and now() < state.KnifeFollowUntil then
+		state.KnifeFollowUntil = nil
+		volley(S, player, state, aim, c.Count, c.Spread, false)
+		return
+	end
+	if not S.cooldownReady(player, state, "KnifeThrow", 3) then
+		return
+	end
+	if stops[character] then
+		-- KNIFE WALL: time is stopped, so a whole fan of them, and quickly again.
+		S.startCooldown(player, state, "KnifeThrow", c.StoppedCooldown, 3)
+		volley(S, player, state, aim, c.StoppedCount, c.StoppedSpread, true)
+		return
+	end
+	S.startCooldown(player, state, "KnifeThrow", c.Cooldown, 3)
+	state.KnifeFollowUntil = now() + c.Windup + c.FollowUpWindow
+	volley(S, player, state, aim, c.Count, c.Spread, false)
 end
 
 function DiegoAU.Ability(S, player, state, slot, phase, aim)
@@ -352,6 +422,10 @@ local function resume(S, character, token)
 	end
 	if character.Parent then
 		character:SetAttribute("TimeStopper", nil)
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		S.Adapter.setMoveModifier(humanoid, "TimeStop", nil)
 	end
 	-- Every knife, bullet and projectile hanging in the zone flies on.
 	if S.Projectiles and S.Projectiles.resumeTime then
@@ -399,6 +473,15 @@ function DiegoAU.Ultimate(S, player, state, aim)
 		sweep()
 		stops[char] = { Token = token, Frozen = frozen, Center = center }
 		char:SetAttribute("TimeStopper", now() + duration)
+		-- In stopped time he's quicker, and his grab and knives are ready at once.
+		local _, hum = alive(S, player)
+		if hum then
+			S.Adapter.setMoveModifier(hum, "TimeStop", u.SpeedMultiplier)
+		end
+		local slots = { StandGrab = 1, StandBarrage = 2, KnifeThrow = 3 }
+		for _, name in ipairs(u.ResetCooldowns or {}) do
+			S.startCooldown(player, state, name, 0, slots[name])
+		end
 		if S.Projectiles and S.Projectiles.stopTime then
 			S.Projectiles.stopTime(token, center, radius, player)
 		end
@@ -419,6 +502,7 @@ function DiegoAU.Ultimate(S, player, state, aim)
 end
 
 function DiegoAU.Cleanup(S, player, state)
+	state.KnifeFollowUntil = nil
 	local character = state.Character
 	if character then
 		character:SetAttribute("Armored", nil)

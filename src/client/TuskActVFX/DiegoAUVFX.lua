@@ -5,10 +5,15 @@
 	  * The World (TheWorldStand) floats behind him with a golden aura and
 	    punches with his moves; he stands with two fingers at his temple
 	  * STAND GRAB: The World lunges out and grabs; the victim is held up in
-	    a golden grip, then hurled with a streak; a dust ring where they crash
+	    a golden grip and punched (MUDA stars), then hurled; a crater of
+	    cracks on a WALL SLAM, a dust ring where they crash
 	  * STAND BARRAGE: The World rushes ahead, a storm of golden fists
 	    flying forward, impact stars on the hits, a big last punch
 	  * KNIFE THROW: three silver knives with gold guards, fanned out
+	  * THE CLOCK: a white clock face with Roman numerals spins over his head
+	    as he calls it, hangs huge over the zone with its hands stopped dead
+	    (twitching), slams onto the screen of whoever's inside, and lurches
+	    on and bursts away when time moves again
 	  * THE WORLD: TIME STOP: "THE WORLD!" over his head; a dome bursts out
 	    to the zone's edge and STAYS UP for the whole stop (a glowing ring on
 	    the ground marks the radius). Inside it the world is grey; outside
@@ -307,6 +312,191 @@ local function stepFrozen()
 	end
 end
 
+---------------------------------------------------------------------------
+-- The time-stop CLOCK: a white clock face with black Roman numerals, rings
+-- and hands (drawn from GUI frames: no image uploads). It spins over his
+-- head as he calls THE WORLD, hangs huge over the zone with its hands
+-- stopped dead (twitching, trying to move) while time is stopped, and
+-- lurches on and shatters away when time moves again. Those inside also see
+-- it slam onto the screen.
+---------------------------------------------------------------------------
+local CLOCK_DARK = Color3.fromRGB(22, 22, 28)
+local CLOCK_WHITE = Color3.fromRGB(250, 250, 252)
+local NUMERALS = { "XII", "I", "II", "III", "IIII", "V", "VI", "VII", "VIII", "IX", "X", "XI" }
+
+local function guiFrame(parent, props)
+	local f = Instance.new("Frame")
+	f.BorderSizePixel = 0
+	f.BackgroundTransparency = 1
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.Position = UDim2.fromScale(0.5, 0.5)
+	f.Size = UDim2.fromScale(1, 1)
+	for k, v in pairs(props or {}) do
+		f[k] = v
+	end
+	f:SetAttribute("BaseT", f.BackgroundTransparency)
+	f.Parent = parent
+	return f
+end
+
+local function disc(parent, scale, color, transparency, z)
+	local f = guiFrame(parent, { Size = UDim2.fromScale(scale, scale), BackgroundColor3 = color, BackgroundTransparency = transparency or 0, ZIndex = z })
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0.5, 0)
+	c.Parent = f
+	return f
+end
+
+-- A full-size square turned by `deg` (so its children turn round the clock's centre).
+local function spoke(parent, deg, z)
+	return guiFrame(parent, { Rotation = deg, ZIndex = z })
+end
+
+local function buildClockFace(parent)
+	local root = guiFrame(parent)
+	disc(root, 1.1, CLOCK_DARK, 0.5, 1) -- a dark shadow behind it
+	disc(root, 1.0, CLOCK_WHITE, 0, 2) -- rim rings
+	disc(root, 0.965, CLOCK_DARK, 0, 3)
+	disc(root, 0.95, CLOCK_WHITE, 0, 4)
+	disc(root, 0.932, CLOCK_DARK, 0, 5)
+	disc(root, 0.918, CLOCK_WHITE, 0, 6) -- the numeral band
+	disc(root, 0.71, CLOCK_DARK, 0, 7)
+	disc(root, 0.694, CLOCK_WHITE, 0, 8) -- the inner face
+	disc(root, 0.66, Color3.fromRGB(238, 238, 242), 0, 8)
+	-- Minute marks round the band.
+	for i = 0, 59 do
+		local s = spoke(root, i * 6, 9)
+		local long = i % 5 == 0
+		guiFrame(s, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.045), Size = UDim2.fromScale(long and 0.012 or 0.006, long and 0.035 or 0.02), BackgroundColor3 = CLOCK_DARK, BackgroundTransparency = 0, ZIndex = 9 })
+	end
+	-- Roman numerals, standing out from the centre like the picture.
+	for i = 1, 12 do
+		local s = spoke(root, (i - 1) * 30, 10)
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.AnchorPoint = Vector2.new(0.5, 0.5)
+		label.Position = UDim2.fromScale(0.5, 0.5 - 0.405)
+		label.Size = UDim2.fromScale(0.16, 0.12)
+		label.Font = Enum.Font.Bodoni
+		label.TextScaled = true
+		label.Text = NUMERALS[i]
+		label.TextColor3 = CLOCK_DARK
+		label.ZIndex = 10
+		label.Parent = s
+	end
+	-- Hands: hour and minute, from the centre, and a cap.
+	local hourS = spoke(root, 0, 11)
+	guiFrame(hourS, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 0.53), Size = UDim2.fromScale(0.03, 0.25), BackgroundColor3 = CLOCK_DARK, BackgroundTransparency = 0, ZIndex = 11 })
+	local minuteS = spoke(root, 0, 12)
+	guiFrame(minuteS, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 0.54), Size = UDim2.fromScale(0.018, 0.36), BackgroundColor3 = CLOCK_DARK, BackgroundTransparency = 0, ZIndex = 12 })
+	disc(root, 0.05, CLOCK_DARK, 0, 13)
+	return { Root = root, HourSpoke = hourS, MinuteSpoke = minuteS, Minute = math.random() * 360, Speed = 0, Alpha = 1, Twitch = 0 }
+end
+
+-- How visible the clock is (0 hidden .. 1 solid).
+local function clockAlpha(clock, alpha)
+	clock.Alpha = alpha
+	for _, d in ipairs(clock.Root:GetDescendants()) do
+		if d:IsA("Frame") then
+			local base = d:GetAttribute("BaseT") or 0
+			d.BackgroundTransparency = 1 - (1 - base) * alpha
+		elseif d:IsA("TextLabel") then
+			d.TextTransparency = 1 - alpha
+		end
+	end
+end
+
+local function stepClock(clock, dt)
+	clock.Minute = clock.Minute + clock.Speed * dt
+	local twitch = clock.Twitch > 0 and math.sin(os.clock() * 60) * clock.Twitch or 0
+	clock.MinuteSpoke.Rotation = clock.Minute + twitch
+	clock.HourSpoke.Rotation = clock.Minute / 12 + 120
+end
+
+-- A clock floating in the world (always facing the camera), `size` studs across.
+local function worldClock(position, size)
+	local anchorPart = VFXLib.part({ Size = Vector3.new(0.2, 0.2, 0.2), CFrame = CFrame.new(position), Transparency = 1 })
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "TheWorldClock"
+	bb.Adornee = anchorPart
+	bb.Size = UDim2.new(size, 0, size, 0)
+	bb.LightInfluence = 0
+	bb.MaxDistance = 1000
+	bb.Parent = VFXLib.Folder
+	local clock = buildClockFace(bb)
+	clock.Gui, clock.Anchor, clock.Studs = bb, anchorPart, size
+	clock.Destroy = function()
+		bb:Destroy()
+		anchorPart:Destroy()
+	end
+	return clock
+end
+
+-- The clock slammed onto the screen.
+local function screenClock(duration, from, to, stopAt)
+	local gui = localPlayer and localPlayer:FindFirstChildOfClass("PlayerGui")
+	if not gui then
+		return
+	end
+	local screen = Instance.new("ScreenGui")
+	screen.Name = "TheWorldScreenClock"
+	screen.IgnoreGuiInset = true
+	screen.ResetOnSpawn = false
+	screen.DisplayOrder = 19
+	local holder = Instance.new("Frame")
+	holder.BackgroundTransparency = 1
+	holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Position = UDim2.fromScale(0.5, 0.5)
+	holder.Size = UDim2.fromScale(from, from)
+	holder.SizeConstraint = Enum.SizeConstraint.RelativeYY
+	holder.Parent = screen
+	screen.Parent = gui
+	local clock = buildClockFace(holder)
+	clock.Speed = 1800
+	VFXLib.animate(duration, function(a)
+		local scale = from + (to - from) * VFXLib.easeOut(math.min(a * 2, 1))
+		holder.Size = UDim2.fromScale(scale, scale)
+		-- The hands spin, then stop dead.
+		clock.Speed = (stopAt and a * duration >= stopAt) and 0 or 1800 * (1 - a)
+		stepClock(clock, 1 / 60)
+		clockAlpha(clock, a < 0.6 and 0.85 or 0.85 * (1 - (a - 0.6) / 0.4))
+	end, function()
+		screen:Destroy()
+	end)
+end
+
+local calls = {} -- [character] = the little clock spinning over his head while he calls it
+
+local function stepCalls(dt)
+	for character, clock in pairs(calls) do
+		local root = Common.rootOf(character)
+		if not root or os.clock() > clock.Expire then
+			calls[character] = nil
+			clock.Destroy()
+		else
+			clock.Anchor.CFrame = CFrame.new(root.Position + Vector3.new(0, 7, 0))
+			local grow = math.min((os.clock() - clock.Born) / 0.25, 1)
+			clock.Gui.Size = UDim2.new(clock.Studs * grow, 0, clock.Studs * grow, 0)
+			stepClock(clock, dt)
+		end
+	end
+end
+
+local function startCallClock(character, windup)
+	local root = Common.rootOf(character)
+	if not root then
+		return
+	end
+	if calls[character] then
+		calls[character].Destroy()
+	end
+	local clock = worldClock(root.Position + Vector3.new(0, 7, 0), 7)
+	clock.Speed = 2160
+	clock.Born = os.clock()
+	clock.Expire = os.clock() + (windup or 0.8) + 0.4
+	calls[character] = clock
+end
+
 -- The time-stop zone: a dome that stays up, showing its edge, for as long
 -- as time is stopped. Inside it the world is grey.
 local function buildDome(center, radius)
@@ -355,6 +545,26 @@ local function endStop(character)
 			cc:Destroy()
 		end)
 	end
+	local clock = stop.Clock
+	if clock then
+		stop.Clock = nil
+		clock.Twitch = 0
+		local startMinute = clock.Minute
+		local size = clock.Studs
+		VFXLib.animate(0.55, function(a)
+			-- The hands lurch on (time moves again), then it bursts away.
+			clock.Minute = startMinute + math.min(a / 0.25, 1) * 30
+			stepClock(clock, 0)
+			local grow = 1 + math.max(0, a - 0.25) * 0.8
+			clock.Gui.Size = UDim2.new(size * grow, 0, size * grow, 0)
+			clockAlpha(clock, a < 0.25 and 0.75 or 0.75 * (1 - (a - 0.25) / 0.75))
+		end, function()
+			clock.Destroy()
+		end)
+		if stop.IsMe or stop.Grey and stop.Grey > 0.5 then
+			screenClock(0.6, 0.75, 0.95, nil)
+		end
+	end
 	local dome = stop.Dome
 	if dome then
 		VFXLib.animate(0.4, function(a)
@@ -381,6 +591,23 @@ local function stepStops(dt)
 				stop.Cc.Saturation = -k
 				stop.Cc.Contrast = 0.24 * k
 				stop.Cc.TintColor = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(225, 220, 240), k)
+			end
+			if stop.Clock then
+				local c = stop.Clock
+				local age = os.clock() - stop.Born
+				if age < 0.45 then
+					c.Speed = 1440 * (1 - age / 0.45)
+					c.Gui.Size = UDim2.new(c.Studs * math.min(age / 0.3, 1), 0, c.Studs * math.min(age / 0.3, 1), 0)
+					clockAlpha(c, 0.95)
+				else
+					-- Stopped dead; the hand twitches, trying to move.
+					c.Speed = 0
+					c.Twitch = (math.floor(os.clock()) % 2 == 0 and os.clock() % 1 < 0.08) and 2 or 0
+					if c.Alpha > 0.62 then
+						clockAlpha(c, math.max(0.6, c.Alpha - (dt or 1 / 60) * 1.2))
+					end
+				end
+				stepClock(c, dt or 1 / 60)
 			end
 			if stop.Dome and stop.Settled then
 				-- The edge shimmers slowly.
@@ -432,11 +659,21 @@ local function startStop(character, data)
 		end
 	end)
 	VFXLib.flash(center, GOLD_LIGHT, 6, 40, 0.4)
+	-- The little clock over his head becomes a huge one hanging over the zone.
+	if calls[character] then
+		calls[character].Destroy()
+		calls[character] = nil
+	end
+	stop.Born = os.clock()
+	local studs = math.clamp(radius * 0.75, 18, 60)
+	stop.Clock = worldClock(center + Vector3.new(0, math.clamp(radius * 0.45, 12, 34), 0), studs)
+	stop.Clock.Speed = 1440
 	local camera = workspace.CurrentCamera
 	if stop.IsMe or (camera and (camera.CFrame.Position - center).Magnitude <= radius + 10) then
 		CameraFX.fovPunch(-8, 0.4)
 		CameraFX.shake(0.4, 0.25)
 		VFXLib.sound(sounds.AwakeningBurst, camera, 0.6, 0.7)
+		screenClock(1.1, 1.3, 0.8, 0.35)
 	end
 end
 
@@ -496,6 +733,30 @@ local function onAbility(data)
 			if character and Common.isLocal(character) then
 				CameraFX.shake(0.4, 0.15)
 			end
+		elseif phase == "Punch" and data.Position then
+			-- MUDA: The World punches them while it holds them up.
+			if character then
+				TuskStand.action(character, "Lunge", { Target = CFrame.new((data.Index or 1) % 2 == 0 and -0.7 or 0.7, 2.2, -4.4), Duration = 0.12 })
+			end
+			TuskVFX.CreateImpactStar(data.Position + Vector3.new((math.random() - 0.5) * 1.5, (math.random() - 0.5) * 1.5, 0), { Size = 2.6, Rays = 6, Color = GOLD, Color2 = Color3.new(1, 1, 1), Duration = 0.1 })
+			VFXLib.burst(data.Position, { Count = 6, Color = GOLD_LIGHT, Speed = 18, Lifetime = 0.2 })
+		elseif phase == "WallSlam" and data.Position then
+			-- Slammed into a wall: a crater of cracks and dust.
+			local normal = data.Normal or Vector3.new(0, 0, 1)
+			for k = 0, 7 do
+				local a = k / 8 * math.pi * 2 + math.random() * 0.3
+				local crack = VFXLib.part({ Size = Vector3.new(0.18, 0.18, 2 + math.random() * 1.5), Color = Color3.fromRGB(60, 50, 40), Material = Enum.Material.SmoothPlastic })
+				local cf = CFrame.lookAt(data.Position, data.Position + normal) * CFrame.Angles(0, 0, a) * CFrame.new(0, 1, 0.05) * CFrame.Angles(math.pi / 2, 0, 0)
+				crack.CFrame = cf
+				VFXLib.animate(1.2, function(t)
+					crack.Transparency = math.max(0, (t - 0.6) / 0.4)
+				end, function()
+					crack:Destroy()
+				end)
+			end
+			VFXLib.burst(data.Position, { Count = 24, Color = DUST, Speed = 20, Lifetime = 0.5, Direction = normal, Spread = 70 })
+			TuskVFX.CreateImpactStar(data.Position, { Size = 4, Rays = 8, Color = GOLD, Color2 = Color3.new(1, 1, 1), Duration = 0.16 })
+			CameraFX.shakeAt(data.Position, 0.6, 50)
 		elseif phase == "Crash" and data.Position then
 			ringAt(data.Position, data.Radius or 7, DUST, 0.45)
 			VFXLib.burst(data.Position, { Count = 20, Color = DUST, Speed = 18, Lifetime = 0.5 })
@@ -516,6 +777,19 @@ local function onAbility(data)
 			barrages[character] = nil
 			TuskStand.action(character, "Lunge", { Target = CFrame.new(0, 1, -5), Duration = 0.3 })
 			Common.finisher({ Character = character, Position = data.Position, Hit = true }, pal, { Size = 1.2, Layers = 2, Shake = 0.5 })
+			-- The last punch's shockwave rolls out in front.
+			if data.Direction and data.Position then
+				local wave = VFXLib.part({ Size = Vector3.new(0.4, 1, 1), Color = GOLD_LIGHT, Material = Enum.Material.Neon, Transparency = 0.2, Shape = Enum.PartType.Cylinder })
+				local dir = data.Direction
+				VFXLib.animate(0.35, function(a)
+					local d = (data.Radius or 8) * 2 * VFXLib.easeOut(a)
+					wave.Size = Vector3.new(0.4, d, d)
+					wave.CFrame = CFrame.lookAt(data.Position + dir * a * 5, data.Position + dir * (a * 5 + 1)) * CFrame.Angles(0, math.pi / 2, 0)
+					wave.Transparency = 0.2 + 0.8 * a
+				end, function()
+					wave:Destroy()
+				end)
+			end
 		elseif phase == "Stop" and character then
 			barrages[character] = nil
 		end
@@ -524,6 +798,14 @@ local function onAbility(data)
 			TuskAnimation.play(character, "DWKnife")
 		elseif phase == "Throw" and root then
 			VFXLib.sound(sounds.NailFire, root, 0.5, 1.4)
+			if data.Wall then
+				-- KNIFE WALL: a golden arc of glints where the fan of knives leaves his hand.
+				TuskStand.action(character, "Lunge", { Target = CFrame.new(0, 1.4, -3), Duration = 0.25 })
+				for k = -3, 3 do
+					local dir = (CFrame.Angles(0, math.rad(k * 9), 0) * CFrame.new(Vector3.zero, data.Direction or root.CFrame.LookVector)).LookVector
+					VFXLib.burst(root.Position + dir * 3 + Vector3.new(0, 1, 0), { Count = 2, Color = GOLD_LIGHT, Speed = 10, Lifetime = 0.25, Direction = dir, Spread = 15 })
+				end
+			end
 		end
 	end
 end
@@ -551,6 +833,7 @@ local function onUltimate(data)
 		TuskAnimation.play(character, "DWTimeStop")
 		TuskStand.action(character, "Manifest", { Duration = 0.8 })
 		shout(character, "THE WORLD!")
+		startCallClock(character, data.Windup)
 		if root then
 			VFXLib.sound(sounds.AwakeningBuild, root, 0.6, 0.9)
 			VFXLib.burst(root.Position, { Count = 20, Color = GOLD_LIGHT, Speed = 10, Lifetime = 0.6 })
@@ -622,6 +905,7 @@ function DiegoAUVFX.step(dt)
 	stepKnives()
 	stepBarrages()
 	stepStops(dt)
+	stepCalls(dt)
 	slowTimer = slowTimer + dt
 	if slowTimer > 0.15 then
 		slowTimer = 0
