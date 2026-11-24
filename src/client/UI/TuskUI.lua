@@ -1,20 +1,26 @@
 --[[
 	TuskUI  (StarterPlayerScripts.SpinClient.UI.TuskUI)
 
-	Battlegrounds-style move HUD (shown while Johnny or Gyro is equipped):
-	  * header: Act / character name with a slanted colour band + tagline
-	  * hotbar of move cards: M1, 1, 2, 3 and a big ULT card
-	      - key badge, a drawn icon for each move, the move name
+	Battlegrounds-style move HUD (shown while a Stand user is equipped),
+	dressed in the bounty-board house style (UITheme): dark wood plaques with
+	planks, grain and nails, aged parchment, Bangers titles, chunky strokes.
+	The Act's own Theme colours still show as an inlay rim, a painted stripe,
+	the key tags and the ready glow, so each character reads at a glance.
+	  * header: a small wooden name sign (theme stripe) + tagline
+	  * hotbar of wooden move cards: M1, 1, 2, 3 and a big ULT card
+	      - key tag, a drawn icon on a dark plate with a brass rim, the move
+	        name on a burnt parchment strip
 	      - cooldown shade that drains with a countdown, greys the icon,
-	        then a white "ready" flash and pop
-	      - cards squash when pressed (mouse, touch or keyboard)
-	      - hold moves show a charge bar (FULL when fully charged)
-	  * ULT card: rising meter, %, READY glow with a spinning shine,
-	    LOCKED timer after an awakening
-	  * sneak chip (Johnny), combo counter, toasts, awakening banner with
-	    menacing "ゴ" letters, Awakened timer bar
+	        then a golden "ready" flash and pop
+	      - cards bounce on hover and squash when pressed (mouse, touch, keys)
+	      - hold moves show a wood-framed charge bar (FULL when charged)
+	  * ULT card: meter rising up the planks, %, READY glow with a spinning
+	    shine on the rim, LOCKED timer after an awakening
+	  * wooden sneak chip, combo counter, parchment toasts, awakening banner
+	    with menacing "ゴ" letters, wood-framed Awakened timer bar
 	  * scales down on small screens
-	Act menu (T / MOVESET button): Studio test tool, one card per Act.
+	Act menu (T / MOVESET button): Studio test tool; a bracketed wooden
+	board with a hanging sign and one parchment poster per Act.
 ]]
 
 local Players = game:GetService("Players")
@@ -26,24 +32,28 @@ local TuskConfig = require(Shared.TuskConfig)
 local Registry = require(Shared.TuskActRegistry)
 local Net = require(Shared.Net)
 local VFXLib = require(script.Parent.Parent.VFXLib)
+local UITheme = require(script.Parent.UITheme)
 
 local TuskUI = {}
 
 local player = Players.LocalPlayer
 local colors = TuskConfig.Colors
-local DARK = Color3.fromRGB(12, 16, 28)
-local DARK2 = Color3.fromRGB(26, 34, 56)
-local GREY = Color3.fromRGB(110, 118, 135)
+local C = UITheme.C
+local DARK = C.SHADOW -- icon plates (icon cut-outs are drawn in the same colour)
+local GREY = Color3.fromRGB(128, 116, 100)
 local WHITE = Color3.new(1, 1, 1)
-local FONT = Enum.Font.GothamBlack
-local TITLE_FONT = Enum.Font.Bangers
+local FONT = UITheme.Font.Heavy
+local TITLE_FONT = UITheme.Font.Title
+local NAME_INK = C.INK
+local NAME_FADED = C.INK:Lerp(C.PAPER_DARK, 0.6)
+local SNEAK_IDLE = C.BRASS
 
 local CARD_W, CARD_H, M1_W, ULT_W, GAP = 84, 96, 66, 112, 8
 
 local callbacks
-local gui, hud, hudScale, header, actLabel, actGradient, actBand, taglineLabel
+local gui, hud, hudScale, header, nameSign, actLabel, actGradient, actBand, taglineLabel
 local sneakChip, sneakHint, comboFrame, comboNumber, comboWord, comboDrain
-local toastFrame, toastLabel, toastAccent
+local toastFrame, toastLabel, toastAccent, toastStroke
 local bannerBand, banner, bannerSub, bannerGradient, menacing = nil, nil, nil, nil, {}
 local awakenBar, awakenFill
 local slots = {} -- [1..3] abilities, slots.M1, slots.Ult
@@ -96,8 +106,10 @@ local function text(parent, props)
 	local l = Instance.new("TextLabel")
 	l.BackgroundTransparency = 1
 	l.Font = FONT
-	l.TextColor3 = colors.Ice
+	l.TextColor3 = C.PAPER
+	l.TextStrokeColor3 = C.SHADOW
 	l.TextStrokeTransparency = 0.5
+
 	for k, v in pairs(props) do
 		l[k] = v
 	end
@@ -470,57 +482,70 @@ local function buildCard(parent, id, width, order)
 	button.Name = "Move_" .. tostring(id)
 	button.LayoutOrder = order
 	button.Size = UDim2.fromOffset(width, CARD_H)
-	button.BackgroundColor3 = DARK
-	button.BackgroundTransparency = 0.08
 	button.AutoButtonColor = false
 	button.Text = ""
 	button.ClipsDescendants = false
+	button.ZIndex = 1
 	button.Parent = parent
-	corner(button, 10)
-	gradient(button, Color3.fromRGB(200, 210, 230), Color3.fromRGB(120, 130, 150), 90)
-	local edge = stroke(button, WHITE, 2)
+	-- A dark wooden plaque: two planks with grain inside a dark border.
+	local planks = UITheme.wood(button, { Planks = 2, Border = 4, Radius = 9, Nails = false, Stroke = 3 })
+	-- Theme-coloured inlay on the wooden border (the ULT spins a shine around it).
+	local rim = frame(button, { Name = "Rim", Position = UDim2.fromOffset(2, 2), Size = UDim2.new(1, -4, 1, -4), BackgroundTransparency = 1, ZIndex = 2 })
+	corner(rim, 8)
+	local edge = stroke(rim, WHITE, 1.5)
 	local edgeGradient = gradient(edge, theme.Primary, theme.Secondary, 45)
 	local scale = Instance.new("UIScale")
 	scale.Scale = 1
 	scale.Parent = button
 
 	-- Glow behind the card (shown when an ability is ready / ultimate is ready).
-	local glow = frame(button, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, 8, 1, 8), BackgroundTransparency = 1, ZIndex = 0 })
-	corner(glow, 13)
+	local glow = frame(button, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, 10, 1, 10), BackgroundTransparency = 1, ZIndex = 0 })
+	corner(glow, 14)
 	local glowStroke = stroke(glow, theme.Primary, 4)
 	glowStroke.Transparency = 1
-	local accent = frame(button, { Size = UDim2.new(1, -16, 0, 3), Position = UDim2.fromOffset(8, 0), BackgroundColor3 = theme.Primary, ZIndex = 2 })
+	-- Painted theme stripe across the top plank.
+	local accent = frame(button, { Size = UDim2.new(1, -16, 0, 4), Position = UDim2.fromOffset(8, 5), BackgroundColor3 = theme.Primary, ZIndex = 3 })
 	corner(accent, 2)
+	stroke(accent, C.WOOD_EDGE, 1)
 
-	local badge = frame(button, { Position = UDim2.fromOffset(5, 6), Size = UDim2.fromOffset(26, 18), BackgroundColor3 = theme.Primary, ZIndex = 4 })
+	-- Key tag (theme colour, dark stroke, Bangers).
+	local badge = frame(button, { Position = UDim2.fromOffset(4, 4), Size = UDim2.fromOffset(26, 18), BackgroundColor3 = theme.Primary, Rotation = -4, ZIndex = 5 })
 	corner(badge, 5)
-	local key = text(badge, { Size = UDim2.fromScale(1, 1), TextSize = 12, TextColor3 = DARK, TextStrokeTransparency = 1, Text = "", ZIndex = 5 })
+	stroke(badge, C.WOOD_EDGE, 2)
+	local key = text(badge, { Size = UDim2.fromScale(1, 1), Font = TITLE_FONT, TextSize = 15, TextColor3 = C.INK, TextStrokeTransparency = 1, Text = "", ZIndex = 6 })
 
-	local icon = frame(button, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 18), Size = UDim2.fromOffset(40, 40), BackgroundTransparency = 1, ZIndex = 3 })
-	local name = text(button, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -5), Size = UDim2.new(1, -8, 0, 26), TextScaled = true, TextWrapped = true, Text = "", ZIndex = 3 })
+	-- Dark icon plate with a brass rim; the drawn icon sits on it.
+	local plate = frame(button, { Name = "IconPlate", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 13), Size = UDim2.fromOffset(48, 48), BackgroundColor3 = DARK, ZIndex = 3 })
+	corner(plate, 8)
+	local plateStroke = stroke(plate, C.BRASS, 2)
+	gradient(plate, Color3.fromRGB(255, 235, 210), Color3.fromRGB(150, 130, 115), 90)
+	local icon = frame(button, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 17), Size = UDim2.fromOffset(40, 40), BackgroundTransparency = 1, ZIndex = 4 })
+
+	-- Move name on a burnt parchment strip.
+	local strip = frame(button, { Name = "NameStrip", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -5), Size = UDim2.new(1, -10, 0, 28), ZIndex = 3 })
+	UITheme.paper(strip, { Radius = 4, Stroke = 2 })
+	local name = text(button, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -6), Size = UDim2.new(1, -14, 0, 26), TextScaled = true, TextWrapped = true, TextColor3 = NAME_INK, TextStrokeTransparency = 1, Text = "", ZIndex = 4 })
 	local nameLimit = Instance.new("UITextSizeConstraint")
 	nameLimit.MaxTextSize = 12
 	nameLimit.Parent = name
 
 	-- Cooldown shade: drains from the top down; countdown in the middle.
-	local shade = frame(button, { Size = UDim2.fromScale(1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.25, ZIndex = 6 })
-	corner(shade, 10)
-	local shadeEdge = frame(shade, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = theme.Primary, ZIndex = 7 })
-	local timer = text(button, { Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 22), TextSize = 26, TextStrokeTransparency = 0.2, Text = "", ZIndex = 8 })
-	local flash = frame(button, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = WHITE, BackgroundTransparency = 1, ZIndex = 9 })
-	corner(flash, 10)
+	local shade = frame(button, { Size = UDim2.fromScale(1, 0), BackgroundColor3 = C.SHADOW, BackgroundTransparency = 0.3, ZIndex = 7 })
+	corner(shade, 9)
+	local shadeEdge = frame(shade, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = theme.Primary, ZIndex = 8 })
+	local timer = text(button, { Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 18), Font = TITLE_FONT, TextSize = 32, TextColor3 = C.GOLD, TextStrokeTransparency = 0, Text = "", ZIndex = 9 })
+	local flash = frame(button, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.GLOW, BackgroundTransparency = 1, ZIndex = 10 })
+	corner(flash, 9)
 
-	-- Charge bar above the card (hold moves).
-	local chargeBack = frame(button, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -6), Size = UDim2.new(1, -6, 0, 7), BackgroundColor3 = DARK, Visible = false, ZIndex = 4 })
-	corner(chargeBack, 4)
-	stroke(chargeBack, WHITE, 1)
-	local chargeFill = frame(chargeBack, { Size = UDim2.fromScale(0, 1), BackgroundColor3 = theme.Primary, ZIndex = 5 })
-	corner(chargeFill, 4)
-	local chargeText = text(chargeBack, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -1), Size = UDim2.fromOffset(60, 14), TextSize = 11, Text = "", ZIndex = 5 })
+	-- Wood-framed charge bar above the card (hold moves).
+	local chargeBack, chargeFill = UITheme.bar(button, theme.Primary, { Name = "Charge", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -5), Size = UDim2.new(1, -4, 0, 12), Visible = false, ZIndex = 4 })
+	chargeFill.Size = UDim2.fromScale(0, 1)
+	local chargeText = text(chargeBack, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -1), Size = UDim2.fromOffset(80, 16), Font = TITLE_FONT, TextSize = 15, TextColor3 = C.GOLD, TextStrokeTransparency = 0.1, Text = "", ZIndex = 5 })
 
 	local card = {
 		Button = button, Scale = scale, Edge = edge, EdgeGradient = edgeGradient, Glow = glow, GlowStroke = glowStroke, Accent = accent,
-		Badge = badge, Key = key, Icon = icon, Name = name, Shade = shade, ShadeEdge = shadeEdge, Timer = timer,
+		Badge = badge, Key = key, Icon = icon, Plate = plate, PlateStroke = plateStroke, Planks = planks,
+ Name = name, Shade = shade, ShadeEdge = shadeEdge, Timer = timer,
 		Flash = flash, ChargeBack = chargeBack, ChargeFill = chargeFill, ChargeText = chargeText,
 		CooldownEnd = 0, CooldownDur = 0, Pressed = false, Pop = 0,
 	}
@@ -561,17 +586,18 @@ function TuskUI.toast(message, color)
 	color = color or Color3.fromRGB(255, 110, 100)
 	toastLabel.Text = message
 	toastAccent.BackgroundColor3 = color
-	toastLabel.TextColor3 = color:Lerp(WHITE, 0.45)
-	toastFrame.Size = UDim2.fromOffset(math.clamp(#message * 9 + 46, 160, 460), 32)
+	toastLabel.TextColor3 = color:Lerp(C.INK, 0.45)
+	toastFrame.Size = UDim2.fromOffset(math.clamp(#message * 9 + 50, 160, 460), 34)
 	toastFrame.Visible = true
 	animateJob("toast", 1.4, function(a)
 		local slide = a < 0.12 and (1 - a / 0.12) or 0
 		local fade = a < 0.75 and 0 or (a - 0.75) / 0.25
 		toastFrame.Position = UDim2.new(0.5, 0, 1, -20 + slide * 14)
-		toastFrame.BackgroundTransparency = 0.15 + fade * 0.85
+		toastFrame.BackgroundTransparency = fade
+		toastStroke.Transparency = math.max(0.2, fade)
 		toastAccent.BackgroundTransparency = fade
 		toastLabel.TextTransparency = fade
-		toastLabel.TextStrokeTransparency = math.max(0.5, fade)
+		toastLabel.TextStrokeTransparency = 1
 	end, function()
 		toastFrame.Visible = false
 	end)
@@ -621,7 +647,7 @@ local function bumpCombo()
 		return
 	end
 	comboNumber.Text = tostring(combo.Count)
-	local col = combo.Count >= 15 and colors.Gold or (combo.Count >= 8 and theme.Primary or colors.Ice)
+	local col = combo.Count >= 15 and C.GOLD or (combo.Count >= 8 and theme.Primary or C.PAPER)
 	comboNumber.TextColor3 = col
 	comboDrain.BackgroundColor3 = col
 	comboFrame.Visible = true
@@ -649,84 +675,76 @@ local function buildMenu()
 	menu.AnchorPoint = Vector2.new(0.5, 0.5)
 	menu.Position = UDim2.fromScale(0.5, 0.5)
 	menu.Size = UDim2.new(0.9, 0, 0, 330)
-	menu.BackgroundColor3 = DARK
-	menu.BackgroundTransparency = 0.05
 	menu.Visible = false
 	menu.ZIndex = 20
 	menu.Parent = gui
-	corner(menu, 12)
-	stroke(menu, colors.Cyan, 2)
+	-- A bracketed wooden board, like the bounty board.
+	UITheme.wood(menu, { Planks = 4, Border = 7, Radius = 10, Brackets = true, BracketSize = 20, Stroke = 4 })
 	local limit = Instance.new("UISizeConstraint")
 	limit.MaxSize = Vector2.new(860, 330)
 	limit.Parent = menu
 
-	text(menu, { Position = UDim2.fromOffset(18, 10), Size = UDim2.new(1, -80, 0, 36), Font = TITLE_FONT, TextSize = 34, TextXAlignment = Enum.TextXAlignment.Left, Text = "TUSK — CHOOSE YOUR ACT", ZIndex = 21 })
-	local close = Instance.new("TextButton")
-	close.AnchorPoint = Vector2.new(1, 0)
-	close.Position = UDim2.new(1, -12, 0, 12)
-	close.Size = UDim2.fromOffset(32, 32)
-	close.BackgroundColor3 = Color3.fromRGB(40, 50, 80)
-	close.Font = FONT
-	close.Text = "X"
-	close.TextSize = 16
-	close.TextColor3 = colors.Ice
-	close.ZIndex = 21
-	close.Parent = menu
-	corner(close, 6)
+	UITheme.sign(menu, "TUSK — CHOOSE YOUR ACT", nil, { Position = UDim2.new(0.5, 0, 0, -16), Size = UDim2.fromOffset(330, 46), ZIndex = 24 })
+	local close = UITheme.button(menu, "X", C.RED, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 12), Size = UDim2.fromOffset(34, 34), ZIndex = 24 })
 	close.Activated:Connect(function()
 		menu.Visible = false
 	end)
 
 	local row = Instance.new("ScrollingFrame")
-	row.Position = UDim2.fromOffset(14, 56)
-	row.Size = UDim2.new(1, -28, 1, -70)
+	row.Position = UDim2.fromOffset(16, 52)
+	row.Size = UDim2.new(1, -32, 1, -64)
 	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.ScrollingDirection = Enum.ScrollingDirection.X
 	row.AutomaticCanvasSize = Enum.AutomaticSize.X
 	row.CanvasSize = UDim2.new()
 	row.ScrollBarThickness = 4
+	row.ScrollBarImageColor3 = C.BRASS
 	row.ZIndex = 21
 	row.Parent = menu
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.Padding = UDim.new(0, 10)
+	layout.Padding = UDim.new(0, 12)
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
 	layout.Parent = row
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 6)
+	pad.PaddingRight = UDim.new(0, 6)
+	pad.Parent = row
 
 	for act = 1, 4 do
 		local info = Registry.get(act)
 		local ready = Registry.isImplemented(act)
+		-- A parchment poster per Act, pinned to the board.
 		local card = Instance.new("Frame")
-		card.Size = UDim2.fromOffset(196, 250)
-		card.BackgroundColor3 = Color3.fromRGB(20, 28, 48)
-		card.BackgroundTransparency = ready and 0 or 0.4
+		card.Size = UDim2.fromOffset(196, 240)
 		card.ZIndex = 22
 		card.Parent = row
-		corner(card, 10)
-		stroke(card, ready and info.Theme.Primary or Color3.fromRGB(70, 80, 100), 2)
-		text(card, { Position = UDim2.fromOffset(10, 8), Size = UDim2.new(1, -20, 0, 30), Font = TITLE_FONT, TextSize = 28, TextColor3 = ready and info.Theme.Primary or Color3.fromRGB(130, 140, 160), TextXAlignment = Enum.TextXAlignment.Left, Text = info.Name, ZIndex = 23 })
-		text(card, { Position = UDim2.fromOffset(10, 38), Size = UDim2.new(1, -20, 0, 16), TextSize = 12, TextColor3 = Color3.fromRGB(170, 185, 210), TextXAlignment = Enum.TextXAlignment.Left, Text = info.Tagline, ZIndex = 23 })
+		UITheme.paper(card, { Radius = 4, Stroke = 2 })
+		if not ready then
+			card.BackgroundColor3 = C.PAPER_DARK
+		end
+		local pin = frame(card, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 3), Size = UDim2.fromOffset(12, 12), BackgroundColor3 = C.RED, ZIndex = 24 })
+		corner(pin, 99)
+		stroke(pin, C.WOOD_EDGE, 1)
+		-- Theme stripe: the Act's own colours.
+		local stripe = frame(card, { Position = UDim2.fromOffset(8, 18), Size = UDim2.new(1, -16, 0, 5), BackgroundColor3 = ready and info.Theme.Primary or GREY, ZIndex = 23 })
+		corner(stripe, 2)
+		gradient(stripe, WHITE, ready and info.Theme.Secondary:Lerp(WHITE, 0.3) or GREY, 0)
+		text(card, { Position = UDim2.fromOffset(10, 26), Size = UDim2.new(1, -20, 0, 30), Font = TITLE_FONT, TextSize = 28, TextColor3 = ready and C.INK or NAME_FADED, TextStrokeTransparency = 1, TextXAlignment = Enum.TextXAlignment.Left, Text = info.Name, ZIndex = 23 })
+		text(card, { Position = UDim2.fromOffset(10, 56), Size = UDim2.new(1, -20, 0, 14), Font = UITheme.Font.Body, TextSize = 11, TextColor3 = ready and info.Theme.Primary:Lerp(C.INK, 0.55) or NAME_FADED, TextStrokeTransparency = 1, TextXAlignment = Enum.TextXAlignment.Left, Text = info.Tagline, ZIndex = 23 })
 		local moves = "M1  " .. info.M1 .. "\n1  " .. info.Abilities[1] .. "\n2  " .. info.Abilities[2] .. "\n3  " .. info.Abilities[3] .. "\nULT  " .. info.Ultimate
-		text(card, { Position = UDim2.fromOffset(10, 62), Size = UDim2.new(1, -20, 0, 120), TextSize = 12, TextColor3 = Color3.fromRGB(210, 220, 240), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, Text = moves, ZIndex = 23 })
+		text(card, { Position = UDim2.fromOffset(10, 76), Size = UDim2.new(1, -20, 0, 106), Font = UITheme.Font.Body, TextSize = 12, TextColor3 = C.INK, TextStrokeTransparency = 1, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, Text = moves, ZIndex = 23 })
 		if ready then
-			local pick = Instance.new("TextButton")
-			pick.AnchorPoint = Vector2.new(0.5, 1)
-			pick.Position = UDim2.new(0.5, 0, 1, -10)
-			pick.Size = UDim2.new(1, -20, 0, 36)
-			pick.BackgroundColor3 = info.Theme.Secondary
-			pick.Font = FONT
-			pick.TextSize = 15
-			pick.TextColor3 = Color3.new(1, 1, 1)
-			pick.Text = "SELECT"
-			pick.ZIndex = 23
-			pick.Parent = card
-			corner(pick, 8)
+			local pick = UITheme.button(card, "SELECT", info.Theme.Secondary, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -10), Size = UDim2.new(1, -24, 0, 38), ZIndex = 23 })
 			pick.Activated:Connect(function()
 				callbacks.Select(act)
 				menu.Visible = false
 			end)
 		else
-			text(card, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -10), Size = UDim2.new(1, -20, 0, 36), TextSize = 13, TextColor3 = Color3.fromRGB(150, 160, 180), Text = "IN DEVELOPMENT", ZIndex = 23 })
+			-- Stamped across the poster.
+			local stamp = text(card, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.new(1, -30, 0, 34), Font = TITLE_FONT, TextSize = 22, TextColor3 = C.RED, TextStrokeTransparency = 1, Rotation = -6, Text = "IN DEVELOPMENT", ZIndex = 23 })
+			stroke(stamp, C.RED, 2).Transparency = 0.3
 		end
 	end
 end
@@ -749,16 +767,15 @@ function TuskUI.init(cb)
 	hudScale = Instance.new("UIScale")
 	hudScale.Parent = hud
 
-	-- Header: slanted colour band + name + tagline.
+	-- Header: a small wooden name sign with a theme stripe, tagline under it.
 	header = frame(hud, { Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1 })
-	actBand = frame(header, { Position = UDim2.fromOffset(-6, 6), Size = UDim2.fromOffset(230, 30), BackgroundColor3 = theme.Primary, Rotation = -3, ZIndex = 1 })
-	corner(actBand, 4)
-	local bandGradient = Instance.new("UIGradient")
-	bandGradient.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(0.7, 0.55), NumberSequenceKeypoint.new(1, 1) })
-	bandGradient.Parent = actBand
-	actLabel = text(header, { Position = UDim2.fromOffset(4, 0), Size = UDim2.fromOffset(320, 34), Font = TITLE_FONT, TextSize = 34, TextColor3 = WHITE, TextStrokeTransparency = 0, TextStrokeColor3 = DARK, TextXAlignment = Enum.TextXAlignment.Left, Text = "", ZIndex = 2 })
+	nameSign = frame(header, { Name = "NameSign", Position = UDim2.fromOffset(0, 0), Size = UDim2.fromOffset(230, 32), Rotation = -1.5, ZIndex = 1 })
+	UITheme.wood(nameSign, { Planks = 1, Border = 3, Radius = 6, Nails = true, Stroke = 3 })
+	actBand = frame(nameSign, { Name = "ThemeStripe", AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 10, 1, -4), Size = UDim2.new(1, -20, 0, 3), BackgroundColor3 = theme.Primary, ZIndex = 2 })
+	corner(actBand, 2)
+	actLabel = text(nameSign, { Position = UDim2.fromOffset(12, 1), Size = UDim2.new(1, -24, 1, -6), Font = TITLE_FONT, TextSize = 28, TextColor3 = WHITE, TextStrokeTransparency = 0, TextStrokeColor3 = C.SHADOW, Text = "", ZIndex = 3 })
 	actGradient = gradient(actLabel, WHITE, theme.Primary, 90)
-	taglineLabel = text(header, { Position = UDim2.fromOffset(8, 32), Size = UDim2.fromOffset(320, 12), TextSize = 11, TextColor3 = Color3.fromRGB(190, 210, 235), TextXAlignment = Enum.TextXAlignment.Left, Text = "", ZIndex = 2 })
+	taglineLabel = text(header, { Position = UDim2.fromOffset(8, 33), Size = UDim2.fromOffset(320, 12), Font = UITheme.Font.Body, TextSize = 11, TextColor3 = C.PAPER, TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Left, Text = "", ZIndex = 2 })
 
 	-- Sneak chip (every character), right side of the header.
 	sneakChip = Instance.new("TextButton")
@@ -766,23 +783,25 @@ function TuskUI.init(cb)
 	sneakChip.AnchorPoint = Vector2.new(1, 0)
 	sneakChip.Position = UDim2.new(1, 0, 0, 8)
 	sneakChip.Size = UDim2.fromOffset(104, 26)
-	sneakChip.BackgroundColor3 = DARK
-	sneakChip.BackgroundTransparency = 0.1
 	sneakChip.AutoButtonColor = false
 	sneakChip.Text = ""
+	sneakChip.ZIndex = 1
 	sneakChip.Parent = header
-	corner(sneakChip, 13)
-	local sneakStroke = stroke(sneakChip, Color3.fromRGB(60, 80, 120), 2)
-	local sneakKey = frame(sneakChip, { Position = UDim2.fromOffset(4, 4), Size = UDim2.fromOffset(20, 18), BackgroundColor3 = Color3.fromRGB(60, 80, 120) })
-	corner(sneakKey, 9)
-	local sneakKeyText = text(sneakKey, { Size = UDim2.fromScale(1, 1), TextSize = 11, TextColor3 = WHITE, TextStrokeTransparency = 1, Text = "C" })
-	local sneakText = text(sneakChip, { Position = UDim2.fromOffset(28, 0), Size = UDim2.new(1, -32, 1, 0), TextSize = 13, TextColor3 = Color3.fromRGB(150, 170, 200), Text = "SNEAK" })
+	-- A little wooden plank with a brass key tag.
+	UITheme.wood(sneakChip, { Planks = 1, Border = 2, Radius = 7, Nails = false, Stroke = 2 })
+	local sneakStroke = sneakChip:FindFirstChildOfClass("UIStroke")
+	local sneakKey = frame(sneakChip, { Position = UDim2.fromOffset(4, 4), Size = UDim2.fromOffset(20, 18), BackgroundColor3 = SNEAK_IDLE, ZIndex = 2 })
+	corner(sneakKey, 5)
+	stroke(sneakKey, C.WOOD_EDGE, 1.5)
+	local sneakKeyText = text(sneakKey, { Size = UDim2.fromScale(1, 1), Font = TITLE_FONT, TextSize = 14, TextColor3 = C.INK, TextStrokeTransparency = 1, Text = "C", ZIndex = 3 })
+	local sneakText = text(sneakChip, { Position = UDim2.fromOffset(28, 0), Size = UDim2.new(1, -32, 1, 0), Font = TITLE_FONT, TextSize = 17, TextColor3 = C.PAPER, TextStrokeTransparency = 0.3, Text = "SNEAK", ZIndex = 2 })
+	UITheme.hover(sneakChip)
 	sneakChip:SetAttribute("Built", true)
 	sneakChip.Activated:Connect(function()
 		callbacks.Sneak()
 	end)
 	slots.SneakParts = { Stroke = sneakStroke, Key = sneakKey, KeyText = sneakKeyText, Text = sneakText }
-	sneakHint = text(hud, { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 0, -2), Size = UDim2.fromOffset(240, 16), TextSize = 12, TextColor3 = colors.Cyan, TextXAlignment = Enum.TextXAlignment.Right, Text = "", Visible = false })
+	sneakHint = text(hud, { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 0, -2), Size = UDim2.fromOffset(240, 16), Font = UITheme.Font.Body, TextSize = 12, TextColor3 = C.GOLD, TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Right, Text = "", Visible = false })
 
 	-- Hotbar.
 	local row = frame(hud, { Position = UDim2.fromOffset(0, 52), Size = UDim2.new(1, 0, 0, CARD_H), BackgroundTransparency = 1 })
@@ -808,42 +827,46 @@ function TuskUI.init(cb)
 	local ult = buildCard(row, "Ult", ULT_W, 4)
 	slots.Ult = ult
 	-- Ultimate meter rises from the bottom of the card.
-	ult.Meter = frame(ult.Button, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 0), BackgroundColor3 = WHITE, BackgroundTransparency = 0.35, ZIndex = 1 })
-	corner(ult.Meter, 10)
+	-- (inside the planks, so the wood grain shows through it).
+	ult.Meter = frame(ult.Planks, { Name = "Meter", AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 0), BackgroundColor3 = WHITE, BackgroundTransparency = 0.4, ZIndex = 2 })
 	ult.MeterGradient = gradient(ult.Meter, theme.Primary, theme.Secondary, 90)
-	ult.Percent = text(ult.Button, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), Size = UDim2.fromOffset(50, 16), TextSize = 13, TextXAlignment = Enum.TextXAlignment.Right, Text = "0%", ZIndex = 4 })
+	frame(ult.Meter, { Name = "Top", Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = C.GOLD, BackgroundTransparency = 0.2, ZIndex = 2 })
+	ult.Percent = text(ult.Button, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 5), Size = UDim2.fromOffset(54, 18), Font = TITLE_FONT, TextSize = 17, TextColor3 = C.GOLD, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Right, Text = "0%", ZIndex = 6 })
 	ult.Icon.Size = UDim2.fromOffset(46, 46)
+	ult.Icon.Position = UDim2.new(0.5, 0, 0, 15)
+	ult.Plate.Size = UDim2.fromOffset(54, 52)
+	ult.Plate.Position = UDim2.new(0.5, 0, 0, 12)
 	drawIcon(ult.Icon, "star")
 	ult.Button.Activated:Connect(function()
 		callbacks.Ultimate()
 	end)
 
 	-- Awakened timer bar under the hotbar.
-	awakenBar = frame(hud, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 52 + CARD_H + 6), Size = UDim2.new(1, 0, 0, 5), BackgroundColor3 = DARK, Visible = false })
-	corner(awakenBar, 3)
-	awakenFill = frame(awakenBar, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = colors.Cyan })
-	corner(awakenFill, 3)
+	awakenBar, awakenFill = UITheme.bar(hud, theme.Primary, { Name = "AwakenBar", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 52 + CARD_H + 4), Size = UDim2.new(1, 0, 0, 10), Visible = false })
 
 	-- Combo counter (right middle of the screen).
 	comboFrame = frame(gui, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -28, 0.42, 0), Size = UDim2.fromOffset(200, 90), BackgroundTransparency = 1, Visible = false })
-	comboNumber = text(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.fromOffset(200, 60), Font = TITLE_FONT, TextSize = 58, TextStrokeTransparency = 0.15, TextXAlignment = Enum.TextXAlignment.Right, Text = "" })
-	comboWord = text(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 58), Size = UDim2.fromOffset(200, 18), Font = TITLE_FONT, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Right, Text = "HIT COMBO!" })
-	comboDrain = frame(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 80), Size = UDim2.new(1, 0, 0, 4), BackgroundColor3 = colors.Ice })
+	comboNumber = text(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.fromOffset(200, 60), Font = TITLE_FONT, TextSize = 58, TextStrokeTransparency = 0.15, TextStrokeColor3 = C.WOOD_EDGE, TextXAlignment = Enum.TextXAlignment.Right, Text = "" })
+	comboWord = text(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 58), Size = UDim2.fromOffset(200, 18), Font = TITLE_FONT, TextSize = 21, TextColor3 = C.RED:Lerp(WHITE, 0.15), TextStrokeTransparency = 0.1, TextXAlignment = Enum.TextXAlignment.Right, Text = "HIT COMBO!" })
+	comboDrain = frame(comboFrame, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 80), Size = UDim2.new(1, 0, 0, 4), BackgroundColor3 = C.PAPER })
 	corner(comboDrain, 2)
+	stroke(comboDrain, C.WOOD_EDGE, 1)
 
 	-- Toast pill above the hotbar.
 	local toastHolder = frame(gui, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -190), Size = UDim2.fromOffset(10, 10), BackgroundTransparency = 1 })
-	toastFrame = frame(toastHolder, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0), Size = UDim2.fromOffset(260, 32), BackgroundColor3 = DARK, BackgroundTransparency = 0.15, Visible = false })
-	corner(toastFrame, 16)
-	toastAccent = frame(toastFrame, { Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(16, 16), BackgroundColor3 = Color3.fromRGB(255, 110, 100), Rotation = 45 })
-	corner(toastAccent, 3)
-	toastLabel = text(toastFrame, { Position = UDim2.fromOffset(32, 0), Size = UDim2.new(1, -40, 1, 0), TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left, Text = "" })
+	-- A torn parchment note with a coloured pin.
+	toastFrame = frame(toastHolder, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0), Size = UDim2.fromOffset(260, 34), Visible = false })
+	UITheme.paper(toastFrame, { Radius = 5, Stroke = 2 })
+	toastStroke = toastFrame:FindFirstChildOfClass("UIStroke")
+	toastAccent = frame(toastFrame, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 9, 0.5, 0), Size = UDim2.fromOffset(14, 14), BackgroundColor3 = Color3.fromRGB(255, 110, 100), ZIndex = 2 })
+	corner(toastAccent, 99)
+	toastLabel = text(toastFrame, { Position = UDim2.fromOffset(32, 0), Size = UDim2.new(1, -40, 1, 0), TextSize = 15, TextStrokeTransparency = 1, TextXAlignment = Enum.TextXAlignment.Left, Text = "", ZIndex = 2 })
 
 	-- Awakening banner: black slash band, gradient title, menacing ゴ letters.
-	bannerBand = frame(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.26), Size = UDim2.new(1.4, 0, 0, 110), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, Rotation = -4 })
-	banner = text(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.26), Size = UDim2.fromOffset(800, 84), Font = TITLE_FONT, TextSize = 78, TextColor3 = WHITE, TextTransparency = 1, TextStrokeTransparency = 1, Text = "", ZIndex = 3 })
+	bannerBand = frame(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.26), Size = UDim2.new(1.4, 0, 0, 110), BackgroundColor3 = C.SHADOW, BackgroundTransparency = 1, Rotation = -4 })
+	banner = text(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.26), Size = UDim2.fromOffset(800, 84), Font = TITLE_FONT, TextSize = 78, TextColor3 = WHITE, TextStrokeColor3 = C.SHADOW, TextTransparency = 1, TextStrokeTransparency = 1, Text = "", ZIndex = 3 })
 	bannerGradient = gradient(banner, WHITE, colors.Cyan, 90)
-	bannerSub = text(banner, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.fromOffset(600, 22), TextSize = 17, TextTransparency = 1, TextStrokeTransparency = 1, Text = "", ZIndex = 3 })
+	bannerSub = text(banner, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.fromOffset(600, 22), TextSize = 17, TextColor3 = C.GOLD, TextTransparency = 1, TextStrokeTransparency = 1, Text = "", ZIndex = 3 })
 	for i, spot in ipairs({ { 0.2, -20 }, { 0.27, 25 }, { 0.73, -25 }, { 0.8, 20 } }) do
 		local m = text(gui, { AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(70, 70), TextSize = 56, Font = FONT, Text = "ゴ", TextTransparency = 1, TextStrokeTransparency = 0.6, TextStrokeColor3 = Color3.fromRGB(40, 0, 60), Rotation = (i % 2 == 0) and 12 or -12, ZIndex = 2 })
 		m:SetAttribute("X", spot[1])
@@ -853,20 +876,9 @@ function TuskUI.init(cb)
 
 	-- MOVESET button (opens the Act menu), Studio only in Awaken mode.
 	if TuskUI.menuAllowed() then
-		local moveset = Instance.new("TextButton")
-		moveset.AnchorPoint = Vector2.new(1, 0)
-		moveset.Position = UDim2.new(1, -12, 0, 46)
-		moveset.Size = UDim2.fromOffset(130, 28)
-		moveset.BackgroundColor3 = DARK
-		moveset.BackgroundTransparency = 0.2
-		moveset.Font = FONT
-		moveset.TextSize = 13
-		moveset.TextColor3 = colors.Ice
-		moveset.Text = "TUSK ACTS (T)"
-		moveset.Parent = gui
-		corner(moveset, 6)
-		stroke(moveset, colors.Cyan, 1.5)
+		local moveset = UITheme.button(gui, "TUSK ACTS (T)", C.WOOD_LIGHT, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 46), Size = UDim2.fromOffset(130, 30) })
 		moveset.Activated:Connect(TuskUI.toggleMenu)
+
 		buildMenu()
 	end
 
@@ -946,6 +958,8 @@ local function refreshAct(act)
 	local info = Registry.get(act)
 	theme = info.Theme
 	actLabel.Text = info.Name
+	nameSign.Size = UDim2.fromOffset(math.clamp(#info.Name * 14 + 40, 150, 300), 32)
+
 	actGradient.Color = ColorSequence.new(WHITE, theme.Primary:Lerp(WHITE, 0.2))
 	actBand.BackgroundColor3 = theme.Secondary
 	taglineLabel.Text = info.Tagline:upper()
@@ -1002,7 +1016,7 @@ end
 
 local function stepCard(card, now, dt, cooling)
 	-- Press squash + ready pop + hover.
-	local target = (card.Pressed and 0.9 or 1) + (card.Pop or 0) + (card.Hover and 0.03 or 0)
+	local target = (card.Pressed and 0.9 or 1) + (card.Pop or 0) + (card.Hover and 0.06 or 0)
 	card.Scale.Scale = card.Scale.Scale + (target - card.Scale.Scale) * math.min(1, dt * 18)
 	-- Cooldown shade.
 	if cooling then
@@ -1010,13 +1024,13 @@ local function stepCard(card, now, dt, cooling)
 		card.Shade.Size = UDim2.fromScale(1, math.clamp(left / math.max(card.CooldownDur, 0.01), 0, 1))
 		card.Timer.Text = left >= 10 and tostring(math.ceil(left)) or string.format("%.1f", left)
 		colorIcon(card.Icon, GREY)
-		card.Name.TextColor3 = GREY
+		card.Name.TextColor3 = NAME_FADED
 		card.Badge.BackgroundColor3 = GREY
 	elseif card.WasCooling then
 		card.Shade.Size = UDim2.fromScale(1, 0)
 		card.Timer.Text = ""
 		colorIcon(card.Icon, theme.Primary:Lerp(WHITE, 0.35))
-		card.Name.TextColor3 = colors.Ice
+		card.Name.TextColor3 = NAME_INK
 		card.Badge.BackgroundColor3 = theme.Primary
 		readyFlash(card)
 	end
@@ -1155,6 +1169,8 @@ function TuskUI.step(act)
 		ult.KeyPressed = false
 	end
 	stepCard(ult, now, dt, false)
+	-- The rim stays theme-coloured; the brass plate turns gold when the ULT is ready.
+	ult.PlateStroke.Color = (ready and lockLeft <= 0) and C.GOLD or C.BRASS
 
 	-- Sneak chip.
 	local sneaking = character and character:GetAttribute("TuskSneaking") == true
@@ -1165,11 +1181,12 @@ function TuskUI.step(act)
 	local SPOT = Color3.fromRGB(255, 90, 80)
 	sp.KeyText.Text = keyName("Sneak") ~= "" and keyName("Sneak") or "C"
 	local tint = spotted and SPOT or theme.Primary
-	sp.Stroke.Color = sneaking and tint or Color3.fromRGB(60, 80, 120)
-	sp.Key.BackgroundColor3 = sneaking and tint or Color3.fromRGB(60, 80, 120)
-	sp.Text.TextColor3 = sneaking and tint or Color3.fromRGB(150, 170, 200)
+	sp.Stroke.Color = sneaking and tint or C.WOOD_EDGE
+	sp.Key.BackgroundColor3 = sneaking and tint or SNEAK_IDLE
+	sp.Text.TextColor3 = sneaking and tint:Lerp(WHITE, 0.25) or C.PAPER
 	sp.Text.Text = spotted and "SPOTTED!" or (sneaking and "HIDDEN" or "SNEAK")
-	sneakChip.BackgroundColor3 = sneaking and DARK2 or DARK
+	sneakChip.BackgroundColor3 = sneaking and C.SHADOW or C.WOOD_DARK
+
 	sneakHint.Visible = sneaking and sneakChip.Visible
 	sneakHint.Text = Registry.characterOf(act) == "Johnny" and "M1 / TAP: SNEAK ATTACK" or "ATTACK: AMBUSH (+50% FIRST HIT)"
 end
