@@ -5777,6 +5777,7 @@ RaceService.clearExtras = clearExtras
 
 local function initRacer(r)
 	r.Stamina = 100
+	r.Sprinting = false
 	r.Winded = false
 	r.Galloping = false
 	r.RestAt = 0
@@ -5851,8 +5852,10 @@ local function stepRider(key, r, dt, t)
 		local jc = cfg.Jockey or {}
 		local total = math.max(#course.Gates, 1)
 		local stretch = (r.Next - 1) / total
-		if stretch >= (jc.SprintFrom or 0.75) then
-			r.Galloping = r.Stamina > 3 -- the final sprint: everything left
+		if stretch >= (jc.SprintFrom or 0.85) and (r.Sprinting or r.Stamina >= (jc.SprintAbove or 40)) and not r.Winded then
+			-- The final sprint: started only with the breath for it, ridden till spent.
+			r.Sprinting = r.Stamina > 3
+			r.Galloping = r.Sprinting
 		elseif r.Galloping and r.Stamina < (jc.StopBelow or 18) then
 			r.Galloping = false
 		elseif not r.Galloping and r.Stamina > (jc.GallopAbove or 55) then
@@ -5936,8 +5939,9 @@ local function stepRider(key, r, dt, t)
 		end
 	end
 	local galloping = r.Galloping and not r.Winded and r.Stamina > 0 and speed > 4 and not character:GetAttribute("RaceAnchored")
+	local jcfg = r.Jockey and (cfg.Jockey or {}) or nil
 	if galloping then
-		r.Stamina = math.max(0, r.Stamina - (gcfg.Drain or 18) * dt)
+		r.Stamina = math.max(0, r.Stamina - (gcfg.Drain or 18) * dt * (jcfg and jcfg.StaminaDrain or 1))
 		r.RestAt = t + (gcfg.RegenDelay or 0.8)
 		if r.Stamina <= 0 then
 			r.Winded = true
@@ -5947,7 +5951,7 @@ local function stepRider(key, r, dt, t)
 			end
 		end
 	elseif t >= (r.RestAt or 0) then
-		r.Stamina = math.min(100, r.Stamina + (gcfg.Regen or 11) * dt)
+		r.Stamina = math.min(100, r.Stamina + (gcfg.Regen or 11) * dt * (jcfg and jcfg.StaminaRegen or 1))
 		if r.Winded and r.Stamina >= (gcfg.WindedUntil or 40) then
 			r.Winded = false
 			if r.Player then

@@ -1231,7 +1231,7 @@ TuskConfig.Race = {
 	-- NPC JOCKEYS ride too (they find their way round with pathfinding).
 	NPCRacers = 7,
 	NPCNames = { "Dusty Pete", "Sandstorm Sally", "Iron Hoof Ike", "Lucky Lou", "Prairie Pat", "Cactus Jack", "Two-Spur Tom", "Rattlesnake Rosa", "Big Sky Hank", "Whiskey Jim" },
-	NPCSkill = { 0.92, 1.04 }, -- their horse speed is HorseSpeed times this (random per jockey): a real race
+	NPCSkill = { 0.88, 1.0 }, -- their horse speed is HorseSpeed times this (random per jockey): never faster than yours
 	NPCHealth = 120,
 	Prizes = { 500, 250, 150 },
 	FinishPrize = 50,
@@ -1259,7 +1259,15 @@ TuskConfig.Race = {
 	-- turn aside for carrots when they're tired, and a jockey who's fallen
 	-- far behind digs in (CatchUp speed) so the field stays close.
 	Jockey = {
-		GallopAbove = 55, StopBelow = 18, SprintFrom = 0.75, CarrotBelow = 55, CarrotReach = 35, CatchUpBehind = 110, CatchUp = 1.08,
+		-- STAMINA: jockeys' horses tire like yours, only more: galloping drains
+		-- them faster (StaminaDrain x) and they get it back slower (StaminaRegen x).
+		StaminaDrain = 1.3, StaminaRegen = 0.75,
+		GallopAbove = 60, StopBelow = 25,
+		-- The final sprint: only in the last stretch of a stage, and only if
+		-- they've got the breath for it (then they ride it until they're spent).
+		SprintFrom = 0.85, SprintAbove = 40,
+		CarrotBelow = 55, CarrotReach = 35,
+		CatchUpBehind = 250, CatchUp = 1.0, -- (no catch-up speed: they race fair)
 		Lane = 4, -- each jockey keeps to its own lane (studs either side of the road's middle) so they don't bunch up
 		CornerCut = 12, -- near a gate they already aim on towards the next one
 		-- FIGHTING (from FightFromStage on): Brawlers (that share of the

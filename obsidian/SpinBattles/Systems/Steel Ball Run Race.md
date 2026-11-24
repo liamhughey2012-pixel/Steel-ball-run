@@ -204,3 +204,11 @@ Reported: after stage 1 every jockey went "super speed" and finished in about 5 
 - If a jockey is ever moving faster than 125% of that (+8), its velocity is cut back.
 - A jockey that moved more than 40 studs in one tick (a teleport) can't count a gate that tick.
 - Tested: forcing every jockey to WalkSpeed 500 mid-race is corrected within 0.15 s, and a 400 studs/s shove is capped straight away.
+
+### Jockeys race fair (2026-11-24)
+- **Their horses are never faster than yours:** `NPCSkill` 0.88-1.0 of yours (it was up to 1.04).
+- **Their stamina counts more:** galloping drains it 30% faster than yours (`StaminaDrain` 1.3) and it comes back 25% slower (`StaminaRegen` 0.75). They gallop above 60% and ease off below 25%, so about 3 s of galloping then about 5 s of recovering.
+- **Final sprint:** only in the last 15% of a stage (`SprintFrom` 0.85), and only if they have 40%+ stamina (`SprintAbove`). They ride it until spent, and can end up WINDED like you.
+- **No catch-up speed** any more (`CatchUp` 1.0).
+- **You can see their stamina:** a small bar over every other rider's horse while racing (green, gold when low, red when winded). Pick your moment to pass them.
+- Rough average pace: jockeys about 55 studs/s, a player managing stamina well about 58.

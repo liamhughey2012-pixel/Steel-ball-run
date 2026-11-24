@@ -419,9 +419,13 @@ end
 
 local function clearPlates()
 	for horse, h in pairs(horses) do
-		if h.Plate and not horse.Parent then
-			h.Plate:Destroy()
-			h.Plate = nil
+		if not horse.Parent then
+			if h.Stam then
+				h.Stam:Destroy()
+			end
+			if h.Plate then
+				h.Plate:Destroy()
+			end
 			horses[horse] = nil
 		end
 	end
@@ -474,6 +478,32 @@ local function stepHorses(dt)
 			elseif not name and h.Plate then
 				h.Plate:Destroy()
 				h.Plate, h.PlateName = nil, nil
+			end
+			-- Other riders' stamina: a little bar over their horse while racing
+			-- (green, gold, red; WINDED shows red and empty), so you can see who's spent.
+			local stamina = character:GetAttribute("HorseStamina")
+			if stamina and character ~= player.Character then
+				local headPart = horse:FindFirstChild("Head")
+				if not h.Stam and headPart then
+					local bb = Instance.new("BillboardGui")
+					bb.Name = "HorseStamina"
+					bb.Adornee = headPart
+					bb.Size = UDim2.fromOffset(64, 9)
+					bb.StudsOffset = Vector3.new(0, 3.6, 0)
+					bb.MaxDistance = 90
+					bb.LightInfluence = 0
+					local _, fill = UITheme.bar(bb, GREEN, { Size = UDim2.fromScale(1, 1) })
+					bb.Parent = VFXLib.Folder
+					h.Stam, h.StamFill = bb, fill
+				end
+				if h.StamFill then
+					local k = math.clamp(stamina / 100, 0, 1)
+					h.StamFill.Size = UDim2.fromScale(k, 1)
+					h.StamFill.BackgroundColor3 = character:GetAttribute("HorseWinded") and RED or (k > 0.5 and GREEN or C.GOLD)
+				end
+			elseif h.Stam then
+				h.Stam:Destroy()
+				h.Stam, h.StamFill = nil, nil
 			end
 			-- Body bob, always from where the server put the horse (BodyY),
 			-- never from last frame's position (so it can't creep).
