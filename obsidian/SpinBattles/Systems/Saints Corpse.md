@@ -97,3 +97,6 @@ NPC camps sit next to several part spots, so NPCs were grabbing parts the moment
 - **CorpsePickupTime = 2.5:** an NPC kneels by the part for 2.5 s before it has it, so you can snatch it first. A fight interrupts it.
 
 Relics now carry a `LaidAt` attribute (server time).
+
+
+- **No more parts in the mountains (2026-11-24):** four spots were on raised ground: inside the mountain ring (370, -370), at its foot (-20, -395), beside a mesa (-410, 10) and on the old-mine mesa's edge (-290, -300). They are now flat open ground at (-230, -210), (150, -290), (310, -110) and (-330, 0), all 90+ studs from every NPC camp. As a safety net, `CorpseService.scatter` also skips any spot whose ground is more than `MaxSpotHeight` (8) studs above the desert floor.
