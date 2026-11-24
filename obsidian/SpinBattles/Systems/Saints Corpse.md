@@ -45,3 +45,14 @@ Server: `CorpseService` (relics, pickup, boosts, drops) and `CorpseMoves` (each 
   - `CorpseCooldown` in startCooldown;
   - `CorpseUltGain` in addUlt;
   - speed via the move modifier "Corpse".
+
+## Retrieve contracts + HUD move (2026-11-24)
+- **RETRIEVE contracts** on the bounty board: one per part, under a new **CORPSE** tab.
+  - $120 each; **$200 for the Heart or the Head** (`RetrieveReward` / `RetrieveRewards`).
+  - The poster says **RETRIEVE · SAINT'S CORPSE**. Its photo is the relic itself, or the face of whoever carries it, with a red HELD tag. It reads **HELD BY name** or **LYING IN THE DESERT**.
+  - The contract card says what the part GIVES.
+  - **Paid the moment you take that part**, from where it lies, or after taking down whoever holds it and grabbing it. Someone else taking it doesn't pay you; the contract keeps running until it times out.
+  - The tracker points at the relic or at the holder.
+  - You never see a contract for a part you're carrying.
+  - (CorpseService `where(id)` / `OnTaken`; BountyService `retrieveBounties`)
+- The **Saint's Corpse panel** moved to the **bottom-left corner** (lifted above the thumbstick on touch screens).

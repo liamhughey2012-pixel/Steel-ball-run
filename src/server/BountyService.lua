@@ -181,6 +181,41 @@ local function npcId(model)
 	return id
 end
 
+-- RETRIEVE contracts for the Saint's Corpse parts (CorpseService).
+local Corpse
+local function corpseService()
+	if Corpse == nil then
+		local ok, mod = pcall(require, script.Parent.CorpseService)
+		Corpse = ok and mod or false
+	end
+	return Corpse or nil
+end
+
+local function retrieveBounties(viewer)
+	local C = corpseService()
+	local corpse = TuskConfig.Corpse
+	if not C or not corpse or corpse.Enabled == false then
+		return {}
+	end
+	local list = {}
+	for _, info in ipairs(C.parts()) do
+		local where = C.where(info.Id)
+		-- (Nothing to retrieve if you're the one holding it.)
+		if where and where.Holder ~= viewer then
+			table.insert(list, {
+				Key = "C" .. info.Id,
+				Kind = "Corpse",
+				Part = info.Id,
+				Name = "SAINT'S CORPSE: " .. info.Name,
+				Reward = (corpse.RetrieveRewards or {})[info.Id] or corpse.RetrieveReward or 120,
+				HeldBy = where.Holder and where.Holder.DisplayName or nil,
+				Boost = info.Text,
+			})
+		end
+	end
+	return list
+end
+
 -- Every bounty on offer (optionally hiding the viewer).
 local function listBounties(viewer)
 	local list = {}
@@ -224,10 +259,13 @@ local function listBounties(viewer)
 			})
 		end
 	end
+	for _, entry in ipairs(retrieveBounties(viewer)) do
+		table.insert(list, entry)
+	end
 	table.sort(list, function(a, b)
 		return a.Reward > b.Reward
 	end)
-	while #list > (cfg.MaxPosters or 12) do
+	while #list > (cfg.MaxPosters or 12) + 8 do
 		table.remove(list)
 	end
 	return list
@@ -238,7 +276,7 @@ local function send(player, kind, data)
 end
 
 local function publicBounty(b)
-	return { Key = b.Key, Kind = b.Kind, UserId = b.UserId, Model = b.Model, Name = b.Name, Reward = b.Reward, Expires = b.Expires, Act = b.Act, Corpse = b.Corpse }
+	return { Key = b.Key, Kind = b.Kind, UserId = b.UserId, Model = b.Model, Name = b.Name, Reward = b.Reward, Expires = b.Expires, Act = b.Act, Corpse = b.Corpse, Part = b.Part, HeldBy = b.HeldBy, Boost = b.Boost }
 end
 
 local function accept(player, key)
@@ -393,6 +431,25 @@ function BountyService.init()
 	prompt.Triggered:Connect(function(player)
 		send(player, "Open", { Bounties = listBounties(player), Active = active[player] and publicBounty(active[player]) or nil })
 	end)
+	-- Retrieve contracts: paid the moment the hunter takes that part.
+	local C = corpseService()
+	if C and C.OnTaken then
+		table.insert(C.OnTaken, function(player, partId)
+			local b = active[player]
+			if b and b.Kind == "Corpse" and b.Part == partId then
+				local ls = leaderstats(player)
+				local cash, claimed = ls:FindFirstChild("Cash"), ls:FindFirstChild("Bounties")
+				if cash then
+					cash.Value = cash.Value + b.Reward
+				end
+				if claimed then
+					claimed.Value = claimed.Value + 1
+				end
+				active[player] = nil
+				send(player, "Complete", { Name = b.Name, Reward = b.Reward })
+			end
+		end)
+	end
 	Remote.OnServerEvent:Connect(function(player, action, key)
 		if action == "Accept" then
 			accept(player, key)

@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `StarterPlayer › StarterPlayerScripts › SpinClient` |
 | **Exact name** | `CorpseClient` (capitals matter) |
 
-**What it does:** Client side of the SAINT'S CORPSE (server: CorpseService, CorpseMoves). the relics float, turn and bob (tag "SpinCorpse") a panel on the left while you hold parts: each part with its boost, and your CORPSE MOVE button (V / D-pad right, or tap it) with its cooldown announcements: you took a part (big), someone else took one or a part fell where someone died (a line at the top) the visuals for every character's corpse move, with its name popping up over the caster
+**What it does:** Client side of the SAINT'S CORPSE (server: CorpseService, CorpseMoves). the relics float, turn and bob (tag "SpinCorpse") a panel in the bottom-left corner while you hold parts: each part with its boost, and your CORPSE MOVE button (V / D-pad right, or tap it) with its cooldown announcements: you took a part (big), someone else took one or a part fell where someone died (a line at the top) the visuals for every character's corpse move, with its name popping up over the caster
 
 ## How to add it
 1. In Studio's Explorer, find **SpinClient** (StarterPlayer › StarterPlayerScripts › SpinClient).
@@ -29,7 +29,7 @@ Back to [[Where To Put Code]]
 
 	Client side of the SAINT'S CORPSE (server: CorpseService, CorpseMoves).
 	  * the relics float, turn and bob (tag "SpinCorpse")
-	  * a panel on the left while you hold parts: each part with its boost,
+	  * a panel in the bottom-left corner while you hold parts: each part with its boost,
 	    and your CORPSE MOVE button (V / D-pad right, or tap it) with its
 	    cooldown
 	  * announcements: you took a part (big), someone else took one or a
@@ -153,7 +153,9 @@ end
 
 local function buildUI()
 	gui = new("ScreenGui", { Name = "CorpseHUD", ResetOnSpawn = false, DisplayOrder = 4 }, player:WaitForChild("PlayerGui"))
-	panel = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.46, 0), Size = UDim2.fromOffset(240, 120), BackgroundColor3 = PANEL, BackgroundTransparency = 0.08, Visible = false }, gui)
+	-- Bottom-left corner (lifted above the thumbstick on touch screens).
+	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	panel = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, touch and -230 or -12), Size = UDim2.fromOffset(240, 120), BackgroundColor3 = PANEL, BackgroundTransparency = 0.08, Visible = false }, gui)
 	corner(panel, 10)
 	new("UIStroke", { Color = GOLD, Thickness = 2 }, panel)
 	label(panel, { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -24, 0, 22), Text = "SAINT'S CORPSE", Font = Enum.Font.Bangers, TextColor3 = GOLD })

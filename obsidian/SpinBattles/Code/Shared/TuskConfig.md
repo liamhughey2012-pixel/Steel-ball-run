@@ -819,6 +819,10 @@ TuskConfig.Corpse = {
 	-- Bounties: holders are worth more; these parts most of all.
 	PartBounty = 40, -- each part adds this to their price
 	BigParts = { Heart = 150, Head = 150 }, -- ...or this, for these
+	-- RETRIEVE contracts on the bounty board: one per part. Paid when you take
+	-- that part (from where it lies, or by taking down whoever holds it).
+	RetrieveReward = 120,
+	RetrieveRewards = { Heart = 200, Head = 200 },
 	Move = { Cooldown = 20 }, -- the CORPSE MOVE (each character's own; see CorpseMoves)
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",

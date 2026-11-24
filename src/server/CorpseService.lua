@@ -25,6 +25,7 @@ local TuskConfig = require(Shared.TuskConfig)
 local Net = require(Shared.Net)
 
 local CorpseService = {}
+CorpseService.OnTaken = {} -- functions(player, partId) called when someone takes a part
 
 local cfg
 local S -- TuskService
@@ -266,6 +267,30 @@ function collect(player, id)
 	table.insert(held[player].Ids, id)
 	apply(player)
 	WorldFX:FireAllClients("CorpseTaken", { Player = player.UserId, Name = player.DisplayName, Part = id, Position = root.Position })
+	for _, fn in ipairs(CorpseService.OnTaken) do
+		task.spawn(fn, player, id)
+	end
+end
+
+-- Where a part is: { Holder = player } if someone carries it, or
+-- { Relic = model } if it's lying in the world (nil if neither).
+function CorpseService.where(id)
+	for p, h in pairs(held) do
+		for _, heldId in ipairs(h.Ids) do
+			if heldId == id then
+				return { Holder = p }
+			end
+		end
+	end
+	local relic = relics[id]
+	if relic and relic.Parent then
+		return { Relic = relic }
+	end
+	return nil
+end
+
+function CorpseService.parts()
+	return cfg and cfg.Parts or {}
 end
 
 -- Dies (or leaves): their parts fall where they were.

@@ -4,7 +4,9 @@
 	The bounty board screen (owner's design):
 	  * a framed wooden board (grain, nails, metal corner brackets, a hanging
 	    title sign) that drops in from the top; a header strip with your Cash,
-	    ALL / PLAYERS / NPCS tabs and your current bounty
+	    ALL / PLAYERS / NPCS / CORPSE tabs and your current bounty
+	  * CORPSE: "RETRIEVE" contracts, one per Saint's Corpse part: paid when you
+	    take that part; the photo is the relic (or the face of whoever holds it)
 	  * aged parchment WANTED posters with a red pin: face (avatar headshot,
 	    or the NPC's face), name, Stand, "DEAD OR ALIVE", danger pips, a red
 	    reward ribbon and a kill-streak badge
@@ -101,8 +103,64 @@ local function faceViewport(model, parent)
 	return true
 end
 
+-- The Saint's Corpse part lying in the world, or the character carrying it.
+local function corpseRelic(partId)
+	for _, m in ipairs(game:GetService("CollectionService"):GetTagged("SpinCorpse")) do
+		if m.Parent and m:GetAttribute("PartId") == partId then
+			return m
+		end
+	end
+	return nil
+end
+
+local function corpseHolder(partId)
+	for _, p in ipairs(Players:GetPlayers()) do
+		local parts = p.Character and p.Character:GetAttribute("CorpseParts")
+		if parts and string.find("," .. parts .. ",", "," .. partId .. ",", 1, true) then
+			return p.Character
+		end
+	end
+	return nil
+end
+
+-- A small photo of a relic (its parts copied into a viewport).
+local function relicViewport(relic, parent)
+	local view = new("ViewportFrame", { Name = "Face", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Ambient = Color3.fromRGB(200, 180, 150), LightColor = Color3.fromRGB(255, 230, 180), LightDirection = Vector3.new(-0.4, -0.6, -1) }, parent)
+	local model = new("Model", {}, view)
+	for _, p in ipairs(relic:GetChildren()) do
+		if p:IsA("BasePart") and p.Name ~= "Beam" and p.Name ~= "Holder" then
+			local c = p:Clone()
+			for _, d in ipairs(c:GetChildren()) do
+				d:Destroy()
+			end
+			c.Parent = model
+		end
+	end
+	local center = relic.PrimaryPart and relic.PrimaryPart.Position or relic:GetPivot().Position
+	local camera = new("Camera", { FieldOfView = 40 }, view)
+	camera.CFrame = CFrame.lookAt(center + Vector3.new(2.2, 1.2, -5.5), center)
+	view.CurrentCamera = camera
+end
+
 local function photoFor(entry, parent)
 	local photo = new("ImageLabel", { Name = "Photo", BackgroundColor3 = PAPER_DARK, BorderSizePixel = 0, ImageColor3 = Color3.fromRGB(240, 220, 190), ClipsDescendants = true }, parent)
+	if entry.Kind == "Corpse" then
+		-- The relic on a gold backdrop, or the face of whoever carries it.
+		photo.BackgroundColor3 = Color3.fromRGB(214, 178, 96)
+		local relic = corpseRelic(entry.Part)
+		local holder = not relic and corpseHolder(entry.Part)
+		if relic then
+			relicViewport(relic, photo)
+		elseif not (holder and faceViewport(holder, photo)) then
+			label(photo, { Size = UDim2.fromScale(1, 1), Text = "✝", Font = Enum.Font.GothamBlack, TextColor3 = INK, TextTransparency = 0.3 })
+		end
+		if holder then
+			local tag = new("Frame", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -2), Size = UDim2.new(0.8, 0, 0, 14), BackgroundColor3 = RED }, photo)
+			corner(tag, 3)
+			label(tag, { Size = UDim2.fromScale(1, 1), Text = "HELD", Font = Enum.Font.GothamBlack, TextColor3 = Color3.new(1, 1, 1), TextScaled = true })
+		end
+		return photo
+	end
 	if entry.Kind == "Player" and entry.UserId then
 		photo.Image = "rbxthumb://type=AvatarHeadShot&id=" .. entry.UserId .. "&w=150&h=150"
 	else
@@ -212,8 +270,13 @@ local function showConfirm(entry)
 	new("UIStroke", { Color = WOOD_DARK, Thickness = 4 }, photo)
 	body:FindFirstChild("Who").Text = string.upper(entry.Name)
 	local stand = standOf(entry.Act)
-	body:FindFirstChild("Stand").Text = stand and ("STAND: " .. stand) or ""
-	body:FindFirstChild("Stand").TextColor3 = themeOf(entry.Act):Lerp(INK, 0.45)
+	if entry.Kind == "Corpse" then
+		body:FindFirstChild("Stand").Text = "GIVES: " .. string.upper(entry.Boost or "")
+		body:FindFirstChild("Stand").TextColor3 = Color3.fromRGB(150, 100, 20)
+	else
+		body:FindFirstChild("Stand").Text = stand and ("STAND: " .. stand) or ""
+		body:FindFirstChild("Stand").TextColor3 = themeOf(entry.Act):Lerp(INK, 0.45)
+	end
 	confirmPay.Text = "$" .. entry.Reward
 	local danger = math.clamp(math.floor(entry.Reward / 75 + 0.5), 1, 5)
 	for i, pip in ipairs(confirmPips) do
@@ -221,6 +284,7 @@ local function showConfirm(entry)
 	end
 	local minutes = math.floor((TuskConfig.Bounty and TuskConfig.Bounty.Duration or 300) / 60)
 	body:FindFirstChild("Note").Text = (current and current.Key ~= entry.Key) and ("This replaces your bounty on " .. current.Name .. ".")
+		or (entry.Kind == "Corpse" and (entry.HeldBy and (entry.HeldBy .. " is carrying it: take them down, then take the part. Paid the moment you take it.") or "It's lying out in the desert under a pillar of light. Paid the moment you take it."))
 		or (entry.Corpse and ("Carrying the Saint's Corpse: " .. entry.Corpse .. ". Take them down and the parts drop."))
 		or (minutes .. " minutes to find them. Land the final hit to claim the reward.")
 	body:FindFirstChild("Stamp").Visible = false
@@ -249,15 +313,18 @@ local function makePoster(entry, index)
 	local pin = new("Frame", { BackgroundColor3 = RED, Size = UDim2.fromOffset(14, 14), Position = UDim2.new(0.5, -7, 0, -4), ZIndex = 3 }, paper)
 	corner(pin, 99)
 	new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.4, Size = UDim2.fromOffset(4, 4), Position = UDim2.fromOffset(3, 3), ZIndex = 3 }, pin)
-	label(paper, { Position = UDim2.fromScale(0.06, 0.06), Size = UDim2.fromScale(0.88, 0.13), Text = "WANTED", Font = Enum.Font.Bangers })
-	label(paper, { Position = UDim2.fromScale(0.1, 0.185), Size = UDim2.fromScale(0.8, 0.05), Text = "DEAD OR ALIVE", Font = Enum.Font.GothamBold, TextColor3 = INK:Lerp(PAPER, 0.25) })
+	local isCorpse = entry.Kind == "Corpse"
+	label(paper, { Position = UDim2.fromScale(0.06, 0.06), Size = UDim2.fromScale(0.88, 0.13), Text = isCorpse and "RETRIEVE" or "WANTED", Font = Enum.Font.Bangers, TextColor3 = isCorpse and Color3.fromRGB(150, 100, 20) or INK })
+	label(paper, { Position = UDim2.fromScale(0.1, 0.185), Size = UDim2.fromScale(0.8, 0.05), Text = isCorpse and "SAINT'S CORPSE" or "DEAD OR ALIVE", Font = Enum.Font.GothamBold, TextColor3 = INK:Lerp(PAPER, 0.25) })
 	local photo = photoFor(entry, paper)
 	photo.Position = UDim2.fromScale(0.15, 0.25)
 	photo.Size = UDim2.fromScale(0.7, 0.36)
 	new("UIStroke", { Color = INK, Thickness = 2 }, photo)
-	label(paper, { Position = UDim2.fromScale(0.05, 0.63), Size = UDim2.fromScale(0.9, 0.08), Text = string.upper(entry.Name), TextTruncate = Enum.TextTruncate.AtEnd })
+	label(paper, { Position = UDim2.fromScale(0.05, 0.63), Size = UDim2.fromScale(0.9, 0.08), Text = isCorpse and string.upper((entry.Name:gsub("^SAINT'S CORPSE: ", ""))) or string.upper(entry.Name), TextTruncate = Enum.TextTruncate.AtEnd })
 	local stand = standOf(entry.Act)
-	if stand then
+	if isCorpse then
+		label(paper, { Position = UDim2.fromScale(0.05, 0.71), Size = UDim2.fromScale(0.9, 0.05), Text = entry.HeldBy and ("HELD BY " .. string.upper(entry.HeldBy)) or "LYING IN THE DESERT", Font = Enum.Font.GothamBold, TextColor3 = entry.HeldBy and RED or INK:Lerp(PAPER, 0.3) })
+	elseif stand then
 		label(paper, { Position = UDim2.fromScale(0.05, 0.71), Size = UDim2.fromScale(0.9, 0.05), Text = "STAND: " .. stand, Font = Enum.Font.GothamBold, TextColor3 = themeOf(entry.Act):Lerp(INK, 0.5) })
 	end
 	-- Danger pips: more pips, more reward.
@@ -329,7 +396,7 @@ local function fillGrid()
 	end
 	local shown = {}
 	for _, entry in ipairs(lastList) do
-		if filter == "ALL" or (filter == "PLAYERS" and entry.Kind == "Player") or (filter == "NPCS" and entry.Kind == "NPC") then
+		if filter == "ALL" or (filter == "PLAYERS" and entry.Kind == "Player") or (filter == "NPCS" and entry.Kind == "NPC") or (filter == "CORPSE" and entry.Kind == "Corpse") then
 			table.insert(shown, entry)
 		end
 	end
@@ -345,15 +412,17 @@ local function fillGrid()
 		tab.BackgroundColor3 = on and GOLD or WOOD_DARK
 		tab.TextColor3 = on and INK or PAPER
 	end
-	local players, npcs = 0, 0
+	local players, npcs, parts = 0, 0, 0
 	for _, e in ipairs(lastList) do
 		if e.Kind == "Player" then
 			players = players + 1
+		elseif e.Kind == "Corpse" then
+			parts = parts + 1
 		else
 			npcs = npcs + 1
 		end
 	end
-	countLabel.Text = players .. " PLAYERS · " .. npcs .. " NPCS"
+	countLabel.Text = players .. " PLAYERS · " .. npcs .. " NPCS · " .. parts .. " PARTS"
 end
 
 local function openBoard(data)
@@ -428,8 +497,8 @@ local function buildBoard()
 	local cashChip = new("Frame", { Position = UDim2.fromOffset(6, 4), Size = UDim2.fromOffset(110, 26), BackgroundColor3 = GOLD, ZIndex = 4 }, strip)
 	corner(cashChip, 6)
 	cashLabel = label(cashChip, { Size = UDim2.fromScale(1, 1), Text = "$0", Font = Enum.Font.Bangers, ZIndex = 4 })
-	for i, name in ipairs({ "ALL", "PLAYERS", "NPCS" }) do
-		local tab = new("TextButton", { Position = UDim2.fromOffset(126 + (i - 1) * 86, 4), Size = UDim2.fromOffset(80, 26), BackgroundColor3 = WOOD_DARK, Text = name, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = PAPER, ZIndex = 4 }, strip)
+	for i, name in ipairs({ "ALL", "PLAYERS", "NPCS", "CORPSE" }) do
+		local tab = new("TextButton", { Position = UDim2.fromOffset(124 + (i - 1) * 78, 4), Size = UDim2.fromOffset(72, 26), BackgroundColor3 = WOOD_DARK, Text = name, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = PAPER, ZIndex = 4 }, strip)
 		corner(tab, 6)
 		new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, tab)
 		tab.Activated:Connect(function()
@@ -533,11 +602,14 @@ local function targetModel()
 		local p = Players:GetPlayerByUserId(current.UserId)
 		return p and p.Character
 	end
+	if current.Kind == "Corpse" then
+		return corpseHolder(current.Part) or corpseRelic(current.Part)
+	end
 	return current.Model
 end
 
 local function setMarker(model)
-	local head = model and (model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart"))
+	local head = model and (model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart)
 	if not head then
 		marker.Enabled = false
 		return
@@ -618,7 +690,7 @@ function BountyUI.step()
 	local model = targetModel()
 	setMarker(model)
 	local mine = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-	local theirs = model and model:FindFirstChild("HumanoidRootPart")
+	local theirs = model and (model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart)
 	local left = math.max(0, (current.Expires or 0) - workspace:GetServerTimeNow())
 	local where = (mine and theirs) and (math.floor((theirs.Position - mine.Position).Magnitude) .. " studs") or "respawning..."
 	-- A target sneaking far away is lost: no distance, no marker.
