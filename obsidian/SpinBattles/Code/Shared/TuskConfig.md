@@ -49,6 +49,8 @@ TuskConfig.Keys = {
 	Dash = { Keyboard = Enum.KeyCode.Q, Gamepad = Enum.KeyCode.ButtonR2 },
 	CorpseMove = { Keyboard = Enum.KeyCode.V, Gamepad = Enum.KeyCode.DPadRight }, -- needs a corpse part
 	Horse = { Keyboard = Enum.KeyCode.M, Gamepad = Enum.KeyCode.DPadLeft }, -- call / send away your horse
+	Gallop = { Keyboard = Enum.KeyCode.LeftShift, Gamepad = Enum.KeyCode.ButtonL3 }, -- (hold) gallop while racing
+	RaceReturn = { Keyboard = Enum.KeyCode.H, Gamepad = Enum.KeyCode.DPadUp }, -- back to your last gate (racing)
 }
 
 ---------------------------------------------------------------------------
@@ -1229,6 +1231,26 @@ TuskConfig.Race = {
 	Prizes = { 500, 250, 150 },
 	FinishPrize = 50,
 	WinnerCorpsePart = true, -- a Saint's Corpse part appears at the finish for the winner (if one is lying out)
+	-- GALLOP: hold Shift (L3, or GALLOP on mobile) while racing to go faster.
+	-- It uses your horse's stamina; run it dry and your horse is WINDED (no
+	-- galloping) until it's got its breath back.
+	Gallop = {
+		Speed = 1.35, -- speed multiplier while galloping
+		Drain = 18, -- stamina per second while galloping (out of 100)
+		Regen = 11, -- stamina back per second when not galloping...
+		RegenDelay = 0.8, -- ...this long after you stop
+		WindedUntil = 40, -- winded: no galloping until stamina is back to this
+	},
+	-- CARROTS: a crate of carrots on each leg of the course; ride through it
+	-- for stamina and a little burst of speed. It comes back after a while.
+	Carrots = { PerLeg = 1, Radius = 7, Refill = 45, Boost = 1.2, BoostTime = 1.5, Respawn = 10 },
+	-- HURDLES: log jumps across the course. Jump them (Space / A); hit one and
+	-- your horse stumbles (slowed, loses stamina).
+	Hurdles = { Every = 2, MinLeg = 70, Width = 30, Clearance = 4.2, StumbleSlow = 0.4, StumbleTime = 1.2, StumbleStamina = 20, ClearStamina = 5, JockeyMiss = 0.15 },
+	-- LOST? Press H (D-pad up) to go back to the last gate you passed; you're
+	-- held there ReturnPenalty seconds.
+	ReturnPenalty = 3, ReturnCooldown = 8,
+	-- RECORDS: your best time and your wins are saved (DataService).
 }
 
 ---------------------------------------------------------------------------

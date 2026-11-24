@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `RaceService` (capitals matter) |
 
-**What it does:** THE STEEL BALL RUN: a horse race round the map, every 10 minutes, and your own horse (M) to ride anywhere the rest of the time. ENTRY: every Race.Every seconds entry opens for EntryTime seconds. Everyone gets a banner with a JOIN button (or press E at the starting grid). The numbered gates go up round the course. START: riders line up 4 abreast inside the map's fenced race track, behind its START arch, on their own horse (coat and blanket from the STABLE) with its hooves on the ground, held for the countdown. NPC JOCKEYS (Race.NPCRacers) line up with them. THE RACE: down the track, out past its end, round the open desert to the east and back to the FINISH by the spawn, through the gates in order. You can fight, dash, block and use your Stand on horseback. Going down puts you out. Jockeys find their way with pathfinding (and hop free if they get stuck). PRIZES: Cash for the top 3 players (and a little for every finisher); a Saint's Corpse part appears at the finish for a winning player. Finishers keep their horse to ride on. YOUR HORSE (M): call it, ride it anywhere, press M again to get off (not during a race you're in; the race gives you yours). The rider sits exactly on the saddle: the horse is welded under their root with its hooves on the ground, and every client lifts the rider's body up onto the saddle (RideLift). HipHeight is never changed (that let Roblox's own HipHeight resets send horses floating off). Clients: RaceClient (HUD, beacon, gallop, M key). ReplicatedStorage attributes: SpinRacePhase, SpinRaceNext, SpinRaceEntryEnds, SpinRaceGoAt, SpinRaceStart. Remote: Net "Race" (client: "Join" / "Leave" / "Horse"). Numbers: TuskConfig.Race and TuskConfig.Horses.
+**What it does:** THE STEEL BALL RUN: a horse race round the map, every 10 minutes, and your own horse (M) to ride anywhere the rest of the time. ENTRY: every Race.Every seconds entry opens for EntryTime seconds. Everyone gets a banner with a JOIN button (or press E at the starting grid). The numbered gates go up round the course. START: riders line up 4 abreast inside the map's fenced race track, behind its START arch, on their own horse (coat and blanket from the STABLE) with its hooves on the ground, held for the countdown. NPC JOCKEYS (Race.NPCRacers) line up with them. THE RACE: down the track, out past its end, round the open desert to the east and back to the FINISH by the spawn, through the gates in order. You can fight, dash, block and use your Stand on horseback. Going down puts you out. Jockeys find their way with pathfinding (and hop free if they get stuck). GALLOP (hold Shift): faster, but it uses your horse's stamina; run it dry and the horse is WINDED for a while. CARROT crates on each leg refill stamina (with a burst of speed). LOG HURDLES across the course: jump them or stumble. Lost? H takes you back to your last gate (held a few seconds). Every rider shows on a progress strip. RECORDS: split times at each gate; your best time and wins are saved (player attributes RaceBest / RaceWins, saved by DataService) PRIZES: Cash for the top 3 players (and a little for every finisher); a Saint's Corpse part appears at the finish for a winning player. Finishers keep their horse to ride on. YOUR HORSE (M): call it, ride it anywhere, press M again to get off (not during a race you're in; the race gives you yours). The rider sits exactly on the saddle: the horse is welded under their root with its hooves on the ground, and every client lifts the rider's body up onto the saddle (RideLift). HipHeight is never changed (that let Roblox's own HipHeight resets send horses floating off). Clients: RaceClient (HUD, beacon, gallop, M key). ReplicatedStorage attributes: SpinRacePhase, SpinRaceNext, SpinRaceEntryEnds, SpinRaceGoAt, SpinRaceStart. Remote: Net "Race" (client: "Join" / "Leave" / "Horse"). Numbers: TuskConfig.Race and TuskConfig.Horses.
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -41,6 +41,13 @@ Back to [[Where To Put Code]]
 	    order. You can fight, dash, block and use your Stand on horseback.
 	    Going down puts you out. Jockeys find their way with pathfinding (and
 	    hop free if they get stuck).
+	  * GALLOP (hold Shift): faster, but it uses your horse's stamina; run
+	    it dry and the horse is WINDED for a while. CARROT crates on each
+	    leg refill stamina (with a burst of speed). LOG HURDLES across the
+	    course: jump them or stumble. Lost? H takes you back to your last
+	    gate (held a few seconds). Every rider shows on a progress strip.
+	  * RECORDS: split times at each gate; your best time and wins are
+	    saved (player attributes RaceBest / RaceWins, saved by DataService)
 	  * PRIZES: Cash for the top 3 players (and a little for every
 	    finisher); a Saint's Corpse part appears at the finish for a winning
 	    player. Finishers keep their horse to ride on.
@@ -263,6 +270,7 @@ local function buildCourse()
 		RaceService.join(player)
 	end)
 	course = { Start = start, StartFacing = facing, Right = right, Gates = gates }
+	RaceService.buildExtras(points)
 	return course
 end
 
@@ -487,6 +495,312 @@ local function racerCount(playersOnly)
 	return n
 end
 
+---------------------------------------------------------------------------
+-- Race extras: carrots, hurdles, stamina, records
+---------------------------------------------------------------------------
+local gcfg = cfg.Gallop or {}
+local ccfg = cfg.Carrots or {}
+local hucfg = cfg.Hurdles or {}
+local ORANGE = Color3.fromRGB(236, 120, 30)
+local LEAF = Color3.fromRGB(80, 160, 60)
+local HAY = Color3.fromRGB(214, 184, 100)
+
+local function flat(v)
+	return Vector3.new(v.X, 0, v.Z)
+end
+
+-- A crate of carrots: a hay bale with carrots sticking out.
+local function buildCarrots(parent, at)
+	local m = Instance.new("Model")
+	m.Name = "Carrots"
+	local cf = CFrame.new(at + Vector3.new(0, 1, 0))
+	local parts = {}
+	table.insert(parts, block(m, "Bale", Vector3.new(4, 2, 3), cf, HAY, Enum.Material.Fabric))
+	for k = -1, 1 do
+		local c = block(m, "Carrot", Vector3.new(2.4, 0.5, 0.5), cf * CFrame.new(k * 1.1, 1.4, 0) * CFrame.Angles(0, 0, math.rad(80 + k * 10)), ORANGE, Enum.Material.SmoothPlastic)
+		c.Shape = Enum.PartType.Cylinder
+		table.insert(parts, c)
+		table.insert(parts, block(m, "Leaf", Vector3.new(0.3, 0.9, 0.6), cf * CFrame.new(k * 1.25, 2.75, 0), LEAF, Enum.Material.Grass))
+	end
+	local glow = Instance.new("PointLight")
+	glow.Color = ORANGE
+	glow.Range = 10
+	glow.Brightness = 1
+	glow.Parent = parts[1]
+	m.Parent = parent
+	CollectionService:AddTag(m, "SpinCarrots")
+	return m, parts
+end
+
+-- A log hurdle across the course: two posts, a log, a little flag each side.
+local function buildHurdle(parent, at, dir)
+	local m = Instance.new("Model")
+	m.Name = "Hurdle"
+	local right = dir:Cross(Vector3.new(0, 1, 0)).Unit
+	local cf = CFrame.lookAt(at, at + dir)
+	local w = hucfg.Width or 30
+	local log = block(m, "Log", Vector3.new(w, 1.1, 1.1), cf * CFrame.new(0, 2.3, 0), Color3.fromRGB(120, 80, 46), Enum.Material.Wood)
+	log.Shape = Enum.PartType.Cylinder
+	log.CFrame = cf * CFrame.new(0, 2.3, 0)
+	for _, side in ipairs({ -1, 1 }) do
+		block(m, "Post", Vector3.new(0.6, 3.2, 0.6), cf * CFrame.new(side * w / 2, 1.6, 0), WOOD, Enum.Material.Wood)
+		block(m, "Flag", Vector3.new(0.1, 1.2, 1.6), cf * CFrame.new(side * w / 2, 3.6, 0.8), RED, Enum.Material.Fabric)
+	end
+	for k = -2, 2 do
+		block(m, "Brush", Vector3.new(w / 5 - 0.5, 0.9, 1.4), cf * CFrame.new(k * w / 5, 0.45, 0), Color3.fromRGB(110, 120, 60), Enum.Material.Grass)
+	end
+	m:SetAttribute("Width", w)
+	m:SetAttribute("Facing", dir)
+	m.Parent = parent
+	CollectionService:AddTag(m, "SpinHurdle")
+	return m, right
+end
+
+function RaceService.buildExtras(points)
+	course.Points = points
+	course.LegLength = {}
+	course.Carrots = {}
+	course.Hurdles = {}
+	for i = 2, #points do
+		local a, b = points[i - 1], points[i]
+		local len = flat(b - a).Magnitude
+		course.LegLength[i - 1] = math.max(len, 1)
+		local dir = len > 0.1 and flat(b - a).Unit or course.StartFacing
+		local right = dir:Cross(Vector3.new(0, 1, 0)).Unit
+		-- Carrots, a little off the line, alternating sides.
+		for k = 1, ccfg.PerLeg or 1 do
+			local t = (k / ((ccfg.PerLeg or 1) + 1)) * 0.6 + 0.3
+			local at = groundAt(a + (b - a) * t + right * ((i % 2 == 0) and 7 or -7))
+			local model, parts = buildCarrots(courseFolder, at)
+			table.insert(course.Carrots, { Pos = at, Model = model, Parts = parts, ReadyAt = 0 })
+		end
+		-- A hurdle on every other long leg (never on the first: the start's crowded).
+		if i > 2 and (i % (hucfg.Every or 2) == 0) and len >= (hucfg.MinLeg or 70) then
+			local at = groundAt(a + (b - a) * 0.5)
+			local model = buildHurdle(courseFolder, at, dir)
+			table.insert(course.Hurdles, { Pos = at, Dir = dir, Right = right, Half = (hucfg.Width or 30) / 2, Model = model, Leg = i - 1 })
+		end
+	end
+end
+
+local function humanoidOf(r)
+	local c = charOf(r)
+	return c and c:FindFirstChildOfClass("Humanoid"), c
+end
+
+local function setMod(r, key, mult)
+	local hum = humanoidOf(r)
+	if hum then
+		Adapter.setMoveModifier(hum, key, mult)
+	end
+end
+
+-- Everything the race put on a rider (speed changes, stamina) comes off.
+local function clearExtras(r)
+	setMod(r, "Gallop", nil)
+	setMod(r, "Stumble", nil)
+	setMod(r, "Carrot", nil)
+	local c = charOf(r)
+	if c then
+		c:SetAttribute("HorseStamina", nil)
+		c:SetAttribute("HorseWinded", nil)
+		c:SetAttribute("Galloping", nil)
+	end
+end
+RaceService.clearExtras = clearExtras
+
+local function initRacer(r)
+	r.Stamina = 100
+	r.Winded = false
+	r.Galloping = false
+	r.RestAt = 0
+	r.Splits = {}
+	r.LastPos = nil
+	r.JumpPlan = {}
+	r.NextReturn = 0
+end
+
+-- Hold / let go of gallop (players: from the client; jockeys: their AI).
+function RaceService.setGallop(player, on)
+	local r = racers[player]
+	if r and phase == "Racing" and not r.Finished then
+		r.Galloping = on == true
+	end
+end
+
+-- H: back to the last gate you passed, held there a few seconds.
+function RaceService.returnToGate(player)
+	local r = racers[player]
+	if not r or phase ~= "Racing" or r.Finished or now() < (r.NextReturn or 0) then
+		return
+	end
+	local character = charOf(r)
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	r.NextReturn = now() + (cfg.ReturnCooldown or 8)
+	local lastIndex = r.Next - 1
+	local from = lastIndex >= 1 and course.Gates[lastIndex] or course.Start
+	local to = course.Gates[r.Next] or from
+	local facing = flat(to - from)
+	facing = facing.Magnitude > 0.1 and facing.Unit or course.StartFacing
+	standAt(character, from + facing * 4, facing)
+	root.Anchored = true
+	character:SetAttribute("RaceAnchored", true)
+	r.LastPos = nil
+	local penalty = cfg.ReturnPenalty or 3
+	send(player, "Returned", { Gate = lastIndex, Penalty = penalty })
+	task.delay(penalty, function()
+		if root.Parent and character:GetAttribute("RaceAnchored") then
+			root.Anchored = false
+			character:SetAttribute("RaceAnchored", nil)
+		end
+	end)
+end
+
+-- Stamina, gallop, carrots and hurdles for one rider (every tick, dt seconds).
+local function stepRider(key, r, dt, t)
+	local hum, character = humanoidOf(r)
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not hum or not root then
+		return
+	end
+	local speed = flat(root.AssemblyLinearVelocity).Magnitude
+	-- Jockeys gallop sensibly: when they've got the breath for it.
+	if r.Jockey then
+		if r.Galloping and r.Stamina < 20 then
+			r.Galloping = false
+		elseif not r.Galloping and r.Stamina > 65 then
+			r.Galloping = true
+		end
+	end
+	local galloping = r.Galloping and not r.Winded and r.Stamina > 0 and speed > 4 and not character:GetAttribute("RaceAnchored")
+	if galloping then
+		r.Stamina = math.max(0, r.Stamina - (gcfg.Drain or 18) * dt)
+		r.RestAt = t + (gcfg.RegenDelay or 0.8)
+		if r.Stamina <= 0 then
+			r.Winded = true
+			galloping = false
+			if r.Player then
+				send(r.Player, "Winded", {})
+			end
+		end
+	elseif t >= (r.RestAt or 0) then
+		r.Stamina = math.min(100, r.Stamina + (gcfg.Regen or 11) * dt)
+		if r.Winded and r.Stamina >= (gcfg.WindedUntil or 40) then
+			r.Winded = false
+			if r.Player then
+				send(r.Player, "Recovered", {})
+			end
+		end
+	end
+	setMod(r, "Gallop", galloping and (gcfg.Speed or 1.35) or nil)
+	character:SetAttribute("Galloping", galloping or nil)
+	character:SetAttribute("HorseStamina", math.floor(r.Stamina + 0.5))
+	character:SetAttribute("HorseWinded", r.Winded or nil)
+	-- Carrots.
+	for _, carrot in ipairs(course.Carrots or {}) do
+		if t >= carrot.ReadyAt and flat(root.Position - carrot.Pos).Magnitude <= (ccfg.Radius or 7) and math.abs(root.Position.Y - carrot.Pos.Y) < 12 then
+			carrot.ReadyAt = t + (ccfg.Respawn or 10)
+			for _, p in ipairs(carrot.Parts) do
+				p.Transparency = 1
+			end
+			task.delay(ccfg.Respawn or 10, function()
+				for _, p in ipairs(carrot.Parts) do
+					if p.Parent then
+						p.Transparency = 0
+					end
+				end
+			end)
+			r.Stamina = math.min(100, r.Stamina + (ccfg.Refill or 45))
+			if r.Winded and r.Stamina >= (gcfg.WindedUntil or 40) then
+				r.Winded = false
+			end
+			local token = {}
+			r.CarrotToken = token
+			setMod(r, "Carrot", ccfg.Boost or 1.2)
+			task.delay(ccfg.BoostTime or 1.5, function()
+				if r.CarrotToken == token then
+					setMod(r, "Carrot", nil)
+				end
+			end)
+			broadcast("Carrot", { Position = carrot.Pos, Name = r.Name })
+			if r.Player then
+				send(r.Player, "CarrotYou", { Stamina = math.floor(r.Stamina) })
+			end
+		end
+	end
+	-- Hurdles: did they cross one since last tick, and were they up in the air?
+	local pos = root.Position
+	for hi, h in ipairs(course.Hurdles or {}) do
+		local along = (pos - h.Pos):Dot(h.Dir)
+		local side = math.abs((pos - h.Pos):Dot(h.Right))
+		-- Jockeys jump when they're close (now and then they misjudge it).
+		if r.Jockey and along < -3 and along > -16 and side <= h.Half + 2 and not r.JumpPlan[hi] then
+			r.JumpPlan[hi] = rng:NextNumber() < (hucfg.JockeyMiss or 0.15) and "Miss" or "Jump"
+			if r.JumpPlan[hi] == "Jump" then
+				hum.Jump = true
+			end
+		end
+		if r.LastPos then
+			local before = (r.LastPos - h.Pos):Dot(h.Dir)
+			if before < 0 and along >= 0 and side <= h.Half then
+				local height = pos.Y - h.Pos.Y
+				if height < (hucfg.Clearance or 4.2) then
+					r.Stamina = math.max(0, r.Stamina - (hucfg.StumbleStamina or 20))
+					local token = {}
+					r.StumbleToken = token
+					setMod(r, "Stumble", hucfg.StumbleSlow or 0.4)
+					task.delay(hucfg.StumbleTime or 1.2, function()
+						if r.StumbleToken == token then
+							setMod(r, "Stumble", nil)
+						end
+					end)
+					broadcast("Stumble", { Position = h.Pos + h.Right * (pos - h.Pos):Dot(h.Right), Name = r.Name })
+					if r.Player then
+						send(r.Player, "StumbleYou", {})
+					end
+				else
+					r.Stamina = math.min(100, r.Stamina + (hucfg.ClearStamina or 5))
+					if r.Player then
+						send(r.Player, "Cleared", {})
+					end
+				end
+			end
+		end
+	end
+	r.LastPos = pos
+end
+
+-- How far round the course a rider is (0 at the start, 1 at the finish).
+local function progressOf(r, dist)
+	local total = #course.Gates
+	if r.Finished then
+		return 1
+	end
+	local legLen = course.LegLength and course.LegLength[r.Next] or 1
+	local frac = math.clamp(1 - dist / legLen, 0, 1)
+	return math.clamp(((r.Next - 1) + frac) / math.max(total, 1), 0, 1)
+end
+
+-- Records: best time and wins, saved by DataService.
+local function recordFinish(r)
+	local player = r.Player
+	if not player then
+		return false, nil
+	end
+	local best = player:GetAttribute("RaceBest")
+	local newRecord = typeof(best) ~= "number" or r.Time < best
+	if newRecord then
+		player:SetAttribute("RaceBest", math.floor(r.Time * 10 + 0.5) / 10)
+	end
+	if r.Place == 1 then
+		player:SetAttribute("RaceWins", (player:GetAttribute("RaceWins") or 0) + 1)
+	end
+	return newRecord, best
+end
+
 function RaceService.join(player)
 	if phase ~= "Entry" or racers[player] then
 		return
@@ -497,6 +811,7 @@ function RaceService.join(player)
 		return
 	end
 	racers[player] = { Player = player, Name = player.DisplayName, UserId = player.UserId, Next = 1 }
+	initRacer(racers[player])
 	player:SetAttribute("RaceEntered", true)
 	send(player, "Joined", { Ends = entryEnds })
 	broadcast("Entrants", { Count = racerCount(true) })
@@ -508,6 +823,7 @@ local function out(key, reason)
 		return
 	end
 	racers[key] = nil
+	clearExtras(r)
 	if r.Player then
 		r.Player:SetAttribute("RaceEntered", nil)
 		dismount(r.Player.Character)
@@ -573,6 +889,7 @@ local function spawnJockey(index)
 	end
 	local skill = cfg.NPCSkill or { 0.8, 0.95 }
 	local r = { Jockey = true, Model = model, Name = "Jockey: " .. name, UserId = -500 - index, Next = 1, Skill = skill[1] + rng:NextNumber() * (skill[2] - skill[1]) }
+	initRacer(r)
 	humanoid.Died:Connect(function()
 		for key, rr in pairs(racers) do
 			if rr == r then
@@ -668,6 +985,7 @@ end
 
 local function cleanup()
 	for key, r in pairs(racers) do
+		clearExtras(r)
 		if r.Player then
 			r.Player:SetAttribute("RaceEntered", nil)
 			local character = r.Player.Character
@@ -833,7 +1151,12 @@ local function finish(r)
 	if r.Place == 1 then
 		winnerAt = now()
 	end
+	clearExtras(r)
+	local newRecord, oldBest = recordFinish(r)
 	broadcast("Finished", { Name = r.Name, UserId = r.UserId, Place = r.Place, Time = r.Time, Prize = prize, Part = partName, Jockey = r.Jockey })
+	if r.Player then
+		send(r.Player, "Record", { Time = r.Time, NewRecord = newRecord, OldBest = oldBest, Wins = r.Player:GetAttribute("RaceWins") or 0 })
+	end
 end
 
 local function standings()
@@ -843,7 +1166,7 @@ local function standings()
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local gate = course.Gates[r.Next]
 		local dist = (root and gate) and (Vector3.new(gate.X, 0, gate.Z) - Vector3.new(root.Position.X, 0, root.Position.Z)).Magnitude or 1e6
-		table.insert(list, { Name = r.Name, UserId = r.UserId, Next = r.Next, Place = r.Place, Dist = dist, Jockey = r.Jockey })
+		table.insert(list, { Name = r.Name, UserId = r.UserId, Next = r.Next, Place = r.Place, Dist = dist, Jockey = r.Jockey, Progress = progressOf(r, dist) })
 	end
 	table.sort(list, function(a, b)
 		if a.Place or b.Place then
@@ -856,7 +1179,7 @@ local function standings()
 	end)
 	local rows = {}
 	for i, e in ipairs(list) do
-		table.insert(rows, { Name = e.Name, UserId = e.UserId, Position = i, Next = e.Next, Finished = e.Place ~= nil, Dist = math.floor(e.Dist), Jockey = e.Jockey })
+		table.insert(rows, { Name = e.Name, UserId = e.UserId, Position = i, Next = e.Next, Finished = e.Place ~= nil, Dist = math.floor(e.Dist), Jockey = e.Jockey, Progress = e.Progress })
 	end
 	return rows
 end
@@ -883,6 +1206,11 @@ local function tick()
 	local activePlayers = 0
 	for key, r in pairs(racers) do
 		if not r.Finished then
+			stepRider(key, r, 0.1, t)
+		end
+	end
+	for key, r in pairs(racers) do
+		if not r.Finished then
 			local character = charOf(r)
 			local root = character and character:FindFirstChild("HumanoidRootPart")
 			local gate = course.Gates[r.Next]
@@ -896,7 +1224,9 @@ local function tick()
 					if r.Next > total then
 						finish(r)
 					elseif r.Player then
-						send(r.Player, "Gate", { Index = r.Next - 1, Total = total })
+						local split = t - raceStart
+						r.Splits[r.Next - 1] = split
+						send(r.Player, "Gate", { Index = r.Next - 1, Total = total, Split = split })
 					end
 				end
 			end
@@ -926,13 +1256,17 @@ function RaceService.init()
 		return
 	end
 	Remote = Net.get("Race")
-	Remote.OnServerEvent:Connect(function(player, action)
+	Remote.OnServerEvent:Connect(function(player, action, on)
 		if action == "Join" then
 			RaceService.join(player)
 		elseif action == "Leave" then
 			RaceService.leave(player)
 		elseif action == "Horse" then
 			RaceService.toggleHorse(player)
+		elseif action == "Gallop" then
+			RaceService.setGallop(player, on == true)
+		elseif action == "Return" then
+			RaceService.returnToGate(player)
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(player)

@@ -110,3 +110,15 @@ The STABLE (bounty board > SHOP) now has a section per category. Each item is a 
 - **How it's stored:** player attributes HorseCoat / HorseMane / HorseBlanket / HorseSaddle / HorseMarking / HorseSocks / HorseExtras / HorseName, and HorseOwned (the list of "Kind:Id" you've bought). It lasts for the session.
 - `HorseModel.selectionOf(player)` and `HorseModel.lookFrom(TuskConfig.Horses, selection)` build the look, so the shop preview and the real horse always match. If you change anything while riding, the horse is re-saddled straight away.
 - Prices are in `TuskConfig.Horses`.
+
+
+## Racing upgrades (2026-11-24)
+- **Gallop:** hold **Shift** (L3, or the GALLOP button on mobile) while racing to go 35% faster. It drains your horse's **stamina** (about 5.5 s from full). Run it dry and the horse is **WINDED**: no galloping until it's back to 40%. Stamina refills when you ease off (after 0.8 s). A stamina meter sits bottom-middle, galloping kicks up dust behind the horse, and your view widens.
+- **Carrot crates** on every leg of the course (a hay bale with carrots, glowing orange): ride through one for +45 stamina and a short burst of speed. They come back after 10 s.
+- **Log hurdles** across every other long leg (not the first): **jump them** (Space / A). Ride into one on the ground and your horse **stumbles** (40% speed for 1.2 s, -20 stamina). A clean jump gives +5 stamina. "JUMP!" pops up when one's ahead.
+- **Lost?** Press **H** (D-pad up, or BACK on mobile) to go back to the last gate you passed. You're held there 3 s; 8 s cooldown.
+- **Progress strip** across the top: the course as a track with gate ticks and a finish flag, and every rider as a dot. You're the big gold "YOU" dot, other players are red and jockeys are grey.
+- **Splits and records:** each gate shows your split time. Your **best time** (`RaceBest`) and **wins** (`RaceWins`) are saved by DataService. At the finish you see NEW RECORD! (or your best) and your wins.
+- **Results board:** riders who were in the race get a wooden board with a parchment list of the finishers, medals for the top 3 and their times. Everyone else gets a one-line "X WON THE STEEL BALL RUN!".
+- **Jockeys** gallop when they have the breath (above 65% until 20%), jump hurdles (and misjudge one 15% of the time), and grab carrots they ride over.
+- Settings: `TuskConfig.Race.Gallop`, `.Carrots`, `.Hurdles`, `.ReturnPenalty`, `.ReturnCooldown`; keys `TuskConfig.Keys.Gallop` / `.RaceReturn`.

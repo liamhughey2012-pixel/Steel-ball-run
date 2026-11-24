@@ -7,6 +7,7 @@
 	  * the STABLE: every horse item they've bought (HorseOwned) and what
 	    they have on (coat, mane, blanket, saddle, marking, socks)
 	    and their horse's name
+	  * Steel Ball Run records: best time (RaceBest) and wins (RaceWins)
 	When: it loads when they join; it saves every AutosaveEvery seconds,
 	when they leave, and when the server shuts down (BindToClose).
 	Safety: if their data can't be loaded (DataStore down, or Studio without
@@ -64,11 +65,19 @@ local function snapshot(player)
 			horse[attr] = v
 		end
 	end
+	local race = {}
+	for _, attr in ipairs({ "RaceBest", "RaceWins" }) do
+		local v = player:GetAttribute(attr)
+		if typeof(v) == "number" then
+			race[attr] = v
+		end
+	end
 	return {
 		Version = VERSION,
 		Cash = cash and cash.Value or 0,
 		Bounties = bounties and bounties.Value or 0,
 		Horse = horse,
+		Race = race,
 		SavedAt = os.time(),
 	}
 end
@@ -83,6 +92,14 @@ local function apply(player, data)
 	end
 	if bounties and typeof(data.Bounties) == "number" then
 		bounties.Value = math.max(0, math.floor(data.Bounties))
+	end
+	if typeof(data.Race) == "table" then
+		for _, attr in ipairs({ "RaceBest", "RaceWins" }) do
+			local v = data.Race[attr]
+			if typeof(v) == "number" and v == v and v >= 0 then
+				player:SetAttribute(attr, v)
+			end
+		end
 	end
 	if typeof(data.Horse) == "table" then
 		for _, attr in ipairs(HORSE_ATTRS) do

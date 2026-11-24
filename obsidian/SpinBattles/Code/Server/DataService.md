@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `DataService` (capitals matter) |
 
-**What it does:** Saves each player's progress with DataStoreService, so it's still there next time they play: Cash and Bounties (leaderstats) the STABLE: every horse item they've bought (HorseOwned) and what they have on (coat, mane, blanket, saddle, marking, socks) and their horse's name When: it loads when they join; it saves every AutosaveEvery seconds, when they leave, and when the server shuts down (BindToClose). Safety: if their data can't be loaded (DataStore down, or Studio without API access), nothing is saved for them that session, so a failed load can never wipe what they had. Saves use UpdateAsync, retried a few times. Studio: turn on Game Settings > Security > "Enable Studio Access to API Services" (the place must be published) to test saving in Studio. Settings: TuskConfig.Save.
+**What it does:** Saves each player's progress with DataStoreService, so it's still there next time they play: Cash and Bounties (leaderstats) the STABLE: every horse item they've bought (HorseOwned) and what they have on (coat, mane, blanket, saddle, marking, socks) and their horse's name Steel Ball Run records: best time (RaceBest) and wins (RaceWins) When: it loads when they join; it saves every AutosaveEvery seconds, when they leave, and when the server shuts down (BindToClose). Safety: if their data can't be loaded (DataStore down, or Studio without API access), nothing is saved for them that session, so a failed load can never wipe what they had. Saves use UpdateAsync, retried a few times. Studio: turn on Game Settings > Security > "Enable Studio Access to API Services" (the place must be published) to test saving in Studio. Settings: TuskConfig.Save.
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -33,6 +33,7 @@ Back to [[Where To Put Code]]
 	  * the STABLE: every horse item they've bought (HorseOwned) and what
 	    they have on (coat, mane, blanket, saddle, marking, socks)
 	    and their horse's name
+	  * Steel Ball Run records: best time (RaceBest) and wins (RaceWins)
 	When: it loads when they join; it saves every AutosaveEvery seconds,
 	when they leave, and when the server shuts down (BindToClose).
 	Safety: if their data can't be loaded (DataStore down, or Studio without
@@ -90,11 +91,19 @@ local function snapshot(player)
 			horse[attr] = v
 		end
 	end
+	local race = {}
+	for _, attr in ipairs({ "RaceBest", "RaceWins" }) do
+		local v = player:GetAttribute(attr)
+		if typeof(v) == "number" then
+			race[attr] = v
+		end
+	end
 	return {
 		Version = VERSION,
 		Cash = cash and cash.Value or 0,
 		Bounties = bounties and bounties.Value or 0,
 		Horse = horse,
+		Race = race,
 		SavedAt = os.time(),
 	}
 end
@@ -109,6 +118,14 @@ local function apply(player, data)
 	end
 	if bounties and typeof(data.Bounties) == "number" then
 		bounties.Value = math.max(0, math.floor(data.Bounties))
+	end
+	if typeof(data.Race) == "table" then
+		for _, attr in ipairs({ "RaceBest", "RaceWins" }) do
+			local v = data.Race[attr]
+			if typeof(v) == "number" and v == v and v >= 0 then
+				player:SetAttribute(attr, v)
+			end
+		end
 	end
 	if typeof(data.Horse) == "table" then
 		for _, attr in ipairs(HORSE_ATTRS) do
