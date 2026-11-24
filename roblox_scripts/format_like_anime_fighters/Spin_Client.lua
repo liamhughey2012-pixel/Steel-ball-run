@@ -5602,7 +5602,6 @@ local function horseState(horse)
 	end
 	local body = horse.PrimaryPart or horse:FindFirstChild("Body")
 	h.Weld = body and body:FindFirstChild("HorseWeld")
-	h.Base = h.Weld and h.Weld.C0
 	horses[horse] = h
 	return h
 end
@@ -5629,8 +5628,11 @@ local function stepHorses(dt)
 				end
 				j.Weld.C0 = CFrame.new(j.Joint) * CFrame.Angles(a, 0, 0) * CFrame.new(0, -j.Drop, 0)
 			end
-			if h.Weld and h.Base then
-				h.Weld.C0 = h.Base * CFrame.new(0, math.abs(math.sin(h.Phase * math.pi * 2)) * 0.25 * amp, 0) * CFrame.Angles(math.sin(h.Phase * math.pi * 2) * 0.04 * amp, 0, 0)
+			-- Body bob, always from where the server put the horse (BodyY),
+			-- never from last frame's position (so it can't creep).
+			local bodyY = horse:GetAttribute("BodyY")
+			if h.Weld and bodyY then
+				h.Weld.C0 = CFrame.new(0, bodyY, -0.4) * CFrame.new(0, math.abs(math.sin(h.Phase * math.pi * 2)) * 0.25 * amp, 0) * CFrame.Angles(math.sin(h.Phase * math.pi * 2) * 0.04 * amp, 0, 0)
 			end
 		end
 	end
@@ -5645,6 +5647,17 @@ local function stepRiders()
 			if riders[character] == nil then
 				riders[character] = TuskAnimation.currentHold(character) or false
 				TuskAnimation.hold(character, "Ride")
+			end
+			-- Up onto the saddle (the server says how high), camera too.
+			local lift = character:GetAttribute("RideLift") or 2.4
+			if TuskAnimation.setLift then
+				TuskAnimation.setLift(character, lift)
+			end
+			if character == player.Character then
+				local hum = character:FindFirstChildOfClass("Humanoid")
+				if hum then
+					hum.CameraOffset = Vector3.new(0, lift, 0)
+				end
 			end
 			-- Hide the walk / run animation's legs while riding.
 			local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -5661,6 +5674,15 @@ local function stepRiders()
 	for character, previous in pairs(riders) do
 		if not seen[character] then
 			riders[character] = nil
+			if TuskAnimation.setLift then
+				TuskAnimation.setLift(character, nil)
+			end
+			if character == player.Character then
+				local hum = character:FindFirstChildOfClass("Humanoid")
+				if hum then
+					hum.CameraOffset = Vector3.new()
+				end
+			end
 			if character.Parent then
 				TuskAnimation.stopHold(character, "Ride")
 				if previous then
@@ -6909,9 +6931,25 @@ local function motorsOf(character)
 	return motors
 end
 
+-- Riders sit up on a horse: their whole body is lifted on the root joint by
+-- this many studs, under every pose (TuskAnimation.setLift).
+local lifts = setmetatable({}, { __mode = "k" }) -- [character] = studs
+
+local function liftOf(motor)
+	if motor.Name == "Root" or motor.Name == "RootJoint" then
+		local character = motor.Parent and motor.Parent.Parent
+		return character and lifts[character] or 0
+	end
+	return 0
+end
+
 -- C0 for a pose value (rotation applied in the parent part's space, about the joint).
 local function poseC0(motor, value, scale)
 	local base = JointCache.original(motor)
+	local lift = liftOf(motor)
+	if lift ~= 0 then
+		base = base + Vector3.new(0, lift, 0)
+	end
 	if not value then
 		return base
 	end
@@ -6982,7 +7020,9 @@ local function blendTo(character, pose, duration)
 		to[name] = poseC0(motor, pose[name])
 	end
 	s.SettleUntil = os.clock() + duration
-	return VFXLib.animate(duration, function(a)
+	-- Only the newest blend runs (an older one finishing later would undo it).
+	VFXLib.cancel(s.Blend)
+	s.Blend = VFXLib.animate(duration, function(a)
 		local e = EASES.Sine(a)
 		for name, motor in pairs(motors) do
 			if motor.Parent then
@@ -6990,6 +7030,7 @@ local function blendTo(character, pose, duration)
 			end
 		end
 	end)
+	return s.Blend
 end
 
 -- Breathing idle layered on a Hold pose (chest rise, head and arm sway).
@@ -7132,6 +7173,22 @@ function TuskAnimation.hold(character, poseName)
 		blendTo(character, resolvePose(poseName), 0.25)
 	end
 	startIdle(character, s)
+end
+
+-- Lift a character's whole body (e.g. onto a horse's saddle); nil / 0 to stop.
+function TuskAnimation.setLift(character, studs)
+	if not character then
+		return
+	end
+	studs = (studs and studs ~= 0) and studs or nil
+	if lifts[character] == studs then
+		return
+	end
+	lifts[character] = studs
+	local s = getState(character)
+	if not s.Action then
+		blendTo(character, resolvePose(s.Hold), 0.15)
+	end
 end
 
 -- The pose currently held on a character (so a temporary hold can put it back).

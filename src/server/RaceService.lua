@@ -20,9 +20,10 @@
 	    player. Finishers keep their horse to ride on.
 	  * YOUR HORSE (M): call it, ride it anywhere, press M again to get off
 	    (not during a race you're in; the race gives you yours).
-	The rider sits exactly on the saddle: their HipHeight is set so the
-	hooves touch the ground with the saddle under their hips (no more being
-	inside the horse or floating).
+	The rider sits exactly on the saddle: the horse is welded under their
+	root with its hooves on the ground, and every client lifts the rider's
+	body up onto the saddle (RideLift). HipHeight is never changed (that let
+	Roblox's own HipHeight resets send horses floating off).
 	Clients: RaceClient (HUD, beacon, gallop, M key). ReplicatedStorage
 	attributes: SpinRacePhase, SpinRaceNext, SpinRaceEntryEnds, SpinRaceGoAt,
 	SpinRaceStart. Remote: Net "Race" (client: "Join" / "Leave" / "Horse").
@@ -277,17 +278,46 @@ local function randomLook()
 	return { Body = c[1], Mane = c[2], Blanket = b and b.Color, Width = 1.9 }
 end
 
--- Where the rider's seat is (the bottom of their hips), relative to the root.
+-- Where the rider's seat is (the bottom of their hips), relative to the root,
+-- in the rest pose: read from the root joint's C0 / C1 (positions replicated
+-- from a player's client include their animation, e.g. the ride lift).
 local function seatHeight(character, root)
 	local hips = character:FindFirstChild("LowerTorso")
+	local joint = hips and hips:FindFirstChild("Root")
+	if not hips then
+		local torso = character:FindFirstChild("Torso")
+		hips = torso
+		joint = root:FindFirstChild("RootJoint")
+	end
+	if hips and joint and joint:IsA("Motor6D") then
+		local rest = joint.C0 * joint.C1:Inverse()
+		return rest.Position.Y - hips.Size.Y / 2
+	end
 	if hips then
 		return (root.CFrame:Inverse() * hips.Position).Y - hips.Size.Y / 2
 	end
-	local torso = character:FindFirstChild("Torso")
-	if torso then
-		return (root.CFrame:Inverse() * torso.Position).Y - torso.Size.Y / 2
-	end
 	return -1
+end
+
+-- Place the horse under a rider: welded to their root with its hooves on the
+-- ground at the rider's normal height. The rider's HipHeight is NEVER
+-- changed (Roblox can reset it, which made horses float away); instead the
+-- clients lift the rider's body onto the saddle (RideLift, TuskAnimation).
+-- Re-fitted whenever HipHeight changes.
+local function fitHorse(character)
+	local horse = character and character:FindFirstChild("RaceHorse")
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local body = horse and horse.PrimaryPart
+	local w = body and body:FindFirstChild("HorseWeld")
+	if not w or not humanoid or not root then
+		return
+	end
+	local bodyY = HorseModel.HoofDepth - (humanoid.HipHeight + root.Size.Y / 2)
+	w.C0 = CFrame.new(0, bodyY, -0.4)
+	horse:SetAttribute("BodyY", bodyY)
+	local seat = character:GetAttribute("RideSeat") or -0.25
+	character:SetAttribute("RideLift", math.max(0, bodyY + HorseModel.SaddleTop - seat))
 end
 
 local function mount(character, look, speed, kind)
@@ -300,25 +330,39 @@ local function mount(character, look, speed, kind)
 	if old then
 		old:Destroy()
 	end
+	-- (An older version raised HipHeight: put it back if it's still raised.)
+	local oldBase = character:GetAttribute("RaceHipBase")
+	if oldBase then
+		humanoid.HipHeight = oldBase
+		character:SetAttribute("RaceHipBase", nil)
+	end
 	look = look or {}
 	local horse = HorseModel.build(look.Body, look.Mane, { Width = look.Width or 1.9, Blanket = look.Blanket, Socks = look.Socks, Material = look.Material })
 	horse.Name = "RaceHorse"
-	if character:GetAttribute("RaceHipBase") == nil then
-		character:SetAttribute("RaceHipBase", humanoid.HipHeight)
+	for _, d in ipairs(horse:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			d.Massless = true
+		end
 	end
-	-- The saddle goes right under the rider's hips, and the rider stands
-	-- (HipHeight) so the horse's hooves touch the ground.
-	local bodyY = seatHeight(character, root) - HorseModel.SaddleTop + 0.05
-	humanoid.HipHeight = math.max(0, HorseModel.HoofDepth - bodyY - root.Size.Y / 2)
+	character:SetAttribute("RideSeat", seatHeight(character, root))
 	local body = horse.PrimaryPart
 	local w = Instance.new("Weld")
 	w.Name = "HorseWeld"
 	w.Part0 = root
 	w.Part1 = body
-	w.C0 = CFrame.new(0, bodyY, -0.4)
 	w.Parent = body
-	body.CFrame = root.CFrame * w.C0
 	horse.Parent = character
+	fitHorse(character)
+	body.CFrame = root.CFrame * w.C0
+	if not character:GetAttribute("HorseFitHooked") then
+		character:SetAttribute("HorseFitHooked", true)
+		humanoid:GetPropertyChangedSignal("HipHeight"):Connect(function()
+			fitHorse(character)
+		end)
+	end
 	CollectionService:AddTag(horse, "SpinHorse")
 	Adapter.setMoveModifier(humanoid, "Horse", speed or 3)
 	character:SetAttribute("Riding", kind or "Ride")
@@ -348,6 +392,7 @@ local function dismount(character)
 	character:SetAttribute("RaceAnchored", nil)
 	character:SetAttribute("RaceHipBase", nil)
 	character:SetAttribute("Riding", nil)
+	character:SetAttribute("RideLift", nil)
 end
 RaceService.dismount = dismount
 

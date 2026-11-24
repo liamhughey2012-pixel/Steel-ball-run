@@ -77,3 +77,17 @@ The first race opens 20 s after the server starts (`StudioFirstAfter`), or 2 min
   - **You no longer spawn in the air:** riders are placed with their hooves exactly on the ground.
   - Leaving during the countdown un-freezes you (you were left anchored).
   - Finishers keep their horse instead of being dropped off it.
+
+## Fix: horses floating up and away (2026-11-24)
+**Symptom:** horses rose into the air and drifted off without their riders, and the user saw them climb higher with every move.
+
+**Cause:** riding used to raise the rider's Humanoid **HipHeight**, so they stood high enough to sit on the horse. Roblox can change HipHeight by itself (automatic scaling), and the horse was positioned from that raised value. Riders then dropped back to the ground while the horse was left floating.
+
+**Fix (no HipHeight changes at all):**
+- **The horse:** welded under the rider's root at their **normal** height, with its hooves on the ground. The server sets `BodyY` on the horse and re-fits it whenever HipHeight changes. All horse parts are CanCollide/CanQuery/CanTouch false and Massless.
+- **The rider:**
+  - the server publishes `RideLift`: how far up the saddle is from the rider's seat. The seat is measured from the root joint's rest C0/C1, not from positions replicated from the client;
+  - every client lifts the rider's whole body by that much on the root joint (`TuskAnimation.setLift`). It applies under every pose, attacks included, and comes back down when they get off;
+  - the rider's camera is raised to match (Humanoid.CameraOffset).
+- **The gallop bob** is computed from `BodyY` every frame, never from the previous frame, so it can't creep.
+- **TuskAnimation:** only the newest blend runs; an older one finishing later used to undo it.
