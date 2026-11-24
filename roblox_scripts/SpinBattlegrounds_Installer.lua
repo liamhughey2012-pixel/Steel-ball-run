@@ -1264,6 +1264,27 @@ TuskActRegistry.Acts = {
 		CardTitle = "STAND  ·  CIVIL WAR",
 		Passive = "GUILT: your hits mark them; your moves feed on it",
 	},
+	-- Funny Valentine: D4C (Dirty Deeds Done Dirt Cheap): slips between
+	-- parallel worlds when sandwiched between things (a flag), brings
+	-- people from other worlds, and Love Train turns misfortune away.
+	[13] = {
+		Name = "D4C",
+		Character = "Valentine",
+		Tagline = "Dirty Deeds Done Dirt Cheap",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(120, 170, 255), Secondary = Color3.fromRGB(236, 120, 170) },
+		M1 = "DIRTY DEEDS COMBO",
+		Abilities = { "DIMENSION HOP", "PARALLEL VALENTINE", "MENGER SPONGE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "D4C LOVE TRAIN",
+		Next = nil,
+		Module = "Valentine", -- server moves
+		ClientModule = "ValentineVFX", -- client visuals (TuskActVFX.ValentineVFX)
+		CardTitle = "STAND  ·  D4C",
+		Buffs = {
+			{ Slot = 2, Attribute = "ParallelCloneUntil", Text = "PARALLEL" },
+		},
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -1273,7 +1294,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -1406,6 +1427,7 @@ TuskConfig.Roster = {
 	{ Id = "HotPants", Name = "HOT PANTS", Stand = "CREAM STARTER", Available = true, Color = Color3.fromRGB(242, 140, 172) },
 	{ Id = "Blackmore", Name = "BLACKMORE", Stand = "CATCH THE RAINBOW", Available = true, Color = Color3.fromRGB(110, 180, 255) },
 	{ Id = "Axl", Name = "AXL RO", Stand = "CIVIL WAR", Available = true, Color = Color3.fromRGB(214, 60, 70) },
+	{ Id = "Valentine", Name = "FUNNY VALENTINE", Stand = "D4C", Available = true, Color = Color3.fromRGB(120, 170, 255) },
 }
 
 ---------------------------------------------------------------------------
@@ -1431,10 +1453,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 9, -- how many at once (each takes a free spot below)
+	Count = 10, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine" },
 	RainWalkChance = 0.05, -- Blackmore NPCs: chance per think tick to start a rain walk while it rains
 	Health = 200,
 	WalkSpeed = 15,
@@ -1955,6 +1977,47 @@ TuskConfig.Axl = {
 		ScatterDistance = 9, -- Civil War breaks apart and he reforms this far away
 		GuiltAdded = 3, -- everyone caught is loaded with guilt; the crush uses it up
 		RainMultiplier = 0.5,
+	},
+}
+
+---------------------------------------------------------------------------
+-- Funny Valentine: D4C (Dirty Deeds Done Dirt Cheap)
+---------------------------------------------------------------------------
+TuskConfig.Valentine = {
+	M1 = { -- DIRTY DEEDS COMBO: D4C's chops with him
+		Interval = 0.28, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.5, Knockback = 42, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	DimensionHop = { -- a flag sweeps over him; he steps out of another world behind the nearest enemy
+		Cooldown = 7, Windup = 0.3, -- can't be hit while between worlds
+		Range = 40, Cone = 80, -- finds an enemy in front this close
+		Distance = 26, -- with nobody to hop to, he goes this far ahead
+		Damage = 5, Stun = 0.6, Knockback = 10, StrikeRange = 7,
+	},
+	ParallelClone = { -- a Valentine from another world joins the fight for a while
+		Cooldown = 12, Windup = 0.3,
+		Duration = 6, Speed = 20, Range = 50,
+		PunchRange = 4.5, PunchEvery = 0.8, MaxPunches = 5,
+		Damage = 3.5, Stun = 0.45, Knockback = 4,
+	},
+	MengerSponge = { -- their other-world self appears beside them: they crumble into cubes
+		Cooldown = 13, MissCooldown = 3, Windup = 0.3,
+		Range = 18, Cone = 60,
+		Damage = 4, Stun = 0.6,
+		Time = 3, Tick = 0.4, TickDamage = 1, TickGrowth = 0.08, Slow = 0.55,
+		FinalDamage = 6, FinalKnockback = 25, FinalStun = 0.7,
+	},
+	Ultimate = { -- D4C LOVE TRAIN: a wall of light; hits on him are cancelled and the misfortune lands on someone else
+		Windup = 0.7, Duration = 6,
+		RedirectRange = 30, RedirectShare = 0.8, RedirectMin = 3, RedirectEvery = 0.15,
+		SpeedMultiplier = 1.2,
+		PulseRadius = 14, PulseDamage = 8, PulseKnockback = 40, PulseStun = 0.6,
 	},
 }
 
@@ -3501,6 +3564,7 @@ local MountainTimOutfit = require(script.MountainTimOutfit)
 local HotPantsOutfit = require(script.HotPantsOutfit)
 local BlackmoreOutfit = require(script.BlackmoreOutfit)
 local AxlOutfit = require(script.AxlOutfit)
+local ValentineOutfit = require(script.ValentineOutfit)
 local StandBots = require(script.StandBots)
 local BountyService = require(script.BountyService)
 local WeatherService = require(script.WeatherService)
@@ -3518,6 +3582,7 @@ MountainTimOutfit.init()
 HotPantsOutfit.init()
 BlackmoreOutfit.init()
 AxlOutfit.init()
+ValentineOutfit.init()
 StandBots.init(TuskService)
 BountyService.init()
 WeatherService.init()
@@ -7137,7 +7202,7 @@ return StandAssetLoader
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -7183,6 +7248,7 @@ local LOOKS = {
 	MountainTim = { Skin = Color3.fromRGB(226, 180, 140), Torso = Color3.fromRGB(70, 90, 130), Legs = Color3.fromRGB(60, 50, 70) },
 	HotPants = { Skin = Color3.fromRGB(238, 196, 164), Torso = Color3.fromRGB(96, 60, 120), Legs = Color3.fromRGB(238, 196, 164) },
 	Blackmore = { Skin = Color3.fromRGB(220, 196, 176), Torso = Color3.fromRGB(36, 44, 70), Legs = Color3.fromRGB(30, 30, 40) },
+	Valentine = { Skin = Color3.fromRGB(240, 210, 190), Torso = Color3.fromRGB(236, 230, 220), Legs = Color3.fromRGB(40, 44, 70) },
 	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 }
 
@@ -11821,6 +11887,372 @@ end
 
 return Act4
 ]=] },
+	{ Service = "ServerScriptService", Path = "SpinServer/TuskActs/Valentine", Class = "ModuleScript", Source = [=[
+--[[
+	Valentine  (ServerScriptService.SpinServer.TuskActs.Valentine)
+
+	Funny Valentine: D4C (Dirty Deeds Done Dirt Cheap). Sandwiched between
+	two things (a flag wrapped round him) he slips into a parallel world and
+	out again somewhere else; he brings people across from other worlds;
+	and with Love Train, misfortune can't reach him: it lands on someone
+	else. Registered as "Act" 13 so it reuses the Tusk ability system.
+	  M1        DIRTY DEEDS COMBO: D4C chops with him
+	  Ability 1 DIMENSION HOP: a flag sweeps over him (he can't be hit while
+	            he's between worlds) and he steps out behind the nearest enemy
+	            in front, striking them; with nobody there, he hops ahead
+	  Ability 2 PARALLEL VALENTINE: a Valentine from another world joins the
+	            fight for a few seconds, chasing and punching the nearest enemy
+	  Ability 3 MENGER SPONGE: the nearest enemy's other-world self appears
+	            beside them: two of the same person can't exist together, so
+	            they crumble into cubes (slowed, ticks of damage), then burst
+	  Ultimate  D4C LOVE TRAIN: a wall of light: every hit on him is
+	            cancelled and the misfortune lands on the nearest enemy
+	            instead; he moves faster; it ends with a pulse of light
+Numbers: TuskConfig.Valentine. All damage goes through S.hit (CombatAdapter).
+]]
+
+local Shared = game:GetService("ReplicatedStorage").SpinShared
+local TuskConfig = require(Shared.TuskConfig)
+local Moves = require(script.Parent.Parent.TuskMoves)
+
+local Valentine = {}
+local cfg = TuskConfig.Valentine
+local ACT = 13
+
+local function alive(S, player)
+	return S.Adapter.getAlive(player)
+end
+
+local function ready(S, player, state, name, slot)
+	return not S.isBusy(state) and not state.Charging and S.cooldownReady(player, state, name, slot)
+end
+
+local function now()
+	return workspace:GetServerTimeNow()
+end
+
+function Valentine.M1(S, player, state, aim)
+	Moves.m1(S, player, state, aim, cfg.M1, ACT)
+end
+
+local function slow(S, target, key, multiplier, seconds)
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	S.Adapter.setMoveModifier(humanoid, key, multiplier)
+	local token = tostring({})
+	target:SetAttribute(key .. "Token", token)
+	task.delay(seconds, function()
+		if humanoid.Parent and target:GetAttribute(key .. "Token") == token then
+			S.Adapter.setMoveModifier(humanoid, key, nil)
+			target:SetAttribute(key .. "Token", nil)
+		end
+	end)
+end
+
+-- Nearest enemy (optionally only in a cone in front).
+local function nearest(S, character, root, range, direction, cone)
+	local look = direction and Moves.flat(direction)
+	local cosLimit = cone and math.cos(math.rad(cone / 2))
+	local best, bestD
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, range, 8)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		local hum = target:FindFirstChildOfClass("Humanoid")
+		if tr and hum and hum.Health > 0 and S.Adapter.canBeHit(nil, target) then
+			local offset = tr.Position - root.Position
+			local f = Vector3.new(offset.X, 0, offset.Z)
+			if not look or f.Magnitude < 1 or f.Unit:Dot(look) >= cosLimit then
+				if not bestD or offset.Magnitude < bestD then
+					best, bestD = target, offset.Magnitude
+				end
+			end
+		end
+	end
+	return best
+end
+
+---------------------------------------------------------------------------
+-- DIMENSION HOP
+---------------------------------------------------------------------------
+local function dimensionHop(S, player, state, aim)
+	local c = cfg.DimensionHop
+	if not ready(S, player, state, "DimensionHop", 1) then
+		return
+	end
+	local character, _, root = alive(S, player)
+	local direction = Moves.flat(S.aim(aim, root))
+	-- Where he'll step out: behind the nearest enemy in front, or straight ahead.
+	local target = nearest(S, character, root, c.Range, direction, c.Cone)
+	local tr = target and target:FindFirstChild("HumanoidRootPart")
+	local destination, facing
+	if tr then
+		local behind = -Moves.flat(tr.CFrame.LookVector)
+		destination = Moves.safeStep(character, tr, behind, 5) or Moves.safeStep(character, tr, -behind, 5)
+		facing = tr.Position
+	end
+	if not destination then
+		target, tr = nil, nil
+		destination = Moves.safeStep(character, root, direction, c.Distance)
+		facing = destination and destination + direction
+	end
+	if not destination then
+		S.tell(player, "Denied", { Reason = "Blocked" })
+		return
+	end
+	S.startCooldown(player, state, "DimensionHop", c.Cooldown, 1)
+	S.lock(state, c.Windup + 0.3)
+	local life = state.Life
+	local iframes = S.Adapter.Settings.IFrameAttribute
+	character:SetAttribute(iframes, true)
+	S.fx("Ability", { Character = character, Act = ACT, Move = "DimensionHop", Phase = "Wrap", Position = root.Position, Windup = c.Windup })
+	task.delay(c.Windup, function()
+		character:SetAttribute(iframes, nil)
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		-- The target may have moved: step out behind where they are now.
+		if tr and tr.Parent then
+			local behind = -Moves.flat(tr.CFrame.LookVector)
+			destination = Moves.safeStep(char, tr, behind, 5) or destination
+			facing = tr.Position
+		end
+		local flatFace = Vector3.new(facing.X, destination.Y, facing.Z)
+		char:PivotTo((flatFace - destination).Magnitude > 0.1 and CFrame.lookAt(destination, flatFace) or CFrame.new(destination))
+		S.fx("Ability", { Character = char, Act = ACT, Move = "DimensionHop", Phase = "Unwrap", Position = destination })
+		-- Out of the other world: a strike at whoever he came for.
+		if target and tr and (tr.Position - destination).Magnitude <= c.StrikeRange then
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = tr.Position - destination, Position = tr.Position, Source = "ValentineHop" })
+		end
+	end)
+end
+
+---------------------------------------------------------------------------
+-- PARALLEL VALENTINE: a Valentine from another world fights with him
+---------------------------------------------------------------------------
+local nextClone = 0
+
+local function parallelClone(S, player, state)
+	local c = cfg.ParallelClone
+	if not ready(S, player, state, "ParallelClone", 2) then
+		return
+	end
+	S.startCooldown(player, state, "ParallelClone", c.Cooldown, 2)
+	S.lock(state, c.Windup + 0.2)
+	local character, _, root = alive(S, player)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "ParallelClone", Phase = "Call", Windup = c.Windup })
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		nextClone = nextClone + 1
+		local id = nextClone
+		local pos = (r.CFrame * CFrame.new(-3, 0, 0)).Position
+		local untilT = now() + c.Duration
+		char:SetAttribute("ParallelCloneUntil", untilT)
+		S.fx("Ability", { Character = char, Act = ACT, Move = "ParallelClone", Phase = "Arrive", Id = id, From = pos, Duration = c.Duration, Speed = c.Speed })
+		local born = now()
+		local punches, nextPunch, target = 0, 0, nil
+		local step = 0.1
+		local function tick()
+			local _, _, myRoot = alive(S, player)
+			if not myRoot or state.Life ~= life or now() - born > c.Duration or punches >= c.MaxPunches then
+				char:SetAttribute("ParallelCloneUntil", nil)
+				S.fx("Ability", { Act = ACT, Move = "ParallelClone", Phase = "Leave", Id = id, Position = pos })
+				return
+			end
+			-- Pick the enemy nearest to Valentine (re-picked as they move).
+			local pick = nearest(S, char, myRoot, c.Range)
+			if pick ~= target then
+				target = pick
+				S.fx("Ability", { Act = ACT, Move = "ParallelClone", Phase = "Chase", Id = id, Target = target, From = pos })
+			end
+			local tr = target and target:FindFirstChild("HumanoidRootPart")
+			local goal = tr and tr.Position or (myRoot.CFrame * CFrame.new(-3, 0, 2)).Position
+			local to = goal - pos
+			local reach = tr and c.PunchRange or 2
+			if to.Magnitude > reach then
+				pos = pos + to.Unit * math.min(c.Speed * step, to.Magnitude - reach * 0.8)
+			elseif tr and now() >= nextPunch then
+				nextPunch = now() + c.PunchEvery
+				punches = punches + 1
+				S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = to, Position = tr.Position, Source = "ValentineClone" })
+				S.fx("Ability", { Act = ACT, Move = "ParallelClone", Phase = "Punch", Id = id, Position = tr.Position, From = pos })
+			end
+			task.delay(step, tick)
+		end
+		tick()
+	end)
+end
+
+---------------------------------------------------------------------------
+-- MENGER SPONGE: their other-world self appears and they crumble into cubes
+---------------------------------------------------------------------------
+local function mengerSponge(S, player, state, aim)
+	local c = cfg.MengerSponge
+	if not ready(S, player, state, "MengerSponge", 3) then
+		return
+	end
+	S.startCooldown(player, state, "MengerSponge", c.Cooldown, 3)
+	S.lock(state, c.Windup + 0.25)
+	local character, _, root = alive(S, player)
+	local direction = S.aim(aim, root)
+	local life = state.Life
+	S.fx("Ability", { Character = character, Act = ACT, Move = "MengerSponge", Phase = "Cast", Windup = c.Windup })
+	task.delay(c.Windup, function()
+		if not S.stillValid(player, state, life) then
+			return
+		end
+		local char, _, r = alive(S, player)
+		local target = nearest(S, char, r, c.Range, direction, c.Cone)
+		local tr = target and target:FindFirstChild("HumanoidRootPart")
+		if not tr or not S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Direction = direction, Position = tr.Position, Source = "ValentineMenger" }) then
+			S.startCooldown(player, state, "MengerSponge", c.MissCooldown, 3)
+			S.fx("Ability", { Character = char, Act = ACT, Move = "MengerSponge", Phase = "Miss", Direction = direction })
+			return
+		end
+		local untilT = now() + c.Time
+		target:SetAttribute("MengerUntil", untilT)
+		slow(S, target, "Menger", c.Slow, c.Time)
+		S.fx("Ability", { Character = char, Act = ACT, Move = "MengerSponge", Phase = "Crumble", Target = target, Duration = c.Time })
+		local ticks = math.floor(c.Time / c.Tick)
+		for i = 1, ticks do
+			task.delay(i * c.Tick, function()
+				local t = target:FindFirstChild("HumanoidRootPart")
+				if not t or (target:GetAttribute("MengerUntil") or 0) < untilT - 0.01 then
+					return
+				end
+				local last = i == ticks
+				S.hit(player, target, {
+					Damage = c.TickDamage + c.TickGrowth * (i - 1) + (last and c.FinalDamage or 0),
+					Stun = last and c.FinalStun or 0.25,
+					Knockback = last and c.FinalKnockback or 0,
+					Direction = t.Position - r.Position,
+					Position = t.Position,
+					Source = "ValentineMenger",
+				})
+				if last then
+					target:SetAttribute("MengerUntil", nil)
+					S.fx("Ability", { Act = ACT, Move = "MengerSponge", Phase = "Burst", Position = t.Position, Target = target })
+				end
+			end)
+		end
+	end)
+end
+
+function Valentine.Ability(S, player, state, slot, phase, aim)
+	if phase ~= "Press" then
+		return
+	end
+	if slot == 1 then
+		dimensionHop(S, player, state, aim)
+	elseif slot == 2 then
+		parallelClone(S, player, state)
+	elseif slot == 3 then
+		mengerSponge(S, player, state, aim)
+	end
+end
+
+---------------------------------------------------------------------------
+-- D4C LOVE TRAIN (ultimate)
+---------------------------------------------------------------------------
+local trains = setmetatable({}, { __mode = "k" }) -- [character] = redirect function while it's up
+
+local function registerTrain(S)
+	if S.Adapter.DodgeHandlers and not S.Adapter.DodgeHandlers.LoveTrain then
+		S.Adapter.DodgeHandlers.LoveTrain = function(attackerPlayer, target, info)
+			local f = trains[target]
+			if f then
+				f(attackerPlayer, info)
+			end
+		end
+	end
+end
+
+function Valentine.Ultimate(S, player, state, aim)
+	local u = cfg.Ultimate
+	if S.isBusy(state) or state.Charging then
+		return
+	end
+	if not S.spendUlt(player) then
+		return
+	end
+	registerTrain(S)
+	local character, humanoid = alive(S, player)
+	local life = state.Life
+	S.lock(state, u.Windup + 0.2)
+	character:SetAttribute("Armored", true)
+	S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Board", Windup = u.Windup, Duration = u.Duration })
+	task.delay(u.Windup, function()
+		if character.Parent then
+			character:SetAttribute("Armored", nil)
+		end
+		if state.Life ~= life or not alive(S, player) then
+			return
+		end
+		S.finishUltimate(player, state)
+		character:SetAttribute("LoveTrain", true)
+		S.Adapter.setMoveModifier(humanoid, "LoveTrain", u.SpeedMultiplier)
+		local lastRedirect = -math.huge
+		-- Misfortune can't reach him: it lands on the nearest enemy instead.
+		trains[character] = function(attackerPlayer, info)
+			-- (Misfortune already bounced once is just cancelled: no ping-pong
+			-- between two Love Trains.)
+			if now() - lastRedirect < u.RedirectEvery or (info and info.Source == "ValentineLoveTrain") then
+				return
+			end
+			lastRedirect = now()
+			local _, _, r = alive(S, player)
+			if not r then
+				return
+			end
+			local victim = nearest(S, character, r, u.RedirectRange)
+			local vr = victim and victim:FindFirstChild("HumanoidRootPart")
+			S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Redirect", From = r.Position, To = vr and vr.Position, Victim = victim })
+			if vr then
+				local damage = math.max(u.RedirectMin, (tonumber(info and info.Damage) or 0) * u.RedirectShare)
+				S.hit(player, victim, { Damage = damage, Stun = 0.5, Knockback = 10, Direction = vr.Position - r.Position, Position = vr.Position, Source = "ValentineLoveTrain" })
+			end
+		end
+		task.delay(u.Duration, function()
+			trains[character] = nil
+			if character.Parent then
+				character:SetAttribute("LoveTrain", nil)
+			end
+			if humanoid.Parent then
+				S.Adapter.setMoveModifier(humanoid, "LoveTrain", nil)
+			end
+			if state.Life ~= life then
+				return
+			end
+			local _, _, r = alive(S, player)
+			if r then
+				Moves.aoe(S, player, r.Position, u.PulseRadius, { Damage = u.PulseDamage, Stun = u.PulseStun, Knockback = u.PulseKnockback, Source = "ValentineLoveTrain" }, 8)
+				S.fx("Ultimate", { Character = character, Act = ACT, Phase = "Pulse", Position = r.Position, Radius = u.PulseRadius })
+			end
+		end)
+	end)
+end
+
+function Valentine.Cleanup(S, player, state)
+	local character = state.Character
+	if character then
+		character:SetAttribute("Armored", nil)
+		character:SetAttribute("LoveTrain", nil)
+		character:SetAttribute("ParallelCloneUntil", nil)
+		trains[character] = nil
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			S.Adapter.setMoveModifier(humanoid, "LoveTrain", nil)
+		end
+	end
+end
+
+return Valentine
+]=] },
 	{ Service = "ServerScriptService", Path = "SpinServer/TuskHitbox", Class = "ModuleScript", Source = [=[
 --[[
 	TuskHitbox  (ServerScriptService.SpinServer.TuskHitbox)
@@ -13147,6 +13579,238 @@ end
 
 return TuskSneakService
 ]=] },
+	{ Service = "ServerScriptService", Path = "SpinServer/ValentineOutfit", Class = "ModuleScript", Source = [=[
+--[[
+	ValentineOutfit  (ServerScriptService.SpinServer.ValentineOutfit)
+
+	Gives a character Funny Valentine's look while they play him (TuskAct
+	13), built from blocky parts (no catalog asset ids). Built from the
+	character's description until there's reference art:
+	  * curly blond hair with big curls sticking out at the sides
+	  * a long pale presidential frock coat with gold trim, gold buttons and
+	    tails, a gold star pin
+	  * a white ruffled cravat (jabot) at the throat
+	  * navy trousers and black riding boots
+	The player's own hats/hair are hidden while they play him and come back
+	when they switch. Built on the server so every player sees it.
+]]
+
+local Players = game:GetService("Players")
+
+local ValentineOutfit = {}
+ValentineOutfit.Act = 13
+
+local C = {
+	Hair = Color3.fromRGB(244, 218, 120),
+	HairDark = Color3.fromRGB(214, 182, 86),
+	Coat = Color3.fromRGB(232, 226, 236),
+	CoatShade = Color3.fromRGB(200, 192, 210),
+	Gold = Color3.fromRGB(222, 178, 70),
+	Jabot = Color3.fromRGB(250, 250, 248),
+	Pants = Color3.fromRGB(44, 50, 84),
+	Boot = Color3.fromRGB(22, 20, 24),
+}
+
+local saved = setmetatable({}, { __mode = "k" })
+
+local function piece(parent, outfit, name, size, color, offset)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.SmoothPlastic
+	p.Size = size
+	p.Color = color
+	p.CFrame = parent.CFrame * offset
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = parent
+	weld.Part1 = p
+	weld.Parent = p
+	p.Parent = outfit
+	return p
+end
+
+local function headPieces(head, outfit)
+	local s = head.Size.Y / 1.2
+	local w, h, d = head.Size.X / 2, head.Size.Y / 2, head.Size.Z / 2
+	-- Curly blond hair: a volume on top, down the back, and big curls out at the sides.
+	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.2 * s, 0.4 * s, head.Size.Z + 0.2 * s), C.Hair, CFrame.new(0, h, 0.02 * s))
+	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.24 * s, 0.9 * s, 0.24 * s), C.Hair, CFrame.new(0, -0.1 * s, d + 0.1 * s))
+	piece(head, outfit, "Bangs", Vector3.new(head.Size.X * 0.9, 0.2 * s, 0.14 * s), C.HairDark, CFrame.new(0, h - 0.22 * s, -d - 0.04 * s))
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, "Hair", Vector3.new(0.16 * s, 0.8 * s, head.Size.Z * 0.8), C.Hair, CFrame.new(side * (w + 0.07 * s), 0.02 * s, 0.08 * s))
+		-- Ringlet curls sticking out sideways (stacked, spiralling).
+		for k = 0, 2 do
+			piece(head, outfit, "Curl", Vector3.new((0.34 - k * 0.06) * s, (0.34 - k * 0.06) * s, (0.34 - k * 0.06) * s), k % 2 == 0 and C.Hair or C.HairDark,
+				CFrame.new(side * (w + (0.25 + k * 0.22) * s), (0.25 + k * 0.12) * s, (0.05 - k * 0.05) * s) * CFrame.Angles(0, 0, side * k * 0.5))
+		end
+		piece(head, outfit, "Curl", Vector3.new(0.3 * s, 0.3 * s, 0.3 * s), C.HairDark, CFrame.new(side * (w + 0.18 * s), -0.42 * s, 0.1 * s))
+	end
+end
+
+local function body(character, outfit)
+	local upper = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	local lower = character:FindFirstChild("LowerTorso")
+	if upper then
+		local s = upper.Size
+		local top, front = s.Y / 2, -s.Z / 2
+		piece(upper, outfit, "Coat", s + Vector3.new(0.1, 0.02, 0.1), C.Coat, CFrame.new())
+		-- High collar and the white ruffled cravat.
+		piece(upper, outfit, "Collar", Vector3.new(s.X * 0.7, 0.4, s.Z + 0.24), C.CoatShade, CFrame.new(0, top + 0.12, 0.04))
+		for k = 0, 3 do
+			piece(upper, outfit, "Jabot", Vector3.new(0.6 - k * 0.08, 0.2, 0.12), C.Jabot, CFrame.new(0, top - 0.08 - k * 0.18, front - 0.08 - (k % 2) * 0.04) * CFrame.Angles(0, 0, (k % 2 == 0 and 0.12 or -0.12)))
+		end
+		-- Lapels edged in gold, gold buttons down the front, a gold star pin.
+		for _, side in ipairs({ -1, 1 }) do
+			piece(upper, outfit, "Lapel", Vector3.new(0.36, s.Y * 0.6, 0.06), C.CoatShade, CFrame.new(side * 0.42, top - s.Y * 0.3, front - 0.06) * CFrame.Angles(0, 0, side * 0.25))
+			piece(upper, outfit, "LapelTrim", Vector3.new(0.06, s.Y * 0.6, 0.07), C.Gold, CFrame.new(side * 0.6, top - s.Y * 0.3, front - 0.07) * CFrame.Angles(0, 0, side * 0.25))
+			for k = 0, 2 do
+				piece(upper, outfit, "Button", Vector3.new(0.12, 0.12, 0.05), C.Gold, CFrame.new(side * 0.2, -s.Y * 0.05 - k * 0.3, front - 0.07))
+			end
+		end
+		for _, a in ipairs({ 0, math.pi / 4 }) do
+			piece(upper, outfit, "StarPin", Vector3.new(0.26, 0.08, 0.04), C.Gold, CFrame.new(-0.55, top - 0.75, front - 0.1) * CFrame.Angles(0, 0, a))
+			piece(upper, outfit, "StarPin", Vector3.new(0.08, 0.26, 0.04), C.Gold, CFrame.new(-0.55, top - 0.75, front - 0.1) * CFrame.Angles(0, 0, a))
+		end
+		piece(upper, outfit, "Hem", Vector3.new(s.X + 0.14, 0.1, s.Z + 0.14), C.Gold, CFrame.new(0, -s.Y / 2 + 0.05, 0))
+	end
+	-- Frock-coat skirt and tails.
+	local waist = lower or upper
+	if waist then
+		local ws = waist.Size
+		local waistTop = lower and ws.Y / 2 or -upper.Size.Y / 2 + 0.3
+		local skirtH = lower and 1.7 or 1.4
+		for _, side in ipairs({ -1, 1 }) do
+			piece(waist, outfit, "Skirt", Vector3.new(ws.X / 2 + 0.06, skirtH, 0.12), C.Coat, CFrame.new(side * (ws.X / 4 + 0.1), waistTop - skirtH / 2, -ws.Z / 2 - 0.08) * CFrame.Angles(0, side * 0.12, 0))
+			piece(waist, outfit, "SkirtTrim", Vector3.new(0.07, skirtH, 0.13), C.Gold, CFrame.new(side * 0.14, waistTop - skirtH / 2, -ws.Z / 2 - 0.1))
+			piece(waist, outfit, "Skirt", Vector3.new(0.12, skirtH, ws.Z + 0.16), C.CoatShade, CFrame.new(side * (ws.X / 2 + 0.1), waistTop - skirtH / 2, 0.02))
+		end
+		piece(waist, outfit, "Tails", Vector3.new(ws.X + 0.3, skirtH + 0.4, 0.12), C.Coat, CFrame.new(0, waistTop - skirtH / 2 - 0.2, ws.Z / 2 + 0.08))
+		if lower then
+			piece(lower, outfit, "Pants", ws + Vector3.new(0.06, 0.02, 0.06), C.Pants, CFrame.new())
+		end
+	end
+	-- Sleeves with gold cuffs.
+	for _, name in ipairs({ "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm", "Left Arm", "Right Arm" }) do
+		local arm = character:FindFirstChild(name)
+		if arm then
+			local as = arm.Size
+			local tall = as.Y > 1.8
+			local h = tall and as.Y - 0.3 or as.Y
+			piece(arm, outfit, "Sleeve", Vector3.new(as.X + 0.08, h + 0.02, as.Z + 0.08), C.Coat, CFrame.new(0, as.Y / 2 - h / 2, 0))
+			if name:find("Lower") or tall then
+				piece(arm, outfit, "Cuff", Vector3.new(as.X + 0.14, 0.22, as.Z + 0.14), C.Gold, CFrame.new(0, as.Y / 2 - h + 0.11, 0))
+				piece(arm, outfit, "Ruffle", Vector3.new(as.X + 0.04, 0.14, as.Z + 0.04), C.Jabot, CFrame.new(0, as.Y / 2 - h - 0.04, 0))
+			end
+		end
+	end
+	-- Navy trousers and black riding boots.
+	for _, name in ipairs({ "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
+		local leg = character:FindFirstChild(name)
+		if leg then
+			local ls = leg.Size
+			piece(leg, outfit, "Pants", ls + Vector3.new(0.05, 0.02, 0.05), C.Pants, CFrame.new())
+			if name:find("Lower") or ls.Y > 1.8 then
+				local bh = ls.Y > 1.8 and 1.0 or ls.Y + 0.05
+				piece(leg, outfit, "Boot", Vector3.new(ls.X + 0.14, bh, ls.Z + 0.14), C.Boot, CFrame.new(0, -ls.Y / 2 + bh / 2, 0))
+			end
+		end
+	end
+	for _, name in ipairs({ "LeftFoot", "RightFoot" }) do
+		local foot = character:FindFirstChild(name)
+		if foot then
+			piece(foot, outfit, "Boot", foot.Size + Vector3.new(0.1, 0.06, 0.14), C.Boot, CFrame.new(0, 0, -0.03))
+		end
+	end
+end
+
+function ValentineOutfit.apply(character)
+	if character:FindFirstChild("ValentineOutfit") then
+		return
+	end
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local store = { Hidden = {} }
+	saved[character] = store
+	for _, d in ipairs(character:GetChildren()) do
+		if d:IsA("Accessory") then
+			local handle = d:FindFirstChild("Handle")
+			local kind = d.AccessoryType
+			if handle and (kind == Enum.AccessoryType.Hat or kind == Enum.AccessoryType.Hair or kind == Enum.AccessoryType.Unknown) then
+				store.Hidden[handle] = handle.Transparency
+				handle.Transparency = 1
+			end
+		end
+	end
+	local outfit = Instance.new("Model")
+	outfit.Name = "ValentineOutfit"
+	outfit.Parent = character
+	headPieces(head, outfit)
+	body(character, outfit)
+end
+
+function ValentineOutfit.remove(character)
+	local outfit = character:FindFirstChild("ValentineOutfit")
+	if outfit then
+		outfit:Destroy()
+	end
+	local store = saved[character]
+	if not store then
+		return
+	end
+	saved[character] = nil
+	for thing, transparency in pairs(store.Hidden) do
+		if thing.Parent then
+			thing.Transparency = transparency
+		end
+	end
+end
+
+local function watch(character)
+	local function update()
+		if character:GetAttribute("TuskAct") == ValentineOutfit.Act then
+			task.delay(0.3, function()
+				if character.Parent and character:GetAttribute("TuskAct") == ValentineOutfit.Act then
+					ValentineOutfit.apply(character)
+				end
+			end)
+		else
+			ValentineOutfit.remove(character)
+		end
+	end
+	character:GetAttributeChangedSignal("TuskAct"):Connect(update)
+	update()
+end
+
+function ValentineOutfit.init()
+	local function onPlayer(player)
+		player.CharacterAppearanceLoaded:Connect(watch)
+		if player.Character then
+			watch(player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(onPlayer)
+	-- Stand-user NPCs (StandBots) wear the outfit too.
+	local CollectionService = game:GetService("CollectionService")
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		watch(model)
+	end
+	CollectionService:GetInstanceAddedSignal("SpinFighter"):Connect(watch)
+	for _, player in ipairs(Players:GetPlayers()) do
+		onPlayer(player)
+	end
+end
+
+return ValentineOutfit
+]=] },
 	{ Service = "ServerScriptService", Path = "SpinServer/WeatherService", Class = "ModuleScript", Source = [=[
 --[[
 	WeatherService  (ServerScriptService.SpinServer.WeatherService)
@@ -13801,6 +14465,8 @@ local function onHit(data)
 		starColor = Color3.fromRGB(242, 140, 172)
 	elseif source:sub(1, 9) == "Blackmore" then
 		starColor = Color3.fromRGB(110, 180, 255)
+	elseif source:sub(1, 9) == "Valentine" then
+		starColor = Color3.fromRGB(120, 170, 255)
 	elseif source:sub(1, 3) == "Axl" then
 		starColor = Color3.fromRGB(214, 60, 70)
 	end
@@ -13982,6 +14648,7 @@ Common.Palettes = {
 	[10] = { Main = Color3.fromRGB(242, 140, 172), Second = Color3.fromRGB(120, 60, 92), Light = Color3.fromRGB(255, 220, 230) }, -- Hot Pants (Cream Starter pink)
 	[11] = { Main = Color3.fromRGB(110, 180, 255), Second = Color3.fromRGB(40, 50, 90), Light = Color3.fromRGB(225, 245, 255) }, -- Blackmore (rain blue)
 	[12] = { Main = Color3.fromRGB(214, 60, 70), Second = Color3.fromRGB(226, 196, 110), Light = Color3.fromRGB(255, 200, 200) }, -- Axl RO (Civil War red)
+	[13] = { Main = Color3.fromRGB(120, 170, 255), Second = Color3.fromRGB(236, 120, 170), Light = Color3.fromRGB(240, 246, 255) }, -- Funny Valentine (D4C blue + pink)
 }
 
 function Common.palette(act)
@@ -16871,6 +17538,161 @@ function CivilWarStand.build(scale)
 end
 
 return CivilWarStand
+]=] },
+	{ Service = "StarterPlayerScripts", Path = "SpinClient/TuskActVFX/D4CStand", Class = "ModuleScript", Source = [=[
+--[[
+	TuskActVFX.D4CStand  (StarterPlayerScripts.SpinClient.TuskActVFX.D4CStand)
+
+	The D4C (Dirty Deeds Done Dirt Cheap) Stand model (Funny Valentine),
+	blocky. Built from the Stand's description until there's reference art:
+	  * a pale-blue humanoid with dark-navy stripes
+	  * two long rabbit-like horns rising from its head, pink inside
+	  * big round eyes and a dark mouth plate with vertical slits
+	  * a navy cross band over the chest, a pink diamond at the belt
+	  * pink-rimmed shoulder pads and knuckle guards
+	Registered with TuskStandModels by ValentineVFX, so TuskStand floats it
+	behind Valentine (players and NPCs) with a pale-blue aura. A custom model
+	at ReplicatedStorage.SpinAssets.TuskAct13 replaces it.
+]]
+
+local D4CStand = {}
+
+local BODY = Color3.fromRGB(156, 194, 236)
+local BODY_SHADE = Color3.fromRGB(120, 160, 210)
+local NAVY = Color3.fromRGB(36, 52, 110)
+local PINK = Color3.fromRGB(236, 120, 170)
+local WHITE = Color3.fromRGB(245, 246, 250)
+local PUPIL = Color3.fromRGB(30, 26, 40)
+
+D4CStand.Aura = Color3.fromRGB(120, 170, 255)
+D4CStand.AuraLight = Color3.fromRGB(230, 240, 255)
+D4CStand.Offset = CFrame.new(2.3, 1.6, 2.8)
+
+local function newPart(model, name, size, color, material)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Massless = true
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Size = size
+	p.Color = color
+	p.Parent = model
+	return p
+end
+
+local function box(model, parent, name, size, color, cf, material)
+	local p = newPart(model, name, size, color, material)
+	local w = Instance.new("Weld")
+	w.Part0 = parent
+	w.Part1 = p
+	w.C0 = cf
+	w.Parent = p
+	p.CFrame = parent.CFrame * cf
+	return p, w
+end
+
+-- Navy stripes round a limb (local Y) at the given heights.
+local function stripes(model, parent, size, ys, s)
+	for _, y in ipairs(ys) do
+		box(model, parent, "Stripe", Vector3.new(size.X + 0.06 * s, 0.14 * s, size.Z + 0.06 * s), NAVY, CFrame.new(0, y, 0))
+	end
+end
+
+function D4CStand.build(scale)
+	local s = (scale or 1) * 0.85
+	local model = Instance.new("Model")
+	model.Name = "D4C"
+	local rig = { Joints = {} }
+
+	-- Torso (the anchored root the Stand is moved by).
+	local torso = newPart(model, "Body", Vector3.new(2.2, 2.0, 1.1) * s, BODY)
+	torso.Anchored = true
+	torso.Massless = false
+	torso.CFrame = CFrame.new()
+	model.PrimaryPart = torso
+	rig.Body = torso
+	local front = -0.56 * s
+	-- Navy cross band over the chest, abs, belt with a pink diamond.
+	for _, a in ipairs({ 0.6, -0.6 }) do
+		box(model, torso, "CrossBand", Vector3.new(0.26, 2.3, 0.06) * s, NAVY, CFrame.new(0, 0.2 * s, front - 0.02 * s) * CFrame.Angles(0, 0, a))
+	end
+	for _, x in ipairs({ -0.3, 0.3 }) do
+		for k = 0, 1 do
+			box(model, torso, "Ab", Vector3.new(0.45, 0.3, 0.06) * s, BODY_SHADE, CFrame.new(x * s, (-0.45 - k * 0.36) * s, front - 0.03 * s))
+		end
+	end
+	box(model, torso, "Belt", Vector3.new(2.26, 0.26, 1.16) * s, NAVY, CFrame.new(0, -1.0 * s, 0))
+	box(model, torso, "Emblem", Vector3.new(0.4, 0.4, 0.08) * s, PINK, CFrame.new(0, -1.0 * s, front - 0.05 * s) * CFrame.Angles(0, 0, math.pi / 4), Enum.Material.Neon)
+	box(model, torso, "Hips", Vector3.new(1.9, 0.6, 1.0) * s, BODY_SHADE, CFrame.new(0, -1.4 * s, 0))
+	box(model, torso, "Neck", Vector3.new(0.6, 0.4, 0.6) * s, BODY_SHADE, CFrame.new(0, 1.15 * s, 0))
+
+	-- Head: big round eyes, a slitted mouth plate, two long rabbit-like horns.
+	local headBase = CFrame.new(0, 1.2 * s, 0)
+	local headOffset = CFrame.new(0, 0.6 * s, 0)
+	local head, headWeld = box(model, torso, "Head", Vector3.new(1.05, 1.15, 1.05) * s, BODY, headBase * headOffset)
+	rig.Joints.Head = { Weld = headWeld, Base = headBase, Offset = headOffset }
+	local hf = -0.53 * s
+	for _, side in ipairs({ -1, 1 }) do
+		box(model, head, "Eye", Vector3.new(0.36, 0.36, 0.06) * s, WHITE, CFrame.new(side * 0.24 * s, 0.14 * s, hf - 0.02 * s))
+		box(model, head, "Pupil", Vector3.new(0.16, 0.16, 0.06) * s, PUPIL, CFrame.new(side * 0.22 * s, 0.12 * s, hf - 0.05 * s))
+		box(model, head, "Brow", Vector3.new(0.4, 0.08, 0.06) * s, NAVY, CFrame.new(side * 0.24 * s, 0.36 * s, hf - 0.03 * s) * CFrame.Angles(0, 0, side * -0.2))
+		-- Horn: three tapering blocks, tilted out a little, pink stripe inside.
+		local hornBase = CFrame.new(side * 0.3 * s, 0.55 * s, 0) * CFrame.Angles(0, 0, side * -0.12)
+		for k = 0, 2 do
+			local w = (0.28 - k * 0.06) * s
+			box(model, head, "Horn", Vector3.new(w, 0.62 * s, w * 0.8), BODY, hornBase * CFrame.new(0, (0.3 + k * 0.58) * s, 0))
+		end
+		box(model, head, "HornInner", Vector3.new(0.08, 1.4, 0.04) * s, PINK, hornBase * CFrame.new(0, 0.85 * s, -0.12 * s))
+		box(model, head, "HornTip", Vector3.new(0.12, 0.2, 0.12) * s, NAVY, hornBase * CFrame.new(0, 2.0 * s, 0))
+	end
+	box(model, head, "Mouth", Vector3.new(0.6, 0.3, 0.06) * s, NAVY, CFrame.new(0, -0.3 * s, hf - 0.02 * s))
+	for i = -2, 2 do
+		box(model, head, "MouthSlit", Vector3.new(0.04, 0.26, 0.04) * s, BODY, CFrame.new(i * 0.1 * s, -0.3 * s, hf - 0.06 * s))
+	end
+
+	-- Shoulders and striped arms with pink knuckle guards.
+	for _, a in ipairs({ { "ArmL", -1 }, { "ArmR", 1 } }) do
+		local side = a[2]
+		box(model, torso, "ShoulderPad", Vector3.new(0.9, 0.6, 1.1) * s, BODY_SHADE, CFrame.new(side * 1.4 * s, 0.82 * s, 0))
+		box(model, torso, "PadRim", Vector3.new(0.96, 0.12, 1.16) * s, PINK, CFrame.new(side * 1.4 * s, 0.55 * s, 0))
+		local base = CFrame.new(side * 1.45 * s, 0.5 * s, 0)
+		local offset = CFrame.new(0, -1.1 * s, 0)
+		local size = Vector3.new(0.6, 2.2, 0.6) * s
+		local arm, weld = box(model, torso, a[1], size, BODY, base * offset)
+		rig.Joints[a[1]] = { Weld = weld, Base = base, Offset = offset }
+		stripes(model, arm, size, { 0.6 * s, 0.1 * s, -0.4 * s }, s)
+		local hand = box(model, arm, "Hand", Vector3.new(0.6, 0.5, 0.55) * s, BODY_SHADE, CFrame.new(0, -1.3 * s, 0))
+		box(model, hand, "Knuckles", Vector3.new(0.64, 0.16, 0.2) * s, PINK, CFrame.new(0, -0.1 * s, -0.22 * s))
+		if a[1] == "ArmR" then
+			local point = Instance.new("Attachment")
+			point.Name = "NailPoint"
+			point.Position = Vector3.new(0, -0.3 * s, 0)
+			point.Parent = hand
+			rig.NailPoint = point
+		end
+	end
+
+	-- Striped legs.
+	for i, side in ipairs({ -1, 1 }) do
+		local base = CFrame.new(side * 0.5 * s, -1.6 * s, 0)
+		local offset = CFrame.new(0, -1.15 * s, 0)
+		local size = Vector3.new(0.7, 2.3, 0.7) * s
+		local leg, weld = box(model, torso, "Leg" .. i, size, BODY, base * offset)
+		rig.Joints["Leg" .. i] = { Weld = weld, Base = base, Offset = offset }
+		stripes(model, leg, size, { 0.5 * s, 0 * s, -0.5 * s }, s)
+		box(model, leg, "Knee", Vector3.new(0.5, 0.3, 0.1) * s, PINK, CFrame.new(0, 0.25 * s, -0.37 * s))
+		box(model, leg, "Foot", Vector3.new(0.7, 0.3, 1.0) * s, NAVY, CFrame.new(0, -1.25 * s, -0.15 * s))
+	end
+	return model, rig
+end
+
+return D4CStand
 ]=] },
 	{ Service = "StarterPlayerScripts", Path = "SpinClient/TuskActVFX/Diego", Class = "ModuleScript", Source = [=[
 --[[
@@ -21627,6 +22449,528 @@ end
 
 return SilentWayStand
 ]=] },
+	{ Service = "StarterPlayerScripts", Path = "SpinClient/TuskActVFX/ValentineVFX", Class = "ModuleScript", Source = [=[
+--[[
+	TuskActVFX.ValentineVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.ValentineVFX)
+
+	Client visuals for Funny Valentine / D4C. Blocky.
+	  * the D4C Stand (D4CStand) floats behind him with a pale-blue aura and
+	    strikes with his moves
+	  * DIMENSION HOP: a striped flag sweeps round him and he's gone; where he
+	    steps out, a flag unfurls and falls away
+	  * PARALLEL VALENTINE: a shimmering Valentine from another world steps
+	    out of a flag, chases the nearest enemy and punches, then leaves
+	  * MENGER SPONGE: the target's other-world double flickers beside them
+	    and their body crumbles into little cubes (Menger sponges orbit them),
+	    then bursts
+	  * D4C LOVE TRAIN: a column of light falls on him and a shell of light
+	    surrounds him; every hit on him bounces off as a bolt of light into
+	    someone else; it ends with a ring of light
+]]
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
+local TuskConfig = require(Shared.TuskConfig)
+local TuskStandModels = require(Shared.TuskStandModels)
+local VFXLib = require(script.Parent.Parent.VFXLib)
+local CameraFX = require(script.Parent.Parent.CameraFX)
+local TuskVFX = require(script.Parent.Parent.TuskVFX)
+local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
+local Common = require(script.Parent.Parent.TuskActCommon)
+local Fighters = require(script.Parent.Parent.Fighters)
+local TuskStand = require(script.Parent.Parent.TuskStand)
+local D4CStand = require(script.Parent.D4CStand)
+
+local ValentineVFX = {}
+local ACT = 13
+local pal = Common.palette(ACT)
+local sounds = TuskConfig.Sounds
+
+-- D4C floats behind him (players and NPCs), like Tusk does.
+TuskStandModels.register(ACT, D4CStand.build, { Aura = D4CStand.Aura, AuraLight = D4CStand.AuraLight, Offset = D4CStand.Offset })
+
+local RED = Color3.fromRGB(190, 40, 50)
+local WHITE = Color3.fromRGB(245, 245, 240)
+local BLUE = Color3.fromRGB(40, 60, 140)
+local LIGHT = Color3.fromRGB(255, 250, 225)
+local SHIMMER = Color3.fromRGB(170, 200, 255)
+local CUBE = Color3.fromRGB(200, 196, 190)
+
+local clones = {} -- [id] = a parallel Valentine
+local crumbling = {} -- [character] = cubes and double
+local trains = {} -- [character] = light shell
+local stanced = {}
+
+---------------------------------------------------------------------------
+-- Pieces
+---------------------------------------------------------------------------
+local function box(model, size, cf, color, material, transparency)
+	local p = VFXLib.part({ Size = size, CFrame = cf, Color = color, Material = material or Enum.Material.SmoothPlastic, Transparency = transparency or 0 })
+	p.Parent = model
+	return p
+end
+
+local function newModel(name)
+	local m = Instance.new("Model")
+	m.Name = name
+	m.Parent = VFXLib.Folder
+	return m
+end
+
+local function finish(m)
+	local item = { Model = m, Parts = {}, Offsets = {} }
+	for _, p in ipairs(m:GetChildren()) do
+		if p:IsA("BasePart") then
+			table.insert(item.Parts, p)
+			item.Offsets[p] = p.CFrame
+		end
+	end
+	return item
+end
+
+local function place(item, cf)
+	for _, p in ipairs(item.Parts) do
+		p.CFrame = cf * item.Offsets[p]
+	end
+end
+
+local function fade(item, a)
+	for _, p in ipairs(item.Parts) do
+		p.Transparency = math.max(p.Transparency, a)
+	end
+end
+
+-- A striped flag (7 stripes, a blue canton with white stars), built round its centre.
+local function buildFlag(w, h)
+	local m = newModel("Flag")
+	local stripeH = h / 7
+	for i = 0, 6 do
+		box(m, Vector3.new(w, stripeH, 0.08), CFrame.new(0, h / 2 - stripeH * (i + 0.5), 0), i % 2 == 0 and RED or WHITE, Enum.Material.Fabric)
+	end
+	local cw, ch = w * 0.4, stripeH * 4
+	box(m, Vector3.new(cw, ch, 0.1), CFrame.new(-w / 2 + cw / 2, h / 2 - ch / 2, -0.01), BLUE, Enum.Material.Fabric)
+	for i = 0, 2 do
+		for j = 0, 1 do
+			box(m, Vector3.new(0.18, 0.18, 0.12), CFrame.new(-w / 2 + cw * (0.2 + i * 0.3), h / 2 - ch * (0.3 + j * 0.4), -0.02), WHITE, Enum.Material.Neon)
+		end
+	end
+	return finish(m)
+end
+
+-- A Valentine from another world: blocky, pale and shimmering.
+local function buildValentine()
+	local m = newModel("ParallelValentine")
+	local coat, hair, skin, pants = Color3.fromRGB(232, 226, 236), Color3.fromRGB(244, 218, 120), Color3.fromRGB(240, 210, 190), Color3.fromRGB(44, 50, 84)
+	box(m, Vector3.new(2, 2, 1), CFrame.new(0, 3, 0), coat)
+	box(m, Vector3.new(2.2, 1.6, 0.2), CFrame.new(0, 1.6, 0.5), coat)
+	box(m, Vector3.new(0.6, 0.5, 0.15), CFrame.new(0, 3.7, -0.55), WHITE)
+	box(m, Vector3.new(1.2, 1.2, 1.2), CFrame.new(0, 4.6, 0), skin)
+	box(m, Vector3.new(1.4, 0.45, 1.4), CFrame.new(0, 5.2, 0), hair)
+	box(m, Vector3.new(1.4, 1, 0.3), CFrame.new(0, 4.6, 0.6), hair)
+	for _, side in ipairs({ -1, 1 }) do
+		box(m, Vector3.new(0.4, 0.4, 0.4), CFrame.new(side * 0.95, 4.9, 0), hair)
+		box(m, Vector3.new(0.3, 0.3, 0.3), CFrame.new(side * 1.2, 5.1, 0), hair)
+		box(m, Vector3.new(1, 2, 1), CFrame.new(side * 1.5, 3, 0), coat)
+		box(m, Vector3.new(1, 2, 1), CFrame.new(side * 0.5, 1, 0), pants)
+	end
+	local item = finish(m)
+	local hl = Instance.new("Highlight")
+	hl.FillColor = SHIMMER
+	hl.FillTransparency = 0.6
+	hl.OutlineColor = SHIMMER
+	hl.Adornee = m
+	hl.Parent = m
+	return item
+end
+
+-- A level-1 Menger sponge: a cube of 20 little cubes (the centre and face centres missing).
+local function buildSponge(size)
+	local m = newModel("MengerSponge")
+	local c = size / 3
+	for x = -1, 1 do
+		for y = -1, 1 do
+			for z = -1, 1 do
+				local zeros = (x == 0 and 1 or 0) + (y == 0 and 1 or 0) + (z == 0 and 1 or 0)
+				if zeros < 2 then
+					box(m, Vector3.new(c, c, c) * 0.96, CFrame.new(x * c, y * c, z * c), (x + y + z) % 2 == 0 and CUBE or CUBE:Lerp(SHIMMER, 0.4))
+				end
+			end
+		end
+	end
+	return finish(m)
+end
+
+local function flash(position, size)
+	TuskVFX.CreateImpactStar(position, { Size = size or 3, Rays = 8, Color = LIGHT, Color2 = SHIMMER, Duration = 0.15 })
+end
+
+---------------------------------------------------------------------------
+-- Moves
+---------------------------------------------------------------------------
+local function onM1(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if not root then
+		return
+	end
+	local index = data.Index
+	TuskAnimation.play(character, "V_M1_" .. index)
+	TuskStand.action(character, "Lunge", { Target = CFrame.new(index % 2 == 0 and -0.8 or 0.8, 1, -3.1), Duration = 0.28 })
+	VFXLib.sound(sounds.Swing, root, 0.5, 1.0 + index * 0.05)
+	Common.swipe(root, index % 2 == 1 and 1 or -1, index % 2 == 1 and pal.Main or pal.Second)
+end
+
+local function onFinisher(data)
+	Common.finisher(data, pal)
+end
+
+-- The flag sweeps round him and he slips away.
+local function flagWrap(position)
+	local flag = buildFlag(6, 4)
+	VFXLib.animate(0.35, function(a)
+		local angle = a * math.pi * 2.2
+		local r = 1.6 * (1 - a * 0.6)
+		place(flag, CFrame.new(position) * CFrame.Angles(0, angle, 0) * CFrame.new(0, 0.5, -r) * CFrame.Angles(0, 0, math.sin(a * 8) * 0.15))
+		fade(flag, a * a)
+	end, function()
+		flag.Model:Destroy()
+	end)
+	flash(position + Vector3.new(0, 1, 0), 3.5)
+end
+
+-- Where he steps out, a flag unfurls and drops away.
+local function flagUnfurl(position)
+	local flag = buildFlag(6, 4)
+	VFXLib.animate(0.5, function(a)
+		local open = math.min(a / 0.3, 1)
+		place(flag, CFrame.new(position + Vector3.new(0, 0.5 - a * a * 3, 0)) * CFrame.Angles(0, (1 - open) * math.pi, 0) * CFrame.new(0, 0, -1.2))
+		fade(flag, math.max(0, (a - 0.5) * 2))
+	end, function()
+		flag.Model:Destroy()
+	end)
+	flash(position + Vector3.new(0, 1, 0), 3.5)
+end
+
+local function cloneStep(dt)
+	local now = os.clock()
+	for id, c in pairs(clones) do
+		if now > c.Until then
+			clones[id] = nil
+			flagWrap(c.Pos + Vector3.new(0, 1.5, 0))
+			c.Item.Model:Destroy()
+		else
+			local tr = c.Target and Common.rootOf(c.Target)
+			local goal = tr and tr.Position or (c.Owner and Common.rootOf(c.Owner) and (Common.rootOf(c.Owner).CFrame * CFrame.new(-3, 0, 2)).Position) or c.Pos
+			local to = goal - c.Pos
+			local reach = tr and 4 or 2
+			if to.Magnitude > reach then
+				c.Pos = c.Pos + to.Unit * math.min(c.Speed * dt, to.Magnitude - reach * 0.8)
+			end
+			local look = Vector3.new(to.X, 0, to.Z)
+			local cf = CFrame.lookAt(c.Pos, c.Pos + (look.Magnitude > 0.1 and look or Vector3.new(0, 0, -1)))
+			local punch = math.max(0, 1 - (now - c.PunchAt) / 0.25)
+			place(c.Item, cf * CFrame.new(0, -3 + math.abs(math.sin(now * 9)) * 0.2, -punch * 1.2))
+			-- Shimmers between worlds.
+			for _, p in ipairs(c.Item.Parts) do
+				p.Transparency = 0.15 + 0.15 * math.abs(math.sin(now * 6 + id))
+			end
+		end
+	end
+end
+
+-- The target's other-world double flickers beside them; their body crumbles into cubes.
+local function startCrumble(target, duration)
+	local tr = Common.rootOf(target)
+	if not tr then
+		return
+	end
+	local old = crumbling[target]
+	if old then
+		for _, sp in ipairs(old.Sponges) do
+			sp.Model:Destroy()
+		end
+		old.Double.Model:Destroy()
+	end
+	local torso = target:FindFirstChild("UpperTorso") or target:FindFirstChild("Torso")
+	local color = torso and torso.Color or Color3.fromRGB(150, 150, 160)
+	local dm = newModel("OtherWorldDouble")
+	box(dm, Vector3.new(2, 2, 1), CFrame.new(0, 0, 0), color, Enum.Material.Glass, 0.4)
+	box(dm, Vector3.new(1.2, 1.2, 1.2), CFrame.new(0, 1.6, 0), color:Lerp(WHITE, 0.4), Enum.Material.Glass, 0.4)
+	for _, side in ipairs({ -1, 1 }) do
+		box(dm, Vector3.new(1, 2, 1), CFrame.new(side * 1.5, 0, 0), color, Enum.Material.Glass, 0.4)
+		box(dm, Vector3.new(1, 2, 1), CFrame.new(side * 0.5, -2, 0), color:Lerp(Color3.new(0, 0, 0), 0.3), Enum.Material.Glass, 0.4)
+	end
+	local sponges = {}
+	for i = 1, 4 do
+		sponges[i] = buildSponge(0.9)
+	end
+	crumbling[target] = { Double = finish(dm), Sponges = sponges, Born = os.clock(), Duration = duration or 3, Next = 0 }
+	flash(tr.Position, 3)
+end
+
+local function crumbleStep(dt)
+	local now = os.clock()
+	for target, c in pairs(crumbling) do
+		local tr = Common.rootOf(target)
+		if not tr or now - c.Born > c.Duration + 0.3 then
+			crumbling[target] = nil
+			for _, sp in ipairs(c.Sponges) do
+				sp.Model:Destroy()
+			end
+			c.Double.Model:Destroy()
+		else
+			local t = now - c.Born
+			-- The double stands beside them, facing them, flickering.
+			place(c.Double, tr.CFrame * CFrame.new(3.2, 0, 0) * CFrame.Angles(0, math.pi / 2, 0))
+			local flick = (math.floor(t * 14) % 3 == 0) and 0.75 or 0.4
+			for _, p in ipairs(c.Double.Parts) do
+				p.Transparency = flick
+			end
+			-- Menger sponges orbit them.
+			for i, sp in ipairs(c.Sponges) do
+				local a = t * 2.5 + i / #c.Sponges * math.pi * 2
+				place(sp, CFrame.new(tr.Position + Vector3.new(math.cos(a) * 2.4, math.sin(t * 3 + i) * 1.2, math.sin(a) * 2.4)) * CFrame.Angles(t * 2, t * 3, 0))
+			end
+			-- Little cubes break off the body and drift away.
+			c.Next = c.Next - dt
+			while c.Next <= 0 do
+				c.Next = c.Next + 0.06
+				local from = tr.Position + Vector3.new((math.random() - 0.5) * 2, (math.random() - 0.5) * 4, (math.random() - 0.5) * 1.4)
+				local cube = VFXLib.part({ Size = Vector3.new(0.35, 0.35, 0.35), Color = CUBE, Material = Enum.Material.SmoothPlastic })
+				local drift = Vector3.new(math.random() - 0.5, math.random() * 0.8 + 0.2, math.random() - 0.5) * 6
+				VFXLib.animate(0.6, function(a)
+					cube.CFrame = CFrame.new(from + drift * a) * CFrame.Angles(a * 5, a * 3, 0)
+					cube.Transparency = a
+				end, function()
+					cube:Destroy()
+				end)
+			end
+		end
+	end
+end
+
+local function onAbility(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	local move, phase = data.Move, data.Phase
+	if move == "DimensionHop" then
+		if phase == "Wrap" then
+			TuskAnimation.play(character, "VHop")
+			flagWrap(data.Position or (root and root.Position))
+		elseif phase == "Unwrap" then
+			flagUnfurl(data.Position)
+			TuskStand.action(character, "Lunge", { Duration = 0.35 })
+			if Common.isLocal(character) then
+				CameraFX.fovPunch(6, 0.2)
+			end
+		end
+	elseif move == "ParallelClone" then
+		if phase == "Call" and character then
+			TuskAnimation.play(character, "VCall")
+			TuskStand.action(character, "Manifest", { Duration = 0.5 })
+		elseif phase == "Arrive" then
+			local item = buildValentine()
+			clones[data.Id] = { Item = item, Pos = data.From, Speed = data.Speed or 20, Until = os.clock() + (data.Duration or 6) + 0.6, Owner = character, PunchAt = 0 }
+			flagUnfurl(data.From + Vector3.new(0, 1.5, 0))
+		elseif phase == "Chase" then
+			local c = clones[data.Id]
+			if c then
+				c.Target = data.Target
+			end
+		elseif phase == "Punch" then
+			local c = clones[data.Id]
+			if c then
+				c.PunchAt = os.clock()
+			end
+			if data.Position then
+				TuskVFX.CreateImpactStar(data.Position, { Size = 2.6, Rays = 6, Color = pal.Main, Color2 = WHITE, Duration = 0.12 })
+			end
+		elseif phase == "Leave" then
+			local c = clones[data.Id]
+			if c then
+				c.Until = 0 -- wraps itself in a flag and goes next frame
+			end
+		end
+	elseif move == "MengerSponge" then
+		if phase == "Cast" and character then
+			TuskAnimation.play(character, "VMenger")
+			TuskStand.action(character, "Lunge", { Duration = 0.45 })
+		elseif phase == "Crumble" and data.Target then
+			startCrumble(data.Target, data.Duration)
+		elseif phase == "Burst" and data.Position then
+			VFXLib.burst(data.Position, { Count = 30, Color = CUBE, Speed = 22, Lifetime = 0.5 })
+			flash(data.Position, 5)
+			if data.Target and crumbling[data.Target] then
+				crumbling[data.Target].Duration = 0
+			end
+		elseif phase == "Miss" and root then
+			flash((root.CFrame * CFrame.new(0, 0, -6)).Position, 2)
+		end
+	end
+end
+
+-- Love Train: a column of light, then a shell of light that follows him.
+local function startTrain(character, duration)
+	local m = newModel("LoveTrain")
+	local shell = box(m, Vector3.new(5, 7, 5), CFrame.new(), LIGHT, Enum.Material.ForceField, 0.2)
+	local rays = {}
+	for i = 1, 6 do
+		rays[i] = box(m, Vector3.new(0.25, 9, 0.25), CFrame.new(), LIGHT, Enum.Material.Neon, 0.35)
+	end
+	local light = Instance.new("PointLight")
+	light.Color = LIGHT
+	light.Range = 16
+	light.Brightness = 2
+	light.Parent = shell
+	trains[character] = { Model = m, Shell = shell, Rays = rays, Until = os.clock() + duration + 0.5 }
+end
+
+local function trainStep()
+	local now = os.clock()
+	for character, tr in pairs(trains) do
+		local root = Common.rootOf(character)
+		-- Ends on time, or once the server has switched it off.
+		if not root or now > tr.Until or (tr.Started and now > tr.Started + 1 and not character:GetAttribute("LoveTrain")) then
+			trains[character] = nil
+			tr.Model:Destroy()
+		else
+			tr.Started = tr.Started or now
+			local pulse = 1 + math.sin(now * 6) * 0.04
+			tr.Shell.Size = Vector3.new(5, 7, 5) * pulse
+			tr.Shell.CFrame = root.CFrame
+			for i, ray in ipairs(tr.Rays) do
+				local a = now * 1.6 + i / #tr.Rays * math.pi * 2
+				ray.CFrame = CFrame.new(root.Position + Vector3.new(math.cos(a) * 3, 0.5, math.sin(a) * 3)) * CFrame.Angles(0, -a, 0.15)
+			end
+		end
+	end
+end
+
+-- A bolt of light from him to whoever gets the misfortune.
+local function bolt(from, to)
+	local segments = 6
+	local prev = from + Vector3.new(0, 1, 0)
+	for i = 1, segments do
+		local t = i / segments
+		local p = (from + Vector3.new(0, 1, 0)):Lerp(to + Vector3.new(0, 1, 0), t) + (i < segments and Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 2 or Vector3.new())
+		local seg = VFXLib.part({ Size = Vector3.new(0.3, 0.3, (p - prev).Magnitude), CFrame = CFrame.lookAt((prev + p) / 2, p), Color = LIGHT, Material = Enum.Material.Neon })
+		VFXLib.animate(0.25, function(a)
+			seg.Transparency = a
+		end, function()
+			seg:Destroy()
+		end)
+		prev = p
+	end
+end
+
+local function onUltimate(data)
+	local character = data.Character
+	local root = Common.rootOf(character)
+	if data.Phase == "Board" then
+		TuskAnimation.play(character, "VLoveTrain")
+		TuskStand.action(character, "Manifest", { Duration = 0.8 })
+		if root then
+			-- A column of light comes down on him.
+			local column = VFXLib.part({ Size = Vector3.new(6, 60, 6), Color = LIGHT, Material = Enum.Material.Neon, Transparency = 0.4 })
+			local at = root.Position
+			VFXLib.animate(data.Windup or 0.7, function(a)
+				column.CFrame = CFrame.new(at + Vector3.new(0, 30 - a * 2, 0))
+				column.Size = Vector3.new(6 - a * 2, 60, 6 - a * 2)
+				column.Transparency = 0.4 + 0.6 * a
+			end, function()
+				column:Destroy()
+			end)
+			flash(at + Vector3.new(0, 2, 0), 6)
+		end
+		task.delay(data.Windup or 0.7, function()
+			if character and character.Parent then
+				startTrain(character, data.Duration or 6)
+			end
+		end)
+		if Common.isLocal(character) then
+			TuskVFX.ScreenTint((data.Windup or 0.7) + (data.Duration or 6), { Tint = Color3.fromRGB(255, 250, 230), Saturation = 0.1, Brightness = 0.06 })
+		end
+		if root then
+			VFXLib.sound(sounds.AwakeningBuild, root, 0.5, 1.2)
+		end
+	elseif data.Phase == "Redirect" then
+		if data.From then
+			flash(data.From + Vector3.new(0, 1, 0), 3)
+		end
+		if data.From and data.To then
+			bolt(data.From, data.To)
+			TuskVFX.CreateImpactStar(data.To, { Size = 3.5, Rays = 7, Color = LIGHT, Color2 = pal.Second, Duration = 0.15 })
+		end
+	elseif data.Phase == "Pulse" then
+		local tr = trains[character]
+		if tr then
+			trains[character] = nil
+			tr.Model:Destroy()
+		end
+		local ring = VFXLib.part({ Size = Vector3.new(0.6, 1, 1), Color = LIGHT, Material = Enum.Material.Neon, Transparency = 0.2, Shape = Enum.PartType.Cylinder })
+		local at = data.Position
+		local r = data.Radius or 14
+		VFXLib.animate(0.45, function(a)
+			ring.Size = Vector3.new(0.6, r * 2 * a, r * 2 * a)
+			ring.CFrame = CFrame.new(at) * CFrame.Angles(0, 0, math.pi / 2)
+			ring.Transparency = 0.2 + 0.8 * a
+		end, function()
+			ring:Destroy()
+		end)
+		Common.finisher({ Character = character, Position = at, Hit = true }, pal, { Size = 1.3, Layers = 2, Shake = 0.6 })
+	end
+end
+
+---------------------------------------------------------------------------
+-- Every frame
+---------------------------------------------------------------------------
+local function stepStance()
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		if character then
+			local want = character:GetAttribute("TuskAct") == ACT
+			if want and not stanced[character] then
+				stanced[character] = true
+				TuskAnimation.hold(character, "VStance")
+			elseif not want and stanced[character] then
+				stanced[character] = nil
+				TuskAnimation.stopHold(character, "VStance")
+			end
+		end
+	end
+	for character in pairs(stanced) do
+		if not character.Parent then
+			stanced[character] = nil
+		end
+	end
+end
+
+function ValentineVFX.handle(name, data)
+	if name == "M1" then
+		onM1(data)
+	elseif name == "M1Finisher" then
+		onFinisher(data)
+	elseif name == "Ability" then
+		onAbility(data)
+	elseif name == "Ultimate" then
+		onUltimate(data)
+	end
+end
+
+local slowTimer = 0
+function ValentineVFX.step(dt)
+	dt = dt or 1 / 60
+	cloneStep(dt)
+	crumbleStep(dt)
+	trainStep()
+	slowTimer = slowTimer + dt
+	if slowTimer > 0.2 then
+		slowTimer = 0
+		stepStance()
+	end
+end
+
+return ValentineVFX
+]=] },
 	{ Service = "StarterPlayerScripts", Path = "SpinClient/TuskAnimation", Class = "ModuleScript", Source = [=[
 --[[
 	TuskAnimation  (StarterPlayerScripts.SpinClient.TuskAnimation)
@@ -21817,6 +23161,11 @@ TuskAnimation.Poses = {
 	StormRaise = { Root = { 8, 0, 0, 0.25 }, Waist = { 16, 0, 0 }, Neck = { 30, 0, 0 }, RightArm = { 175, 0, 15 }, RightElbow = { 10, 0, 0 }, LeftArm = { 60, 0, -60 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -50, 0, 0 } },
 	StormSweepL = { Root = { 0, 30, 0, -0.1, 0.2 }, Waist = { -6, 30, 0 }, Neck = { 0, -20, 0 }, RightArm = { 110, -30, 10 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
 	StormSweepR = { Root = { 0, -30, 0, -0.1, 0.2 }, Waist = { -6, -30, 0 }, Neck = { 0, 24, 0 }, RightArm = { 110, 30, 0 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
+	-- FUNNY VALENTINE: upright and presidential, a hand at his chest.
+	VStance = { Root = { 0, 6, 0, 0.02 }, Waist = { 4, 4, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, -30 }, RightElbow = { 110, 0, 0 }, LeftArm = { -6, 0, -6 }, LeftElbow = { 10, 0, 0 } },
+	VWrap = { Root = { 0, 30, 0, -0.05 }, Waist = { 0, 30, 0 }, Neck = { 0, -20, 0 }, RightArm = { 60, 0, -60 }, RightElbow = { 90, 0, 0 }, LeftArm = { 60, 0, 60 }, LeftElbow = { 90, 0, 0 } },
+	VPresent = { Root = { 0, -10, 0, 0 }, Waist = { 0, -10, 0 }, Neck = { 6, 10, 0 }, RightArm = { 70, 0, 50 }, RightElbow = { 10, 0, 0 }, LeftArm = { 30, 0, -10 }, LeftElbow = { 40, 0, 0 } },
+	VPledge = { Root = { 6, 0, 0, 0.04 }, Waist = { 8, 0, 0 }, Neck = { 20, 0, 0 }, RightArm = { 50, 0, -40 }, RightElbow = { 120, 0, 0 }, LeftArm = { 150, 0, -20 }, LeftElbow = { 10, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
 	AxlStance = { Root = { -4, -8, 0, -0.04 }, Waist = { -6, -6, 4 }, Neck = { -10, 12, 8 }, RightArm = { -6, 0, 8 }, RightElbow = { 10, 0, 0 }, LeftArm = { -4, 0, -8 }, LeftElbow = { 14, 0, 0 }, RightHip = { 4, 0, 0 } },
 	AxlPoint = { Root = { 0, -14, 0, -0.04 }, Waist = { 0, -14, 0 }, Neck = { 6, 14, 0 }, RightArm = { 88, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 0, 0, -10 }, LeftElbow = { 20, 0, 0 } },
@@ -21972,6 +23321,16 @@ TuskAnimation.Actions = {
 	HPSeal = { { 0, "HPStance" }, { 0.1, "CanShakeB", "In" }, { 0.18, "SealDash", "Snap", 4 }, { 0.28, "SealPress", "Snap", 5 }, { 0.5, "SealPress", "Linear", 2 }, { 0.66, "HPStance", "Sine" } },
 	HPMend = { { 0, "HPStance" }, { 0.12, "SelfSprayHigh", "Out" }, { 0.55, "SelfSprayLow", "Sine", 1 }, { 0.92, "SelfSprayHigh", "Sine", 1 }, { 1.12, "MendRelief", "Back" }, { 1.35, "HPStance", "Sine" } },
 	HPStorm = { { 0, "HPStance" }, { 0.05, "CanShakeA", "Snap" }, { 0.1, "CanShakeB", "Snap", 1 }, { 0.15, "CanShakeA", "Snap", 1 }, { 0.2, "CanShakeB", "Snap", 2 }, { 0.38, "StormRaise", "Back", 4 }, { 0.6, "StormSweepL", "Snap", 3 }, { 0.9, "StormSweepR", "Sine", 2 }, { 1.1, "SprayThrust", "Snap", 5 }, { 1.4, "SprayThrust", "Linear", 2 }, { 1.6, "HPStance", "Sine" } },
+
+	-- FUNNY VALENTINE
+	V_M1_1 = { { 0, "VStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "VStance", "Sine" } },
+	V_M1_2 = { { 0, "VStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "VStance", "Sine" } },
+	V_M1_3 = { { 0, "VStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "VStance", "Sine" } },
+	V_M1_4 = { { 0, "VStance" }, { 0.12, "VWrap", "In" }, { 0.2, "AxlPoint", "Snap", 7 }, { 0.3, "AxlPoint", "Linear" }, { 0.46, "VStance", "Sine" } },
+	VHop = { { 0, "VStance" }, { 0.12, "VWrap", "Out" }, { 0.32, "VWrap", "Linear" }, { 0.5, "VStance", "Sine" } },
+	VCall = { { 0, "VStance" }, { 0.15, "VPresent", "Out" }, { 0.4, "VPresent", "Linear" }, { 0.6, "VStance", "Sine" } },
+	VMenger = { { 0, "VStance" }, { 0.14, "AxlPoint", "Out" }, { 0.36, "AxlPoint", "Linear" }, { 0.55, "VStance", "Sine" } },
+	VLoveTrain = { { 0, "VStance" }, { 0.3, "VPledge", "Back", 3 }, { 0.9, "VPledge", "Linear", 3 }, { 1.2, "VStance", "Sine" } },
 
 	-- AXL RO
 	A_M1_1 = { { 0, "AxlStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.3, "AxlStance", "Sine" } },
@@ -26523,7 +27882,15 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("GUILT SPECTER") then
+	if has("DIMENSION HOP") then
+		return "flag"
+	elseif has("PARALLEL VALENTINE") then
+		return "ghost"
+	elseif has("MENGER SPONGE") then
+		return "cube"
+	elseif has("LOVE TRAIN") then
+		return "star"
+	elseif has("GUILT SPECTER") then
 		return "ghost"
 	elseif has("ABANDONED JUNK") then
 		return "junk"
@@ -26698,6 +28065,22 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "flag" then
+		-- A flag on a pole: stripes and a canton.
+		bar(icon, 0.28, 0.5, 0.06, 0.6, 0)
+		for i = 0, 2 do
+			bar(icon, 0.56, 0.3 + i * 0.1, 0.5, 0.05, 0)
+		end
+		bar(icon, 0.42, 0.3, 0.18, 0.16, 0)
+	elseif kind == "cube" then
+		-- A Menger-sponge face: a ring of eight squares.
+		for i = -1, 1 do
+			for j = -1, 1 do
+				if not (i == 0 and j == 0) then
+					bar(icon, 0.5 + i * 0.18, 0.5 + j * 0.18, 0.14, 0.14, 0)
+				end
+			end
+		end
 	elseif kind == "ghost" then
 		-- A ghost: round head, a body that trails off.
 		local head = bar(icon, 0.5, 0.36, 0.34, 0.3, 0)

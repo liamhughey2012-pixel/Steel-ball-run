@@ -118,6 +118,7 @@ TuskConfig.Roster = {
 	{ Id = "HotPants", Name = "HOT PANTS", Stand = "CREAM STARTER", Available = true, Color = Color3.fromRGB(242, 140, 172) },
 	{ Id = "Blackmore", Name = "BLACKMORE", Stand = "CATCH THE RAINBOW", Available = true, Color = Color3.fromRGB(110, 180, 255) },
 	{ Id = "Axl", Name = "AXL RO", Stand = "CIVIL WAR", Available = true, Color = Color3.fromRGB(214, 60, 70) },
+	{ Id = "Valentine", Name = "FUNNY VALENTINE", Stand = "D4C", Available = true, Color = Color3.fromRGB(120, 170, 255) },
 }
 
 ---------------------------------------------------------------------------
@@ -143,10 +144,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 9, -- how many at once (each takes a free spot below)
+	Count = 10, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine" },
 	RainWalkChance = 0.05, -- Blackmore NPCs: chance per think tick to start a rain walk while it rains
 	Health = 200,
 	WalkSpeed = 15,
@@ -667,6 +668,47 @@ TuskConfig.Axl = {
 		ScatterDistance = 9, -- Civil War breaks apart and he reforms this far away
 		GuiltAdded = 3, -- everyone caught is loaded with guilt; the crush uses it up
 		RainMultiplier = 0.5,
+	},
+}
+
+---------------------------------------------------------------------------
+-- Funny Valentine: D4C (Dirty Deeds Done Dirt Cheap)
+---------------------------------------------------------------------------
+TuskConfig.Valentine = {
+	M1 = { -- DIRTY DEEDS COMBO: D4C's chops with him
+		Interval = 0.28, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.5, Knockback = 42, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	DimensionHop = { -- a flag sweeps over him; he steps out of another world behind the nearest enemy
+		Cooldown = 7, Windup = 0.3, -- can't be hit while between worlds
+		Range = 40, Cone = 80, -- finds an enemy in front this close
+		Distance = 26, -- with nobody to hop to, he goes this far ahead
+		Damage = 5, Stun = 0.6, Knockback = 10, StrikeRange = 7,
+	},
+	ParallelClone = { -- a Valentine from another world joins the fight for a while
+		Cooldown = 12, Windup = 0.3,
+		Duration = 6, Speed = 20, Range = 50,
+		PunchRange = 4.5, PunchEvery = 0.8, MaxPunches = 5,
+		Damage = 3.5, Stun = 0.45, Knockback = 4,
+	},
+	MengerSponge = { -- their other-world self appears beside them: they crumble into cubes
+		Cooldown = 13, MissCooldown = 3, Windup = 0.3,
+		Range = 18, Cone = 60,
+		Damage = 4, Stun = 0.6,
+		Time = 3, Tick = 0.4, TickDamage = 1, TickGrowth = 0.08, Slow = 0.55,
+		FinalDamage = 6, FinalKnockback = 25, FinalStun = 0.7,
+	},
+	Ultimate = { -- D4C LOVE TRAIN: a wall of light; hits on him are cancelled and the misfortune lands on someone else
+		Windup = 0.7, Duration = 6,
+		RedirectRange = 30, RedirectShare = 0.8, RedirectMin = 3, RedirectEvery = 0.15,
+		SpeedMultiplier = 1.2,
+		PulseRadius = 14, PulseDamage = 8, PulseKnockback = 40, PulseStun = 0.6,
 	},
 }
 

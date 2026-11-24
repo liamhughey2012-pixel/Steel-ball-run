@@ -161,7 +161,15 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("GUILT SPECTER") then
+	if has("DIMENSION HOP") then
+		return "flag"
+	elseif has("PARALLEL VALENTINE") then
+		return "ghost"
+	elseif has("MENGER SPONGE") then
+		return "cube"
+	elseif has("LOVE TRAIN") then
+		return "star"
+	elseif has("GUILT SPECTER") then
 		return "ghost"
 	elseif has("ABANDONED JUNK") then
 		return "junk"
@@ -336,6 +344,22 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "flag" then
+		-- A flag on a pole: stripes and a canton.
+		bar(icon, 0.28, 0.5, 0.06, 0.6, 0)
+		for i = 0, 2 do
+			bar(icon, 0.56, 0.3 + i * 0.1, 0.5, 0.05, 0)
+		end
+		bar(icon, 0.42, 0.3, 0.18, 0.16, 0)
+	elseif kind == "cube" then
+		-- A Menger-sponge face: a ring of eight squares.
+		for i = -1, 1 do
+			for j = -1, 1 do
+				if not (i == 0 and j == 0) then
+					bar(icon, 0.5 + i * 0.18, 0.5 + j * 0.18, 0.14, 0.14, 0)
+				end
+			end
+		end
 	elseif kind == "ghost" then
 		-- A ghost: round head, a body that trails off.
 		local head = bar(icon, 0.5, 0.36, 0.34, 0.3, 0)

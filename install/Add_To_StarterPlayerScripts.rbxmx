@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="LocalScript" referent="RBX49"><Properties><string name="Name">Spin_Client</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="LocalScript" referent="RBX53"><Properties><string name="Name">Spin_Client</string><ProtectedString name="Source"><![CDATA[--[[
 	Spin_Client  (LocalScript)
 	PUT IT IN: StarterPlayer > StarterPlayerScripts
 
@@ -3291,6 +3291,8 @@ local function onHit(data)
 		starColor = Color3.fromRGB(242, 140, 172)
 	elseif source:sub(1, 9) == "Blackmore" then
 		starColor = Color3.fromRGB(110, 180, 255)
+	elseif source:sub(1, 9) == "Valentine" then
+		starColor = Color3.fromRGB(120, 170, 255)
 	elseif source:sub(1, 3) == "Axl" then
 		starColor = Color3.fromRGB(214, 60, 70)
 	end
@@ -3718,6 +3720,7 @@ Common.Palettes = {
 	[10] = { Main = Color3.fromRGB(242, 140, 172), Second = Color3.fromRGB(120, 60, 92), Light = Color3.fromRGB(255, 220, 230) }, -- Hot Pants (Cream Starter pink)
 	[11] = { Main = Color3.fromRGB(110, 180, 255), Second = Color3.fromRGB(40, 50, 90), Light = Color3.fromRGB(225, 245, 255) }, -- Blackmore (rain blue)
 	[12] = { Main = Color3.fromRGB(214, 60, 70), Second = Color3.fromRGB(226, 196, 110), Light = Color3.fromRGB(255, 200, 200) }, -- Axl RO (Civil War red)
+	[13] = { Main = Color3.fromRGB(120, 170, 255), Second = Color3.fromRGB(236, 120, 170), Light = Color3.fromRGB(240, 246, 255) }, -- Funny Valentine (D4C blue + pink)
 }
 
 function Common.palette(act)
@@ -4135,6 +4138,27 @@ TuskActRegistry.Acts = {
 		CardTitle = "STAND  ·  CIVIL WAR",
 		Passive = "GUILT: your hits mark them; your moves feed on it",
 	},
+	-- Funny Valentine: D4C (Dirty Deeds Done Dirt Cheap): slips between
+	-- parallel worlds when sandwiched between things (a flag), brings
+	-- people from other worlds, and Love Train turns misfortune away.
+	[13] = {
+		Name = "D4C",
+		Character = "Valentine",
+		Tagline = "Dirty Deeds Done Dirt Cheap",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(120, 170, 255), Secondary = Color3.fromRGB(236, 120, 170) },
+		M1 = "DIRTY DEEDS COMBO",
+		Abilities = { "DIMENSION HOP", "PARALLEL VALENTINE", "MENGER SPONGE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "D4C LOVE TRAIN",
+		Next = nil,
+		Module = "Valentine", -- server moves
+		ClientModule = "ValentineVFX", -- client visuals (TuskActVFX.ValentineVFX)
+		CardTitle = "STAND  ·  D4C",
+		Buffs = {
+			{ Slot = 2, Attribute = "ParallelCloneUntil", Text = "PARALLEL" },
+		},
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -4144,7 +4168,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -4351,6 +4375,11 @@ TuskAnimation.Poses = {
 	StormRaise = { Root = { 8, 0, 0, 0.25 }, Waist = { 16, 0, 0 }, Neck = { 30, 0, 0 }, RightArm = { 175, 0, 15 }, RightElbow = { 10, 0, 0 }, LeftArm = { 60, 0, -60 }, LeftHip = { 30, 0, 0 }, LeftKnee = { -50, 0, 0 } },
 	StormSweepL = { Root = { 0, 30, 0, -0.1, 0.2 }, Waist = { -6, 30, 0 }, Neck = { 0, -20, 0 }, RightArm = { 110, -30, 10 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
 	StormSweepR = { Root = { 0, -30, 0, -0.1, 0.2 }, Waist = { -6, -30, 0 }, Neck = { 0, 24, 0 }, RightArm = { 110, 30, 0 }, RightElbow = { 6, 0, 0 }, LeftArm = { 40, 0, -50 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
+	-- FUNNY VALENTINE: upright and presidential, a hand at his chest.
+	VStance = { Root = { 0, 6, 0, 0.02 }, Waist = { 4, 4, 0 }, Neck = { 8, -6, 0 }, RightArm = { 40, 0, -30 }, RightElbow = { 110, 0, 0 }, LeftArm = { -6, 0, -6 }, LeftElbow = { 10, 0, 0 } },
+	VWrap = { Root = { 0, 30, 0, -0.05 }, Waist = { 0, 30, 0 }, Neck = { 0, -20, 0 }, RightArm = { 60, 0, -60 }, RightElbow = { 90, 0, 0 }, LeftArm = { 60, 0, 60 }, LeftElbow = { 90, 0, 0 } },
+	VPresent = { Root = { 0, -10, 0, 0 }, Waist = { 0, -10, 0 }, Neck = { 6, 10, 0 }, RightArm = { 70, 0, 50 }, RightElbow = { 10, 0, 0 }, LeftArm = { 30, 0, -10 }, LeftElbow = { 40, 0, 0 } },
+	VPledge = { Root = { 6, 0, 0, 0.04 }, Waist = { 8, 0, 0 }, Neck = { 20, 0, 0 }, RightArm = { 50, 0, -40 }, RightElbow = { 120, 0, 0 }, LeftArm = { 150, 0, -20 }, LeftElbow = { 10, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
 	AxlStance = { Root = { -4, -8, 0, -0.04 }, Waist = { -6, -6, 4 }, Neck = { -10, 12, 8 }, RightArm = { -6, 0, 8 }, RightElbow = { 10, 0, 0 }, LeftArm = { -4, 0, -8 }, LeftElbow = { 14, 0, 0 }, RightHip = { 4, 0, 0 } },
 	AxlPoint = { Root = { 0, -14, 0, -0.04 }, Waist = { 0, -14, 0 }, Neck = { 6, 14, 0 }, RightArm = { 88, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 0, 0, -10 }, LeftElbow = { 20, 0, 0 } },
@@ -4506,6 +4535,16 @@ TuskAnimation.Actions = {
 	HPSeal = { { 0, "HPStance" }, { 0.1, "CanShakeB", "In" }, { 0.18, "SealDash", "Snap", 4 }, { 0.28, "SealPress", "Snap", 5 }, { 0.5, "SealPress", "Linear", 2 }, { 0.66, "HPStance", "Sine" } },
 	HPMend = { { 0, "HPStance" }, { 0.12, "SelfSprayHigh", "Out" }, { 0.55, "SelfSprayLow", "Sine", 1 }, { 0.92, "SelfSprayHigh", "Sine", 1 }, { 1.12, "MendRelief", "Back" }, { 1.35, "HPStance", "Sine" } },
 	HPStorm = { { 0, "HPStance" }, { 0.05, "CanShakeA", "Snap" }, { 0.1, "CanShakeB", "Snap", 1 }, { 0.15, "CanShakeA", "Snap", 1 }, { 0.2, "CanShakeB", "Snap", 2 }, { 0.38, "StormRaise", "Back", 4 }, { 0.6, "StormSweepL", "Snap", 3 }, { 0.9, "StormSweepR", "Sine", 2 }, { 1.1, "SprayThrust", "Snap", 5 }, { 1.4, "SprayThrust", "Linear", 2 }, { 1.6, "HPStance", "Sine" } },
+
+	-- FUNNY VALENTINE
+	V_M1_1 = { { 0, "VStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "VStance", "Sine" } },
+	V_M1_2 = { { 0, "VStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "VStance", "Sine" } },
+	V_M1_3 = { { 0, "VStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "VStance", "Sine" } },
+	V_M1_4 = { { 0, "VStance" }, { 0.12, "VWrap", "In" }, { 0.2, "AxlPoint", "Snap", 7 }, { 0.3, "AxlPoint", "Linear" }, { 0.46, "VStance", "Sine" } },
+	VHop = { { 0, "VStance" }, { 0.12, "VWrap", "Out" }, { 0.32, "VWrap", "Linear" }, { 0.5, "VStance", "Sine" } },
+	VCall = { { 0, "VStance" }, { 0.15, "VPresent", "Out" }, { 0.4, "VPresent", "Linear" }, { 0.6, "VStance", "Sine" } },
+	VMenger = { { 0, "VStance" }, { 0.14, "AxlPoint", "Out" }, { 0.36, "AxlPoint", "Linear" }, { 0.55, "VStance", "Sine" } },
+	VLoveTrain = { { 0, "VStance" }, { 0.3, "VPledge", "Back", 3 }, { 0.9, "VPledge", "Linear", 3 }, { 1.2, "VStance", "Sine" } },
 
 	-- AXL RO
 	A_M1_1 = { { 0, "AxlStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.3, "AxlStance", "Sine" } },
@@ -7391,7 +7430,15 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("GUILT SPECTER") then
+	if has("DIMENSION HOP") then
+		return "flag"
+	elseif has("PARALLEL VALENTINE") then
+		return "ghost"
+	elseif has("MENGER SPONGE") then
+		return "cube"
+	elseif has("LOVE TRAIN") then
+		return "star"
+	elseif has("GUILT SPECTER") then
 		return "ghost"
 	elseif has("ABANDONED JUNK") then
 		return "junk"
@@ -7566,6 +7613,22 @@ local function drawIcon(icon, kind)
 		bar(icon, 0.45, 0.68, 0.58, 0.06, 0)
 		bar(icon, 0.45, 0.32, 0.12, 0.4, 25)
 		bar(icon, 0.52, 0.28, 0.07, 0.3, 25)
+	elseif kind == "flag" then
+		-- A flag on a pole: stripes and a canton.
+		bar(icon, 0.28, 0.5, 0.06, 0.6, 0)
+		for i = 0, 2 do
+			bar(icon, 0.56, 0.3 + i * 0.1, 0.5, 0.05, 0)
+		end
+		bar(icon, 0.42, 0.3, 0.18, 0.16, 0)
+	elseif kind == "cube" then
+		-- A Menger-sponge face: a ring of eight squares.
+		for i = -1, 1 do
+			for j = -1, 1 do
+				if not (i == 0 and j == 0) then
+					bar(icon, 0.5 + i * 0.18, 0.5 + j * 0.18, 0.14, 0.14, 0)
+				end
+			end
+		end
 	elseif kind == "ghost" then
 		-- A ghost: round head, a body that trails off.
 		local head = bar(icon, 0.5, 0.36, 0.34, 0.3, 0)

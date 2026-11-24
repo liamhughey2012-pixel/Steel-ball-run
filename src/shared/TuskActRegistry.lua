@@ -205,6 +205,27 @@ TuskActRegistry.Acts = {
 		CardTitle = "STAND  ·  CIVIL WAR",
 		Passive = "GUILT: your hits mark them; your moves feed on it",
 	},
+	-- Funny Valentine: D4C (Dirty Deeds Done Dirt Cheap): slips between
+	-- parallel worlds when sandwiched between things (a flag), brings
+	-- people from other worlds, and Love Train turns misfortune away.
+	[13] = {
+		Name = "D4C",
+		Character = "Valentine",
+		Tagline = "Dirty Deeds Done Dirt Cheap",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(120, 170, 255), Secondary = Color3.fromRGB(236, 120, 170) },
+		M1 = "DIRTY DEEDS COMBO",
+		Abilities = { "DIMENSION HOP", "PARALLEL VALENTINE", "MENGER SPONGE" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "D4C LOVE TRAIN",
+		Next = nil,
+		Module = "Valentine", -- server moves
+		ClientModule = "ValentineVFX", -- client visuals (TuskActVFX.ValentineVFX)
+		CardTitle = "STAND  ·  D4C",
+		Buffs = {
+			{ Slot = 2, Attribute = "ParallelCloneUntil", Text = "PARALLEL" },
+		},
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -214,7 +235,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
