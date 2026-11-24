@@ -2612,6 +2612,12 @@ function DataService.init()
 	if cfg.Enabled == false then
 		return
 	end
+	-- An unpublished place can't use DataStores at all: don't even try (the
+	-- call errors, and Studio's debugger stops on it).
+	if game.PlaceId == 0 then
+		warn("[DataService] This place isn't published, so progress won't be saved. Publish it (File > Publish to Roblox) and turn on Game Settings > Security > Enable Studio Access to API Services to test saving.")
+		return
+	end
 	local ok, result = pcall(function()
 		return game:GetService("DataStoreService"):GetDataStore(cfg.StoreName or "SpinPlayerData_v1")
 	end)
