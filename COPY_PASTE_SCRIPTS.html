@@ -26584,7 +26584,7 @@ return TuskVFX
 <div class="head"><span class="num">83</span><div><h2>UI <span class="badge folder">Folder</span></h2>
 <p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient</b></p></div></div><p class="empty">Empty folder: nothing to paste.</p></section><section class="card" id="s84">
 <div class="head"><span class="num">84</span><div><h2>BountyUI <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="84">Copy code</button><details><summary>Show code (597 lines)</summary><pre id="c84">--[[
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="84">Copy code</button><details><summary>Show code (648 lines)</summary><pre id="c84">--[[
 	BountyUI  (StarterPlayerScripts.SpinClient.UI.BountyUI)
 
 	The bounty board screen (owner&#x27;s design):
@@ -26630,6 +26630,7 @@ local GOLD = Color3.fromRGB(255, 205, 90)
 local gui, dim, board, grid, confirm, confirmLayer, tracker, banner, marker
 local current -- the active bounty
 local confirmEntry -- the poster the Accept/Decline card is asking about
+local confirmPay, confirmPips -- the reward label and danger pips on the card
 local FAST = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local SOFT = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
@@ -26694,8 +26695,27 @@ local function photoFor(entry, parent)
 		-- NPC: their actual face (copied into a viewport), on their Stand&#x27;s colour.
 		local info = entry.Act and Registry.get(entry.Act)
 		photo.BackgroundColor3 = info and info.Theme.Primary:Lerp(PAPER_DARK, 0.55) or PAPER_DARK
-		if not faceViewport(entry.Model, photo) then
-			label(photo, { Size = UDim2.fromScale(1, 1), Text = &quot;?&quot;, Font = Enum.Font.Bangers, TextColor3 = INK, TextTransparency = 0.25 })
+		-- The NPC may have respawned since the list was sent: find its current body by name.
+		local model = entry.Model
+		if not (model and model.Parent and model:FindFirstChild(&quot;Head&quot;)) then
+			model = nil
+			for _, m in ipairs(game:GetService(&quot;CollectionService&quot;):GetTagged(&quot;SpinFighter&quot;)) do
+				local hum = m:FindFirstChildOfClass(&quot;Humanoid&quot;)
+				if m.Parent and (m.Name == entry.Name or (hum and hum.DisplayName == entry.Name)) then
+					model = m
+				end
+			end
+		end
+		if not faceViewport(model, photo) then
+			-- No body to photograph: their initials on their Stand&#x27;s colour.
+			local who = (entry.Name or &quot;?&quot;):gsub(&quot;^Stand User: &quot;, &quot;&quot;)
+			local initials = &quot;&quot;
+			for word in who:gmatch(&quot;%S+&quot;) do
+				if #initials &lt; 2 then
+					initials = initials .. word:sub(1, 1)
+				end
+			end
+			label(photo, { Size = UDim2.fromScale(1, 1), Text = string.upper(initials), Font = Enum.Font.Bangers, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0.3 })
 		end
 	end
 	return photo
@@ -26772,16 +26792,21 @@ local function showConfirm(entry)
 	end
 	local photo = photoFor(entry, body)
 	photo.AnchorPoint = Vector2.new(0.5, 0)
-	photo.Position = UDim2.new(0.5, 0, 0, 62)
-	photo.Size = UDim2.fromOffset(118, 118)
-	new(&quot;UIStroke&quot;, { Color = INK, Thickness = 3 }, photo)
+	photo.Position = UDim2.new(0.5, 0, 0, 66)
+	photo.Size = UDim2.fromOffset(136, 136)
+	corner(photo, 6)
+	new(&quot;UIStroke&quot;, { Color = WOOD_DARK, Thickness = 4 }, photo)
 	body:FindFirstChild(&quot;Who&quot;).Text = string.upper(entry.Name)
 	local stand = standOf(entry.Act)
 	body:FindFirstChild(&quot;Stand&quot;).Text = stand and (&quot;STAND: &quot; .. stand) or &quot;&quot;
 	body:FindFirstChild(&quot;Stand&quot;).TextColor3 = themeOf(entry.Act):Lerp(INK, 0.45)
-	body:FindFirstChild(&quot;Pay&quot;).Text = &quot;$&quot; .. entry.Reward
+	confirmPay.Text = &quot;$&quot; .. entry.Reward
+	local danger = math.clamp(math.floor(entry.Reward / 75 + 0.5), 1, 5)
+	for i, pip in ipairs(confirmPips) do
+		pip.BackgroundColor3 = i &lt;= danger and RED or PAPER_DARK
+	end
 	local minutes = math.floor((TuskConfig.Bounty and TuskConfig.Bounty.Duration or 300) / 60)
-	body:FindFirstChild(&quot;Note&quot;).Text = (current and current.Key ~= entry.Key) and (&quot;Replaces your bounty on &quot; .. current.Name .. &quot;.&quot;) or (&quot;You have &quot; .. minutes .. &quot; minutes. Land the final hit to claim it.&quot;)
+	body:FindFirstChild(&quot;Note&quot;).Text = (current and current.Key ~= entry.Key) and (&quot;This replaces your bounty on &quot; .. current.Name .. &quot;.&quot;) or (minutes .. &quot; minutes to find them. Land the final hit to claim the reward.&quot;)
 	body:FindFirstChild(&quot;Stamp&quot;).Visible = false
 	confirmEntry = entry
 	local scale = confirm:FindFirstChildOfClass(&quot;UIScale&quot;)
@@ -27003,23 +27028,44 @@ local function buildBoard()
 	confirmLayer.Activated:Connect(function()
 		confirmLayer.Visible = false
 	end)
-	confirm = new(&quot;TextButton&quot;, { Text = &quot;&quot;, AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(360, 400), BackgroundColor3 = PAPER }, confirmLayer)
-	corner(confirm, 6)
+	confirm = new(&quot;TextButton&quot;, { Text = &quot;&quot;, AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(380, 470), BackgroundColor3 = PAPER }, confirmLayer)
+	corner(confirm, 8)
 	new(&quot;UIScale&quot;, { Scale = 1 }, confirm)
 	new(&quot;UIStroke&quot;, { Color = BURNT, Thickness = 4 }, confirm)
 	new(&quot;UIGradient&quot;, { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, PAPER_DARK), ColorSequenceKeypoint.new(0.4, PAPER), ColorSequenceKeypoint.new(1, PAPER_DARK) }), Rotation = 80 }, confirm)
+	-- Fits small screens too.
+	new(&quot;UISizeConstraint&quot;, { MaxSize = Vector2.new(380, 470) }, confirm)
 	local body = new(&quot;Frame&quot;, { Name = &quot;Body&quot;, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, confirm)
-	label(body, { Position = UDim2.fromOffset(16, 10), Size = UDim2.new(1, -32, 0, 34), Text = &quot;BOUNTY CONTRACT&quot;, Font = Enum.Font.Bangers })
-	new(&quot;Frame&quot;, { BackgroundColor3 = INK, BorderSizePixel = 0, Position = UDim2.fromOffset(30, 48), Size = UDim2.new(1, -60, 0, 2) }, body)
-	label(body, { Name = &quot;Who&quot;, Position = UDim2.fromOffset(16, 188), Size = UDim2.new(1, -32, 0, 24), Text = &quot;&quot; })
-	label(body, { Name = &quot;Stand&quot;, Position = UDim2.fromOffset(16, 212), Size = UDim2.new(1, -32, 0, 14), Text = &quot;&quot;, Font = Enum.Font.GothamBold })
-	label(body, { Name = &quot;Pay&quot;, Position = UDim2.fromOffset(16, 230), Size = UDim2.new(1, -32, 0, 44), Text = &quot;&quot;, Font = Enum.Font.Bangers, TextColor3 = RED })
-	label(body, { Name = &quot;Note&quot;, Position = UDim2.fromOffset(24, 278), Size = UDim2.new(1, -48, 0, 30), Text = &quot;&quot;, Font = Enum.Font.Gotham, TextWrapped = true })
-	local stamp = label(body, { Name = &quot;Stamp&quot;, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.42), Size = UDim2.fromOffset(250, 70), Rotation = -14, Text = &quot;ACCEPTED&quot;, Font = Enum.Font.Bangers, TextColor3 = RED, Visible = false, ZIndex = 5 })
+	-- Header band like a stamped document.
+	local head = new(&quot;Frame&quot;, { BackgroundColor3 = WOOD_DARK, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 54) }, body)
+	corner(head, 8)
+	new(&quot;Frame&quot;, { BackgroundColor3 = WOOD_DARK, BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, -8), Size = UDim2.new(1, 0, 0, 8) }, head)
+	label(head, { Position = UDim2.fromOffset(16, 4), Size = UDim2.new(1, -32, 0, 32), Text = &quot;BOUNTY CONTRACT&quot;, Font = Enum.Font.Bangers, TextColor3 = GOLD })
+	label(head, { Position = UDim2.fromOffset(16, 34), Size = UDim2.new(1, -32, 0, 14), Text = &quot;WANTED · DEAD OR ALIVE&quot;, Font = Enum.Font.GothamBold, TextColor3 = PAPER })
+	-- Danger pips (filled from the reward) under the photo.
+	local pips = new(&quot;Frame&quot;, { Name = &quot;Pips&quot;, BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 212), Size = UDim2.fromOffset(100, 12) }, body)
+	confirmPips = {}
+	for i = 1, 5 do
+		confirmPips[i] = new(&quot;Frame&quot;, { Name = &quot;Pip&quot; .. i, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, (i - 3) * 18, 0.5, 0), Size = UDim2.fromOffset(9, 9), Rotation = 45, BackgroundColor3 = PAPER_DARK }, pips)
+	end
+	-- Name (shrinks to fit, never cut off) and Stand.
+	local who = label(body, { Name = &quot;Who&quot;, Position = UDim2.fromOffset(18, 230), Size = UDim2.new(1, -36, 0, 30), Text = &quot;&quot;, TextScaled = true })
+	new(&quot;UITextSizeConstraint&quot;, { MaxTextSize = 26, MinTextSize = 12 }, who)
+	local standLine = label(body, { Name = &quot;Stand&quot;, Position = UDim2.fromOffset(18, 260), Size = UDim2.new(1, -36, 0, 16), Text = &quot;&quot;, Font = Enum.Font.GothamBold, TextScaled = true })
+	new(&quot;UITextSizeConstraint&quot;, { MaxTextSize = 14, MinTextSize = 9 }, standLine)
+	-- Reward on a red ribbon.
+	local ribbon = new(&quot;Frame&quot;, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 284), Size = UDim2.fromOffset(190, 50), BackgroundColor3 = RED }, body)
+	corner(ribbon, 6)
+	new(&quot;UIStroke&quot;, { Color = RED:Lerp(Color3.new(0, 0, 0), 0.4), Thickness = 2 }, ribbon)
+	confirmPay = label(ribbon, { Name = &quot;Pay&quot;, Size = UDim2.fromScale(1, 1), Text = &quot;&quot;, Font = Enum.Font.Bangers, TextColor3 = Color3.new(1, 1, 1), TextScaled = true })
+	new(&quot;UIPadding&quot;, { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) }, ribbon)
+	label(body, { Name = &quot;Note&quot;, Position = UDim2.fromOffset(24, 340), Size = UDim2.new(1, -48, 0, 44), Text = &quot;&quot;, Font = Enum.Font.GothamMedium, TextWrapped = true, TextScaled = true })
+	new(&quot;UITextSizeConstraint&quot;, { MaxTextSize = 14, MinTextSize = 9 }, body:FindFirstChild(&quot;Note&quot;))
+	local stamp = label(body, { Name = &quot;Stamp&quot;, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.3), Size = UDim2.fromOffset(250, 70), Rotation = -14, Text = &quot;ACCEPTED&quot;, Font = Enum.Font.Bangers, TextColor3 = RED, Visible = false, ZIndex = 5 })
 	new(&quot;UIStroke&quot;, { Color = RED, Thickness = 4, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, stamp)
 	local stampScale = new(&quot;UIScale&quot;, { Scale = 1 }, stamp)
 	local function button(text, color, x)
-		local b = new(&quot;TextButton&quot;, { Position = UDim2.new(x, 0, 1, -66), Size = UDim2.new(0.42, 0, 0, 46), BackgroundColor3 = color, Text = text, Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, body)
+		local b = new(&quot;TextButton&quot;, { Position = UDim2.new(x, 0, 1, -70), Size = UDim2.new(0.42, 0, 0, 50), BackgroundColor3 = color, Text = text, Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, body)
 		corner(b, 8)
 		new(&quot;UIStroke&quot;, { Color = color:Lerp(Color3.new(0, 0, 0), 0.45), Thickness = 2 }, b)
 		new(&quot;UIPadding&quot;, { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }, b)
@@ -27079,13 +27125,17 @@ local function setMarker(model)
 end
 
 local function buildTracker()
-	tracker = new(&quot;Frame&quot;, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.42, 0), Size = UDim2.fromOffset(250, 84), BackgroundColor3 = PAPER, Visible = false }, gui)
-	corner(tracker, 6)
-	new(&quot;UIStroke&quot;, { Color = INK, Thickness = 2 }, tracker)
-	label(tracker, { Position = UDim2.fromOffset(82, 4), Size = UDim2.fromOffset(120, 18), Text = &quot;BOUNTY&quot;, Font = Enum.Font.Bangers, TextColor3 = RED, TextXAlignment = Enum.TextXAlignment.Left })
-	label(tracker, { Name = &quot;Who&quot;, Position = UDim2.fromOffset(82, 22), Size = UDim2.fromOffset(160, 18), Text = &quot;&quot;, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd })
-	label(tracker, { Name = &quot;Pay&quot;, Position = UDim2.fromOffset(82, 40), Size = UDim2.fromOffset(160, 18), Text = &quot;&quot;, Font = Enum.Font.Bangers, TextColor3 = GREEN, TextXAlignment = Enum.TextXAlignment.Left })
-	label(tracker, { Name = &quot;Info&quot;, Position = UDim2.fromOffset(82, 60), Size = UDim2.fromOffset(160, 14), Text = &quot;&quot;, Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left })
+	-- On the right side of the screen (the character card is top-left).
+	tracker = new(&quot;Frame&quot;, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.42, 0), Size = UDim2.fromOffset(270, 88), BackgroundColor3 = PAPER, Visible = false }, gui)
+	corner(tracker, 8)
+	new(&quot;UIStroke&quot;, { Color = WOOD_DARK, Thickness = 3 }, tracker)
+	local strip = new(&quot;Frame&quot;, { BackgroundColor3 = RED, BorderSizePixel = 0, Size = UDim2.new(0, 6, 1, 0) }, tracker)
+	corner(strip, 8)
+	label(tracker, { Position = UDim2.fromOffset(88, 4), Size = UDim2.fromOffset(120, 18), Text = &quot;BOUNTY&quot;, Font = Enum.Font.Bangers, TextColor3 = RED, TextXAlignment = Enum.TextXAlignment.Left })
+	local trackWho = label(tracker, { Name = &quot;Who&quot;, Position = UDim2.fromOffset(88, 22), Size = UDim2.fromOffset(150, 20), Text = &quot;&quot;, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
+	new(&quot;UITextSizeConstraint&quot;, { MaxTextSize = 15, MinTextSize = 8 }, trackWho)
+	label(tracker, { Name = &quot;Pay&quot;, Position = UDim2.fromOffset(88, 42), Size = UDim2.fromOffset(160, 20), Text = &quot;&quot;, Font = Enum.Font.Bangers, TextColor3 = GREEN, TextXAlignment = Enum.TextXAlignment.Left })
+	label(tracker, { Name = &quot;Info&quot;, Position = UDim2.fromOffset(88, 64), Size = UDim2.fromOffset(170, 14), Text = &quot;&quot;, Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left })
 	local quit = new(&quot;TextButton&quot;, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -4, 0, 4), Size = UDim2.fromOffset(22, 22), BackgroundColor3 = RED, Text = &quot;X&quot;, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, tracker)
 	corner(quit, 6)
 	quit.Activated:Connect(function()
@@ -27110,12 +27160,13 @@ local function showActive(b)
 		end
 	end
 	local photo = photoFor(b, tracker)
-	photo.Position = UDim2.fromOffset(8, 8)
-	photo.Size = UDim2.fromOffset(66, 66)
+	photo.Position = UDim2.fromOffset(14, 10)
+	photo.Size = UDim2.fromOffset(68, 68)
+	corner(photo, 6)
 	tracker:FindFirstChild(&quot;Who&quot;).Text = string.upper(b.Name)
 	tracker:FindFirstChild(&quot;Pay&quot;).Text = &quot;$&quot; .. b.Reward
-	tracker.Position = UDim2.new(0, -260, 0.42, 0)
-	TweenService:Create(tracker, FAST, { Position = UDim2.new(0, 12, 0.42, 0) }):Play()
+	tracker.Position = UDim2.new(1, 290, 0.42, 0)
+	TweenService:Create(tracker, FAST, { Position = UDim2.new(1, -12, 0.42, 0) }):Play()
 end
 
 local function clearActive()
@@ -27182,7 +27233,7 @@ end
 return BountyUI
 </pre></details></section><section class="card" id="s85">
 <div class="head"><span class="num">85</span><div><h2>CharacterCard <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="85">Copy code</button><details><summary>Show code (605 lines)</summary><pre id="c85">--[[
+<p class="loc">Put it in: <b>StarterPlayer › StarterPlayerScripts › SpinClient › UI</b></p></div></div><button class="copy" data-i="85">Copy code</button><details><summary>Show code (615 lines)</summary><pre id="c85">--[[
 	CharacterCard  (StarterPlayerScripts.SpinClient.UI.CharacterCard)
 
 	Top-left character card:
@@ -27330,7 +27381,7 @@ function CharacterCard.init()
 	card = Instance.new(&quot;Frame&quot;)
 	card.Name = &quot;Card&quot;
 	card.Position = UDim2.fromOffset(12, 10)
-	card.Size = UDim2.fromOffset(290, 96)
+	card.Size = UDim2.fromOffset(330, 96)
 	card.BackgroundColor3 = DARK
 	card.BackgroundTransparency = 0.12
 	card.Parent = gui
@@ -27377,10 +27428,14 @@ function CharacterCard.init()
 		Position = UDim2.fromOffset(98, 6),
 		Size = UDim2.new(1, -130, 0, 28),
 		Font = Enum.Font.Bangers,
-		TextSize = 28,
+		TextScaled = true, -- long names (&quot;FUNNY VALENTINE&quot;) shrink to fit
 		TextColor3 = GOLD,
 		Text = config.Name,
 	})
+	local nameLimit = Instance.new(&quot;UITextSizeConstraint&quot;)
+	nameLimit.MaxTextSize = 28
+	nameLimit.MinTextSize = 14
+	nameLimit.Parent = nameLabel
 	standLabel = label(card, {
 		Position = UDim2.fromOffset(98, 33),
 		Size = UDim2.new(1, -106, 0, 16),
@@ -27460,7 +27515,7 @@ end
 ---------------------------------------------------------------------------
 -- Dropdown
 ---------------------------------------------------------------------------
-local ROW_W = 290
+local ROW_W = 330
 local ROW_H = 54
 local dropdownHeight = 0
 local ROW_BG = Color3.fromRGB(26, 23, 38)
@@ -27588,31 +27643,37 @@ function buildDropdown()
 			Text = initials(entry.Name),
 		})
 
+		-- Names and Stands shrink to fit instead of being cut off (&quot;JOHNNY...&quot;).
 		local nameText = label(row, {
 			Position = UDim2.fromOffset(55, 6),
-			Size = UDim2.new(1, -165, 0, 24),
+			Size = UDim2.new(1, -150, 0, 24),
 			Font = Enum.Font.Bangers,
-			TextSize = 21,
-			TextScaled = false,
-			TextTruncate = Enum.TextTruncate.AtEnd,
+			TextScaled = true,
 			TextColor3 = entry.Available and Color3.new(1, 1, 1) or Color3.fromRGB(150, 145, 160),
 			Text = entry.Name,
 		})
-		label(row, {
-			Position = UDim2.fromOffset(55, 29),
-			Size = UDim2.new(1, -165, 0, 16),
+		local nameLimit = Instance.new(&quot;UITextSizeConstraint&quot;)
+		nameLimit.MaxTextSize = 21
+		nameLimit.MinTextSize = 11
+		nameLimit.Parent = nameText
+		local standText = label(row, {
+			Position = UDim2.fromOffset(55, 30),
+			Size = UDim2.new(1, -150, 0, 14),
 			Font = Enum.Font.GothamBold,
-			TextSize = 10,
-			TextTruncate = Enum.TextTruncate.AtEnd,
+			TextScaled = true,
 			TextStrokeTransparency = 1,
 			TextColor3 = entry.Color,
 			Text = &quot;STAND: &quot; .. entry.Stand,
 		})
+		local standLimit = Instance.new(&quot;UITextSizeConstraint&quot;)
+		standLimit.MaxTextSize = 10
+		standLimit.MinTextSize = 7
+		standLimit.Parent = standText
 
 		local status = label(row, {
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, -8, 0.5, 0),
-			Size = UDim2.fromOffset(98, 26),
+			Size = UDim2.fromOffset(86, 26),
 			Font = Enum.Font.GothamBlack,
 			TextSize = 11,
 			TextColor3 = Color3.new(1, 1, 1),
@@ -27650,7 +27711,7 @@ function buildDropdown()
 			end
 			-- Little press bounce, then ask the server and close.
 			tween(0.15, function(a)
-				status.Size = UDim2.fromOffset(98 - 8 * math.sin(a * math.pi), 26 - 4 * math.sin(a * math.pi))
+				status.Size = UDim2.fromOffset(86 - 8 * math.sin(a * math.pi), 26 - 4 * math.sin(a * math.pi))
 			end)
 			Net.get(&quot;TuskRequest&quot;):FireServer(&quot;Character&quot;, entry.Id)
 			task.delay(0.15, function()

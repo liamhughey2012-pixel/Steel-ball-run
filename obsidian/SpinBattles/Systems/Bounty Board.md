@@ -28,3 +28,13 @@ Server: `BountyService` (built into Spin_Server). Client: `UI/BountyUI` (built i
 - Posters: aged parchment with a burnt edge and a red pin, WANTED / DEAD OR ALIVE, face, name, **Stand** (e.g. STAND: BALL BREAKER), **danger pips** (by reward), a red **reward ribbon**, and an "xN KILLS" badge for players on a streak.
 - Hover: straightens, lifts, grows, **glows gold**, shows "CLICK TO HUNT".
 - Click: a **BOUNTY CONTRACT** card (face, name, Stand, reward, time limit) with ACCEPT / DECLINE; accepting thumps an **ACCEPTED** stamp onto it.
+
+## UI polish (2026-11-24)
+- **Contract card:**
+  - a wood header band ("BOUNTY CONTRACT", "WANTED · DEAD OR ALIVE");
+  - a bigger framed photo with danger pips under it;
+  - the name shrinks to fit (never cut off) and the Stand line under it;
+  - the reward on a red ribbon, a clearer note, bigger Accept / Decline buttons.
+- **Photos never show "?" now:** if an NPC respawned after the list was sent, the photo finds its current body by name (tag SpinFighter). Failing that, it shows the character's initials on their Stand colour.
+- **Active-bounty tracker moved to the right side of the screen** (it covered the character card top-left). Full names now shrink to fit; a red side strip and a rounded photo.
+- **Character card and dropdown:** 330 wide (was 290); names and Stand names shrink to fit instead of being cut off ("JOHNNY...", "FUNNY...").

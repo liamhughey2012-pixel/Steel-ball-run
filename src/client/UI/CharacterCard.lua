@@ -146,7 +146,7 @@ function CharacterCard.init()
 	card = Instance.new("Frame")
 	card.Name = "Card"
 	card.Position = UDim2.fromOffset(12, 10)
-	card.Size = UDim2.fromOffset(290, 96)
+	card.Size = UDim2.fromOffset(330, 96)
 	card.BackgroundColor3 = DARK
 	card.BackgroundTransparency = 0.12
 	card.Parent = gui
@@ -193,10 +193,14 @@ function CharacterCard.init()
 		Position = UDim2.fromOffset(98, 6),
 		Size = UDim2.new(1, -130, 0, 28),
 		Font = Enum.Font.Bangers,
-		TextSize = 28,
+		TextScaled = true, -- long names ("FUNNY VALENTINE") shrink to fit
 		TextColor3 = GOLD,
 		Text = config.Name,
 	})
+	local nameLimit = Instance.new("UITextSizeConstraint")
+	nameLimit.MaxTextSize = 28
+	nameLimit.MinTextSize = 14
+	nameLimit.Parent = nameLabel
 	standLabel = label(card, {
 		Position = UDim2.fromOffset(98, 33),
 		Size = UDim2.new(1, -106, 0, 16),
@@ -276,7 +280,7 @@ end
 ---------------------------------------------------------------------------
 -- Dropdown
 ---------------------------------------------------------------------------
-local ROW_W = 290
+local ROW_W = 330
 local ROW_H = 54
 local dropdownHeight = 0
 local ROW_BG = Color3.fromRGB(26, 23, 38)
@@ -404,31 +408,37 @@ function buildDropdown()
 			Text = initials(entry.Name),
 		})
 
+		-- Names and Stands shrink to fit instead of being cut off ("JOHNNY...").
 		local nameText = label(row, {
 			Position = UDim2.fromOffset(55, 6),
-			Size = UDim2.new(1, -165, 0, 24),
+			Size = UDim2.new(1, -150, 0, 24),
 			Font = Enum.Font.Bangers,
-			TextSize = 21,
-			TextScaled = false,
-			TextTruncate = Enum.TextTruncate.AtEnd,
+			TextScaled = true,
 			TextColor3 = entry.Available and Color3.new(1, 1, 1) or Color3.fromRGB(150, 145, 160),
 			Text = entry.Name,
 		})
-		label(row, {
-			Position = UDim2.fromOffset(55, 29),
-			Size = UDim2.new(1, -165, 0, 16),
+		local nameLimit = Instance.new("UITextSizeConstraint")
+		nameLimit.MaxTextSize = 21
+		nameLimit.MinTextSize = 11
+		nameLimit.Parent = nameText
+		local standText = label(row, {
+			Position = UDim2.fromOffset(55, 30),
+			Size = UDim2.new(1, -150, 0, 14),
 			Font = Enum.Font.GothamBold,
-			TextSize = 10,
-			TextTruncate = Enum.TextTruncate.AtEnd,
+			TextScaled = true,
 			TextStrokeTransparency = 1,
 			TextColor3 = entry.Color,
 			Text = "STAND: " .. entry.Stand,
 		})
+		local standLimit = Instance.new("UITextSizeConstraint")
+		standLimit.MaxTextSize = 10
+		standLimit.MinTextSize = 7
+		standLimit.Parent = standText
 
 		local status = label(row, {
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, -8, 0.5, 0),
-			Size = UDim2.fromOffset(98, 26),
+			Size = UDim2.fromOffset(86, 26),
 			Font = Enum.Font.GothamBlack,
 			TextSize = 11,
 			TextColor3 = Color3.new(1, 1, 1),
@@ -466,7 +476,7 @@ function buildDropdown()
 			end
 			-- Little press bounce, then ask the server and close.
 			tween(0.15, function(a)
-				status.Size = UDim2.fromOffset(98 - 8 * math.sin(a * math.pi), 26 - 4 * math.sin(a * math.pi))
+				status.Size = UDim2.fromOffset(86 - 8 * math.sin(a * math.pi), 26 - 4 * math.sin(a * math.pi))
 			end)
 			Net.get("TuskRequest"):FireServer("Character", entry.Id)
 			task.delay(0.15, function()
