@@ -222,6 +222,11 @@ TuskAnimation.Poses = {
 	VWrap = { Root = { 0, 30, 0, -0.05 }, Waist = { 0, 30, 0 }, Neck = { 0, -20, 0 }, RightArm = { 60, 0, -60 }, RightElbow = { 90, 0, 0 }, LeftArm = { 60, 0, 60 }, LeftElbow = { 90, 0, 0 } },
 	VPresent = { Root = { 0, -10, 0, 0 }, Waist = { 0, -10, 0 }, Neck = { 6, 10, 0 }, RightArm = { 70, 0, 50 }, RightElbow = { 10, 0, 0 }, LeftArm = { 30, 0, -10 }, LeftElbow = { 40, 0, 0 } },
 	VPledge = { Root = { 6, 0, 0, 0.04 }, Waist = { 8, 0, 0 }, Neck = { 20, 0, 0 }, RightArm = { 50, 0, -40 }, RightElbow = { 120, 0, 0 }, LeftArm = { 150, 0, -20 }, LeftElbow = { 10, 0, 0 } },
+	-- DIEGO (AU): cocky, two fingers at his temple, weight on one leg.
+	DWStance = { Root = { 0, -10, 0, 0 }, Waist = { 2, -8, 4 }, Neck = { 6, 12, -4 }, RightArm = { 100, 0, 30 }, RightElbow = { 135, 0, 0 }, LeftArm = { -4, 0, -16 }, LeftElbow = { 24, 0, 0 }, RightHip = { 6, 0, 0 }, LeftHip = { -6, 0, 0 }, LeftKnee = { -8, 0, 0 } },
+	DWThrowWind = { Root = { 0, 34, 0, -0.04 }, Waist = { -4, 34, 0 }, Neck = { 0, -28, 0 }, RightArm = { 70, 0, -70 }, RightElbow = { 100, 0, 0 }, LeftArm = { 40, 0, -20 }, LeftElbow = { 30, 0, 0 } },
+	DWThrow = { Root = { -4, -34, 0, -0.06, 0.3 }, Waist = { -8, -36, 0 }, Neck = { 0, 26, 0 }, RightArm = { 92, 0, 46 }, RightElbow = { 0, 0, 0 }, LeftArm = { 10, 0, -26 }, LeftElbow = { 20, 0, 0 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -18, 0, 0 } },
+	DWSpread = { Root = { 4, 0, 0, 0.06 }, Waist = { 10, 0, 0 }, Neck = { 14, 0, 0 }, RightArm = { 50, 0, 80 }, RightElbow = { 20, 0, 0 }, LeftArm = { 50, 0, -80 }, LeftElbow = { 20, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
 	AxlStance = { Root = { -4, -8, 0, -0.04 }, Waist = { -6, -6, 4 }, Neck = { -10, 12, 8 }, RightArm = { -6, 0, 8 }, RightElbow = { 10, 0, 0 }, LeftArm = { -4, 0, -8 }, LeftElbow = { 14, 0, 0 }, RightHip = { 4, 0, 0 } },
 	AxlPoint = { Root = { 0, -14, 0, -0.04 }, Waist = { 0, -14, 0 }, Neck = { 6, 14, 0 }, RightArm = { 88, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 0, 0, -10 }, LeftElbow = { 20, 0, 0 } },
@@ -390,6 +395,16 @@ TuskAnimation.Actions = {
 	VCall = { { 0, "VStance" }, { 0.15, "VPresent", "Out" }, { 0.4, "VPresent", "Linear" }, { 0.6, "VStance", "Sine" } },
 	VMenger = { { 0, "VStance" }, { 0.14, "AxlPoint", "Out" }, { 0.36, "AxlPoint", "Linear" }, { 0.55, "VStance", "Sine" } },
 	VLoveTrain = { { 0, "VStance" }, { 0.3, "VPledge", "Back", 3 }, { 0.9, "VPledge", "Linear", 3 }, { 1.2, "VStance", "Sine" } },
+
+	-- DIEGO (AU)
+	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
+	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
+	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },
+	DW_M1_4 = { { 0, "DWStance" }, { 0.12, "DWThrowWind", "In" }, { 0.2, "AxlPoint", "Snap", 7 }, { 0.3, "AxlPoint", "Linear" }, { 0.46, "DWStance", "Sine" } },
+	DWGrab = { { 0, "DWStance" }, { 0.12, "AxlPoint", "Back", 3 }, { 0.7, "AxlPoint", "Linear" }, { 0.8, "DWThrow", "Snap", 5 }, { 1.05, "DWStance", "Sine" } },
+	DWBarrage = { { 0, "DWStance" }, { 0.12, "AxlPoint", "Out" }, { 1.7, "AxlPoint", "Linear", 1 }, { 1.9, "DWStance", "Sine" } },
+	DWKnife = { { 0, "DWStance" }, { 0.14, "DWThrowWind", "In" }, { 0.22, "DWThrow", "Snap", 4 }, { 0.45, "DWStance", "Sine" } },
+	DWTimeStop = { { 0, "DWStance" }, { 0.35, "DWSpread", "Back", 3 }, { 0.95, "DWSpread", "Linear", 2 }, { 1.25, "DWStance", "Sine" } },
 
 	-- AXL RO
 	A_M1_1 = { { 0, "AxlStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.3, "AxlStance", "Sine" } },

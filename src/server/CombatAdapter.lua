@@ -81,6 +81,10 @@ function Adapter.canAct(player)
 	if character:GetAttribute("DinoThrall") then
 		return false
 	end
+	-- Frozen in stopped time (The World): can't do anything until it moves again.
+	if character:GetAttribute("TimeStopped") then
+		return false
+	end
 	if Adapter.Hooks.CanAct and not Adapter.Hooks.CanAct(player) then
 		return false
 	end

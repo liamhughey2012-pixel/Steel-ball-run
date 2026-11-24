@@ -15,6 +15,7 @@
 	  Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow
 	  Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit
 	  Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse
+	  Diego (AU)   KNIFE RING: a ring of knives appears round him and flies out
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -259,6 +260,35 @@ USE.Valentine = function(S, player, state, character, root)
 		if r then
 			around(S, player, r.Position, 12, { Damage = 9, Stun = 0.6, Knockback = 35, Source = "CorpseLight" })
 			fx({ Character = character, Who = "Valentine", Phase = "Pulse", Position = r.Position, Radius = 12 })
+		end
+	end)
+end
+
+USE.DiegoAU = function(S, player, state, character, root)
+	if not S.fireKnife then
+		return false
+	end
+	S.lock(state, 0.45)
+	local count, wave = 12, 0.35
+	fx({ Character = character, Who = "DiegoAU", Phase = "Ring", Position = root.Position, Count = count, Time = wave })
+	task.delay(wave, function()
+		local _, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		for i = 1, count do
+			local a = (i - 1) / count * math.pi * 2
+			local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+			S.fireKnife(player, state, {
+				Origin = r.Position + dir * 2 + Vector3.new(0, 0.5, 0),
+				Direction = dir,
+				Speed = 120,
+				Radius = 0.8,
+				Range = 50,
+				OnHit = function(target, position)
+					S.hit(player, target, { Damage = 7, Stun = 0.6, Knockback = 18, Direction = dir, Position = position, Source = "DiegoAUKnifeRing" })
+				end,
+			})
 		end
 	end)
 end

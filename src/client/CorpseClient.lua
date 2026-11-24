@@ -496,6 +496,21 @@ local function onMove(data)
 	elseif who == "Axl" and data.Phase == "Flood" then
 		ring(data.Position, data.Radius or 22, pal.Main, 0.6)
 		VFXLib.burst(data.Position, { Count = 30, Color = Color3.fromRGB(150, 130, 170), Speed = 16, Lifetime = 0.6 })
+	elseif who == "DiegoAU" and data.Phase == "Ring" then
+		-- A ring of knives glints into being round him (they fly as knives).
+		local count = data.Count or 12
+		for i = 1, count do
+			local a = (i - 1) / count * math.pi * 2
+			local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+			local at = data.Position + dir * 2.4 + Vector3.new(0, 0.5, 0)
+			local glint = VFXLib.part({ Size = Vector3.new(0.12, 0.12, 1.4), CFrame = CFrame.lookAt(at, at + dir), Color = Color3.fromRGB(235, 240, 250), Material = Enum.Material.Neon, Transparency = 1 })
+			VFXLib.animate(data.Time or 0.35, function(k)
+				glint.Transparency = 1 - k * 0.8
+			end, function()
+				glint:Destroy()
+			end)
+		end
+		ring(data.Position, 4, Color3.fromRGB(236, 196, 70), 0.35)
 	elseif who == "Valentine" then
 		if data.Phase == "Bless" then
 			shell(character, Color3.fromRGB(255, 250, 225), Enum.Material.ForceField, data.Time or 2.5)

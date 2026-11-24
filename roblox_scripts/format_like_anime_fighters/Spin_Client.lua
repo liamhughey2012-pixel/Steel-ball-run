@@ -3576,6 +3576,21 @@ local function onMove(data)
 	elseif who == "Axl" and data.Phase == "Flood" then
 		ring(data.Position, data.Radius or 22, pal.Main, 0.6)
 		VFXLib.burst(data.Position, { Count = 30, Color = Color3.fromRGB(150, 130, 170), Speed = 16, Lifetime = 0.6 })
+	elseif who == "DiegoAU" and data.Phase == "Ring" then
+		-- A ring of knives glints into being round him (they fly as knives).
+		local count = data.Count or 12
+		for i = 1, count do
+			local a = (i - 1) / count * math.pi * 2
+			local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+			local at = data.Position + dir * 2.4 + Vector3.new(0, 0.5, 0)
+			local glint = VFXLib.part({ Size = Vector3.new(0.12, 0.12, 1.4), CFrame = CFrame.lookAt(at, at + dir), Color = Color3.fromRGB(235, 240, 250), Material = Enum.Material.Neon, Transparency = 1 })
+			VFXLib.animate(data.Time or 0.35, function(k)
+				glint.Transparency = 1 - k * 0.8
+			end, function()
+				glint:Destroy()
+			end)
+		end
+		ring(data.Position, 4, Color3.fromRGB(236, 196, 70), 0.35)
 	elseif who == "Valentine" then
 		if data.Phase == "Bless" then
 			shell(character, Color3.fromRGB(255, 250, 225), Enum.Material.ForceField, data.Time or 2.5)
@@ -4203,6 +4218,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 7) == "DiegoAU" then
+		starColor = Color3.fromRGB(236, 196, 70)
 	elseif source:sub(1, 5) == "Diego" then
 		starColor = Color3.fromRGB(60, 120, 255)
 	elseif source:sub(1, 7) == "PorkPie" then
@@ -4645,6 +4662,7 @@ Common.Palettes = {
 	[11] = { Main = Color3.fromRGB(110, 180, 255), Second = Color3.fromRGB(40, 50, 90), Light = Color3.fromRGB(225, 245, 255) }, -- Blackmore (rain blue)
 	[12] = { Main = Color3.fromRGB(214, 60, 70), Second = Color3.fromRGB(226, 196, 110), Light = Color3.fromRGB(255, 200, 200) }, -- Axl RO (Civil War red)
 	[13] = { Main = Color3.fromRGB(120, 170, 255), Second = Color3.fromRGB(236, 120, 170), Light = Color3.fromRGB(240, 246, 255) }, -- Funny Valentine (D4C blue + pink)
+	[14] = { Main = Color3.fromRGB(236, 196, 70), Second = Color3.fromRGB(70, 170, 160), Light = Color3.fromRGB(255, 244, 200) }, -- Diego from another world (The World gold + teal)
 }
 
 function Common.palette(act)
@@ -5083,6 +5101,25 @@ TuskActRegistry.Acts = {
 			{ Slot = 2, Attribute = "ParallelCloneUntil", Text = "PARALLEL" },
 		},
 	},
+	-- Diego Brando from another world (AU): THE WORLD (stops time).
+	[14] = {
+		Name = "THE WORLD",
+		Character = "DiegoAU",
+		Tagline = "Diego from another world",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(236, 196, 70), Secondary = Color3.fromRGB(70, 170, 160) },
+		M1 = "MUDA COMBO",
+		Abilities = { "STAND GRAB", "STAND BARRAGE", "KNIFE THROW" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "THE WORLD: TIME STOP",
+		Next = nil,
+		Module = "DiegoAU", -- server moves
+		ClientModule = "DiegoAUVFX", -- client visuals (TuskActVFX.DiegoAUVFX)
+		CardTitle = "STAND  ·  THE WORLD",
+		Buffs = {
+			{ Slot = 2, Attribute = "WorldBarrageUntil", Text = "MUDA" },
+		},
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -5092,7 +5129,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -5308,6 +5345,11 @@ TuskAnimation.Poses = {
 	VWrap = { Root = { 0, 30, 0, -0.05 }, Waist = { 0, 30, 0 }, Neck = { 0, -20, 0 }, RightArm = { 60, 0, -60 }, RightElbow = { 90, 0, 0 }, LeftArm = { 60, 0, 60 }, LeftElbow = { 90, 0, 0 } },
 	VPresent = { Root = { 0, -10, 0, 0 }, Waist = { 0, -10, 0 }, Neck = { 6, 10, 0 }, RightArm = { 70, 0, 50 }, RightElbow = { 10, 0, 0 }, LeftArm = { 30, 0, -10 }, LeftElbow = { 40, 0, 0 } },
 	VPledge = { Root = { 6, 0, 0, 0.04 }, Waist = { 8, 0, 0 }, Neck = { 20, 0, 0 }, RightArm = { 50, 0, -40 }, RightElbow = { 120, 0, 0 }, LeftArm = { 150, 0, -20 }, LeftElbow = { 10, 0, 0 } },
+	-- DIEGO (AU): cocky, two fingers at his temple, weight on one leg.
+	DWStance = { Root = { 0, -10, 0, 0 }, Waist = { 2, -8, 4 }, Neck = { 6, 12, -4 }, RightArm = { 100, 0, 30 }, RightElbow = { 135, 0, 0 }, LeftArm = { -4, 0, -16 }, LeftElbow = { 24, 0, 0 }, RightHip = { 6, 0, 0 }, LeftHip = { -6, 0, 0 }, LeftKnee = { -8, 0, 0 } },
+	DWThrowWind = { Root = { 0, 34, 0, -0.04 }, Waist = { -4, 34, 0 }, Neck = { 0, -28, 0 }, RightArm = { 70, 0, -70 }, RightElbow = { 100, 0, 0 }, LeftArm = { 40, 0, -20 }, LeftElbow = { 30, 0, 0 } },
+	DWThrow = { Root = { -4, -34, 0, -0.06, 0.3 }, Waist = { -8, -36, 0 }, Neck = { 0, 26, 0 }, RightArm = { 92, 0, 46 }, RightElbow = { 0, 0, 0 }, LeftArm = { 10, 0, -26 }, LeftElbow = { 20, 0, 0 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -18, 0, 0 } },
+	DWSpread = { Root = { 4, 0, 0, 0.06 }, Waist = { 10, 0, 0 }, Neck = { 14, 0, 0 }, RightArm = { 50, 0, 80 }, RightElbow = { 20, 0, 0 }, LeftArm = { 50, 0, -80 }, LeftElbow = { 20, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
 	AxlStance = { Root = { -4, -8, 0, -0.04 }, Waist = { -6, -6, 4 }, Neck = { -10, 12, 8 }, RightArm = { -6, 0, 8 }, RightElbow = { 10, 0, 0 }, LeftArm = { -4, 0, -8 }, LeftElbow = { 14, 0, 0 }, RightHip = { 4, 0, 0 } },
 	AxlPoint = { Root = { 0, -14, 0, -0.04 }, Waist = { 0, -14, 0 }, Neck = { 6, 14, 0 }, RightArm = { 88, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 0, 0, -10 }, LeftElbow = { 20, 0, 0 } },
@@ -5476,6 +5518,16 @@ TuskAnimation.Actions = {
 	VCall = { { 0, "VStance" }, { 0.15, "VPresent", "Out" }, { 0.4, "VPresent", "Linear" }, { 0.6, "VStance", "Sine" } },
 	VMenger = { { 0, "VStance" }, { 0.14, "AxlPoint", "Out" }, { 0.36, "AxlPoint", "Linear" }, { 0.55, "VStance", "Sine" } },
 	VLoveTrain = { { 0, "VStance" }, { 0.3, "VPledge", "Back", 3 }, { 0.9, "VPledge", "Linear", 3 }, { 1.2, "VStance", "Sine" } },
+
+	-- DIEGO (AU)
+	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
+	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
+	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },
+	DW_M1_4 = { { 0, "DWStance" }, { 0.12, "DWThrowWind", "In" }, { 0.2, "AxlPoint", "Snap", 7 }, { 0.3, "AxlPoint", "Linear" }, { 0.46, "DWStance", "Sine" } },
+	DWGrab = { { 0, "DWStance" }, { 0.12, "AxlPoint", "Back", 3 }, { 0.7, "AxlPoint", "Linear" }, { 0.8, "DWThrow", "Snap", 5 }, { 1.05, "DWStance", "Sine" } },
+	DWBarrage = { { 0, "DWStance" }, { 0.12, "AxlPoint", "Out" }, { 1.7, "AxlPoint", "Linear", 1 }, { 1.9, "DWStance", "Sine" } },
+	DWKnife = { { 0, "DWStance" }, { 0.14, "DWThrowWind", "In" }, { 0.22, "DWThrow", "Snap", 4 }, { 0.45, "DWStance", "Sine" } },
+	DWTimeStop = { { 0, "DWStance" }, { 0.35, "DWSpread", "Back", 3 }, { 0.95, "DWSpread", "Linear", 2 }, { 1.25, "DWStance", "Sine" } },
 
 	-- AXL RO
 	A_M1_1 = { { 0, "AxlStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.16, "JabStrike", "Linear" }, { 0.3, "AxlStance", "Sine" } },
@@ -8409,7 +8461,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("DIMENSION HOP") then
+	if has("KNIFE") then
+		return "knife"
+	elseif has("TIME STOP") then
+		return "clock"
+	elseif has("STAND GRAB") then
+		return "grab"
+	elseif has("DIMENSION HOP") then
 		return "flag"
 	elseif has("PARALLEL VALENTINE") then
 		return "ghost"
@@ -8657,6 +8715,29 @@ local function drawIcon(icon, kind)
 		for i = -1, 1 do
 			bar(icon, 0.5 + i * 0.24, 0.5 + (i == 0 and -0.04 or 0.04), 0.18, 0.34, i * 8)
 		end
+	elseif kind == "knife" then
+		-- Three knives fanned out: blades and handles.
+		for i = -1, 1 do
+			bar(icon, 0.5 + i * 0.2, 0.38, 0.08, 0.46, i * 18)
+			bar(icon, 0.5 + i * 0.28, 0.72, 0.1, 0.22, i * 18)
+			bar(icon, 0.5 + i * 0.25, 0.62, 0.2, 0.05, i * 18)
+		end
+	elseif kind == "clock" then
+		-- A clock face with its hands stopped.
+		ring(icon, 0.82, 3)
+		bar(icon, 0.5, 0.36, 0.08, 0.3, 0)
+		bar(icon, 0.6, 0.5, 0.24, 0.08, 0)
+		for i = 0, 3 do
+			local a = i * math.pi / 2
+			bar(icon, 0.5 + math.sin(a) * 0.32, 0.5 - math.cos(a) * 0.32, 0.06, 0.06, 0)
+		end
+	elseif kind == "grab" then
+		-- An open hand reaching: palm and four fingers, a thumb.
+		bar(icon, 0.5, 0.62, 0.42, 0.3, 0)
+		for i = 0, 3 do
+			bar(icon, 0.34 + i * 0.11, 0.33, 0.08, 0.3, 0)
+		end
+		bar(icon, 0.22, 0.55, 0.08, 0.26, -40)
 	elseif kind == "slash" then
 		for i = -1, 1 do
 			bar(icon, 0.5 + i * 0.18, 0.5, 0.08, 0.8 - math.abs(i) * 0.2, 30)

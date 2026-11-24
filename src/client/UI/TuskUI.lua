@@ -135,7 +135,13 @@ local function iconKind(name)
 	local function has(word)
 		return string.find(name, word, 1, true) ~= nil
 	end
-	if has("DIMENSION HOP") then
+	if has("KNIFE") then
+		return "knife"
+	elseif has("TIME STOP") then
+		return "clock"
+	elseif has("STAND GRAB") then
+		return "grab"
+	elseif has("DIMENSION HOP") then
 		return "flag"
 	elseif has("PARALLEL VALENTINE") then
 		return "ghost"
@@ -383,6 +389,29 @@ local function drawIcon(icon, kind)
 		for i = -1, 1 do
 			bar(icon, 0.5 + i * 0.24, 0.5 + (i == 0 and -0.04 or 0.04), 0.18, 0.34, i * 8)
 		end
+	elseif kind == "knife" then
+		-- Three knives fanned out: blades and handles.
+		for i = -1, 1 do
+			bar(icon, 0.5 + i * 0.2, 0.38, 0.08, 0.46, i * 18)
+			bar(icon, 0.5 + i * 0.28, 0.72, 0.1, 0.22, i * 18)
+			bar(icon, 0.5 + i * 0.25, 0.62, 0.2, 0.05, i * 18)
+		end
+	elseif kind == "clock" then
+		-- A clock face with its hands stopped.
+		ring(icon, 0.82, 3)
+		bar(icon, 0.5, 0.36, 0.08, 0.3, 0)
+		bar(icon, 0.6, 0.5, 0.24, 0.08, 0)
+		for i = 0, 3 do
+			local a = i * math.pi / 2
+			bar(icon, 0.5 + math.sin(a) * 0.32, 0.5 - math.cos(a) * 0.32, 0.06, 0.06, 0)
+		end
+	elseif kind == "grab" then
+		-- An open hand reaching: palm and four fingers, a thumb.
+		bar(icon, 0.5, 0.62, 0.42, 0.3, 0)
+		for i = 0, 3 do
+			bar(icon, 0.34 + i * 0.11, 0.33, 0.08, 0.3, 0)
+		end
+		bar(icon, 0.22, 0.55, 0.08, 0.26, -40)
 	elseif kind == "slash" then
 		for i = -1, 1 do
 			bar(icon, 0.5 + i * 0.18, 0.5, 0.08, 0.8 - math.abs(i) * 0.2, 30)

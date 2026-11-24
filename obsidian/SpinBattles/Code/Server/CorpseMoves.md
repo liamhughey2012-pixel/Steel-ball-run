@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `CorpseMoves` (capitals matter) |
 
-**What it does:** Every character's CORPSE MOVE (V), unlocked while holding a Saint's Corpse part. One shared cooldown (TuskConfig.Corpse.Move.Cooldown); the ready time is the character attribute CorpseReadyAt (server time) for the HUD. Visuals: CorpseClient, from WorldFX "CorpseMove". Johnny       GOLDEN SPIN NAIL: a huge golden spinning nail Gyro         GOLDEN RECTANGLE: a spinning shockwave straight ahead Diego        DINOSAUR CRASH: leaps to the aim point and slams down Pork Pie     HOOK HARVEST: hooks yank everyone round him in Sandman      SOUND BARRIER: dashes through enemies, then a blast Mountain Tim LASSO CYCLONE: a spinning lasso pulls everyone in Hot Pants    FLESH COCOON: heals and armours herself, then a burst Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead (TuskConfig.Corpse.Miracle), and afterwards every part scatters. All damage goes through S.hit (CombatAdapter).
+**What it does:** Every character's CORPSE MOVE (V), unlocked while holding a Saint's Corpse part. One shared cooldown (TuskConfig.Corpse.Move.Cooldown); the ready time is the character attribute CorpseReadyAt (server time) for the HUD. Visuals: CorpseClient, from WorldFX "CorpseMove". Johnny       GOLDEN SPIN NAIL: a huge golden spinning nail Gyro         GOLDEN RECTANGLE: a spinning shockwave straight ahead Diego        DINOSAUR CRASH: leaps to the aim point and slams down Pork Pie     HOOK HARVEST: hooks yank everyone round him in Sandman      SOUND BARRIER: dashes through enemies, then a blast Mountain Tim LASSO CYCLONE: a spinning lasso pulls everyone in Hot Pants    FLESH COCOON: heals and armours herself, then a burst Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse Diego (AU)   KNIFE RING: a ring of knives appears round him and flies out With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead (TuskConfig.Corpse.Miracle), and afterwards every part scatters. All damage goes through S.hit (CombatAdapter).
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -41,6 +41,7 @@ Back to [[Where To Put Code]]
 	  Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow
 	  Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit
 	  Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse
+	  Diego (AU)   KNIFE RING: a ring of knives appears round him and flies out
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -285,6 +286,35 @@ USE.Valentine = function(S, player, state, character, root)
 		if r then
 			around(S, player, r.Position, 12, { Damage = 9, Stun = 0.6, Knockback = 35, Source = "CorpseLight" })
 			fx({ Character = character, Who = "Valentine", Phase = "Pulse", Position = r.Position, Radius = 12 })
+		end
+	end)
+end
+
+USE.DiegoAU = function(S, player, state, character, root)
+	if not S.fireKnife then
+		return false
+	end
+	S.lock(state, 0.45)
+	local count, wave = 12, 0.35
+	fx({ Character = character, Who = "DiegoAU", Phase = "Ring", Position = root.Position, Count = count, Time = wave })
+	task.delay(wave, function()
+		local _, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		for i = 1, count do
+			local a = (i - 1) / count * math.pi * 2
+			local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+			S.fireKnife(player, state, {
+				Origin = r.Position + dir * 2 + Vector3.new(0, 0.5, 0),
+				Direction = dir,
+				Speed = 120,
+				Radius = 0.8,
+				Range = 50,
+				OnHit = function(target, position)
+					S.hit(player, target, { Damage = 7, Stun = 0.6, Knockback = 18, Direction = dir, Position = position, Source = "DiegoAUKnifeRing" })
+				end,
+			})
 		end
 	end)
 end

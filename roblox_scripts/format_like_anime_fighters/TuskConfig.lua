@@ -135,6 +135,7 @@ TuskConfig.Roster = {
 	{ Id = "Blackmore", Name = "BLACKMORE", Stand = "CATCH THE RAINBOW", Available = true, Color = Color3.fromRGB(110, 180, 255) },
 	{ Id = "Axl", Name = "AXL RO", Stand = "CIVIL WAR", Available = true, Color = Color3.fromRGB(214, 60, 70) },
 	{ Id = "Valentine", Name = "FUNNY VALENTINE", Stand = "D4C", Available = true, Color = Color3.fromRGB(120, 170, 255) },
+	{ Id = "DiegoAU", Name = "DIEGO BRANDO (AU)", Stand = "THE WORLD", Available = true, Color = Color3.fromRGB(236, 196, 70) },
 }
 
 ---------------------------------------------------------------------------
@@ -160,10 +161,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 10, -- how many at once (each takes a free spot below)
+	Count = 11, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine", "DiegoAU" },
 	CorpseSeekRange = 90, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseMoveChance = 0.12, -- per think tick in a fight, if they hold a part and it's ready
 	RainWalkChance = 0.05, -- Blackmore NPCs: chance per think tick to start a rain walk while it rains
@@ -184,6 +185,7 @@ TuskConfig.StandBots = {
 		Vector3.new(45, 0, -250), -- by the mission church
 		Vector3.new(-40, 0, -420), -- outside Fort Dust
 		Vector3.new(-100, 0, -180), -- western desert
+		Vector3.new(215, 0, -185), -- south-east desert
 	},
 	Distance = 70, -- (no map) studs from the spawn to their camp
 	Spacing = 14, -- (no map) studs between them at the camp
@@ -745,6 +747,51 @@ TuskConfig.Valentine = {
 	},
 }
 
+---------------------------------------------------------------------------
+-- Diego Brando from another world (AU): THE WORLD
+---------------------------------------------------------------------------
+TuskConfig.DiegoAU = {
+	M1 = { -- MUDA COMBO: The World punches with him
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.5, Knockback = 45, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	StandGrab = { -- 1: The World lunges out, grabs the nearest enemy in front, lifts them and hurls them
+		Cooldown = 9, MissCooldown = 3, Windup = 0.2,
+		Range = 12, Cone = 70,
+		GrabDamage = 4, HoldTime = 0.55, -- held up in front of Diego this long
+		ThrowDamage = 8, Knockback = 80, Launch = 30, Stun = 1,
+		SplashDelay = 0.4, SplashRadius = 7, SplashDamage = 5, -- whoever they're thrown into gets hit too
+	},
+	StandBarrage = { -- 2: The World rushes ahead of him with a storm of punches
+		Cooldown = 12, Windup = 0.15,
+		Duration = 1.6, Tick = 0.1,
+		Damage = 0.9, Stun = 0.35, Knockback = 2,
+		HitboxSize = Vector3.new(6, 6, 7), HitboxForward = 4, MaxTargets = 4,
+		WalkMultiplier = 0.45, -- Diego can still walk, slowly, while it punches
+		FinalDamage = 6, FinalKnockback = 50, FinalLaunch = 12, FinalStun = 0.6,
+	},
+	KnifeThrow = { -- 3: three knives at once, fanned out
+		Cooldown = 7, Windup = 0.18,
+		Count = 3, Spread = 8, -- degrees between knives
+		Speed = 150, Radius = 0.7, Range = 110,
+		Damage = 4, Stun = 0.4, Knockback = 6,
+		HangDistance = 6, -- thrown while time is stopped: they stop this far out and fly when time moves again
+	},
+	Ultimate = { -- THE WORLD: TIME STOP. Everyone else nearby freezes; Diego moves freely
+		Windup = 0.8,
+		Duration = 6, -- seconds time stays stopped
+		BotDuration = 4, -- shorter when an NPC Diego does it
+		Range = 150,
+		ReleaseDamage = 0, -- (extra damage when time moves again; 0 = none)
+	},
+}
+
 TuskConfig.Gyro = {
 	M1 = {
 		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,
@@ -829,7 +876,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "KNIFE RING",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }

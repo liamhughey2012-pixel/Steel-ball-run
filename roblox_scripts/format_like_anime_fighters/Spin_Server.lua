@@ -806,6 +806,10 @@ function Adapter.canAct(player)
 	if character:GetAttribute("DinoThrall") then
 		return false
 	end
+	-- Frozen in stopped time (The World): can't do anything until it moves again.
+	if character:GetAttribute("TimeStopped") then
+		return false
+	end
 	if Adapter.Hooks.CanAct and not Adapter.Hooks.CanAct(player) then
 		return false
 	end
@@ -1132,6 +1136,7 @@ __modules["CorpseMoves"] = function()
 	  Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow
 	  Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit
 	  Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse
+	  Diego (AU)   KNIFE RING: a ring of knives appears round him and flies out
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -1376,6 +1381,35 @@ USE.Valentine = function(S, player, state, character, root)
 		if r then
 			around(S, player, r.Position, 12, { Damage = 9, Stun = 0.6, Knockback = 35, Source = "CorpseLight" })
 			fx({ Character = character, Who = "Valentine", Phase = "Pulse", Position = r.Position, Radius = 12 })
+		end
+	end)
+end
+
+USE.DiegoAU = function(S, player, state, character, root)
+	if not S.fireKnife then
+		return false
+	end
+	S.lock(state, 0.45)
+	local count, wave = 12, 0.35
+	fx({ Character = character, Who = "DiegoAU", Phase = "Ring", Position = root.Position, Count = count, Time = wave })
+	task.delay(wave, function()
+		local _, _, r = S.Adapter.getAlive(player)
+		if not r then
+			return
+		end
+		for i = 1, count do
+			local a = (i - 1) / count * math.pi * 2
+			local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+			S.fireKnife(player, state, {
+				Origin = r.Position + dir * 2 + Vector3.new(0, 0.5, 0),
+				Direction = dir,
+				Speed = 120,
+				Radius = 0.8,
+				Range = 50,
+				OnHit = function(target, position)
+					S.hit(player, target, { Damage = 7, Stun = 0.6, Knockback = 18, Direction = dir, Position = position, Source = "DiegoAUKnifeRing" })
+				end,
+			})
 		end
 	end)
 end
@@ -4918,7 +4952,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU):
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -4971,6 +5005,7 @@ local LOOKS = {
 	Blackmore = { Skin = Color3.fromRGB(220, 196, 176), Torso = Color3.fromRGB(36, 44, 70), Legs = Color3.fromRGB(30, 30, 40) },
 	Valentine = { Skin = Color3.fromRGB(240, 210, 190), Torso = Color3.fromRGB(236, 230, 220), Legs = Color3.fromRGB(40, 44, 70) },
 	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
+	DiegoAU = { Skin = Color3.fromRGB(240, 205, 170), Torso = Color3.fromRGB(110, 200, 185), Legs = Color3.fromRGB(196, 170, 110) },
 }
 
 local usedSpots = {} -- [spot index] = slot using it
@@ -6879,6 +6914,25 @@ TuskActRegistry.Acts = {
 			{ Slot = 2, Attribute = "ParallelCloneUntil", Text = "PARALLEL" },
 		},
 	},
+	-- Diego Brando from another world (AU): THE WORLD (stops time).
+	[14] = {
+		Name = "THE WORLD",
+		Character = "DiegoAU",
+		Tagline = "Diego from another world",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(236, 196, 70), Secondary = Color3.fromRGB(70, 170, 160) },
+		M1 = "MUDA COMBO",
+		Abilities = { "STAND GRAB", "STAND BARRAGE", "KNIFE THROW" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "THE WORLD: TIME STOP",
+		Next = nil,
+		Module = "DiegoAU", -- server moves
+		ClientModule = "DiegoAUVFX", -- client visuals (TuskActVFX.DiegoAUVFX)
+		CardTitle = "STAND  ·  THE WORLD",
+		Buffs = {
+			{ Slot = 2, Attribute = "WorldBarrageUntil", Text = "MUDA" },
+		},
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -6888,7 +6942,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -7618,6 +7672,21 @@ function TuskService.fireJunk(player, state, spec)
 		Radius = spec.Radius,
 		Range = spec.Range,
 		Visual = { Style = spec.Style or "Crate" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Server projectile with a thrown-knife visual (Diego from another world).
+function TuskService.fireKnife(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "WorldKnife",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Knife" },
 		OnHit = spec.OnHit,
 		OnEnd = spec.OnEnd,
 	})
@@ -8513,7 +8582,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

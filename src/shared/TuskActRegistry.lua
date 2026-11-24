@@ -226,6 +226,25 @@ TuskActRegistry.Acts = {
 			{ Slot = 2, Attribute = "ParallelCloneUntil", Text = "PARALLEL" },
 		},
 	},
+	-- Diego Brando from another world (AU): THE WORLD (stops time).
+	[14] = {
+		Name = "THE WORLD",
+		Character = "DiegoAU",
+		Tagline = "Diego from another world",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(236, 196, 70), Secondary = Color3.fromRGB(70, 170, 160) },
+		M1 = "MUDA COMBO",
+		Abilities = { "STAND GRAB", "STAND BARRAGE", "KNIFE THROW" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "THE WORLD: TIME STOP",
+		Next = nil,
+		Module = "DiegoAU", -- server moves
+		ClientModule = "DiegoAUVFX", -- client visuals (TuskActVFX.DiegoAUVFX)
+		CardTitle = "STAND  ·  THE WORLD",
+		Buffs = {
+			{ Slot = 2, Attribute = "WorldBarrageUntil", Text = "MUDA" },
+		},
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -235,7 +254,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

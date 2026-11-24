@@ -313,6 +313,21 @@ function TuskService.fireJunk(player, state, spec)
 	})
 end
 
+-- Server projectile with a thrown-knife visual (Diego from another world).
+function TuskService.fireKnife(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "WorldKnife",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Knife" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
 -- Some characters walk faster or slower (Registry WalkSpeed, e.g. Sandman).
 function TuskService.applyCharacterSpeed(state)
 	local character = state and state.Character
