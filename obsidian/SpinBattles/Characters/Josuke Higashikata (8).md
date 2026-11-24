@@ -20,7 +20,7 @@ Matched to the reference art the user sent (2026-11-24).
 | 1 | PLUNDER: FRICTION | a pale-blue bubble (5, shove). It **steals their friction** for 3.5 s: they slide like on ice and can barely steer. 8 s |
 | 2 | PLUNDER: SIGHT | a violet bubble (4). It **steals their sight** for 3 s: a player's screen goes nearly black; an NPC loses track of him. 14 s |
 | 3 | BUBBLE MINES | 6 bubbles drift out round him and bob there for 8 s. An enemy who touches one pops it (6, stun, knockback). 12 s |
-| G | GO BEYOND | he charges (armored) for 1 s, then fires a tiny bubble spinning infinitely, rings whirling round it: slow, but **can't be blocked**, 30 damage, launch |
+| G | GO BEYOND | staged like the manga panel: he **points straight at them**, Soft & Wet **rises up behind him with its hand raised**, and an orange **"GO BEYOND ★" speech bubble** with green lettering pops out beside him; anyone close gets a pink-purple manga tint and speed lines. After 1 s (armored), a tiny bubble spinning infinitely fires from his fingertip: slow, but **can't be blocked**, 30 damage, launch |
 
 - **Corpse move (V): PLUNDER: SOUND.** Steals the sound round him (20 studs): enemies take 5 and are **silenced** for 3.5 s (no abilities or ultimate).
 - He's also a Stand-user NPC and a bounty-board target.

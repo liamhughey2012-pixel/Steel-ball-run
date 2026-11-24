@@ -11,11 +11,16 @@
 	    own screen: you can barely steer), with a frosty sheen under them
 	  * SIGHT STOLEN: a blinded player's screen goes nearly black
 	  * BUBBLE MINES: a ring of bubbles drifts out round him and bobs there
-	  * GO BEYOND: a tiny white bubble spinning infinitely, rings whirling
-	    round it, a shockwave and flash when it lands
+	  * GO BEYOND (like the manga panel): he points straight at them,
+	    Soft & Wet rises up behind him with its hand raised, and an orange
+	    "GO BEYOND" speech bubble with green lettering and a star pops out
+	    beside him. Anyone close gets a pink-purple manga tint and speed
+	    lines. A tiny white bubble spins up on his fingertip, rings whirling
+	    round it, and flies; a shockwave and flash when it lands
 ]]
 
 local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
@@ -385,27 +390,162 @@ local function onAbility(data)
 	end
 end
 
+---------------------------------------------------------------------------
+-- GO BEYOND: the manga panel
+---------------------------------------------------------------------------
+local BUBBLE_ORANGE = Color3.fromRGB(255, 176, 48)
+local TEXT_GREEN = Color3.fromRGB(120, 220, 80)
+local TEXT_EDGE = Color3.fromRGB(24, 90, 40)
+local PANEL_PINK = Color3.fromRGB(255, 200, 250)
+
+local function uiCorner(parent, scale)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(scale, 0)
+	c.Parent = parent
+end
+
+local function uiStroke(parent, color, thickness)
+	local st = Instance.new("UIStroke")
+	st.Color = color
+	st.Thickness = thickness
+	st.Parent = parent
+	return st
+end
+
+-- The orange speech bubble beside his head: "GO BEYOND" in green, a star.
+local function speechBubble(character, duration)
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "GoBeyondBubble"
+	bb.Size = UDim2.new(6, 0, 3.6, 0)
+	bb.StudsOffset = Vector3.new(3.6, 1.6, 0)
+	bb.AlwaysOnTop = true
+	bb.LightInfluence = 0
+	bb.Adornee = head
+	local scaler = Instance.new("UIScale")
+	scaler.Scale = 0
+	scaler.Parent = bb
+	-- The tail, pointing down-left at him.
+	local tail = Instance.new("Frame")
+	tail.AnchorPoint = Vector2.new(0.5, 0.5)
+	tail.Size = UDim2.fromScale(0.2, 0.3)
+	tail.Position = UDim2.fromScale(0.16, 0.82)
+	tail.Rotation = 35
+	tail.BackgroundColor3 = BUBBLE_ORANGE
+	tail.BorderSizePixel = 0
+	uiStroke(tail, Color3.fromRGB(90, 50, 10), 2)
+	tail.Parent = bb
+	local body = Instance.new("Frame")
+	body.Size = UDim2.fromScale(1, 0.85)
+	body.BackgroundColor3 = BUBBLE_ORANGE
+	body.BorderSizePixel = 0
+	uiCorner(body, 0.5)
+	uiStroke(body, Color3.fromRGB(90, 50, 10), 2)
+	body.Parent = bb
+	local function words(text, pos, size, rot)
+		local t = Instance.new("TextLabel")
+		t.BackgroundTransparency = 1
+		t.AnchorPoint = Vector2.new(0.5, 0.5)
+		t.Position = pos
+		t.Size = size
+		t.Rotation = rot
+		t.Font = Enum.Font.LuckiestGuy
+		t.TextScaled = true
+		t.Text = text
+		t.TextColor3 = TEXT_GREEN
+		uiStroke(t, TEXT_EDGE, 2)
+		t.Parent = body
+		return t
+	end
+	words("GO", UDim2.fromScale(0.62, 0.3), UDim2.fromScale(0.5, 0.42), -6)
+	words("BEYOND", UDim2.fromScale(0.45, 0.68), UDim2.fromScale(0.78, 0.4), -10)
+	local starLabel = words("★", UDim2.fromScale(0.86, 0.3), UDim2.fromScale(0.18, 0.3), 0)
+	starLabel.TextColor3 = Color3.fromRGB(255, 240, 120)
+	bb.Parent = VFXLib.Folder
+	VFXLib.animate(duration, function(a)
+		local t = a * duration
+		-- Pops in with a bounce, wobbles, then bursts away at the end.
+		local pop = t < 0.25 and math.sin(t / 0.25 * math.pi * 0.75) / math.sin(math.pi * 0.75) * (1 + 0.15 * (1 - t / 0.25)) or 1
+		if a > 0.85 then
+			pop = 1 + (a - 0.85) / 0.15 * 0.5
+			body.BackgroundTransparency = (a - 0.85) / 0.15
+			tail.BackgroundTransparency = body.BackgroundTransparency
+		end
+		scaler.Scale = math.max(0, pop) * (1 + math.sin(t * 9) * 0.03)
+		starLabel.Rotation = t * 120
+	end, function()
+		bb:Destroy()
+	end)
+end
+
+-- A pink-purple manga tint and speed lines on the screens of anyone close.
+local function panelTint(position, duration)
+	local myRoot = localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+	if not myRoot or (myRoot.Position - position).Magnitude > 70 then
+		return
+	end
+	local cc = Instance.new("ColorCorrectionEffect")
+	cc.Name = "JosukeGoBeyond"
+	cc.TintColor = Color3.new(1, 1, 1)
+	cc.Parent = Lighting
+	VFXLib.animate(duration, function(a)
+		local k = a < 0.15 and a / 0.15 or (a > 0.8 and (1 - a) / 0.2 or 1)
+		cc.TintColor = Color3.new(1, 1, 1):Lerp(PANEL_PINK, k)
+		cc.Saturation = 0.25 * k
+		cc.Contrast = 0.12 * k
+	end, function()
+		cc:Destroy()
+	end)
+	CameraFX.speedLines(duration * 0.6, Color3.fromRGB(200, 120, 230))
+end
+
+local function fingertip(character, root)
+	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	if hand then
+		return (hand.CFrame * CFrame.new(0, -hand.Size.Y / 2 - 0.4, 0)).Position
+	end
+	return (root.CFrame * CFrame.new(1, 1.2, -2.2)).Position
+end
+
 local function onUltimate(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
 	if data.Phase == "Charge" and character and root then
+		local windup = data.Windup or 1
 		TuskAnimation.play(character, "JGoBeyond")
-		TuskStand.action(character, "Lunge", { Target = CFrame.new(0.4, 1.2, -2.2), Duration = (data.Windup or 1) + 0.2 })
+		-- Soft & Wet rises up behind him, its right hand raised open.
+		TuskStand.action(character, "Loom", { Target = CFrame.new(1.6, 2.4, 2.2), Duration = windup + 0.9 })
 		VFXLib.sound(sounds.AwakeningBuild, root, 0.6, 1.1)
-		-- A tiny bubble spins up in Soft & Wet's hand.
-		local b = newBubble("GoBeyond", 0.8)
-		VFXLib.animate(data.Windup or 1, function(a)
+		speechBubble(character, windup + 0.9)
+		panelTint(root.Position, windup + 0.6)
+		CameraFX.fovPunch(-6, 0.4)
+		-- A tiny bubble spins up on his fingertip, tighter and brighter.
+		local b = newBubble("GoBeyond", 0.7)
+		VFXLib.animate(windup, function(a)
 			if root.Parent then
-				placeBubble(b, (root.CFrame * CFrame.new(0.9, 1.2, -2.4)).Position, os.clock())
+				placeBubble(b, fingertip(character, root), os.clock() * (1 + a * 3))
 			end
 			b.Rim.Transparency = 0.6 - 0.4 * a
 		end, function()
 			destroyBubble(b)
 		end)
-		label(character, "GO BEYOND", SHINE, 1.4)
+		-- Stars drift off Soft & Wet while it looms.
+		for i = 1, 6 do
+			task.delay(i * windup / 6, function()
+				if root.Parent then
+					VFXLib.burst((root.CFrame * CFrame.new(1.6, 3.4, 2.2)).Position, { Count = 3, Color = Color3.fromRGB(255, 230, 90), Speed = 6, Lifetime = 0.8 })
+				end
+			end)
+		end
 	elseif data.Phase == "Release" and root then
-		VFXLib.flash(root.Position, SHINE, 4, 24, 0.3)
+		VFXLib.flash(fingertip(character, root), SHINE, 5, 26, 0.3)
 		CameraFX.shakeAt(root.Position, 0.5, 40)
+		if Common.isLocal(character) then
+			CameraFX.fovPunch(8, 0.3)
+		end
 	elseif data.Phase == "Impact" and data.Position then
 		VFXLib.flash(data.Position, SHINE, 8, 40, 0.5)
 		CameraFX.shakeAt(data.Position, 1.2, 60)

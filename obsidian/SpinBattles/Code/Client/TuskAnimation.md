@@ -236,6 +236,9 @@ TuskAnimation.Poses = {
 	JBlow = { Root = { 0, -10, 0, 0 }, Waist = { 4, -10, 0 }, Neck = { 10, 10, 0 }, RightArm = { 80, 0, 40 }, RightElbow = { 90, 0, 0 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 } },
 	JFlick = { Root = { -2, -22, 0, -0.04, 0.3 }, Waist = { -4, -24, 0 }, Neck = { 0, 22, 0 }, RightArm = { 95, 0, 10 }, RightElbow = { 0, 0, 0 }, LeftArm = { 160, 0, -40 }, LeftElbow = { 130, 0, 0 }, LeftHip = { 14, 0, 0 } },
 	JSpread = { Root = { 2, 0, 0, 0.04 }, Waist = { 6, 0, 0 }, Neck = { 10, 0, 0 }, RightArm = { 60, 0, 70 }, RightElbow = { 30, 0, 0 }, LeftArm = { 60, 0, -70 }, LeftElbow = { 30, 0, 0 } },
+	-- GO BEYOND: pointing straight at you, leaning in, left arm hanging loose.
+	JGoPoint = { Root = { 6, -12, 0, -0.04 }, Waist = { 8, -14, 0 }, Neck = { 6, 14, -6 }, RightArm = { 88, 0, 6 }, RightElbow = { 4, 0, 0 }, LeftArm = { -6, 0, -10 }, LeftElbow = { 18, 0, 0 }, RightHip = { -6, 0, 0 }, LeftHip = { 14, 0, 0 }, LeftKnee = { -14, 0, 0 } },
+	JGoJab = { Root = { 10, -14, 0, -0.08, 0.3 }, Waist = { 12, -16, 0 }, Neck = { 8, 16, -6 }, RightArm = { 94, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { -10, 0, -12 }, LeftElbow = { 18, 0, 0 }, RightHip = { -10, 0, 0 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -18, 0, 0 } },
 	JCharge = { Root = { 6, -20, 0, -0.1 }, Waist = { 10, -20, 0 }, Neck = { 14, 20, 0 }, RightArm = { 70, 0, -10 }, RightElbow = { 100, 0, 0 }, LeftArm = { 60, 0, 10 }, LeftElbow = { 100, 0, 0 }, RightKnee = { -16, 0, 0 }, LeftKnee = { -16, 0, 0 }, RightHip = { 12, 0, 0 }, LeftHip = { 12, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
@@ -415,7 +418,7 @@ TuskAnimation.Actions = {
 	J_M1_4 = { { 0, "JStance" }, { 0.1, "JFlick", "Snap", 6 }, { 0.25, "JFlick", "Linear" }, { 0.42, "JStance", "Sine" } },
 	JBubble = { { 0, "JStance" }, { 0.12, "JBlow", "Out" }, { 0.2, "JFlick", "Snap", 4 }, { 0.4, "JFlick", "Linear" }, { 0.6, "JStance", "Sine" } },
 	JMines = { { 0, "JStance" }, { 0.15, "JSpread", "Back", 3 }, { 0.5, "JSpread", "Linear" }, { 0.75, "JStance", "Sine" } },
-	JGoBeyond = { { 0, "JStance" }, { 0.2, "JCharge", "In" }, { 0.95, "JCharge", "Linear", 1 }, { 1.05, "JFlick", "Snap", 7 }, { 1.35, "JFlick", "Linear" }, { 1.6, "JStance", "Sine" } },
+	JGoBeyond = { { 0, "JStance" }, { 0.22, "JGoPoint", "Back", 3 }, { 0.95, "JGoPoint", "Linear", 1 }, { 1.03, "JGoJab", "Snap", 6 }, { 1.5, "JGoJab", "Linear" }, { 1.8, "JStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },

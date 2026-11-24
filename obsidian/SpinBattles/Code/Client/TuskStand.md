@@ -37,6 +37,9 @@ Back to [[Where To Put Code]]
 	  TuskStand.action(character, "Lunge", { Target = CFrame (root-local), Duration })
 	  TuskStand.action(character, "Manifest")  scale-in flash
 	  TuskStand.action(character, "Emerge")    rise up out of the ground
+	  TuskStand.action(character, "Loom", { Target = CFrame, Duration })
+	                                           rise up behind them and hold
+	                                           there, right hand raised open
 	TuskStand.nailPoint(character) -> world CFrame where nail energy gathers
 ]]
 
@@ -279,6 +282,12 @@ local function update(stand, root, dt, now)
 			local s = VFXLib.easeOut(math.min(a / 0.5, 1))
 			desired = desired * CFrame.new(0, (1 - s) * -1.5, 0) * CFrame.Angles(0, (1 - s) * math.pi * 2, 0)
 			snap = 40
+		elseif action.Kind == "Loom" then
+			-- Rise up behind them, hold there, then settle back.
+			local target = root.CFrame * (action.Data.Target or CFrame.new(1.6, 2.4, 2.2))
+			local out = a < 0.25 and VFXLib.easeOut(a / 0.25) or (a < 0.85 and 1 or 1 - VFXLib.easeInOut((a - 0.85) / 0.15))
+			desired = desired:Lerp(target, out)
+			snap = 20
 		elseif action.Kind == "Emerge" then
 			local s = VFXLib.easeOut(a)
 			desired = root.CFrame * CFrame.new(1.2, -3 + s * 4.2, -1.2) * CFrame.Angles(0, s * math.pi * 2, 0)
@@ -310,7 +319,14 @@ local function update(stand, root, dt, now)
 		local a = (now - stand.Action.Start) / stand.Action.Duration
 		punchA = a < 0.3 and a / 0.3 or math.max(0, 1 - (a - 0.3) / 0.7)
 	end
-	if joints.ArmR then
+	local looming = stand.Action and stand.Action.Kind == "Loom"
+	if joints.ArmR and looming then
+		-- Right hand raised open beside it, left arm loose.
+		local a = (now - stand.Action.Start) / stand.Action.Duration
+		local up = a < 0.25 and VFXLib.easeOut(a / 0.25) or (a < 0.85 and 1 or 1 - (a - 0.85) / 0.15)
+		joints.ArmR.Weld.C0 = joints.ArmR.Base * CFrame.Angles(up * 2.3, 0, -up * 0.7) * joints.ArmR.Offset
+		joints.ArmL.Weld.C0 = joints.ArmL.Base * CFrame.Angles(up * 0.4, 0, up * 0.25) * joints.ArmL.Offset
+	elseif joints.ArmR then
 		local sway = math.sin(t * 2) * 0.12
 		joints.ArmR.Weld.C0 = joints.ArmR.Base * CFrame.Angles(sway + punchA * 1.7, 0, -punchA * 0.2) * joints.ArmR.Offset
 		joints.ArmL.Weld.C0 = joints.ArmL.Base * CFrame.Angles(-sway + punchA * 0.6, 0, punchA * 0.3) * joints.ArmL.Offset
