@@ -13767,13 +13767,13 @@ return TuskSneakService
 	ValentineOutfit  (ServerScriptService.SpinServer.ValentineOutfit)
 
 	Gives a character Funny Valentine's look while they play him (TuskAct
-	13), built from blocky parts (no catalog asset ids). Built from the
-	character's description until there's reference art:
-	  * curly blond hair with big curls sticking out at the sides
-	  * a long pale presidential frock coat with gold trim, gold buttons and
-	    tails, a gold star pin
-	  * a white ruffled cravat (jabot) at the throat
-	  * navy trousers and black riding boots
+	13), built from blocky parts (no catalog asset ids), matched to his art:
+	  * long wavy blond hair down to his shoulders with big spiral ringlets
+	    at the sides
+	  * a pink long coat: a high grey collar, ribbed sleeves with grey
+	    ruffled cuffs, the skirt flaring down to his calves
+	  * magenta padded trousers with a belt, tall magenta boots
+	  * magenta gloves with a lattice pattern
 	The player's own hats/hair are hidden while they play him and come back
 	when they switch. Built on the server so every player sees it.
 ]]
@@ -13784,14 +13784,17 @@ local ValentineOutfit = {}
 ValentineOutfit.Act = 13
 
 local C = {
-	Hair = Color3.fromRGB(244, 218, 120),
-	HairDark = Color3.fromRGB(214, 182, 86),
-	Coat = Color3.fromRGB(232, 226, 236),
-	CoatShade = Color3.fromRGB(200, 192, 210),
-	Gold = Color3.fromRGB(222, 178, 70),
-	Jabot = Color3.fromRGB(250, 250, 248),
-	Pants = Color3.fromRGB(44, 50, 84),
-	Boot = Color3.fromRGB(22, 20, 24),
+	Hair = Color3.fromRGB(238, 218, 130),
+	HairDark = Color3.fromRGB(204, 180, 96),
+	Coat = Color3.fromRGB(232, 150, 196),
+	CoatShade = Color3.fromRGB(200, 116, 166),
+	CoatDark = Color3.fromRGB(170, 86, 136),
+	Collar = Color3.fromRGB(120, 116, 124),
+	Pants = Color3.fromRGB(196, 96, 210),
+	PantsShade = Color3.fromRGB(160, 70, 178),
+	Belt = Color3.fromRGB(120, 54, 136),
+	Glove = Color3.fromRGB(214, 110, 196),
+	GloveLine = Color3.fromRGB(150, 60, 140),
 }
 
 local saved = setmetatable({}, { __mode = "k" })
@@ -13819,21 +13822,29 @@ local function piece(parent, outfit, name, size, color, offset)
 	return p
 end
 
+-- A spiral ringlet: a ring of blocks curling round, facing sideways.
+local function ringlet(head, outfit, cf, r, s)
+	for k = 0, 6 do
+		local a = k / 7 * math.pi * 2
+		local rr = r * (1 - k * 0.07)
+		piece(head, outfit, "Ringlet", Vector3.new(0.14 * s, 0.2 * s, 0.2 * s), k % 2 == 0 and C.Hair or C.HairDark, cf * CFrame.new(0, math.sin(a) * rr, math.cos(a) * rr) * CFrame.Angles(-a, 0, 0))
+	end
+	piece(head, outfit, "RingletCore", Vector3.new(0.14 * s, 0.14 * s, 0.14 * s), C.HairDark, cf)
+end
+
 local function headPieces(head, outfit)
 	local s = head.Size.Y / 1.2
 	local w, h, d = head.Size.X / 2, head.Size.Y / 2, head.Size.Z / 2
-	-- Curly blond hair: a volume on top, down the back, and big curls out at the sides.
-	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.2 * s, 0.4 * s, head.Size.Z + 0.2 * s), C.Hair, CFrame.new(0, h, 0.02 * s))
-	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.24 * s, 0.9 * s, 0.24 * s), C.Hair, CFrame.new(0, -0.1 * s, d + 0.1 * s))
-	piece(head, outfit, "Bangs", Vector3.new(head.Size.X * 0.9, 0.2 * s, 0.14 * s), C.HairDark, CFrame.new(0, h - 0.22 * s, -d - 0.04 * s))
+	-- Long wavy blond hair: over the top, a side part, down past the shoulders at the back.
+	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.18 * s, 0.32 * s, head.Size.Z + 0.18 * s), C.Hair, CFrame.new(0, h - 0.02 * s, 0.02 * s))
+	piece(head, outfit, "Bangs", Vector3.new(head.Size.X * 0.7, 0.3 * s, 0.12 * s), C.Hair, CFrame.new(-0.14 * s, h - 0.24 * s, -d - 0.04 * s) * CFrame.Angles(0, 0, 0.25))
+	piece(head, outfit, "Hair", Vector3.new(head.Size.X + 0.3 * s, 1.5 * s, 0.26 * s), C.Hair, CFrame.new(0, -0.4 * s, d + 0.1 * s))
+	piece(head, outfit, "HairWave", Vector3.new(head.Size.X + 0.34 * s, 0.12 * s, 0.28 * s), C.HairDark, CFrame.new(0, -0.6 * s, d + 0.11 * s))
 	for _, side in ipairs({ -1, 1 }) do
-		piece(head, outfit, "Hair", Vector3.new(0.16 * s, 0.8 * s, head.Size.Z * 0.8), C.Hair, CFrame.new(side * (w + 0.07 * s), 0.02 * s, 0.08 * s))
-		-- Ringlet curls sticking out sideways (stacked, spiralling).
-		for k = 0, 2 do
-			piece(head, outfit, "Curl", Vector3.new((0.34 - k * 0.06) * s, (0.34 - k * 0.06) * s, (0.34 - k * 0.06) * s), k % 2 == 0 and C.Hair or C.HairDark,
-				CFrame.new(side * (w + (0.25 + k * 0.22) * s), (0.25 + k * 0.12) * s, (0.05 - k * 0.05) * s) * CFrame.Angles(0, 0, side * k * 0.5))
-		end
-		piece(head, outfit, "Curl", Vector3.new(0.3 * s, 0.3 * s, 0.3 * s), C.HairDark, CFrame.new(side * (w + 0.18 * s), -0.42 * s, 0.1 * s))
+		piece(head, outfit, "Hair", Vector3.new(0.18 * s, 1.2 * s, head.Size.Z * 0.85), C.Hair, CFrame.new(side * (w + 0.08 * s), -0.2 * s, 0.06 * s))
+		-- Big spiral ringlets at the sides, one high and one at the shoulder.
+		ringlet(head, outfit, CFrame.new(side * (w + 0.26 * s), 0.05 * s, -0.05 * s), 0.3 * s, s)
+		ringlet(head, outfit, CFrame.new(side * (w + 0.22 * s), -0.75 * s, 0.15 * s), 0.26 * s, s)
 	end
 end
 
@@ -13844,71 +13855,78 @@ local function body(character, outfit)
 		local s = upper.Size
 		local top, front = s.Y / 2, -s.Z / 2
 		piece(upper, outfit, "Coat", s + Vector3.new(0.1, 0.02, 0.1), C.Coat, CFrame.new())
-		-- High collar and the white ruffled cravat.
-		piece(upper, outfit, "Collar", Vector3.new(s.X * 0.7, 0.4, s.Z + 0.24), C.CoatShade, CFrame.new(0, top + 0.12, 0.04))
-		for k = 0, 3 do
-			piece(upper, outfit, "Jabot", Vector3.new(0.6 - k * 0.08, 0.2, 0.12), C.Jabot, CFrame.new(0, top - 0.08 - k * 0.18, front - 0.08 - (k % 2) * 0.04) * CFrame.Angles(0, 0, (k % 2 == 0 and 0.12 or -0.12)))
-		end
-		-- Lapels edged in gold, gold buttons down the front, a gold star pin.
-		for _, side in ipairs({ -1, 1 }) do
-			piece(upper, outfit, "Lapel", Vector3.new(0.36, s.Y * 0.6, 0.06), C.CoatShade, CFrame.new(side * 0.42, top - s.Y * 0.3, front - 0.06) * CFrame.Angles(0, 0, side * 0.25))
-			piece(upper, outfit, "LapelTrim", Vector3.new(0.06, s.Y * 0.6, 0.07), C.Gold, CFrame.new(side * 0.6, top - s.Y * 0.3, front - 0.07) * CFrame.Angles(0, 0, side * 0.25))
-			for k = 0, 2 do
-				piece(upper, outfit, "Button", Vector3.new(0.12, 0.12, 0.05), C.Gold, CFrame.new(side * 0.2, -s.Y * 0.05 - k * 0.3, front - 0.07))
-			end
-		end
-		for _, a in ipairs({ 0, math.pi / 4 }) do
-			piece(upper, outfit, "StarPin", Vector3.new(0.26, 0.08, 0.04), C.Gold, CFrame.new(-0.55, top - 0.75, front - 0.1) * CFrame.Angles(0, 0, a))
-			piece(upper, outfit, "StarPin", Vector3.new(0.08, 0.26, 0.04), C.Gold, CFrame.new(-0.55, top - 0.75, front - 0.1) * CFrame.Angles(0, 0, a))
-		end
-		piece(upper, outfit, "Hem", Vector3.new(s.X + 0.14, 0.1, s.Z + 0.14), C.Gold, CFrame.new(0, -s.Y / 2 + 0.05, 0))
+		-- High grey collar.
+		piece(upper, outfit, "Collar", Vector3.new(s.X * 0.6, 0.44, s.Z + 0.22), C.Collar, CFrame.new(0, top + 0.16, 0.02))
+		piece(upper, outfit, "CollarFold", Vector3.new(s.X * 0.75, 0.2, s.Z + 0.26), C.CoatShade, CFrame.new(0, top - 0.02, 0.02))
+		-- The coat closes in a diagonal line across the chest.
+		piece(upper, outfit, "Closure", Vector3.new(0.08, s.Y * 1.05, 0.05), C.CoatDark, CFrame.new(0.15, -0.05, front - 0.06) * CFrame.Angles(0, 0, -0.18))
+		piece(upper, outfit, "Panel", Vector3.new(s.X * 0.45, s.Y * 0.9, 0.05), C.CoatShade, CFrame.new(-0.42, -0.05, front - 0.05))
 	end
-	-- Frock-coat skirt and tails.
+	-- Long flaring coat skirt (front split), magenta trousers with a belt.
 	local waist = lower or upper
 	if waist then
 		local ws = waist.Size
 		local waistTop = lower and ws.Y / 2 or -upper.Size.Y / 2 + 0.3
-		local skirtH = lower and 1.7 or 1.4
-		for _, side in ipairs({ -1, 1 }) do
-			piece(waist, outfit, "Skirt", Vector3.new(ws.X / 2 + 0.06, skirtH, 0.12), C.Coat, CFrame.new(side * (ws.X / 4 + 0.1), waistTop - skirtH / 2, -ws.Z / 2 - 0.08) * CFrame.Angles(0, side * 0.12, 0))
-			piece(waist, outfit, "SkirtTrim", Vector3.new(0.07, skirtH, 0.13), C.Gold, CFrame.new(side * 0.14, waistTop - skirtH / 2, -ws.Z / 2 - 0.1))
-			piece(waist, outfit, "Skirt", Vector3.new(0.12, skirtH, ws.Z + 0.16), C.CoatShade, CFrame.new(side * (ws.X / 2 + 0.1), waistTop - skirtH / 2, 0.02))
-		end
-		piece(waist, outfit, "Tails", Vector3.new(ws.X + 0.3, skirtH + 0.4, 0.12), C.Coat, CFrame.new(0, waistTop - skirtH / 2 - 0.2, ws.Z / 2 + 0.08))
 		if lower then
 			piece(lower, outfit, "Pants", ws + Vector3.new(0.06, 0.02, 0.06), C.Pants, CFrame.new())
 		end
+		piece(waist, outfit, "Belt", Vector3.new(ws.X + 0.1, 0.16, ws.Z + 0.1), C.Belt, CFrame.new(0, waistTop - 0.12, 0))
+		local skirtH = lower and 2.4 or 2.0
+		for _, side in ipairs({ -1, 1 }) do
+			-- Front panels pulled back to the sides (the trousers show in the middle).
+			piece(waist, outfit, "Skirt", Vector3.new(ws.X * 0.3, skirtH, 0.12), C.Coat, CFrame.new(side * (ws.X / 2 - 0.1), waistTop - skirtH / 2, -ws.Z / 2 - 0.1) * CFrame.Angles(0, side * 0.35, side * -0.05))
+			piece(waist, outfit, "Skirt", Vector3.new(0.12, skirtH, ws.Z + 0.3), C.CoatShade, CFrame.new(side * (ws.X / 2 + 0.16), waistTop - skirtH / 2, 0.06) * CFrame.Angles(0, 0, side * -0.06))
+		end
+		piece(waist, outfit, "SkirtBack", Vector3.new(ws.X + 0.5, skirtH + 0.1, 0.12), C.Coat, CFrame.new(0, waistTop - skirtH / 2 - 0.05, ws.Z / 2 + 0.14) * CFrame.Angles(0.06, 0, 0))
+		piece(waist, outfit, "Hem", Vector3.new(ws.X + 0.56, 0.1, 0.14), C.CoatDark, CFrame.new(0, waistTop - skirtH - 0.02, ws.Z / 2 + 0.22))
 	end
-	-- Sleeves with gold cuffs.
+	-- Ribbed pink sleeves with grey ruffled cuffs.
 	for _, name in ipairs({ "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm", "Left Arm", "Right Arm" }) do
 		local arm = character:FindFirstChild(name)
 		if arm then
 			local as = arm.Size
 			local tall = as.Y > 1.8
 			local h = tall and as.Y - 0.3 or as.Y
-			piece(arm, outfit, "Sleeve", Vector3.new(as.X + 0.08, h + 0.02, as.Z + 0.08), C.Coat, CFrame.new(0, as.Y / 2 - h / 2, 0))
+			piece(arm, outfit, "Sleeve", Vector3.new(as.X + 0.1, h + 0.02, as.Z + 0.1), C.Coat, CFrame.new(0, as.Y / 2 - h / 2, 0))
+			local y = as.Y / 2 - 0.25
+			while y > as.Y / 2 - h + 0.15 do
+				piece(arm, outfit, "Rib", Vector3.new(as.X + 0.16, 0.08, as.Z + 0.16), C.CoatShade, CFrame.new(0, y, 0))
+				y = y - 0.3
+			end
 			if name:find("Lower") or tall then
-				piece(arm, outfit, "Cuff", Vector3.new(as.X + 0.14, 0.22, as.Z + 0.14), C.Gold, CFrame.new(0, as.Y / 2 - h + 0.11, 0))
-				piece(arm, outfit, "Ruffle", Vector3.new(as.X + 0.04, 0.14, as.Z + 0.04), C.Jabot, CFrame.new(0, as.Y / 2 - h - 0.04, 0))
+				piece(arm, outfit, "Cuff", Vector3.new(as.X + 0.2, 0.26, as.Z + 0.2), C.Collar, CFrame.new(0, as.Y / 2 - h + 0.05, 0))
 			end
 		end
 	end
-	-- Navy trousers and black riding boots.
+	-- Magenta lattice gloves.
+	for _, name in ipairs({ "LeftHand", "RightHand" }) do
+		local hand = character:FindFirstChild(name)
+		if hand then
+			local hs = hand.Size
+			piece(hand, outfit, "Glove", hs + Vector3.new(0.08, 0.06, 0.08), C.Glove, CFrame.new())
+			for _, a in ipairs({ 0.7, -0.7 }) do
+				piece(hand, outfit, "Lattice", Vector3.new(hs.X * 1.2, 0.04, 0.04), C.GloveLine, CFrame.new(0, 0, -hs.Z / 2 - 0.06) * CFrame.Angles(0, 0, a))
+			end
+		end
+	end
+	-- Padded magenta trousers and tall boots.
 	for _, name in ipairs({ "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
 		local leg = character:FindFirstChild(name)
 		if leg then
 			local ls = leg.Size
-			piece(leg, outfit, "Pants", ls + Vector3.new(0.05, 0.02, 0.05), C.Pants, CFrame.new())
+			piece(leg, outfit, "Pants", ls + Vector3.new(0.06, 0.02, 0.06), C.Pants, CFrame.new())
+			piece(leg, outfit, "Pad", Vector3.new(ls.X * 0.7, ls.Y * 0.4, 0.06), C.PantsShade, CFrame.new(0, ls.Y * 0.12, -ls.Z / 2 - 0.05))
 			if name:find("Lower") or ls.Y > 1.8 then
 				local bh = ls.Y > 1.8 and 1.0 or ls.Y + 0.05
-				piece(leg, outfit, "Boot", Vector3.new(ls.X + 0.14, bh, ls.Z + 0.14), C.Boot, CFrame.new(0, -ls.Y / 2 + bh / 2, 0))
+				piece(leg, outfit, "Boot", Vector3.new(ls.X + 0.12, bh, ls.Z + 0.12), C.Pants, CFrame.new(0, -ls.Y / 2 + bh / 2, 0))
+				piece(leg, outfit, "BootTop", Vector3.new(ls.X + 0.16, 0.12, ls.Z + 0.16), C.PantsShade, CFrame.new(0, -ls.Y / 2 + bh, 0))
 			end
 		end
 	end
 	for _, name in ipairs({ "LeftFoot", "RightFoot" }) do
 		local foot = character:FindFirstChild(name)
 		if foot then
-			piece(foot, outfit, "Boot", foot.Size + Vector3.new(0.1, 0.06, 0.14), C.Boot, CFrame.new(0, 0, -0.03))
+			piece(foot, outfit, "Boot", foot.Size + Vector3.new(0.1, 0.06, 0.14), C.PantsShade, CFrame.new(0, 0, -0.03))
 		end
 	end
 end
@@ -17795,27 +17813,27 @@ return CivilWarStand
 	TuskActVFX.D4CStand  (StarterPlayerScripts.SpinClient.TuskActVFX.D4CStand)
 
 	The D4C (Dirty Deeds Done Dirt Cheap) Stand model (Funny Valentine),
-	blocky. Built from the Stand's description until there's reference art:
-	  * a pale-blue humanoid with dark-navy stripes
-	  * two long rabbit-like horns rising from its head, pink inside
-	  * big round eyes and a dark mouth plate with vertical slits
-	  * a navy cross band over the chest, a pink diamond at the belt
-	  * pink-rimmed shoulder pads and knuckle guards
+	blocky, matched to the art:
+	  * a sleek, shiny ice-blue humanoid
+	  * two long flat rabbit ears swept up and back from the head
+	  * a narrow face with a ridge down the middle and dark eyes
+	  * big pink balls on the shoulders, pink briefs at the hips
+	  * white crosses on the chest, thin pink lines down the arms and legs
 	Registered with TuskStandModels by ValentineVFX, so TuskStand floats it
-	behind Valentine (players and NPCs) with a pale-blue aura. A custom model
+	behind Valentine (players and NPCs) with an ice-blue aura. A custom model
 	at ReplicatedStorage.SpinAssets.TuskAct13 replaces it.
 ]]
 
 local D4CStand = {}
 
-local BODY = Color3.fromRGB(156, 194, 236)
-local BODY_SHADE = Color3.fromRGB(120, 160, 210)
-local NAVY = Color3.fromRGB(36, 52, 110)
-local PINK = Color3.fromRGB(236, 120, 170)
-local WHITE = Color3.fromRGB(245, 246, 250)
-local PUPIL = Color3.fromRGB(30, 26, 40)
+local BODY = Color3.fromRGB(176, 228, 240)
+local BODY_SHADE = Color3.fromRGB(130, 194, 214)
+local SHINE = Color3.fromRGB(236, 250, 255)
+local PINK = Color3.fromRGB(234, 124, 166)
+local WHITE = Color3.fromRGB(250, 252, 255)
+local DARK = Color3.fromRGB(40, 60, 80)
 
-D4CStand.Aura = Color3.fromRGB(120, 170, 255)
+D4CStand.Aura = Color3.fromRGB(140, 220, 240)
 D4CStand.AuraLight = Color3.fromRGB(230, 240, 255)
 D4CStand.Offset = CFrame.new(2.3, 1.6, 2.8)
 
@@ -17848,11 +17866,17 @@ local function box(model, parent, name, size, color, cf, material)
 	return p, w
 end
 
--- Navy stripes round a limb (local Y) at the given heights.
-local function stripes(model, parent, size, ys, s)
-	for _, y in ipairs(ys) do
-		box(model, parent, "Stripe", Vector3.new(size.X + 0.06 * s, 0.14 * s, size.Z + 0.06 * s), NAVY, CFrame.new(0, y, 0))
+-- Thin pink lines down both sides of a limb.
+local function pinkLines(model, parent, size, s)
+	for _, side in ipairs({ -1, 1 }) do
+		box(model, parent, "PinkLine", Vector3.new(0.05 * s, size.Y * 0.9, 0.08 * s), PINK, CFrame.new(side * (size.X / 2 + 0.01 * s), 0, 0))
 	end
+end
+
+-- A white cross (+) on a face.
+local function cross(model, parent, cf, size)
+	box(model, parent, "Cross", Vector3.new(size, size * 0.28, 0.05), WHITE, cf)
+	box(model, parent, "Cross", Vector3.new(size * 0.28, size, 0.05), WHITE, cf)
 end
 
 function D4CStand.build(scale)
@@ -17861,65 +17885,61 @@ function D4CStand.build(scale)
 	model.Name = "D4C"
 	local rig = { Joints = {} }
 
-	-- Torso (the anchored root the Stand is moved by).
-	local torso = newPart(model, "Body", Vector3.new(2.2, 2.0, 1.1) * s, BODY)
+	-- Sleek torso (the anchored root the Stand is moved by), narrowing to the waist.
+	local torso = newPart(model, "Body", Vector3.new(2.0, 1.7, 1.0) * s, BODY, Enum.Material.SmoothPlastic)
+	torso.Reflectance = 0.12
 	torso.Anchored = true
 	torso.Massless = false
 	torso.CFrame = CFrame.new()
 	model.PrimaryPart = torso
 	rig.Body = torso
-	local front = -0.56 * s
-	-- Navy cross band over the chest, abs, belt with a pink diamond.
-	for _, a in ipairs({ 0.6, -0.6 }) do
-		box(model, torso, "CrossBand", Vector3.new(0.26, 2.3, 0.06) * s, NAVY, CFrame.new(0, 0.2 * s, front - 0.02 * s) * CFrame.Angles(0, 0, a))
+	local front = -0.51 * s
+	box(model, torso, "Chest", Vector3.new(1.7, 0.9, 0.1) * s, BODY_SHADE, CFrame.new(0, 0.3 * s, front - 0.02 * s))
+	cross(model, torso, CFrame.new(-0.4 * s, 0.35 * s, front - 0.08 * s), 0.5 * s)
+	cross(model, torso, CFrame.new(0.4 * s, 0.35 * s, front - 0.08 * s), 0.5 * s)
+	box(model, torso, "Waist", Vector3.new(1.4, 0.7, 0.8) * s, BODY_SHADE, CFrame.new(0, -1.1 * s, 0))
+	for k = 0, 1 do
+		box(model, torso, "Ab", Vector3.new(0.9, 0.22, 0.06) * s, BODY, CFrame.new(0, (-0.95 - k * 0.28) * s, -0.42 * s))
 	end
-	for _, x in ipairs({ -0.3, 0.3 }) do
-		for k = 0, 1 do
-			box(model, torso, "Ab", Vector3.new(0.45, 0.3, 0.06) * s, BODY_SHADE, CFrame.new(x * s, (-0.45 - k * 0.36) * s, front - 0.03 * s))
-		end
-	end
-	box(model, torso, "Belt", Vector3.new(2.26, 0.26, 1.16) * s, NAVY, CFrame.new(0, -1.0 * s, 0))
-	box(model, torso, "Emblem", Vector3.new(0.4, 0.4, 0.08) * s, PINK, CFrame.new(0, -1.0 * s, front - 0.05 * s) * CFrame.Angles(0, 0, math.pi / 4), Enum.Material.Neon)
-	box(model, torso, "Hips", Vector3.new(1.9, 0.6, 1.0) * s, BODY_SHADE, CFrame.new(0, -1.4 * s, 0))
-	box(model, torso, "Neck", Vector3.new(0.6, 0.4, 0.6) * s, BODY_SHADE, CFrame.new(0, 1.15 * s, 0))
+	-- Pink briefs at the hips.
+	box(model, torso, "Briefs", Vector3.new(1.5, 0.5, 0.86) * s, PINK, CFrame.new(0, -1.6 * s, 0))
+	box(model, torso, "Neck", Vector3.new(0.45, 0.45, 0.45) * s, BODY_SHADE, CFrame.new(0, 1.05 * s, 0))
 
-	-- Head: big round eyes, a slitted mouth plate, two long rabbit-like horns.
-	local headBase = CFrame.new(0, 1.2 * s, 0)
-	local headOffset = CFrame.new(0, 0.6 * s, 0)
-	local head, headWeld = box(model, torso, "Head", Vector3.new(1.05, 1.15, 1.05) * s, BODY, headBase * headOffset)
+	-- Head: narrow, a ridge down the face, dark eyes, long flat rabbit ears swept back.
+	local headBase = CFrame.new(0, 1.15 * s, 0)
+	local headOffset = CFrame.new(0, 0.55 * s, 0)
+	local head, headWeld = box(model, torso, "Head", Vector3.new(0.8, 1.1, 0.9) * s, BODY, headBase * headOffset)
+	head.Reflectance = 0.12
 	rig.Joints.Head = { Weld = headWeld, Base = headBase, Offset = headOffset }
-	local hf = -0.53 * s
+	local hf = -0.45 * s
+	box(model, head, "Ridge", Vector3.new(0.1, 0.9, 0.08) * s, SHINE, CFrame.new(0, 0, hf - 0.03 * s))
+	box(model, head, "Jaw", Vector3.new(0.6, 0.3, 0.8) * s, BODY_SHADE, CFrame.new(0, -0.5 * s, -0.04 * s))
 	for _, side in ipairs({ -1, 1 }) do
-		box(model, head, "Eye", Vector3.new(0.36, 0.36, 0.06) * s, WHITE, CFrame.new(side * 0.24 * s, 0.14 * s, hf - 0.02 * s))
-		box(model, head, "Pupil", Vector3.new(0.16, 0.16, 0.06) * s, PUPIL, CFrame.new(side * 0.22 * s, 0.12 * s, hf - 0.05 * s))
-		box(model, head, "Brow", Vector3.new(0.4, 0.08, 0.06) * s, NAVY, CFrame.new(side * 0.24 * s, 0.36 * s, hf - 0.03 * s) * CFrame.Angles(0, 0, side * -0.2))
-		-- Horn: three tapering blocks, tilted out a little, pink stripe inside.
-		local hornBase = CFrame.new(side * 0.3 * s, 0.55 * s, 0) * CFrame.Angles(0, 0, side * -0.12)
+		box(model, head, "Eye", Vector3.new(0.24, 0.12, 0.06) * s, DARK, CFrame.new(side * 0.2 * s, 0.1 * s, hf - 0.02 * s) * CFrame.Angles(0, 0, side * 0.2))
+		-- Long flat ear: three tapering plates, swept up and back.
+		local earBase = CFrame.new(side * 0.22 * s, 0.5 * s, 0.1 * s) * CFrame.Angles(-0.35, 0, side * -0.08)
 		for k = 0, 2 do
-			local w = (0.28 - k * 0.06) * s
-			box(model, head, "Horn", Vector3.new(w, 0.62 * s, w * 0.8), BODY, hornBase * CFrame.new(0, (0.3 + k * 0.58) * s, 0))
+			local w = (0.34 - k * 0.07) * s
+			box(model, head, "Ear", Vector3.new(w, 0.75 * s, 0.12 * s), BODY, earBase * CFrame.new(0, (0.37 + k * 0.72) * s, 0))
 		end
-		box(model, head, "HornInner", Vector3.new(0.08, 1.4, 0.04) * s, PINK, hornBase * CFrame.new(0, 0.85 * s, -0.12 * s))
-		box(model, head, "HornTip", Vector3.new(0.12, 0.2, 0.12) * s, NAVY, hornBase * CFrame.new(0, 2.0 * s, 0))
-	end
-	box(model, head, "Mouth", Vector3.new(0.6, 0.3, 0.06) * s, NAVY, CFrame.new(0, -0.3 * s, hf - 0.02 * s))
-	for i = -2, 2 do
-		box(model, head, "MouthSlit", Vector3.new(0.04, 0.26, 0.04) * s, BODY, CFrame.new(i * 0.1 * s, -0.3 * s, hf - 0.06 * s))
+		box(model, head, "EarInner", Vector3.new(0.08, 1.7, 0.04) * s, PINK, earBase * CFrame.new(0, 1.05 * s, -0.08 * s))
 	end
 
-	-- Shoulders and striped arms with pink knuckle guards.
+	-- Big pink shoulder balls and sleek arms with pink lines.
 	for _, a in ipairs({ { "ArmL", -1 }, { "ArmR", 1 } }) do
 		local side = a[2]
-		box(model, torso, "ShoulderPad", Vector3.new(0.9, 0.6, 1.1) * s, BODY_SHADE, CFrame.new(side * 1.4 * s, 0.82 * s, 0))
-		box(model, torso, "PadRim", Vector3.new(0.96, 0.12, 1.16) * s, PINK, CFrame.new(side * 1.4 * s, 0.55 * s, 0))
-		local base = CFrame.new(side * 1.45 * s, 0.5 * s, 0)
+		box(model, torso, "ShoulderBall", Vector3.new(1.0, 1.0, 1.0) * s, PINK, CFrame.new(side * 1.3 * s, 0.65 * s, 0), Enum.Material.SmoothPlastic).Shape = Enum.PartType.Ball
+		local base = CFrame.new(side * 1.35 * s, 0.35 * s, 0)
 		local offset = CFrame.new(0, -1.1 * s, 0)
-		local size = Vector3.new(0.6, 2.2, 0.6) * s
+		local size = Vector3.new(0.5, 2.2, 0.5) * s
 		local arm, weld = box(model, torso, a[1], size, BODY, base * offset)
 		rig.Joints[a[1]] = { Weld = weld, Base = base, Offset = offset }
-		stripes(model, arm, size, { 0.6 * s, 0.1 * s, -0.4 * s }, s)
-		local hand = box(model, arm, "Hand", Vector3.new(0.6, 0.5, 0.55) * s, BODY_SHADE, CFrame.new(0, -1.3 * s, 0))
-		box(model, hand, "Knuckles", Vector3.new(0.64, 0.16, 0.2) * s, PINK, CFrame.new(0, -0.1 * s, -0.22 * s))
+		pinkLines(model, arm, size, s)
+		box(model, arm, "Forearm", Vector3.new(0.58, 0.9, 0.58) * s, BODY_SHADE, CFrame.new(0, -0.5 * s, 0))
+		local hand = box(model, arm, "Hand", Vector3.new(0.5, 0.5, 0.45) * s, BODY, CFrame.new(0, -1.3 * s, 0))
+		for f = -1.5, 1.5 do
+			box(model, hand, "Finger", Vector3.new(0.09, 0.4, 0.09) * s, BODY_SHADE, CFrame.new(f * 0.11 * s, -0.4 * s, -0.05 * s))
+		end
 		if a[1] == "ArmR" then
 			local point = Instance.new("Attachment")
 			point.Name = "NailPoint"
@@ -17929,16 +17949,16 @@ function D4CStand.build(scale)
 		end
 	end
 
-	-- Striped legs.
+	-- Long legs with pink lines.
 	for i, side in ipairs({ -1, 1 }) do
-		local base = CFrame.new(side * 0.5 * s, -1.6 * s, 0)
-		local offset = CFrame.new(0, -1.15 * s, 0)
-		local size = Vector3.new(0.7, 2.3, 0.7) * s
+		local base = CFrame.new(side * 0.42 * s, -1.75 * s, 0)
+		local offset = CFrame.new(0, -1.25 * s, 0)
+		local size = Vector3.new(0.6, 2.5, 0.6) * s
 		local leg, weld = box(model, torso, "Leg" .. i, size, BODY, base * offset)
 		rig.Joints["Leg" .. i] = { Weld = weld, Base = base, Offset = offset }
-		stripes(model, leg, size, { 0.5 * s, 0 * s, -0.5 * s }, s)
-		box(model, leg, "Knee", Vector3.new(0.5, 0.3, 0.1) * s, PINK, CFrame.new(0, 0.25 * s, -0.37 * s))
-		box(model, leg, "Foot", Vector3.new(0.7, 0.3, 1.0) * s, NAVY, CFrame.new(0, -1.25 * s, -0.15 * s))
+		pinkLines(model, leg, size, s)
+		box(model, leg, "Knee", Vector3.new(0.5, 0.3, 0.1) * s, SHINE, CFrame.new(0, 0.2 * s, -0.32 * s))
+		box(model, leg, "Foot", Vector3.new(0.5, 0.25, 0.9) * s, BODY_SHADE, CFrame.new(0, -1.35 * s, -0.15 * s))
 	end
 	return model, rig
 end

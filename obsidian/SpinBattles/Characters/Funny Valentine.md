@@ -6,20 +6,20 @@ updated: 2026-11-24
 # Funny Valentine: D4C (Dirty Deeds Done Dirt Cheap)
 Pick him from the character dropdown (FUNNY VALENTINE). Numbers: `TuskConfig.Valentine`.
 Server moves: `TuskActs/Valentine`. Visuals: `TuskActVFX/ValentineVFX`. Stand model: `TuskActVFX/D4CStand`. Look: `ValentineOutfit`. Scripts: `Valentine_Server` + `Valentine_Client`.
-Built from the characters' descriptions (no reference art yet). Send pictures of Valentine and D4C to match them.
+Valentine and D4C were matched to the reference art the user sent (2026-11-24).
 
 ![[funny_valentine_preview.png]]
-**Look:** curly blond hair with big curls out at the sides, a long pale presidential frock coat with gold trim, buttons and tails, a white ruffled cravat, a gold star pin, navy trousers and black riding boots.
+**Look:** long wavy blond hair to the shoulders with big spiral ringlets at the sides; a pink long coat (high grey collar, ribbed sleeves, grey ruffled cuffs, the skirt flaring to the calves, a diagonal closure); padded magenta trousers with a belt; tall magenta boots; magenta lattice gloves.
 
 ![[d4c_preview.png]]
 **D4C:**
-- a pale-blue humanoid with dark-navy stripes;
-- two long rabbit-like horns, pink inside;
-- big round eyes and a slitted mouth plate;
-- a navy cross over the chest and a pink diamond on the belt;
-- pink-rimmed shoulders and knuckles.
+- a sleek, shiny ice-blue humanoid;
+- two long flat rabbit ears swept up and back, pink inside;
+- a narrow face with a ridge down the middle;
+- big pink balls on the shoulders and pink briefs at the hips;
+- white crosses on the chest and thin pink lines down the arms and legs.
 
-It floats behind him with a pale-blue aura (players and NPCs) and strikes with his moves.
+It floats behind him with an ice-blue aura.
 
 | Input | Move | What it does |
 |---|---|---|
