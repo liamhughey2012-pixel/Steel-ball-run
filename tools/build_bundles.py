@@ -79,6 +79,12 @@ def rewrite(name, code):
     # Safety net: nothing in a bundle may still look for the SpinShared folder
     # (it doesn't exist in this install; a WaitForChild on it hangs forever).
     stripped = re.sub(r'--\[(=*)\[.*?\]\1\]', '', code, flags=re.S)
+    # Guard: a require the bundler couldn't rewrite would look for a script
+    # that doesn't exist in the pasted install (and crash or hang).
+    for line in re.sub(r'--\[(=*)\[.*?\]\1\]', '', code, flags=re.S).splitlines():
+        bare = line.split("--")[0]
+        if re.search(r'\brequire\s*,\s*script|\brequire\(\s*script\b', bare):
+            raise SystemExit(f"[build_bundles] {name} has a require the bundler can't rewrite: {line.strip()}")
     for line in stripped.splitlines():
         bare = line.split("--")[0]
         if "SpinShared" in bare:

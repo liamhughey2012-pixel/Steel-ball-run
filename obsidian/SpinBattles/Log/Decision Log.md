@@ -108,3 +108,8 @@ updated: 2026-11-22
   - Every core system starts in its own `pcall` (`__start`).
 - **Also found:** the bundle start-up (hand-written in build_bundles.py) never started `WeatherService` / `WeatherClient`, so it never rained in the pasted game. Both are added now, and the bundler **fails the build** if the source `init.server.lua` / `init.client.lua` starts a system the bundle doesn't.
 - **Lesson:** smoke tests ran the source modules, not the built bundles. The new build-time guards cover the two ways the bundles drifted from the source.
+
+## 2026-11-24: un-rewritable require caught before it shipped broken
+- BountyService loaded CorpseService with `pcall(require, script.Parent.CorpseService)`. The bundler only rewrites `require(script...)`, so in the pasted install it would have indexed a missing child of ServerScriptService. That throws outside the pcall and breaks the bounty board's list. It was caught by the old bounty test the same session; the fix was re-sent.
+- Fix: `pcall(function() return require(script.Parent.CorpseService) end)`, which the bundler rewrites to `__require`.
+- **New build guard:** build_bundles refuses any `require, script` / `require(script` left in a module after rewriting.

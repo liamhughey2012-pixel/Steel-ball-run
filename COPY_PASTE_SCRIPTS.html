@@ -4209,7 +4209,7 @@ end
 return BlackmoreOutfit
 </pre></details></section><section class="card" id="s17">
 <div class="head"><span class="num">17</span><div><h2>BountyService <span class="badge module">ModuleScript</span></h2>
-<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="17">Copy code</button><details><summary>Show code (515 lines)</summary><pre id="c17">--[[
+<p class="loc">Put it in: <b>ServerScriptService › SpinServer</b></p></div></div><button class="copy" data-i="17">Copy code</button><details><summary>Show code (518 lines)</summary><pre id="c17">--[[
 	BountyService  (ServerScriptService.SpinServer.BountyService)
 
 	The BOUNTY BOARD by the spawn (owner&#x27;s design):
@@ -4396,7 +4396,10 @@ end
 local Corpse
 local function corpseService()
 	if Corpse == nil then
-		local ok, mod = pcall(require, script.Parent.CorpseService)
+		-- (Wrapped in a function so the bundler can rewrite the require.)
+		local ok, mod = pcall(function()
+			return require(script.Parent.CorpseService)
+		end)
 		Corpse = ok and mod or false
 	end
 	return Corpse or nil

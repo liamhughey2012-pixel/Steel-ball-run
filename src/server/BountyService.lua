@@ -185,7 +185,10 @@ end
 local Corpse
 local function corpseService()
 	if Corpse == nil then
-		local ok, mod = pcall(require, script.Parent.CorpseService)
+		-- (Wrapped in a function so the bundler can rewrite the require.)
+		local ok, mod = pcall(function()
+			return require(script.Parent.CorpseService)
+		end)
 		Corpse = ok and mod or false
 	end
 	return Corpse or nil
