@@ -136,6 +136,17 @@ TuskConfig.StandModels = {
 -- Character roster (shown in the top-left dropdown)
 -- Available = false shows the character as IN DEVELOPMENT (not selectable).
 ---------------------------------------------------------------------------
+-- CUTSCENES (client Cutscenes): short cinematic camera moves with letterbox
+-- bars and a title card. Every one can be skipped (SKIP, Enter, Select).
+TuskConfig.Cutscenes = {
+	Enabled = true,
+	Intro = true, IntroDelay = 2, -- a fly-over of the map when you first spawn (once a session)
+	RaceStages = true, -- a sweep over each Steel Ball Run stage start during its countdown
+	RaceWinner = true, -- circle the overall winner at the end of the race
+	Ultimates = true, -- a quick close-up with your ultimate's name (under a second)
+	CorpseComplete = true, -- a golden orbit when you complete the Saint's Corpse
+}
+
 TuskConfig.Roster = {
 	{ Id = "Johnny", Name = "JOHNNY JOESTAR", Stand = "TUSK", Available = true, Color = Color3.fromRGB(90, 230, 255) },
 	{ Id = "Gyro", Name = "GYRO ZEPPELI", Stand = "BALL BREAKER", Available = true, Color = Color3.fromRGB(110, 210, 90) },
