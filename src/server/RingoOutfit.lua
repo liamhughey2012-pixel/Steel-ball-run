@@ -3,16 +3,20 @@
 
 	Gives a character the look of Ringo Roadagain while they play him
 	(TuskAct 19), built from blocky parts (no catalog asset ids), matched
-	to his art:
-	  * grey hair swept up and back, a grey moustache and chin beard
-	  * a sleeveless grey top with a huge high collar (a folded-back hood),
-	    open down the chest; orange "60" and "5" marks and Mandom's yellow
-	    WATCH HAND across his chest (a triangle at the top, a ring at the
-	    bottom, small yellow squares beside it)
-	  * pink tubes plugged into his right arm and chest, gold rings where
-	    they go in
-	  * purple gloves, a gold bracelet, a brown gun belt with a holster
-	  * grey trousers
+	to his art (2026-11-25):
+	  * silver-grey hair swept up and back, a moustache and chin beard
+	  * an all-WHITE outfit: a shirt with a huge, high, pointed collar,
+	    open in a deep V right down to his belt; short cap sleeves (bare,
+	    tanned arms)
+	  * purple-grey fingerless gloves; a gold bracelet on his right wrist
+	  * a mustard-yellow gun belt with a PINK RING buckle and brass studs,
+	    a tan holster on his right hip, and a brown flap hanging down
+	    behind his hips
+	  * white trousers that flare out at the ankle with a row of gold studs
+	    round each hem; brown heeled boots
+	  * Mandom's pink tubes plugged in all over his right arm, shoulder and
+	    chest (and a couple in his left forearm), gold clamps where they
+	    go in; Mandom's yellow WATCH HAND across his chest with "60" / "5"
 	Mandom itself (MandomStand) rides on his right shoulder.
 	The player's own hats/hair are hidden while they play him and come back
 	when they switch. Built on the server so every player sees it.
@@ -24,22 +28,27 @@ local RingoOutfit = {}
 RingoOutfit.Act = 19
 
 local C = {
-	Hair = Color3.fromRGB(176, 180, 188),
-	HairShade = Color3.fromRGB(130, 134, 144),
-	Top = Color3.fromRGB(150, 156, 166),
-	TopShade = Color3.fromRGB(112, 118, 130),
-	CollarIn = Color3.fromRGB(196, 200, 208),
+	Hair = Color3.fromRGB(204, 206, 214),
+	HairShade = Color3.fromRGB(150, 154, 166),
+	White = Color3.fromRGB(240, 240, 244),
+	Shade = Color3.fromRGB(196, 200, 212),
+	Fold = Color3.fromRGB(170, 176, 190),
 	Mark = Color3.fromRGB(226, 120, 50),
 	Hand = Color3.fromRGB(246, 204, 40),
-	Tube = Color3.fromRGB(190, 74, 124),
+	Tube = Color3.fromRGB(176, 58, 100),
+	TubeLight = Color3.fromRGB(206, 92, 132),
 	Ring = Color3.fromRGB(226, 182, 76),
-	Glove = Color3.fromRGB(150, 128, 176),
+	Glove = Color3.fromRGB(122, 106, 128),
 	Gold = Color3.fromRGB(230, 186, 70),
-	Belt = Color3.fromRGB(150, 96, 46),
-	BeltDark = Color3.fromRGB(104, 64, 30),
-	Buckle = Color3.fromRGB(220, 190, 110),
-	Pants = Color3.fromRGB(132, 138, 150),
-	Shoe = Color3.fromRGB(70, 52, 40),
+	Belt = Color3.fromRGB(206, 162, 62),
+	BeltDark = Color3.fromRGB(150, 110, 36),
+	Stud = Color3.fromRGB(176, 140, 60),
+	PinkRing = Color3.fromRGB(228, 128, 156),
+	Holster = Color3.fromRGB(214, 170, 80),
+	Grip = Color3.fromRGB(80, 56, 40),
+	Flap = Color3.fromRGB(136, 84, 46),
+	Boot = Color3.fromRGB(118, 70, 38),
+	Heel = Color3.fromRGB(70, 44, 26),
 }
 
 local saved = setmetatable({}, { __mode = "k" })
@@ -101,107 +110,188 @@ local function headPieces(head, outfit)
 	piece(head, outfit, "Beard", Vector3.new(0.14 * s, 0.24 * s, 0.06 * s), C.Hair, CFrame.new(0, -h + 0.04 * s, -d - 0.02 * s))
 end
 
+-- A Mandom tube plugged in at `into` (coming from `from`), with a gold clamp.
+local function tube(parent, outfit, from, into, out)
+	cyl(parent, outfit, "Tube", from, into, 0.14, C.Tube)
+	cyl(parent, outfit, "TubeShine", from + Vector3.new(0, 0.03, 0), into + Vector3.new(0, 0.03, 0), 0.05, C.TubeLight)
+	local dir = (into - from).Unit
+	local clamp = piece(parent, outfit, "Clamp", Vector3.new(0.08, 0.24, 0.24), C.Ring, CFrame.lookAt(into, into + dir) * CFrame.Angles(0, math.pi / 2, 0))
+	clamp.Shape = Enum.PartType.Cylinder
+	-- Little prongs gripping the skin.
+	local o = out or Vector3.new(0, 0, -1)
+	for _, k in ipairs({ -1, 1 }) do
+		local side = dir:Cross(o)
+		side = side.Magnitude > 1e-3 and side.Unit or Vector3.new(1, 0, 0)
+		piece(parent, outfit, "Prong", Vector3.new(0.05, 0.05, 0.16), C.Ring, CFrame.lookAt(into + side * k * 0.12, into + side * k * 0.24))
+	end
+end
+
 local function body(character, outfit)
 	local upper = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
 	local lower = character:FindFirstChild("LowerTorso")
 	local head = character:FindFirstChild("Head")
-	local skin = head and head.Color or Color3.fromRGB(196, 136, 92)
+	local skin = head and head.Color or Color3.fromRGB(206, 146, 100)
 	if upper then
 		local s = upper.Size
-		local top, front = s.Y / 2, -s.Z / 2
-		piece(upper, outfit, "Top", s + Vector3.new(0.1, 0.02, 0.1), C.Top, CFrame.new())
-		-- Open down the chest: a V of skin.
-		piece(upper, outfit, "Chest", Vector3.new(0.34, s.Y * 0.55, 0.04), skin, CFrame.new(-0.08, top - s.Y * 0.3, front - 0.06))
-		piece(upper, outfit, "ChestTip", Vector3.new(0.22, 0.22, 0.04), skin, CFrame.new(-0.08, top - s.Y * 0.58, front - 0.06) * CFrame.Angles(0, 0, math.pi / 4))
-		-- The huge high collar (a folded-back hood), open at the front.
-		piece(upper, outfit, "CollarBack", Vector3.new(s.X * 0.85, 0.95, 0.25), C.Top, CFrame.new(0, top + 0.4, -front - 0.05) * CFrame.Angles(math.rad(-12), 0, 0))
-		for _, side in ipairs({ -1, 1 }) do
-			piece(upper, outfit, "Collar", Vector3.new(0.22, 0.9, s.Z * 0.9), C.Top, CFrame.new(side * s.X * 0.36, top + 0.36, 0.02) * CFrame.Angles(0, 0, side * -0.22))
-			piece(upper, outfit, "CollarIn", Vector3.new(0.06, 0.8, s.Z * 0.75), C.CollarIn, CFrame.new(side * (s.X * 0.36 - 0.12), top + 0.36, 0.0) * CFrame.Angles(0, 0, side * -0.22))
-			piece(upper, outfit, "Lapel", Vector3.new(0.3, 0.7, 0.06), C.TopShade, CFrame.new(side * 0.28 - 0.08, top - 0.3, front - 0.05) * CFrame.Angles(0, 0, side * 0.35))
+		local top, front, back = s.Y / 2, -s.Z / 2, s.Z / 2
+		piece(upper, outfit, "Shirt", s + Vector3.new(0.1, 0.02, 0.1), C.White, CFrame.new())
+		-- Open in a deep V right down to the belt: skin, narrowing as it goes.
+		local rows = 6
+		for k = 0, rows - 1 do
+			local w = 0.95 - k * 0.15
+			local h = s.Y / rows
+			piece(upper, outfit, "Chest", Vector3.new(w, h + 0.01, 0.04), skin, CFrame.new(0, top - (k + 0.5) * h, front - 0.06))
 		end
-		-- "60" and "5" marks.
-		piece(upper, outfit, "Mark60", Vector3.new(0.26, 0.16, 0.04), C.Mark, CFrame.new(0.2, 0.05, front - 0.06))
-		piece(upper, outfit, "Mark5", Vector3.new(0.12, 0.16, 0.04), C.Mark, CFrame.new(-0.6, 0.3, front - 0.06))
-		-- Mandom's watch hand across his chest: from up by his left
-		-- shoulder down towards his right hip, a triangle at the top, a ring below.
-		local a = Vector3.new(-0.55, top - 0.12, front - 0.1)
-		local b = Vector3.new(0.35, -top + 0.08, front - 0.1)
+		-- The V's edges: folded white lapels with a grey shadow.
+		for _, side in ipairs({ -1, 1 }) do
+			local a = Vector3.new(side * 0.5, top - 0.02, front - 0.08)
+			local b = Vector3.new(side * 0.06, -top + 0.05, front - 0.08)
+			local mid = (a + b) / 2
+			local len = (b - a).Magnitude
+			piece(upper, outfit, "Lapel", Vector3.new(0.16, len, 0.05), C.White, CFrame.lookAt(mid, mid + Vector3.new(0, 0, -1), (a - b).Unit) * CFrame.new(side * 0.06, 0, 0))
+			piece(upper, outfit, "LapelShade", Vector3.new(0.04, len, 0.055), C.Fold, CFrame.lookAt(mid, mid + Vector3.new(0, 0, -1), (a - b).Unit) * CFrame.new(side * 0.15, 0, 0))
+			-- Fabric folds down the side of the shirt.
+			piece(upper, outfit, "Fold", Vector3.new(0.05, s.Y * 0.7, 0.03), C.Shade, CFrame.new(side * s.X * 0.38, -0.1, front - 0.06) * CFrame.Angles(0, 0, side * 0.15))
+		end
+		-- The huge collar: tall, standing up round his neck and flaring out
+		-- to points.
+		piece(upper, outfit, "CollarBack", Vector3.new(s.X * 0.8, 1.15, 0.2), C.White, CFrame.new(0, top + 0.5, back - 0.05) * CFrame.Angles(math.rad(-14), 0, 0))
+		piece(upper, outfit, "CollarBackIn", Vector3.new(s.X * 0.7, 1.0, 0.05), C.Shade, CFrame.new(0, top + 0.46, back - 0.2) * CFrame.Angles(math.rad(-14), 0, 0))
+		for _, side in ipairs({ -1, 1 }) do
+			-- Each half: a wide panel standing up beside his neck, turned to
+			-- face forward-and-out, leaning out over the shoulder, with a
+			-- pointed tip at its top outer corner.
+			local wing = CFrame.new(side * 0.86, top + 0.42, -0.1) * CFrame.Angles(0, side * -0.35, side * -0.3)
+			piece(upper, outfit, "CollarWing", Vector3.new(0.7, 1.05, 0.1), C.White, wing)
+			piece(upper, outfit, "CollarWingIn", Vector3.new(0.7, 0.85, 0.04), C.Shade, wing * CFrame.new(-side * 0.02, -0.02, 0.07))
+			piece(upper, outfit, "CollarEdge", Vector3.new(0.05, 0.95, 0.11), C.Fold, wing * CFrame.new(-side * 0.4, 0, 0))
+			piece(upper, outfit, "CollarTip", Vector3.new(0.42, 0.42, 0.1), C.White, wing * CFrame.new(side * 0.26, 0.45, 0) * CFrame.Angles(0, 0, math.rad(45)))
+		end
+		-- "60" and "5" and Mandom's watch hand.
+		piece(upper, outfit, "Mark60", Vector3.new(0.24, 0.15, 0.04), C.Mark, CFrame.new(0.42, 0.12, front - 0.07))
+		piece(upper, outfit, "Mark5", Vector3.new(0.11, 0.15, 0.04), C.Mark, CFrame.new(-0.62, 0.3, front - 0.07))
+		local a = Vector3.new(-0.55, top - 0.12, front - 0.11)
+		local b = Vector3.new(0.35, -top + 0.08, front - 0.11)
 		local mid = (a + b) / 2
 		piece(upper, outfit, "WatchHand", Vector3.new(0.07, (b - a).Magnitude, 0.05), C.Hand, CFrame.lookAt(mid, mid + Vector3.new(0, 0, -1), (a - b).Unit))
-		piece(upper, outfit, "HandTip", Vector3.new(0.22, 0.22, 0.05), C.Hand, CFrame.new(a) * CFrame.Angles(0, 0, math.pi / 4))
+		piece(upper, outfit, "HandTip", Vector3.new(0.2, 0.2, 0.05), C.Hand, CFrame.new(a) * CFrame.Angles(0, 0, math.pi / 4))
 		local ring = piece(upper, outfit, "HandRing", Vector3.new(0.05, 0.24, 0.24), C.Hand, CFrame.new(b) * CFrame.Angles(0, math.pi / 2, 0))
 		ring.Shape = Enum.PartType.Cylinder
-		piece(upper, outfit, "Mark", Vector3.new(0.13, 0.13, 0.05), C.Hand, CFrame.new(0.05, top - 0.2, front - 0.1) * CFrame.Angles(0, 0, math.pi / 4))
-		piece(upper, outfit, "Mark", Vector3.new(0.12, 0.12, 0.05), C.Hand, CFrame.new(-0.7, 0.5, front - 0.1) * CFrame.Angles(0, 0, math.pi / 4))
-		-- Pink tubes into his chest (right side), gold rings where they go in.
-		for k, y in ipairs({ 0.35, -0.05, -0.4 }) do
-			local into = Vector3.new(0.7 - k * 0.06, y, front - 0.04)
-			local from = Vector3.new(s.X / 2 + 0.35, y + 0.35, front + 0.25)
-			cyl(upper, outfit, "Tube", from, into, 0.13, C.Tube)
-			local r = piece(upper, outfit, "TubeRing", Vector3.new(0.05, 0.2, 0.2), C.Ring, CFrame.new(into) * CFrame.Angles(0, math.pi / 2, 0))
-			r.Shape = Enum.PartType.Cylinder
+		piece(upper, outfit, "Mark", Vector3.new(0.12, 0.12, 0.05), C.Hand, CFrame.new(0.05, top - 0.22, front - 0.11) * CFrame.Angles(0, 0, math.pi / 4))
+		piece(upper, outfit, "Mark", Vector3.new(0.11, 0.11, 0.05), C.Hand, CFrame.new(-0.72, 0.5, front - 0.11) * CFrame.Angles(0, 0, math.pi / 4))
+		-- Tubes into his right chest, right shoulder and upper back.
+		for k, y in ipairs({ 0.45, 0.05, -0.35 }) do
+			tube(upper, outfit, Vector3.new(s.X / 2 + 0.45, y + 0.4, front + 0.3), Vector3.new(0.62 - k * 0.05, y, front - 0.06))
 		end
+		tube(upper, outfit, Vector3.new(s.X / 2 + 0.2, top + 0.6, 0.2), Vector3.new(s.X / 2 - 0.15, top + 0.02, -0.1), Vector3.new(0, 1, 0))
+		tube(upper, outfit, Vector3.new(s.X / 2 + 0.4, top + 0.3, back + 0.3), Vector3.new(0.5, 0.3, back + 0.04), Vector3.new(0, 0, 1))
+		tube(upper, outfit, Vector3.new(s.X / 2 + 0.3, 0.2, back + 0.5), Vector3.new(0.3, -0.2, back + 0.04), Vector3.new(0, 0, 1))
 	end
 	if lower then
 		local ls = lower.Size
-		piece(lower, outfit, "Pants", ls + Vector3.new(0.06, 0.02, 0.06), C.Pants, CFrame.new())
-		-- The brown gun belt, buckle, and a holster on his right hip.
-		piece(lower, outfit, "Belt", Vector3.new(ls.X + 0.16, 0.24, ls.Z + 0.16), C.Belt, CFrame.new(0, ls.Y / 2 - 0.1, 0))
-		piece(lower, outfit, "BeltEdge", Vector3.new(ls.X + 0.18, 0.05, ls.Z + 0.18), C.BeltDark, CFrame.new(0, ls.Y / 2 - 0.22, 0))
-		piece(lower, outfit, "Buckle", Vector3.new(0.3, 0.2, 0.06), C.Buckle, CFrame.new(0, ls.Y / 2 - 0.1, -ls.Z / 2 - 0.1))
-		piece(lower, outfit, "Holster", Vector3.new(0.24, 0.6, 0.4), C.BeltDark, CFrame.new(ls.X / 2 + 0.14, -0.05, 0.05) * CFrame.Angles(0, 0, 0.12))
-		piece(lower, outfit, "Grip", Vector3.new(0.12, 0.3, 0.16), Color3.fromRGB(60, 50, 44), CFrame.new(ls.X / 2 + 0.16, 0.3, 0.12) * CFrame.Angles(0, 0, -0.3))
+		piece(lower, outfit, "Trousers", ls + Vector3.new(0.06, 0.02, 0.06), C.White, CFrame.new())
+		-- The mustard gun belt: brass studs, a pink ring buckle.
+		local by = ls.Y / 2 - 0.08
+		piece(lower, outfit, "Belt", Vector3.new(ls.X + 0.18, 0.3, ls.Z + 0.18), C.Belt, CFrame.new(0, by, 0))
+		for _, dy in ipairs({ -0.14, 0.14 }) do
+			piece(lower, outfit, "BeltStitch", Vector3.new(ls.X + 0.2, 0.03, ls.Z + 0.2), C.BeltDark, CFrame.new(0, by + dy, 0))
+		end
+		for k = -3, 3 do
+			if k ~= 0 then
+				local stud = piece(lower, outfit, "BeltStud", Vector3.new(0.08, 0.08, 0.08), C.Stud, CFrame.new(k * 0.26, by, -ls.Z / 2 - 0.11))
+				stud.Shape = Enum.PartType.Ball
+			end
+		end
+		local buckle = piece(lower, outfit, "Buckle", Vector3.new(0.05, 0.36, 0.36), C.PinkRing, CFrame.new(0.1, by, -ls.Z / 2 - 0.12) * CFrame.Angles(0, math.pi / 2, 0))
+		buckle.Shape = Enum.PartType.Cylinder
+		local hole = piece(lower, outfit, "BuckleHole", Vector3.new(0.06, 0.22, 0.22), C.Belt, CFrame.new(0.1, by, -ls.Z / 2 - 0.125) * CFrame.Angles(0, math.pi / 2, 0))
+		hole.Shape = Enum.PartType.Cylinder
+		-- The holster on his right hip, the revolver's grip poking out.
+		piece(lower, outfit, "Holster", Vector3.new(0.26, 0.85, 0.5), C.Holster, CFrame.new(ls.X / 2 + 0.18, -0.25, -0.05) * CFrame.Angles(0, 0, 0.1))
+		piece(lower, outfit, "HolsterFlap", Vector3.new(0.28, 0.22, 0.52), C.BeltDark, CFrame.new(ls.X / 2 + 0.16, 0.12, -0.05) * CFrame.Angles(0, 0, 0.1))
+		piece(lower, outfit, "Grip", Vector3.new(0.14, 0.34, 0.18), C.Grip, CFrame.new(ls.X / 2 + 0.2, 0.35, 0.05) * CFrame.Angles(0, 0, -0.35))
+		-- A brown flap hanging down behind his hips.
+		piece(lower, outfit, "Flap", Vector3.new(ls.X + 0.1, 1.7, 0.1), C.Flap, CFrame.new(0, -0.85, ls.Z / 2 + 0.12) * CFrame.Angles(math.rad(6), 0, 0))
+		for _, side in ipairs({ -1, 1 }) do
+			piece(lower, outfit, "FlapSide", Vector3.new(0.1, 1.4, ls.Z * 0.6), C.Flap, CFrame.new(side * (ls.X / 2 + 0.1), -0.7, ls.Z * 0.2))
+		end
 	end
-	-- Bare arms (sleeveless), purple gloves, a gold bracelet on the right wrist.
+	-- Cap sleeves; bare arms below them.
 	for _, name in ipairs({ "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm" }) do
 		local arm = character:FindFirstChild(name)
 		if arm then
 			piece(arm, outfit, "Skin", arm.Size + Vector3.new(0.04, 0, 0.04), skin, CFrame.new())
+			if name:find("Upper") then
+				local as = arm.Size
+				local h = as.Y * 0.42
+				piece(arm, outfit, "Sleeve", Vector3.new(as.X + 0.16, h, as.Z + 0.16), C.White, CFrame.new(0, as.Y / 2 - h / 2 + 0.02, 0))
+				piece(arm, outfit, "SleeveHem", Vector3.new(as.X + 0.2, 0.08, as.Z + 0.2), C.Shade, CFrame.new(0, as.Y / 2 - h + 0.04, 0))
+			end
 		end
 	end
+	-- Fingerless gloves.
 	for _, name in ipairs({ "LeftHand", "RightHand" }) do
 		local hand = character:FindFirstChild(name)
 		if hand then
-			piece(hand, outfit, "Glove", hand.Size + Vector3.new(0.1, 0.06, 0.1), C.Glove, CFrame.new())
-			piece(hand, outfit, "Cuff", Vector3.new(hand.Size.X + 0.2, 0.16, hand.Size.Z + 0.2), C.Glove, CFrame.new(0, hand.Size.Y / 2 + 0.02, 0))
+			local hs = hand.Size
+			piece(hand, outfit, "Glove", Vector3.new(hs.X + 0.1, hs.Y * 0.7, hs.Z + 0.1), C.Glove, CFrame.new(0, hs.Y * 0.15, 0))
+			piece(hand, outfit, "Fingers", Vector3.new(hs.X + 0.02, hs.Y * 0.32, hs.Z + 0.02), skin, CFrame.new(0, -hs.Y * 0.35, 0))
+			piece(hand, outfit, "Cuff", Vector3.new(hs.X + 0.2, 0.14, hs.Z + 0.2), C.Glove, CFrame.new(0, hs.Y / 2 + 0.02, 0))
 		end
 	end
 	local rightLower = character:FindFirstChild("RightLowerArm") or character:FindFirstChild("Right Arm")
 	if rightLower then
 		local as = rightLower.Size
 		piece(rightLower, outfit, "Bracelet", Vector3.new(as.X + 0.14, 0.14, as.Z + 0.14), C.Gold, CFrame.new(0, -as.Y / 2 + 0.12, 0))
+		for k, y in ipairs({ 0.3, -0.05 }) do
+			tube(rightLower, outfit, Vector3.new(as.X / 2 + 0.5, y + 0.5, 0.25 - k * 0.2), Vector3.new(as.X / 2 + 0.02, y, -0.05 * k), Vector3.new(1, 0, 0))
+		end
 	end
-	-- Pink tubes plugged into his right arm, gold rings where they go in.
+	-- Tubes all over his right upper arm.
 	local rightUpper = character:FindFirstChild("RightUpperArm") or character:FindFirstChild("Right Arm")
 	if rightUpper then
 		local as = rightUpper.Size
-		for k, y in ipairs({ 0.25, -0.15 }) do
-			local into = Vector3.new(as.X / 2 + 0.02, y, -0.05 * k)
-			local from = Vector3.new(as.X / 2 + 0.45, y + 0.4, 0.3)
-			cyl(rightUpper, outfit, "Tube", from, into, 0.13, C.Tube)
-			local r = piece(rightUpper, outfit, "TubeRing", Vector3.new(0.05, 0.2, 0.2), C.Ring, CFrame.new(into) * CFrame.Angles(0, 0, math.pi / 2))
-			r.Shape = Enum.PartType.Cylinder
+		for k, y in ipairs({ 0.3, 0.0, -0.3 }) do
+			tube(rightUpper, outfit, Vector3.new(as.X / 2 + 0.5, y + 0.45, 0.35 - k * 0.15), Vector3.new(as.X / 2 + 0.02, y, -0.15 + k * 0.08), Vector3.new(1, 0, 0))
+		end
+		tube(rightUpper, outfit, Vector3.new(0.2, 0.2, -as.Z / 2 - 0.5), Vector3.new(0.1, -0.1, -as.Z / 2 - 0.02), Vector3.new(0, 0, -1))
+	end
+	-- And a couple in his left forearm.
+	local leftLower = character:FindFirstChild("LeftLowerArm") or character:FindFirstChild("Left Arm")
+	if leftLower then
+		local as = leftLower.Size
+		for k, y in ipairs({ 0.25, -0.1 }) do
+			tube(leftLower, outfit, Vector3.new(0.1 * k, y + 0.45, -as.Z / 2 - 0.5), Vector3.new(0.05 * k, y, -as.Z / 2 - 0.02), Vector3.new(0, 0, -1))
 		end
 	end
-	if rightLower then
-		local as = rightLower.Size
-		local into = Vector3.new(as.X / 2 + 0.02, 0.1, 0)
-		cyl(rightLower, outfit, "Tube", Vector3.new(as.X / 2 + 0.5, 0.7, 0.2), into, 0.13, C.Tube)
-		local r = piece(rightLower, outfit, "TubeRing", Vector3.new(0.05, 0.2, 0.2), C.Ring, CFrame.new(into) * CFrame.Angles(0, 0, math.pi / 2))
-		r.Shape = Enum.PartType.Cylinder
-	end
-	-- Grey trousers, brown boots.
+	-- White trousers flaring at the ankle, gold studs round the hem.
 	for _, name in ipairs({ "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg" }) do
 		local leg = character:FindFirstChild(name)
 		if leg then
-			piece(leg, outfit, "Pants", leg.Size + Vector3.new(0.06, 0.02, 0.06), C.Pants, CFrame.new())
+			local ls = leg.Size
+			piece(leg, outfit, "Trousers", ls + Vector3.new(0.06, 0.02, 0.06), C.White, CFrame.new())
+			if name:find("Lower") or name == "Left Leg" or name == "Right Leg" then
+				local fh = ls.Y * 0.4
+				local flare = piece(leg, outfit, "Flare", Vector3.new(ls.X + 0.34, fh, ls.Z + 0.34), C.White, CFrame.new(0, -ls.Y / 2 + fh / 2 - 0.05, 0))
+				flare.Name = "Flare"
+				piece(leg, outfit, "FlareFold", Vector3.new(0.05, fh * 0.9, 0.05), C.Fold, CFrame.new(0, -ls.Y / 2 + fh / 2 - 0.05, -ls.Z / 2 - 0.18))
+				local hy = -ls.Y / 2 + 0.02
+				for i = 0, 7 do
+					local ang = i / 8 * math.pi * 2
+					local stud = piece(leg, outfit, "HemStud", Vector3.new(0.13, 0.13, 0.13), C.Gold, CFrame.new(math.sin(ang) * (ls.X / 2 + 0.2), hy, math.cos(ang) * (ls.Z / 2 + 0.2)))
+					stud.Shape = Enum.PartType.Ball
+				end
+			end
 		end
 	end
+	-- Brown heeled boots.
 	for _, name in ipairs({ "LeftFoot", "RightFoot" }) do
 		local foot = character:FindFirstChild(name)
 		if foot then
-			piece(foot, outfit, "Shoe", foot.Size + Vector3.new(0.08, 0.04, 0.12), C.Shoe, CFrame.new())
+			local fs = foot.Size
+			piece(foot, outfit, "Boot", fs + Vector3.new(0.08, 0.04, 0.16), C.Boot, CFrame.new(0, 0, -0.04))
+			piece(foot, outfit, "Heel", Vector3.new(fs.X * 0.7, 0.18, 0.3), C.Heel, CFrame.new(0, -fs.Y / 2 - 0.06, fs.Z / 2 - 0.12))
+			piece(foot, outfit, "Toe", Vector3.new(fs.X * 0.9, fs.Y * 0.8, 0.12), C.Heel, CFrame.new(0, -0.02, -fs.Z / 2 - 0.1))
 		end
 	end
 end

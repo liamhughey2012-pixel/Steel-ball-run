@@ -228,17 +228,19 @@ TuskConfig.Bounty = {
 		},
 	},
 	-- SHOP: spend Cash. Effects last until they run out or you die.
+	-- Category groups them on the shop page; Emoji is the picture on the card;
+	-- Tag is the short effect chip.
 	Shop = {
-		{ Id = "Bandages", Name = "BANDAGES", Price = 60, Text = "Heal 40 health right now", Icon = "+", Heal = 40 },
-		{ Id = "Tonic", Name = "SNAKE-OIL TONIC", Price = 90, Text = "+15% speed for 2 minutes", Icon = "~", Speed = 1.15, Time = 120 },
-		{ Id = "Horseshoe", Name = "LUCKY HORSESHOE", Price = 120, Text = "+25% ultimate charge for 2 minutes", Icon = "U", UltGain = 1.25, Time = 120 },
-		{ Id = "Compass", Name = "CORPSE COMPASS", Price = 100, Text = "Points you to the nearest Saint's Corpse part for 60 s", Icon = "N", Time = 60 },
-		{ Id = "Canteen", Name = "TIN CANTEEN", Price = 80, Text = "Heal 3 health a second for 20 s", Icon = "C", Regen = 3, Time = 20 },
-		{ Id = "Duster", Name = "LEATHER DUSTER", Price = 140, Text = "Take 15% less damage for 2 minutes", Icon = "D", Resist = 0.85, Time = 120 },
-		{ Id = "Whiskey", Name = "RYE WHISKEY", Price = 130, Text = "Hit 12% harder for 90 s", Icon = "W", Damage = 1.12, Time = 90 },
-		{ Id = "Badge", Name = "PINKERTON BADGE", Price = 160, Text = "Bounties and prices you claim pay 50% more for 3 minutes", Icon = "*", BountyBonus = 1.5, Time = 180 },
-		{ Id = "Smoke", Name = "SMOKE BOMB", Price = 110, Text = "Hunters lose your trail (no marker, no distance) for 60 s", Icon = "S", Time = 60 },
-		{ Id = "ClearName", Name = "CLEAR YOUR NAME", Price = 0, Text = "Wipe your kill streak and any price on your head", Icon = "X", BaseCost = 50, PerStreak = 50 },
+		{ Id = "Bandages", Category = "SUPPLIES", Emoji = "🩹", Tag = "+40 HP", Name = "BANDAGES", Price = 60, Text = "Heal 40 health right now", Icon = "+", Heal = 40 },
+		{ Id = "Tonic", Category = "TONICS", Emoji = "🧪", Tag = "+15% SPEED", Name = "SNAKE-OIL TONIC", Price = 90, Text = "+15% speed for 2 minutes", Icon = "~", Speed = 1.15, Time = 120 },
+		{ Id = "Horseshoe", Category = "TONICS", Emoji = "🍀", Tag = "+25% ULT", Name = "LUCKY HORSESHOE", Price = 120, Text = "+25% ultimate charge for 2 minutes", Icon = "U", UltGain = 1.25, Time = 120 },
+		{ Id = "Compass", Category = "SUPPLIES", Emoji = "🧭", Tag = "CORPSE FINDER", Name = "CORPSE COMPASS", Price = 100, Text = "Points you to the nearest Saint's Corpse part for 60 s", Icon = "N", Time = 60 },
+		{ Id = "Canteen", Category = "SUPPLIES", Emoji = "🥤", Tag = "+3 HP/S", Name = "TIN CANTEEN", Price = 80, Text = "Heal 3 health a second for 20 s", Icon = "C", Regen = 3, Time = 20 },
+		{ Id = "Duster", Category = "GEAR", Emoji = "🧥", Tag = "-15% DAMAGE TAKEN", Name = "LEATHER DUSTER", Price = 140, Text = "Take 15% less damage for 2 minutes", Icon = "D", Resist = 0.85, Time = 120 },
+		{ Id = "Whiskey", Category = "TONICS", Emoji = "🥃", Tag = "+12% DAMAGE", Name = "RYE WHISKEY", Price = 130, Text = "Hit 12% harder for 90 s", Icon = "W", Damage = 1.12, Time = 90 },
+		{ Id = "Badge", Category = "GEAR", Emoji = "⭐", Tag = "+50% BOUNTY PAY", Name = "PINKERTON BADGE", Price = 160, Text = "Bounties and prices you claim pay 50% more for 3 minutes", Icon = "*", BountyBonus = 1.5, Time = 180 },
+		{ Id = "Smoke", Category = "GEAR", Emoji = "💨", Tag = "HIDE FROM HUNTERS", Name = "SMOKE BOMB", Price = 110, Text = "Hunters lose your trail (no marker, no distance) for 60 s", Icon = "S", Time = 60 },
+		{ Id = "ClearName", Category = "SERVICES", Emoji = "📜", Tag = "STREAK + PRICE WIPED", Name = "CLEAR YOUR NAME", Price = 0, Text = "Wipe your kill streak and any price on your head", Icon = "X", BaseCost = 50, PerStreak = 50 },
 	},
 }
 

@@ -634,6 +634,7 @@ local function shopFor(player)
 		})[item.Id]
 		table.insert(list, {
 			Id = item.Id, Name = item.Name, Text = item.Text, Icon = item.Icon, Price = price,
+			Category = item.Category, Emoji = item.Emoji, Tag = item.Tag, Time = item.Time,
 			Active = untilT and untilT > t and untilT or nil,
 			Clean = item.Id == "ClearName" and price == 0 or nil,
 		})
@@ -9288,7 +9289,7 @@ local LOOKS = {
 	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 	DiegoAU = { Skin = Color3.fromRGB(240, 205, 170), Torso = Color3.fromRGB(110, 200, 185), Legs = Color3.fromRGB(196, 170, 110) },
 	Josuke = { Skin = Color3.fromRGB(214, 168, 130), Torso = Color3.fromRGB(240, 240, 236), Legs = Color3.fromRGB(236, 236, 232) },
-	Ringo = { Skin = Color3.fromRGB(176, 112, 70), Torso = Color3.fromRGB(150, 156, 166), Legs = Color3.fromRGB(132, 138, 150) },
+	Ringo = { Skin = Color3.fromRGB(206, 146, 100), Torso = Color3.fromRGB(240, 240, 244), Legs = Color3.fromRGB(240, 240, 244) },
 	JohnRod = { Skin = Color3.fromRGB(226, 190, 160), Torso = Color3.fromRGB(90, 96, 110), Legs = Color3.fromRGB(52, 54, 64) },
 	Jodio = { Skin = Color3.fromRGB(236, 200, 166), Torso = Color3.fromRGB(34, 34, 64), Legs = Color3.fromRGB(36, 42, 84) },
 	Tooru = { Skin = Color3.fromRGB(232, 196, 166), Torso = Color3.fromRGB(120, 60, 170), Legs = Color3.fromRGB(222, 190, 70) },

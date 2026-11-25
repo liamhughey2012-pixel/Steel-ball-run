@@ -2,10 +2,10 @@
 	TuskActVFX.MandomStand  (StarterPlayerScripts.SpinClient.TuskActVFX.MandomStand)
 
 	MANDOM, matched to the art: it rides on Ringo's right shoulder.
-	  * a big pink egg, tipped forward, covered in a diamond net of darker
-	    pink cords with a gold stud (dark centre) at every crossing
-	  * under it, a chunky padded shoulder-pack in dusty rose: stacked
-	    blocks and pouches with flaps and seams
+	  * a big red-pink egg, tipped forward, covered in a diamond net of
+	    dark maroon cords with a gold stud (dark centre) at every crossing
+	  * under it, a chunky padded shoulder-pack of rust-brown leather:
+	    stacked blocks and pouches with flaps and seams
 	  * pink tubes curling out from under the pack, each ending in a gold
 	    ring (the outfit plugs the same tubes into his arm and chest)
 	TuskStand gives it a soft pink aura. Registered by RingoVFX.
@@ -13,20 +13,20 @@
 
 local MandomStand = {}
 
-local EGG = Color3.fromRGB(200, 96, 146)
-local CORD = Color3.fromRGB(128, 44, 92)
+local EGG = Color3.fromRGB(188, 62, 98)
+local CORD = Color3.fromRGB(112, 26, 56)
 local STUD = Color3.fromRGB(226, 182, 76)
-local STUD_DARK = Color3.fromRGB(70, 40, 30)
-local PACK = Color3.fromRGB(186, 108, 116)
-local PACK_DARK = Color3.fromRGB(140, 72, 84)
-local PACK_LIGHT = Color3.fromRGB(214, 140, 140)
-local TUBE = Color3.fromRGB(190, 74, 124)
+local STUD_DARK = Color3.fromRGB(46, 22, 26)
+local PACK = Color3.fromRGB(172, 98, 70)
+local PACK_DARK = Color3.fromRGB(122, 64, 44)
+local PACK_LIGHT = Color3.fromRGB(198, 128, 92)
+local TUBE = Color3.fromRGB(176, 58, 100)
 local RING = Color3.fromRGB(226, 182, 76)
 
 MandomStand.Aura = Color3.fromRGB(240, 130, 180)
 MandomStand.AuraLight = Color3.fromRGB(255, 220, 236)
 -- On his right shoulder, a little behind.
-MandomStand.Offset = CFrame.new(1.75, 1.55, 0.7)
+MandomStand.Offset = CFrame.new(1.5, 1.4, 0.45)
 
 local function newPart(model, name, size, color, material)
 	local p = Instance.new("Part")

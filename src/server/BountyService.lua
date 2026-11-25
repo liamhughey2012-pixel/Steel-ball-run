@@ -450,6 +450,7 @@ local function shopFor(player)
 		})[item.Id]
 		table.insert(list, {
 			Id = item.Id, Name = item.Name, Text = item.Text, Icon = item.Icon, Price = price,
+			Category = item.Category, Emoji = item.Emoji, Tag = item.Tag, Time = item.Time,
 			Active = untilT and untilT > t and untilT or nil,
 			Clean = item.Id == "ClearName" and price == 0 or nil,
 		})

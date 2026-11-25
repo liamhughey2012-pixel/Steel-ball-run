@@ -9,7 +9,7 @@ Server moves: `TuskActs/Ringo`. Outfit: `RingoOutfit`. Visuals: `TuskActVFX/Ring
 Matched to the reference art the user sent (2026-11-25).
 
 ![[ringo_mandom_preview.png]]
-**Look:** Mandom rides on his **right** shoulder: a big pink egg tipped forward, a diamond net of darker cords over it with a gold stud (dark centre) at every crossing, on a chunky dusty-rose padded shoulder-pack, pink tubes curling out with gold rings. Ringo: grey swept-back hair, grey moustache and chin beard, a sleeveless grey top with a huge high collar open down the chest, orange "60" and "5", Mandom's yellow **watch hand** across his chest (triangle top, ring bottom), pink tubes into his right arm and chest, purple gloves, gold bracelet, brown gun belt with a holster, grey trousers.
+**Look (updated 2026-11-25 to the new art):** Mandom rides close on his **right** shoulder: a big red-pink egg tipped forward, a diamond net of dark maroon cords with a gold stud (dark centre) at every crossing, on a chunky rust-brown leather shoulder-pack, pink tubes curling out with gold rings. Ringo is in **all white**: a shirt with a huge pointed collar standing up beside his head, open in a deep V to the belt, short cap sleeves, bare tanned arms. He has purple-grey fingerless gloves, a gold bracelet, a mustard gun belt with brass studs and a **pink ring buckle**, a tan holster on his right hip, and a brown flap hanging behind his hips. His white trousers flare at the ankle with a ring of gold studs, and he wears brown heeled boots. Mandom's pink tubes are clamped into his right arm, shoulder, chest and back (two in his left forearm), and its yellow watch hand runs across his chest with "60" and "5".
 
 | Input | Move | What it does |
 |---|---|---|

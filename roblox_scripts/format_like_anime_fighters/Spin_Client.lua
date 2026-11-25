@@ -1757,45 +1757,174 @@ showStable = function(y, cash)
 	return math.max(rowY, y + 300)
 end
 
+-- The SHOP: a general store. Items are grouped under wooden section signs
+-- (SUPPLIES / TONICS / GEAR / SERVICES); each is a parchment card with a
+-- picture medallion, its name, an effect chip and a duration chip, a
+-- hanging price tag and a BUY button. Things you've bought and that are
+-- still working get a green ACTIVE ribbon and a time-left bar (buy again
+-- to top it up); things you can't afford say how much more you need.
+local SHOP_SECTIONS = {
+	{ Id = "SUPPLIES", Title = "SUPPLIES", Sub = "patch up and find your way", Color = Color3.fromRGB(70, 140, 80) },
+	{ Id = "TONICS", Title = "TONICS & LUCK", Sub = "a little something for the road", Color = Color3.fromRGB(150, 70, 140) },
+	{ Id = "GEAR", Title = "GEAR", Sub = "for the hunter, and the hunted", Color = Color3.fromRGB(70, 110, 170) },
+	{ Id = "SERVICES", Title = "SERVICES", Sub = "the sheriff's office", Color = Color3.fromRGB(150, 60, 40) },
+}
+local shopBars = {} -- { Fill, Text, Until, Time } live time-left bars
+
+local function sectionSign(y, sec)
+	local sign = new("Frame", { Position = UDim2.fromOffset(14, y), Size = UDim2.new(1, -40, 0, 34), BackgroundColor3 = WOOD_DARK }, grid)
+	corner(sign, 6)
+	new("UIStroke", { Color = Color3.fromRGB(40, 24, 12), Thickness = 2 }, sign)
+	new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, WOOD_LIGHT), ColorSequenceKeypoint.new(1, WOOD_DARK) }), Rotation = 90 }, sign)
+	local stripe = new("Frame", { Position = UDim2.fromOffset(0, 0), Size = UDim2.new(0, 8, 1, 0), BackgroundColor3 = sec.Color, BorderSizePixel = 0 }, sign)
+	corner(stripe, 6)
+	for _, x in ipairs({ 0, 1 }) do
+		local nail = new("Frame", { AnchorPoint = Vector2.new(x, 0.5), Position = UDim2.new(x, x == 0 and 16 or -10, 0.5, 0), Size = UDim2.fromOffset(6, 6), BackgroundColor3 = NAIL }, sign)
+		corner(nail, 99)
+	end
+	label(sign, { Position = UDim2.fromOffset(28, 2), Size = UDim2.new(0.5, 0, 1, -4), Text = sec.Title, Font = Enum.Font.Bangers, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Left, TextStrokeTransparency = 0.5 })
+	label(sign, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -22, 0, 9), Size = UDim2.new(0.45, 0, 0, 16), Text = string.upper(sec.Sub), Font = Enum.Font.GothamBold, TextColor3 = PAPER_DARK, TextXAlignment = Enum.TextXAlignment.Right })
+	return y + 44
+end
+
+local function chip(parent, x, y, text, color, textColor)
+	local w = math.clamp(#text * 7 + 16, 44, 150)
+	local c = new("Frame", { Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(w, 18), BackgroundColor3 = color }, parent)
+	corner(c, 9)
+	label(c, { Size = UDim2.fromScale(1, 1), Text = text, Font = Enum.Font.GothamBlack, TextColor3 = textColor or PAPER })
+	return c, w
+end
+
+local function shopCard(item, x, y, cash, secColor)
+	local card = paperCard(grid, UDim2.fromOffset(x, y), UDim2.fromOffset(300, 140), ((#item.Name * 7) % 5 - 2) * 0.25)
+	-- A coloured band down the left edge (its section).
+	local band = new("Frame", { Position = UDim2.fromOffset(0, 0), Size = UDim2.new(0, 6, 1, 0), BackgroundColor3 = secColor, BorderSizePixel = 0 }, card)
+	corner(band, 4)
+	-- Picture medallion: a gold-rimmed disc with the item's picture.
+	local medal = new("Frame", { Position = UDim2.fromOffset(16, 16), Size = UDim2.fromOffset(62, 62), BackgroundColor3 = secColor:Lerp(WOOD_DARK, 0.45) }, card)
+	corner(medal, 99)
+	new("UIStroke", { Color = GOLD, Thickness = 3 }, medal)
+	new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)), ColorSequenceKeypoint.new(1, Color3.fromRGB(170, 170, 170)) }), Rotation = 90 }, medal)
+	label(medal, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), Size = UDim2.fromScale(0.72, 0.72), Text = item.Emoji or item.Icon or "?", Font = Enum.Font.GothamBlack, TextColor3 = GOLD })
+	-- Name, effect.
+	local name = label(card, { Position = UDim2.fromOffset(88, 12), Size = UDim2.new(1, -170, 0, 24), Text = item.Name, Font = Enum.Font.Bangers, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
+	new("UITextSizeConstraint", { MaxTextSize = 22, MinTextSize = 10 }, name)
+	local desc = label(card, { Position = UDim2.fromOffset(88, 38), Size = UDim2.new(1, -100, 0, 30), Text = item.Text, Font = Enum.Font.GothamMedium, TextWrapped = true, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
+	new("UITextSizeConstraint", { MaxTextSize = 13, MinTextSize = 8 }, desc)
+	-- Chips: what it does, how long.
+	local cx = 88
+	if item.Tag then
+		local _, w = chip(card, cx, 72, item.Tag, secColor:Lerp(INK, 0.15))
+		cx = cx + w + 6
+	end
+	local t = item.Time
+	chip(card, cx, 72, t and (t >= 60 and string.format("%d:%02d", math.floor(t / 60), t % 60) or (t .. " S")) or "INSTANT", WOOD_DARK)
+	-- The price tag, hanging from a string at the top right.
+	local clean = item.Clean
+	local price = item.Price or 0
+	new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(1, -40, 0, -4), Size = UDim2.fromOffset(2, 12), BackgroundColor3 = BURNT, BorderSizePixel = 0 }, card)
+	local tag = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(1, -40, 0, 6), Size = UDim2.fromOffset(62, 26), Rotation = 6, BackgroundColor3 = Color3.fromRGB(250, 238, 210) }, card)
+	corner(tag, 5)
+	new("UIStroke", { Color = BURNT, Thickness = 2 }, tag)
+	label(tag, { Size = UDim2.fromScale(1, 1), Text = clean and "FREE" or ("$" .. price), Font = Enum.Font.Bangers, TextColor3 = (cash >= price or clean) and INK or RED })
+	-- Buy button: green if you can, grey with how much more you need if not.
+	local afford = cash >= price and not clean
+	local activeUntil = item.Active
+	local text = clean and "ALREADY CLEAN" or (afford and ((activeUntil and "TOP UP  $" or "BUY  $") .. price) or ("NEED $" .. (price - cash) .. " MORE"))
+	local buy = new("TextButton", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -12, 1, -10), Size = UDim2.fromOffset(140, 34), BackgroundColor3 = afford and GREEN or Color3.fromRGB(130, 120, 110), Text = text, Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), AutoButtonColor = afford }, card)
+	corner(buy, 8)
+	new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6) }, buy)
+	new("UIStroke", { Color = (afford and GREEN or INK):Lerp(Color3.new(0, 0, 0), 0.4), Thickness = 2 }, buy)
+	local scale = new("UIScale", { Scale = 1 }, buy)
+	if afford then
+		buy.MouseEnter:Connect(function()
+			TweenService:Create(scale, FAST, { Scale = 1.07 }):Play()
+		end)
+		buy.MouseLeave:Connect(function()
+			TweenService:Create(scale, SOFT, { Scale = 1 }):Play()
+		end)
+	end
+	buy.Activated:Connect(function()
+		if clean or not afford then
+			return
+		end
+		scale.Scale = 0.88
+		TweenService:Create(scale, FAST, { Scale = 1 }):Play()
+		Remote:FireServer("Buy", item.Id)
+	end)
+	-- Working right now: a green ribbon and a time-left bar.
+	if activeUntil and activeUntil > workspace:GetServerTimeNow() then
+		local ribbon = new("Frame", { Position = UDim2.fromOffset(10, 84), Size = UDim2.fromOffset(72, 18), Rotation = -6, BackgroundColor3 = GREEN }, card)
+		corner(ribbon, 4)
+		label(ribbon, { Size = UDim2.fromScale(1, 1), Text = "ACTIVE", Font = Enum.Font.GothamBlack, TextColor3 = Color3.new(1, 1, 1) })
+		local bar = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 14, 1, -12), Size = UDim2.new(1, -176, 0, 14), BackgroundColor3 = PAPER_DARK }, card)
+		corner(bar, 7)
+		new("UIStroke", { Color = INK, Thickness = 1, Transparency = 0.5 }, bar)
+		local fill = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = GREEN }, bar)
+		corner(fill, 7)
+		local tl = label(bar, { Size = UDim2.fromScale(1, 1), Text = "", Font = Enum.Font.GothamBlack, TextColor3 = INK })
+		table.insert(shopBars, { Fill = fill, Text = tl, Until = activeUntil, Time = item.Time or 60 })
+	end
+	return card
+end
+
+local function stepShopBars()
+	local now = workspace:GetServerTimeNow()
+	for i = #shopBars, 1, -1 do
+		local b = shopBars[i]
+		if not b.Fill.Parent then
+			table.remove(shopBars, i)
+		else
+			local left = math.max(0, b.Until - now)
+			b.Fill.Size = UDim2.fromScale(math.clamp(left / math.max(b.Time, 1), 0, 1), 1)
+			b.Text.Text = left > 0 and string.format("%d:%02d LEFT", math.floor(left / 60), math.floor(left % 60)) or "USED UP"
+		end
+	end
+end
+
 local function showShop()
 	local cash = 0
 	local ls = player:FindFirstChild("leaderstats")
 	local cv = ls and ls:FindFirstChild("Cash")
 	cash = cv and cv.Value or 0
-	for i, item in ipairs(lastShop) do
-		local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
-		local card = paperCard(grid, UDim2.fromOffset(14 + col * 316, 16 + row * 134), UDim2.fromOffset(300, 122), ((i * 53) % 5 - 2) * 0.5)
-		local badge = new("Frame", { Position = UDim2.fromOffset(12, 14), Size = UDim2.fromOffset(54, 54), BackgroundColor3 = item.Id == "ClearName" and INK or WOOD_DARK }, card)
-		corner(badge, 99)
-		new("UIStroke", { Color = GOLD, Thickness = 2 }, badge)
-		label(badge, { Size = UDim2.fromScale(1, 1), Text = item.Icon or "?", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextScaled = true })
-		local name = label(card, { Position = UDim2.fromOffset(76, 10), Size = UDim2.new(1, -86, 0, 22), Text = item.Name, Font = Enum.Font.Bangers, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
-		new("UITextSizeConstraint", { MaxTextSize = 20, MinTextSize = 10 }, name)
-		local desc = label(card, { Position = UDim2.fromOffset(76, 34), Size = UDim2.new(1, -86, 0, 36), Text = item.Text, Font = Enum.Font.GothamMedium, TextWrapped = true, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
-		new("UITextSizeConstraint", { MaxTextSize = 13, MinTextSize = 8 }, desc)
-		local clean = item.Clean
-		local price = item.Price or 0
-		local afford = cash >= price and not clean
-		local buy = new("TextButton", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -12, 1, -10), Size = UDim2.fromOffset(150, 36), BackgroundColor3 = afford and GREEN or Color3.fromRGB(130, 120, 110), Text = clean and "ALREADY CLEAN" or ("BUY  $" .. price), Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), AutoButtonColor = afford }, card)
-		corner(buy, 8)
-		new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, buy)
-		new("UIStroke", { Color = (afford and GREEN or INK):Lerp(Color3.new(0, 0, 0), 0.4), Thickness = 2 }, buy)
-		if item.Active then
-			local left = math.max(0, item.Active - workspace:GetServerTimeNow())
-			label(card, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, -12), Size = UDim2.fromOffset(120, 18), Text = string.format("ACTIVE %d:%02d", math.floor(left / 60), math.floor(left % 60)), Font = Enum.Font.GothamBlack, TextColor3 = GREEN, TextXAlignment = Enum.TextXAlignment.Left })
-		end
-		buy.Activated:Connect(function()
-			if clean then
-				return
-			end
-			local s = buy:FindFirstChildOfClass("UIScale") or new("UIScale", { Scale = 1 }, buy)
-			s.Scale = 0.9
-			TweenService:Create(s, FAST, { Scale = 1 }):Play()
-			Remote:FireServer("Buy", item.Id)
-		end)
+	shopBars = {}
+	-- The store sign.
+	local head = new("Frame", { Position = UDim2.fromOffset(14, 12), Size = UDim2.new(1, -40, 0, 58), BackgroundColor3 = Color3.fromRGB(60, 38, 22) }, grid)
+	corner(head, 8)
+	new("UIStroke", { Color = GOLD, Thickness = 2, Transparency = 0.3 }, head)
+	label(head, { Position = UDim2.fromOffset(16, 4), Size = UDim2.new(0.6, 0, 0, 34), Text = "GENERAL STORE", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Left, TextStrokeTransparency = 0.4 })
+	label(head, { Position = UDim2.fromOffset(16, 36), Size = UDim2.new(0.6, 0, 0, 14), Text = "EFFECTS LAST UNTIL THEY RUN OUT OR YOU GO DOWN", Font = Enum.Font.GothamBold, TextColor3 = PAPER_DARK, TextXAlignment = Enum.TextXAlignment.Left })
+	local purse = new("Frame", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(150, 38), BackgroundColor3 = GOLD }, head)
+	corner(purse, 8)
+	new("UIStroke", { Color = WOOD_DARK, Thickness = 2 }, purse)
+	label(purse, { Position = UDim2.fromOffset(6, 0), Size = UDim2.fromOffset(34, 38), Text = "💰", Font = Enum.Font.GothamBlack })
+	label(purse, { Position = UDim2.fromOffset(40, 2), Size = UDim2.new(1, -46, 1, -4), Text = "$" .. cash, Font = Enum.Font.Bangers, TextColor3 = INK })
+	local y = 84
+	-- Group the items under their section signs (anything uncategorised last).
+	local placed = {}
+	local sections = {}
+	for _, sec in ipairs(SHOP_SECTIONS) do
+		table.insert(sections, sec)
 	end
-	local y = 16 + math.ceil(#lastShop / 2) * 134 + 6
-	y = showStable(y, cash)
+	table.insert(sections, { Id = "_", Title = "MORE", Sub = "odds and ends", Color = WOOD })
+	for _, sec in ipairs(sections) do
+		local items = {}
+		for _, item in ipairs(lastShop) do
+			if not placed[item] and (item.Category == sec.Id or (sec.Id == "_" and true)) then
+				table.insert(items, item)
+				placed[item] = true
+			end
+		end
+		if #items > 0 then
+			y = sectionSign(y, sec)
+			for i, item in ipairs(items) do
+				local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
+				shopCard(item, 14 + col * 316, y + row * 152, cash, sec.Color)
+			end
+			y = y + math.ceil(#items / 2) * 152 + 4
+		end
+	end
+	y = showStable(y + 6, cash)
 	grid.CanvasSize = UDim2.fromOffset(0, y + 20)
 	return #lastShop
 end
@@ -2278,6 +2407,9 @@ function BountyUI.step()
 		stablePreview.Angle = stablePreview.Angle + 0.01
 		local a = stablePreview.Angle
 		stablePreview.Camera.CFrame = CFrame.lookAt(Vector3.new(math.sin(a) * 13, 2, math.cos(a) * 13), Vector3.new(0, 0.2, -0.6))
+	end
+	if #shopBars > 0 then
+		stepShopBars()
 	end
 	if jobsTimer and jobsTimer.Parent then
 		local left = math.max(0, jobsUntil - workspace:GetServerTimeNow())

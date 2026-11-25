@@ -84,3 +84,12 @@ The tabs are now ALL · PLAYERS · NPCS · CORPSE · **JOBS** · **SHOP**.
 | RYE WHISKEY | $130 | hit 12% harder for 90 s (`ShopDamage`, CombatAdapter) |
 | PINKERTON BADGE | $160 | bounties and prices you claim pay +50% for 3 min |
 | SMOKE BOMB | $110 | hunters tracking you lose your marker and distance for 60 s ("LOST IN SMOKE") |
+
+## Shop page restyle (2026-11-25)
+The SHOP tab is a **GENERAL STORE**:
+- **Header:** a sign with your purse (💰 $cash).
+- **Sections:** items are grouped under wooden section signs with a coloured stripe: SUPPLIES (green), TONICS & LUCK (purple), GEAR (blue), SERVICES (red). The grouping comes from `Category` in `TuskConfig.Bounty.Shop`.
+- **Cards:** each parchment card has a picture medallion (`Emoji`), the name, the description, an effect chip (`Tag`) and a duration chip, plus a price tag hanging from a string.
+- **Buy button:** hover grows it. If you can't afford the item it says **NEED $X MORE**. If the item is already working it says **TOP UP**.
+- **Active items:** a green ACTIVE ribbon and a live time-left bar.
+The stable follows underneath.
