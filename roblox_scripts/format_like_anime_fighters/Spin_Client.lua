@@ -10190,6 +10190,7 @@ local VFXLib = __require("VFXLib")
 local TuskStand = {}
 
 -- Where each Act's Stand floats (bigger Acts float further back).
+local ATTACHED = {} -- [act] = true: the Stand is fixed to its user's body (Mandom on the shoulder): no float, no bob, no lag
 local IDLE_OFFSETS = {
 	[1] = CFrame.new(1.9, 1.5, 1.7),
 	[2] = CFrame.new(2.1, 1.6, 2),
@@ -10327,6 +10328,7 @@ local function build(character, act)
 	if info.Offset then
 		IDLE_OFFSETS[act] = info.Offset
 	end
+	ATTACHED[act] = info.Attached == true or nil
 	local start = root and root.CFrame * (IDLE_OFFSETS[act] or IDLE_OFFSET) or CFrame.new()
 	model:PivotTo(start)
 	return {
@@ -10411,6 +10413,14 @@ local function update(stand, root, dt, now)
 	if typeof(remote) == "Vector3" then
 		desired = CFrame.new(remote) * CFrame.Angles(0, character:GetAttribute("StandRemoteYaw") or 0, 0) * CFrame.new(0, bob * 0.5, 0)
 		snap = 14
+		stand.Action = nil
+	end
+
+	-- Attached Stands (Mandom) sit fixed on the body: exactly where the
+	-- offset says, every frame, and the move animations don't pull them off.
+	if ATTACHED[stand.Act] and not sneaking and typeof(remote) ~= "Vector3" then
+		desired = root.CFrame * (IDLE_OFFSETS[stand.Act] or IDLE_OFFSET)
+		snap = 1e6
 		stand.Action = nil
 	end
 

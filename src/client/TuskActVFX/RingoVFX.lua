@@ -39,7 +39,7 @@ local pal = Common.palette(ACT)
 local sounds = TuskConfig.Sounds
 local localPlayer = Players.LocalPlayer
 
-TuskStandModels.register(ACT, MandomStand.build, { Aura = MandomStand.Aura, AuraLight = MandomStand.AuraLight, Offset = MandomStand.Offset })
+TuskStandModels.register(ACT, MandomStand.build, { Aura = MandomStand.Aura, AuraLight = MandomStand.AuraLight, Offset = MandomStand.Offset, Attached = MandomStand.Attached })
 
 local PINK = Color3.fromRGB(240, 130, 180)
 local GOLD = Color3.fromRGB(246, 204, 40)

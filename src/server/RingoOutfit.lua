@@ -35,8 +35,8 @@ local C = {
 	Fold = Color3.fromRGB(170, 176, 190),
 	Mark = Color3.fromRGB(226, 120, 50),
 	Hand = Color3.fromRGB(246, 204, 40),
-	Tube = Color3.fromRGB(176, 58, 100),
-	TubeLight = Color3.fromRGB(206, 92, 132),
+	Tube = Color3.fromRGB(128, 28, 52),
+	TubeLight = Color3.fromRGB(162, 50, 76),
 	Ring = Color3.fromRGB(226, 182, 76),
 	Glove = Color3.fromRGB(122, 106, 128),
 	Gold = Color3.fromRGB(230, 186, 70),
@@ -112,17 +112,24 @@ end
 
 -- A Mandom tube plugged in at `into` (coming from `from`), with a gold clamp.
 local function tube(parent, outfit, from, into, out)
-	cyl(parent, outfit, "Tube", from, into, 0.14, C.Tube)
-	cyl(parent, outfit, "TubeShine", from + Vector3.new(0, 0.03, 0), into + Vector3.new(0, 0.03, 0), 0.05, C.TubeLight)
+	cyl(parent, outfit, "Tube", from, into, 0.2, C.Tube)
+	cyl(parent, outfit, "TubeShine", from + Vector3.new(0, 0.05, 0), into + Vector3.new(0, 0.05, 0), 0.07, C.TubeLight)
 	local dir = (into - from).Unit
-	local clamp = piece(parent, outfit, "Clamp", Vector3.new(0.08, 0.24, 0.24), C.Ring, CFrame.lookAt(into, into + dir) * CFrame.Angles(0, math.pi / 2, 0))
+	local clamp = piece(parent, outfit, "Clamp", Vector3.new(0.1, 0.3, 0.3), C.Ring, CFrame.lookAt(into, into + dir) * CFrame.Angles(0, math.pi / 2, 0))
 	clamp.Shape = Enum.PartType.Cylinder
-	-- Little prongs gripping the skin.
+	clamp.Material = Enum.Material.Metal
+	-- Three gold claws gripping the skin round where it goes in.
 	local o = out or Vector3.new(0, 0, -1)
-	for _, k in ipairs({ -1, 1 }) do
-		local side = dir:Cross(o)
-		side = side.Magnitude > 1e-3 and side.Unit or Vector3.new(1, 0, 0)
-		piece(parent, outfit, "Prong", Vector3.new(0.05, 0.05, 0.16), C.Ring, CFrame.lookAt(into + side * k * 0.12, into + side * k * 0.24))
+	local side = dir:Cross(o)
+	side = side.Magnitude > 1e-3 and side.Unit or Vector3.new(1, 0, 0)
+	local up = side:Cross(dir).Unit
+	for k = 0, 2 do
+		local ang = k / 3 * math.pi * 2
+		local spoke = side * math.cos(ang) + up * math.sin(ang)
+		local base = into + spoke * 0.13
+		local tip = into + spoke * 0.3 + dir * 0.06
+		local claw = piece(parent, outfit, "Claw", Vector3.new(0.06, 0.06, (tip - base).Magnitude + 0.04), C.Ring, CFrame.lookAt((base + tip) / 2, tip))
+		claw.Material = Enum.Material.Metal
 	end
 end
 
@@ -181,7 +188,7 @@ local function body(character, outfit)
 		piece(upper, outfit, "Mark", Vector3.new(0.11, 0.11, 0.05), C.Hand, CFrame.new(-0.72, 0.5, front - 0.11) * CFrame.Angles(0, 0, math.pi / 4))
 		-- Tubes into his right chest, right shoulder and upper back.
 		for k, y in ipairs({ 0.45, 0.05, -0.35 }) do
-			tube(upper, outfit, Vector3.new(s.X / 2 + 0.45, y + 0.4, front + 0.3), Vector3.new(0.62 - k * 0.05, y, front - 0.06))
+			tube(upper, outfit, Vector3.new(s.X / 2 - 0.1 + k * 0.05, top + 0.18, front - 0.05), Vector3.new(0.62 - k * 0.07, y, front - 0.06))
 		end
 		tube(upper, outfit, Vector3.new(s.X / 2 + 0.2, top + 0.6, 0.2), Vector3.new(s.X / 2 - 0.15, top + 0.02, -0.1), Vector3.new(0, 1, 0))
 		tube(upper, outfit, Vector3.new(s.X / 2 + 0.4, top + 0.3, back + 0.3), Vector3.new(0.5, 0.3, back + 0.04), Vector3.new(0, 0, 1))
@@ -244,7 +251,7 @@ local function body(character, outfit)
 		local as = rightLower.Size
 		piece(rightLower, outfit, "Bracelet", Vector3.new(as.X + 0.14, 0.14, as.Z + 0.14), C.Gold, CFrame.new(0, -as.Y / 2 + 0.12, 0))
 		for k, y in ipairs({ 0.3, -0.05 }) do
-			tube(rightLower, outfit, Vector3.new(as.X / 2 + 0.5, y + 0.5, 0.25 - k * 0.2), Vector3.new(as.X / 2 + 0.02, y, -0.05 * k), Vector3.new(1, 0, 0))
+			tube(rightLower, outfit, Vector3.new(as.X / 2 + 0.16, as.Y / 2 + 0.25, 0.2 - k * 0.25), Vector3.new(as.X / 2 + 0.02, y, -0.1 * k), Vector3.new(1, 0, 0))
 		end
 	end
 	-- Tubes all over his right upper arm.
@@ -252,16 +259,16 @@ local function body(character, outfit)
 	if rightUpper then
 		local as = rightUpper.Size
 		for k, y in ipairs({ 0.3, 0.0, -0.3 }) do
-			tube(rightUpper, outfit, Vector3.new(as.X / 2 + 0.5, y + 0.45, 0.35 - k * 0.15), Vector3.new(as.X / 2 + 0.02, y, -0.15 + k * 0.08), Vector3.new(1, 0, 0))
+			tube(rightUpper, outfit, Vector3.new(as.X / 2 + 0.18, as.Y / 2 + 0.35, 0.3 - k * 0.2), Vector3.new(as.X / 2 + 0.02, y, -0.15 + k * 0.1), Vector3.new(1, 0, 0))
 		end
-		tube(rightUpper, outfit, Vector3.new(0.2, 0.2, -as.Z / 2 - 0.5), Vector3.new(0.1, -0.1, -as.Z / 2 - 0.02), Vector3.new(0, 0, -1))
+		tube(rightUpper, outfit, Vector3.new(0.25, as.Y / 2 + 0.3, -as.Z / 2 - 0.15), Vector3.new(0.05, -0.1, -as.Z / 2 - 0.02), Vector3.new(0, 0, -1))
 	end
 	-- And a couple in his left forearm.
 	local leftLower = character:FindFirstChild("LeftLowerArm") or character:FindFirstChild("Left Arm")
 	if leftLower then
 		local as = leftLower.Size
 		for k, y in ipairs({ 0.25, -0.1 }) do
-			tube(leftLower, outfit, Vector3.new(0.1 * k, y + 0.45, -as.Z / 2 - 0.5), Vector3.new(0.05 * k, y, -as.Z / 2 - 0.02), Vector3.new(0, 0, -1))
+			tube(leftLower, outfit, Vector3.new(0.25 * k - 0.1, y + 0.55, -as.Z / 2 - 0.18), Vector3.new(0.05 * k, y, -as.Z / 2 - 0.02), Vector3.new(0, 0, -1))
 		end
 	end
 	-- White trousers flaring at the ankle, gold studs round the hem.
