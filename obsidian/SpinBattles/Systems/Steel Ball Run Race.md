@@ -212,3 +212,10 @@ Reported: after stage 1 every jockey went "super speed" and finished in about 5 
 - **No catch-up speed** any more (`CatchUp` 1.0).
 - **You can see their stamina:** a small bar over every other rider's horse while racing (green, gold when low, red when winded). Pick your moment to pass them.
 - Rough average pace: jockeys about 55 studs/s, a player managing stamina well about 58.
+
+## Sandman runs on foot (2026-11-25)
+If you're playing **Sandman**, the race doesn't give you a horse: you run every stage on your own legs, like in the story, and you're **exactly as fast as a horse**. The horse speed (`Race.HorseSpeed`) goes on his legs, divided by his usual +25% running speed (Registry `WalkSpeed`) so it isn't added on top.
+- Stamina, SHIFT to sprint, carrots, hurdles (jump them yourself), water and H all work the same. The meter says "ON FOOT · SHIFT: SPRINT", and the winded warning says "YOU'RE WINDED!".
+- Sand kicks up behind him as he runs (RaceClient `stepRunners`).
+- When the race ends he goes back to his normal speed (he doesn't keep a horse).
+- Server: `runsOnFoot` / `footSpeed` in RaceService. Attribute `RaceOnFoot` on the character. Turn it off with `Race.SandmanOnFoot = false`.

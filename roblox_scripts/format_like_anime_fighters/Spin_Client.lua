@@ -7309,6 +7309,45 @@ local function stepHorses(dt)
 	end
 end
 
+-- SANDMAN runs the race on foot: sand kicks up behind him as he sprints.
+local dustNext = {}
+local function stepRunners()
+	local t = os.clock()
+	for _, p in ipairs(Players:GetPlayers()) do
+		local character = p.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if root and character:GetAttribute("RaceOnFoot") and t >= (dustNext[character] or 0) then
+			local v = root.AssemblyLinearVelocity
+			local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+			if speed > 25 then
+				dustNext[character] = t + (character:GetAttribute("Galloping") and 0.05 or 0.09)
+				local back = speed > 0 and -Vector3.new(v.X, 0, v.Z).Unit or Vector3.new()
+				local puff = Instance.new("Part")
+				puff.Anchored = true
+				puff.CanCollide = false
+				puff.CanQuery = false
+				puff.CanTouch = false
+				puff.CastShadow = false
+				puff.Shape = Enum.PartType.Ball
+				puff.Material = Enum.Material.SmoothPlastic
+				puff.Color = Color3.fromRGB(226, 196, 140)
+				puff.Size = Vector3.new(1, 1, 1)
+				puff.Transparency = 0.35
+				local at = root.Position - Vector3.new(0, 2.6, 0) + back * 1.5 + Vector3.new(math.random() - 0.5, 0, math.random() - 0.5)
+				puff.CFrame = CFrame.new(at)
+				puff.Parent = workspace
+				TweenService:Create(puff, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.new(3, 2.4, 3), Transparency = 1, CFrame = CFrame.new(at + back * 2 + Vector3.new(0, 1, 0)) }):Play()
+				game:GetService("Debris"):AddItem(puff, 0.7)
+			end
+		end
+	end
+	for character in pairs(dustNext) do
+		if not character.Parent then
+			dustNext[character] = nil
+		end
+	end
+end
+
 local function stepRiders()
 	local seen = {}
 	for _, horse in ipairs(CollectionService:GetTagged("SpinHorse")) do
@@ -7479,7 +7518,9 @@ local function stepUI()
 		staminaFill.Size = UDim2.fromScale(k, 1)
 		local winded = character:GetAttribute("HorseWinded") == true
 		staminaFill.BackgroundColor3 = winded and RED or (k > 0.5 and GREEN or C.GOLD)
-		staminaText.Text = winded and "WINDED!  LET HIM BREATHE" or (character:GetAttribute("Galloping") and "GALLOPING!" or "STAMINA  ·  SHIFT: GALLOP  ·  H: LAST GATE")
+		local onFoot = character:GetAttribute("RaceOnFoot")
+		staminaText.Text = winded and (onFoot and "WINDED!  CATCH YOUR BREATH" or "WINDED!  LET HIM BREATHE")
+			or (character:GetAttribute("Galloping") and (onFoot and "SPRINTING!" or "GALLOPING!") or (onFoot and "ON FOOT  ·  SHIFT: SPRINT  ·  H: LAST GATE" or "STAMINA  ·  SHIFT: GALLOP  ·  H: LAST GATE"))
 		staminaText.TextColor3 = winded and RED or C.GOLD
 	end
 	-- A hurdle just ahead?
@@ -7625,7 +7666,7 @@ function RaceClient.init()
 				CameraFX.shake(0.35, 0.2)
 			end
 		elseif kind == "Winded" then
-			showBanner("YOUR HORSE IS WINDED!", RED, 1.6)
+			showBanner(player.Character and player.Character:GetAttribute("RaceOnFoot") and "YOU'RE WINDED!" or "YOUR HORSE IS WINDED!", RED, 1.6)
 		elseif kind == "Recovered" then
 			showBanner("GOT HIS BREATH BACK: GALLOP!", Color3.fromRGB(150, 235, 150), 1.2)
 		elseif kind == "CarrotYou" then
@@ -7677,6 +7718,7 @@ function RaceClient.init()
 		stepGuide()
 		stepHorses(dt)
 		stepRiders()
+		stepRunners()
 	end)
 end
 

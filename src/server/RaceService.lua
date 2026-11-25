@@ -59,6 +59,7 @@ local Net = require(Shared.Net)
 local Adapter = require(script.Parent.CombatAdapter)
 local HorseModel = require(Shared.HorseModel)
 local RaceMap = require(script.Parent.RaceMap)
+local Registry = require(Shared.TuskActRegistry)
 local PathfindingService = game:GetService("PathfindingService")
 
 local RaceService = {}
@@ -376,6 +377,24 @@ local function fitHorse(character)
 	character:SetAttribute("RideLift", math.max(0, bodyY + HorseModel.SaddleTop - seat))
 end
 
+-- SANDMAN RUNS THE RACE ON FOOT (like in the story): no horse, and his
+-- legs are exactly as fast as one. His usual +25% running speed (Registry
+-- WalkSpeed) is divided back out, so he's a horse's speed, not faster.
+local function runsOnFoot(character)
+	if cfg.SandmanOnFoot == false or not character then
+		return false
+	end
+	local act = character:GetAttribute("TuskAct")
+	return act ~= nil and Registry.characterOf(act) == "Sandman"
+end
+RaceService.runsOnFoot = runsOnFoot
+
+local function footSpeed(character, speed)
+	local act = character:GetAttribute("TuskAct")
+	local info = act and Registry.get(act)
+	return (speed or 3) / ((info and info.WalkSpeed) or 1)
+end
+
 local function mount(character, look, speed, kind)
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -386,6 +405,16 @@ local function mount(character, look, speed, kind)
 	if old then
 		old:Destroy()
 	end
+	-- Sandman in the race: on his own two legs, as fast as a horse.
+	if kind == "Race" and runsOnFoot(character) then
+		character:SetAttribute("RideLift", nil)
+		character:SetAttribute("RideSeat", nil)
+		character:SetAttribute("RaceOnFoot", true)
+		Adapter.setMoveModifier(humanoid, "Horse", footSpeed(character, speed))
+		character:SetAttribute("Riding", "Race")
+		return nil
+	end
+	character:SetAttribute("RaceOnFoot", nil)
 	-- (An older version raised HipHeight: put it back if it's still raised.)
 	local oldBase = character:GetAttribute("RaceHipBase")
 	if oldBase then
@@ -452,6 +481,7 @@ local function dismount(character)
 	character:SetAttribute("RaceHipBase", nil)
 	character:SetAttribute("Riding", nil)
 	character:SetAttribute("RideLift", nil)
+	character:SetAttribute("RaceOnFoot", nil)
 end
 RaceService.dismount = dismount
 
@@ -1241,6 +1271,10 @@ local function cleanup()
 			end)
 			r.Player:SetAttribute("RaceEntered", nil)
 			local character = r.Player.Character
+			-- A runner (Sandman) is back to his normal speed.
+			if character and character:GetAttribute("RaceOnFoot") then
+				dismount(character)
+			end
 			-- Riders keep their horse (now theirs to ride around).
 			if character and character:FindFirstChild("RaceHorse") then
 				local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -1304,14 +1338,16 @@ local function lineUp()
 		local spot = course.Start - facing * (row * (cfg.GridRowGap or 7) + 3) + right * ((col - (cols - 1) / 2) * (cfg.GridSpacing or 4.5))
 		local character = charOf(e.R)
 		if character then
-			if not character:FindFirstChild("RaceHorse") or character:GetAttribute("Riding") ~= "Race" then
+			local onFoot = runsOnFoot(character)
+			if onFoot ~= (character:GetAttribute("RaceOnFoot") == true) or (not onFoot and not character:FindFirstChild("RaceHorse")) or character:GetAttribute("Riding") ~= "Race" then
 				local look = e.R.Player and lookFor(e.R.Player) or e.R.Look or randomLook()
 				e.R.Look = e.R.Look or look
 				mount(character, look, (cfg.HorseSpeed or 3.2) * (e.R.Skill or 1), "Race")
 			else
 				local hum = character:FindFirstChildOfClass("Humanoid")
 				if hum then
-					Adapter.setMoveModifier(hum, "Horse", (cfg.HorseSpeed or 3.2) * (e.R.Skill or 1))
+					local speed = (cfg.HorseSpeed or 3.2) * (e.R.Skill or 1)
+					Adapter.setMoveModifier(hum, "Horse", onFoot and footSpeed(character, speed) or speed)
 				end
 			end
 			standAt(character, spot, facing)
@@ -1538,6 +1574,8 @@ local function finish(r)
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		if humanoid and character:FindFirstChild("RaceHorse") then
 			Adapter.setMoveModifier(humanoid, "Horse", hcfg.RideSpeed or 2.8)
+		elseif humanoid and character:GetAttribute("RaceOnFoot") then
+			Adapter.setMoveModifier(humanoid, "Horse", footSpeed(character, hcfg.RideSpeed or 2.8))
 		end
 	end
 	broadcast("Finished", { Name = r.Name, UserId = r.UserId, Place = r.Place, Time = r.Time, Prize = prize, Points = pts, Stage = stageIndex, StageName = course.StageName, Jockey = r.Jockey })

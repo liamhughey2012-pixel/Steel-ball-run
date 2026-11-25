@@ -1326,6 +1326,7 @@ TuskConfig.Race = {
 	},
 	-- NPC JOCKEYS ride too (they find their way round with pathfinding).
 	NPCRacers = 7,
+	SandmanOnFoot = true, -- Sandman runs the race on his own legs (no horse), exactly as fast as a horse
 	NPCNames = { "Dusty Pete", "Sandstorm Sally", "Iron Hoof Ike", "Lucky Lou", "Prairie Pat", "Cactus Jack", "Two-Spur Tom", "Rattlesnake Rosa", "Big Sky Hank", "Whiskey Jim" },
 	NPCSkill = { 0.88, 1.0 }, -- their horse speed is HorseSpeed times this (random per jockey): never faster than yours
 	NPCHealth = 120,
