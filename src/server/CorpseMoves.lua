@@ -20,6 +20,7 @@
 	  Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him
 	  Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him
 	  John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is)
+	  Ringo        SECOND HAND: everyone round him loses 6 seconds (hit, dazed)
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -393,6 +394,23 @@ USE.JohnRod = function(S, player, state, character, root)
 		if tr then
 			local away = Vector3.new(tr.Position.X - center.X, 0, tr.Position.Z - center.Z)
 			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 18, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JohnRodSnap" })
+		end
+	end
+end
+
+-- SECOND HAND: Mandom turns everyone round Ringo back 6 seconds: they're
+-- hit and dazed (Ringo remembers; they don't).
+USE.Ringo = function(S, player, state, character, root)
+	local c = TuskConfig.Ringo and TuskConfig.Ringo.CorpseRewind or { Radius = 20, Damage = 7, Stun = 1.2 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Ringo", Phase = "Rewind", Position = root.Position, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local away = Vector3.new(tr.Position.X - root.Position.X, 0, tr.Position.Z - root.Position.Z)
+			if S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 6, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "RingoSecondHand" }) then
+				target:SetAttribute("MandomDazedUntil", workspace:GetServerTimeNow() + c.Stun)
+			end
 		end
 	end
 end

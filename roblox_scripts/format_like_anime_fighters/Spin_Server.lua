@@ -1574,6 +1574,7 @@ __modules["CorpseMoves"] = function()
 	  Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him
 	  Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him
 	  John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is)
+	  Ringo        SECOND HAND: everyone round him loses 6 seconds (hit, dazed)
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -1947,6 +1948,23 @@ USE.JohnRod = function(S, player, state, character, root)
 		if tr then
 			local away = Vector3.new(tr.Position.X - center.X, 0, tr.Position.Z - center.Z)
 			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 18, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JohnRodSnap" })
+		end
+	end
+end
+
+-- SECOND HAND: Mandom turns everyone round Ringo back 6 seconds: they're
+-- hit and dazed (Ringo remembers; they don't).
+USE.Ringo = function(S, player, state, character, root)
+	local c = TuskConfig.Ringo and TuskConfig.Ringo.CorpseRewind or { Radius = 20, Damage = 7, Stun = 1.2 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Ringo", Phase = "Rewind", Position = root.Position, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local away = Vector3.new(tr.Position.X - root.Position.X, 0, tr.Position.Z - root.Position.Z)
+			if S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 6, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "RingoSecondHand" }) then
+				target:SetAttribute("MandomDazedUntil", workspace:GetServerTimeNow() + c.Stun)
+			end
 		end
 	end
 end
@@ -8969,7 +8987,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -9027,6 +9045,7 @@ local LOOKS = {
 	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 	DiegoAU = { Skin = Color3.fromRGB(240, 205, 170), Torso = Color3.fromRGB(110, 200, 185), Legs = Color3.fromRGB(196, 170, 110) },
 	Josuke = { Skin = Color3.fromRGB(214, 168, 130), Torso = Color3.fromRGB(240, 240, 236), Legs = Color3.fromRGB(236, 236, 232) },
+	Ringo = { Skin = Color3.fromRGB(176, 112, 70), Torso = Color3.fromRGB(150, 156, 166), Legs = Color3.fromRGB(132, 138, 150) },
 	JohnRod = { Skin = Color3.fromRGB(226, 190, 160), Torso = Color3.fromRGB(90, 96, 110), Legs = Color3.fromRGB(52, 54, 64) },
 	Jodio = { Skin = Color3.fromRGB(236, 200, 166), Torso = Color3.fromRGB(34, 34, 64), Legs = Color3.fromRGB(36, 42, 84) },
 	Tooru = { Skin = Color3.fromRGB(232, 196, 166), Torso = Color3.fromRGB(120, 60, 170), Legs = Color3.fromRGB(222, 190, 70) },
@@ -11094,6 +11113,23 @@ TuskActRegistry.Acts = {
 		ClientModule = "JohnRodVFX", -- client visuals (TuskActVFX.JohnRodVFX)
 		CardTitle = "STAND  ·  JOHN ROD",
 	},
+	-- RINGO ROADAGAIN: MANDOM. Turning his watch rewinds time by exactly 6
+	-- seconds, and only he remembers.
+	[19] = {
+		Name = "MANDOM",
+		Character = "Ringo",
+		Tagline = "Six seconds back",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 120, 160), Secondary = Color3.fromRGB(240, 200, 70) },
+		M1 = "REVOLVER COMBO",
+		Abilities = { "SIX SECONDS", "QUICK DRAW", "MANDOM COUNTER" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "THE PATH OF JUSTICE",
+		Next = nil,
+		Module = "Ringo", -- server moves
+		ClientModule = "RingoVFX", -- client visuals (TuskActVFX.RingoVFX)
+		CardTitle = "STAND  ·  MANDOM",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -11103,7 +11139,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -12818,7 +12854,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

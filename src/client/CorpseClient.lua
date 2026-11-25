@@ -737,6 +737,9 @@ local function onMove(data)
 		end
 	elseif who == "Jodio" then
 		-- (November Rain's cloud and crush are drawn by JodioVFX.)
+	elseif who == "Ringo" and data.Phase == "Rewind" and data.Position then
+		-- SECOND HAND: a pink ring sweeps out; everyone in it loses 6 seconds.
+		ring(data.Position, data.Radius or 20, Color3.fromRGB(240, 130, 180), 0.6)
 	elseif who == "Tooru" and data.Phase == "Calamity" and data.Position then
 		-- A dark maroon ring sweeps out: misfortune finds everyone in it.
 		ring(data.Position, data.Radius or 24, Color3.fromRGB(150, 40, 50), 0.6)

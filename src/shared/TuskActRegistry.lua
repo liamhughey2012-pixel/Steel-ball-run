@@ -313,6 +313,23 @@ TuskActRegistry.Acts = {
 		ClientModule = "JohnRodVFX", -- client visuals (TuskActVFX.JohnRodVFX)
 		CardTitle = "STAND  ·  JOHN ROD",
 	},
+	-- RINGO ROADAGAIN: MANDOM. Turning his watch rewinds time by exactly 6
+	-- seconds, and only he remembers.
+	[19] = {
+		Name = "MANDOM",
+		Character = "Ringo",
+		Tagline = "Six seconds back",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 120, 160), Secondary = Color3.fromRGB(240, 200, 70) },
+		M1 = "REVOLVER COMBO",
+		Abilities = { "SIX SECONDS", "QUICK DRAW", "MANDOM COUNTER" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "THE PATH OF JUSTICE",
+		Next = nil,
+		Module = "Ringo", -- server moves
+		ClientModule = "RingoVFX", -- client visuals (TuskActVFX.RingoVFX)
+		CardTitle = "STAND  ·  MANDOM",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -322,7 +339,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

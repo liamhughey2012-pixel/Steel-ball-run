@@ -156,6 +156,7 @@ TuskConfig.Roster = {
 	{ Id = "HotPants", Name = "HOT PANTS", Stand = "CREAM STARTER", Available = true, Color = Color3.fromRGB(242, 140, 172) },
 	{ Id = "Blackmore", Name = "BLACKMORE", Stand = "CATCH THE RAINBOW", Available = true, Color = Color3.fromRGB(110, 180, 255) },
 	{ Id = "Axl", Name = "AXL RO", Stand = "CIVIL WAR", Available = true, Color = Color3.fromRGB(214, 60, 70) },
+	{ Id = "Ringo", Name = "RINGO ROADAGAIN", Stand = "MANDOM", Available = true, Color = Color3.fromRGB(214, 120, 160) },
 	{ Id = "Valentine", Name = "FUNNY VALENTINE", Stand = "D4C", Available = true, Color = Color3.fromRGB(120, 170, 255) },
 	{ Id = "DiegoAU", Name = "DIEGO BRANDO (AU)", Stand = "THE WORLD", Available = true, Color = Color3.fromRGB(236, 196, 70) },
 	{ Id = "Josuke", Name = "JOSUKE HIGASHIKATA (8)", Stand = "SOFT & WET", Available = true, Color = Color3.fromRGB(120, 190, 240) },
@@ -213,10 +214,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 15, -- how many at once (each takes a free spot below)
+	Count = 16, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -250,6 +251,7 @@ TuskConfig.StandBots = {
 		Vector3.new(-190, 0, -380), -- far south-west
 		Vector3.new(110, 0, 380), -- far north
 		Vector3.new(380, 0, 290), -- north-east edge
+		Vector3.new(400, 0, -380), -- south-east corner
 	},
 	Distance = 70, -- (no map) studs from the spawn to their camp
 	Spacing = 14, -- (no map) studs between them at the camp
@@ -1061,6 +1063,52 @@ TuskConfig.JohnRod = {
 	CorpseSnap = { Radius = 18, Damage = 8, Stun = 0.7 }, -- corpse move ROD SNAP: lashes everyone round John Rod
 }
 
+---------------------------------------------------------------------------
+-- RINGO ROADAGAIN: MANDOM. Turning his watch rewinds time by exactly 6
+-- seconds; only he remembers what happened.
+---------------------------------------------------------------------------
+TuskConfig.Ringo = {
+	Rewind = 6, -- seconds Mandom turns back ("not a second more, not a second less")
+	M1 = { -- REVOLVER COMBO: three blows and a point-blank shot
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7.5, Stun = 0.5, Knockback = 34, Launch = 8, ShockwaveRadius = 6 },
+		},
+	},
+	SixSeconds = { -- 1: rewind 6 seconds: back where you were, with the health you had
+		Cooldown = 18,
+		Windup = 0.35, -- turning the watch
+		MaxDistance = 140, -- never takes you further than this (a safety net)
+		DazeRadius = 25, -- enemies this close lose the 6 seconds too:
+		DazeTime = 0.9, -- snapped back to where they were and dazed
+		EnemyMaxDistance = 60, -- (an enemy is only snapped back if that's this close)
+	},
+	QuickDraw = { -- 2: a revolver shot (instant)
+		Cooldown = 5, Windup = 0.22,
+		Range = 90, Width = 3,
+		Damage = 9, Stun = 0.55, Knockback = 10,
+	},
+	Counter = { -- 3: MANDOM COUNTER: hit him while he's waiting and time rewinds:
+		-- the hit never lands, he steps behind you and shoots
+		Cooldown = 12, Window = 1.0,
+		Behind = 4, Damage = 10, Stun = 0.9, Knockback = 24,
+		WhiffLag = 0.35, -- if nobody hits him
+	},
+	Ultimate = { -- THE PATH OF JUSTICE: 6 seconds that happen twice. When they
+		-- end, time rewinds: his health goes back to where it was, and every hit
+		-- he landed in them lands AGAIN.
+		Windup = 0.6, Duration = 6,
+		EchoMultiplier = 1.0, MaxEchoes = 14, EchoGap = 0.08,
+		EchoDazeTime = 0.6,
+		Speed = 1.15, -- he moves a little faster while it runs
+	},
+	CorpseRewind = { Radius = 20, Damage = 7, Stun = 1.2 }, -- corpse move SECOND HAND: everyone round him loses 6 seconds (dazed)
+}
+
 TuskConfig.Gyro = {
 	M1 = {
 		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,
@@ -1147,7 +1195,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }

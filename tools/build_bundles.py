@@ -144,6 +144,8 @@ PACKS = [
      "Jodio Joestar (The JOJOLands): November Rain."),
     ("JohnRod", {"server": ["JohnRod"], "client": ["JohnRodVFX", "JohnRodStand"]},
      "John Rod: a remote-control Stand."),
+    ("Ringo", {"server": ["Ringo", "RingoOutfit"], "client": ["RingoVFX", "MandomStand"]},
+     "Ringo Roadagain: Mandom (six seconds back)."),
 ]
 
 def deps(code):
@@ -300,7 +302,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

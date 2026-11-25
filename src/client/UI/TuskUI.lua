@@ -149,6 +149,12 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("SIX SECONDS") or has("PATH OF JUSTICE") then
+		return "clock"
+	elseif has("QUICK DRAW") then
+		return "nail"
+	elseif has("MANDOM COUNTER") then
+		return "portal"
 	elseif has("REMOTE CONTROL") then
 		return "portal"
 	elseif has("ROD LASH") then
