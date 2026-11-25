@@ -1178,6 +1178,10 @@ __modules["BountyUI"] = function()
 	    (target, reward, distance, time left, abandon button), plus a red
 	    TARGET marker over their head that only you can see
 	  * claiming it: a big "BOUNTY CLAIMED! +$350" banner
+	  * POST tab: post your own bounty. Pick who it's on (yourself, any
+	    player, any Stand-user NPC or any Saint's Corpse part), type how
+	    much (or tap +$25 / +$100 / +$500 / MAX) and POST it. The whole
+	    server sees a banner
 	Remote: Net "Bounty" (server: BountyService).
 ]]
 
@@ -1189,6 +1193,7 @@ local Shared = nil -- (bundled: modules are inlined)
 local Net = __require("Net")
 local Registry = __require("TuskActRegistry")
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local Cinematic = __require("Cinematic")
 local okHorse, HorseModel = pcall(function()
 	return __require("HorseModel")
 end)
@@ -1377,8 +1382,13 @@ local lastJobs, lastShop, jobsUntil = {}, {}, 0
 local lastStable = { Coats = {}, Blankets = {} }
 local stablePreview -- { Camera, Angle } spinning horse in the STABLE
 local showStable -- (below)
+local fillGrid -- (below)
 local placeAmount = 100
 local placeButton -- "PUT $100 ON THEIR HEAD" on a player's contract
+local lastTargets = {} -- who you can post a bounty on (POST tab)
+local postCfg = { Min = 25, Max = 5000, Cap = 10000, Quick = { 25, 100, 500 } }
+local postPick -- the Key of the target picked in the POST tab
+local postAmount = 100
 local jobsTimer -- "NEW JOBS IN m:ss"
 local filter = "ALL"
 local tabs = {}
@@ -1790,24 +1800,144 @@ local function showShop()
 	return #lastShop
 end
 
-local function fillGrid()
+-- POST: put your own Cash on someone (or something).
+local function cashNow()
+	local ls = player:FindFirstChild("leaderstats")
+	local cv = ls and ls:FindFirstChild("Cash")
+	return cv and cv.Value or 0
+end
+
+local function showPost()
+	local picked
+	for _, t in ipairs(lastTargets) do
+		if t.Key == postPick then
+			picked = t
+		end
+	end
+	if not picked then
+		postPick = nil
+	end
+	local cash = cashNow()
+	-- The form.
+	local card = paperCard(grid, UDim2.fromOffset(14, 16), UDim2.new(1, -40, 0, 176), -0.4)
+	label(card, { Position = UDim2.fromOffset(16, 8), Size = UDim2.fromOffset(260, 30), Text = "POST A BOUNTY", Font = Enum.Font.Bangers, TextColor3 = RED, TextXAlignment = Enum.TextXAlignment.Left })
+	local photoBox = new("Frame", { Position = UDim2.fromOffset(16, 46), Size = UDim2.fromOffset(100, 100), BackgroundColor3 = PAPER_DARK }, card)
+	corner(photoBox, 6)
+	new("UIStroke", { Color = WOOD_DARK, Thickness = 3 }, photoBox)
+	if picked then
+		local photo = photoFor(picked, photoBox)
+		photo.Size = UDim2.fromScale(1, 1)
+		corner(photo, 6)
+	else
+		label(photoBox, { Size = UDim2.fromScale(1, 1), Text = "?", Font = Enum.Font.Bangers, TextColor3 = WOOD_DARK })
+	end
+	local who = label(card, { Position = UDim2.fromOffset(128, 44), Size = UDim2.new(1, -144, 0, 26), Text = picked and string.upper((picked.Self and "YOURSELF: " or "ON: ") .. picked.Name) or "PICK WHO IT'S ON BELOW", TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
+	new("UITextSizeConstraint", { MaxTextSize = 22, MinTextSize = 10 }, who)
+	label(card, { Position = UDim2.fromOffset(128, 70), Size = UDim2.new(1, -144, 0, 16), Text = picked and ((picked.Posted or 0) > 0 and ("ALREADY ON THEM: $" .. picked.Posted) or "NOTHING ON THEM YET") or "", Font = Enum.Font.GothamBold, TextColor3 = (picked and (picked.Posted or 0) > 0) and RED or INK, TextXAlignment = Enum.TextXAlignment.Left })
+	-- Amount: type it, or tap the chips.
+	local box = new("TextBox", { Position = UDim2.fromOffset(128, 94), Size = UDim2.fromOffset(120, 38), BackgroundColor3 = Color3.fromRGB(250, 236, 205), Text = tostring(postAmount), PlaceholderText = "$", ClearTextOnFocus = false, Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = INK }, card)
+	corner(box, 6)
+	new("UIStroke", { Color = WOOD_DARK, Thickness = 2 }, box)
+	new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, box)
+	label(card, { Position = UDim2.fromOffset(112, 94), Size = UDim2.fromOffset(16, 38), Text = "$", Font = Enum.Font.Bangers, TextColor3 = INK })
+	local postButton
+	local function refreshButton()
+		local ok = picked ~= nil and postAmount >= (postCfg.Min or 25) and postAmount <= cash
+		postButton.Text = "POST  $" .. postAmount
+		postButton.BackgroundColor3 = ok and GREEN or Color3.fromRGB(130, 120, 110)
+		postButton.AutoButtonColor = ok
+		box.Text = tostring(postAmount)
+	end
+	local function setAmount(v)
+		v = math.floor(tonumber(v) or postAmount)
+		postAmount = math.clamp(v, postCfg.Min or 25, postCfg.Max or 5000)
+		refreshButton()
+	end
+	box.FocusLost:Connect(function()
+		setAmount((box.Text or ""):gsub("[^%d]", ""))
+	end)
+	local chips = {}
+	for _, q in ipairs(postCfg.Quick or { 25, 100, 500 }) do
+		table.insert(chips, { "+$" .. q, function()
+			setAmount(postAmount + q)
+		end })
+	end
+	table.insert(chips, { "MAX", function()
+		setAmount(math.min(cash, postCfg.Max or 5000))
+	end })
+	table.insert(chips, { "RESET", function()
+		setAmount(postCfg.Min or 25)
+	end })
+	for i, c in ipairs(chips) do
+		local chip = new("TextButton", { Position = UDim2.fromOffset(256 + (i - 1) * 54, 98), Size = UDim2.fromOffset(50, 30), BackgroundColor3 = i > #chips - 2 and WOOD_DARK or GOLD, Text = c[1], Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = i > #chips - 2 and PAPER or INK }, card)
+		corner(chip, 6)
+		new("UIPadding", { PaddingTop = UDim.new(0, 7), PaddingBottom = UDim.new(0, 7) }, chip)
+		chip.Activated:Connect(c[2])
+	end
+	postButton = new("TextButton", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -14, 1, -10), Size = UDim2.fromOffset(170, 40), BackgroundColor3 = GREEN, Text = "", Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, card)
+	corner(postButton, 8)
+	new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, postButton)
+	new("UIStroke", { Color = Color3.fromRGB(30, 70, 34), Thickness = 2 }, postButton)
+	local note = label(card, { Position = UDim2.fromOffset(16, 150), Size = UDim2.new(1, -210, 0, 18), Text = picked and picked.Self and "Bold. Whoever takes YOU down gets it." or "Whoever takes them down (or takes the part) gets it. Cash back if they leave.", Font = Enum.Font.GothamMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
+	new("UITextSizeConstraint", { MaxTextSize = 13, MinTextSize = 8 }, note)
+	refreshButton()
+	postButton.Activated:Connect(function()
+		if not picked or postAmount > cashNow() then
+			return
+		end
+		local sc = postButton:FindFirstChildOfClass("UIScale") or new("UIScale", { Scale = 1 }, postButton)
+		sc.Scale = 0.9
+		TweenService:Create(sc, FAST, { Scale = 1 }):Play()
+		Remote:FireServer("Post", { Key = picked.Key, Amount = postAmount })
+	end)
+	-- Who it can be on.
+	label(grid, { Position = UDim2.fromOffset(14, 200), Size = UDim2.new(1, -40, 0, 22), Text = "PICK WHO IT'S ON", Font = Enum.Font.Bangers, TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Left }).Name = "PostHeader"
+	local w = 196
+	for i, t in ipairs(lastTargets) do
+		local col, row = (i - 1) % 3, math.floor((i - 1) / 3)
+		local tc = new("TextButton", { Position = UDim2.fromOffset(14 + col * (w + 8), 228 + row * 80), Size = UDim2.fromOffset(w, 70), BackgroundColor3 = t.Key == postPick and Color3.fromRGB(255, 232, 170) or PAPER, Text = "", AutoButtonColor = true }, grid)
+		-- (A Frame-like card so fillGrid clears it.)
+		tc.Name = "PostTarget"
+		corner(tc, 6)
+		new("UIStroke", { Color = t.Key == postPick and GOLD or BURNT, Thickness = t.Key == postPick and 4 or 2 }, tc)
+		local ph = photoFor(t, tc)
+		ph.Position = UDim2.fromOffset(8, 8)
+		ph.Size = UDim2.fromOffset(54, 54)
+		corner(ph, 4)
+		local nm = label(tc, { Position = UDim2.fromOffset(68, 6), Size = UDim2.new(1, -74, 0, 22), Text = string.upper((t.Name or ""):gsub("^SAINT'S CORPSE: ", "")), TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
+		new("UITextSizeConstraint", { MaxTextSize = 16, MinTextSize = 8 }, nm)
+		local kindText = t.Self and "YOU" or (t.Kind == "Corpse" and "CORPSE PART" or (t.Kind == "NPC" and "NPC" or "PLAYER"))
+		local chip = new("Frame", { Position = UDim2.fromOffset(68, 30), Size = UDim2.fromOffset(t.Kind == "Corpse" and 84 or 52, 16), BackgroundColor3 = t.Self and GOLD or (t.Kind == "Corpse" and Color3.fromRGB(214, 178, 96) or (t.Kind == "NPC" and WOOD_DARK or GREEN)) }, tc)
+		corner(chip, 4)
+		label(chip, { Size = UDim2.fromScale(1, 1), Text = kindText, Font = Enum.Font.GothamBlack, TextColor3 = (t.Self or t.Kind == "Corpse") and INK or PAPER })
+		label(tc, { Position = UDim2.fromOffset(68, 48), Size = UDim2.new(1, -74, 0, 16), Text = (t.Posted or 0) > 0 and ("$" .. t.Posted .. " ON THEM") or "", Font = Enum.Font.GothamBlack, TextColor3 = RED, TextXAlignment = Enum.TextXAlignment.Left })
+		tc.Activated:Connect(function()
+			postPick = t.Key
+			fillGrid()
+		end)
+	end
+	grid.CanvasSize = UDim2.fromOffset(0, 240 + math.ceil(#lastTargets / 3) * 80)
+	return #lastTargets
+end
+
+function fillGrid()
 	for _, c in ipairs(grid:GetChildren()) do
-		if c:IsA("Frame") then
+		if c:IsA("Frame") or c.Name == "PostTarget" or c.Name == "PostHeader" then
 			c:Destroy()
 		end
 	end
 	jobsTimer = nil
-	if filter == "JOBS" or filter == "SHOP" then
-		local n = filter == "JOBS" and showJobs() or showShop()
+	if filter == "JOBS" or filter == "SHOP" or filter == "POST" then
+		local n = filter == "JOBS" and showJobs() or (filter == "POST" and showPost() or showShop())
 		local empty = grid:FindFirstChild("Empty")
 		empty.Visible = n == 0
-		empty.Text = filter == "JOBS" and "No jobs right now." or "The shop is closed."
+		empty.Text = filter == "JOBS" and "No jobs right now." or (filter == "POST" and "Nobody to post a bounty on." or "The shop is closed.")
 		for name, tab in pairs(tabs) do
 			local on = name == filter
 			tab.BackgroundColor3 = on and GOLD or WOOD_DARK
 			tab.TextColor3 = on and INK or PAPER
 		end
-		countLabel.Text = filter == "JOBS" and "PAID TASKS" or "SPEND YOUR CASH"
+		countLabel.Text = filter == "JOBS" and "PAID TASKS" or (filter == "POST" and "YOUR CASH ON ANYONE" or "SPEND YOUR CASH")
 		return
 	end
 	local shown = {}
@@ -1874,6 +2004,8 @@ local function openBoard(data)
 	lastJobs, lastShop, jobsUntil = data.Jobs or {}, data.Shop or {}, data.JobsUntil or 0
 	lastStable = data.Stable or lastStable
 	placeAmount = data.PlaceAmount or placeAmount
+	lastTargets = data.Targets or lastTargets
+	postCfg = data.Post or postCfg
 	cashLabel.Text = cashText()
 	huntingLabel.Text = current and ("HUNTING: " .. string.upper(current.Name)) or "NO ACTIVE BOUNTY"
 	fillGrid()
@@ -1942,9 +2074,9 @@ local function buildBoard()
 	local cashChip = new("Frame", { Position = UDim2.fromOffset(6, 4), Size = UDim2.fromOffset(86, 26), BackgroundColor3 = GOLD, ZIndex = 4 }, strip)
 	corner(cashChip, 6)
 	cashLabel = label(cashChip, { Size = UDim2.fromScale(1, 1), Text = "$0", Font = Enum.Font.Bangers, ZIndex = 4 })
-	for i, name in ipairs({ "ALL", "PLAYERS", "NPCS", "CORPSE", "JOBS", "SHOP" }) do
-		local x = 98 + (i - 1) * 60 + (i >= 5 and 8 or 0) -- a little gap before JOBS / SHOP
-		local tab = new("TextButton", { Position = UDim2.fromOffset(x, 4), Size = UDim2.fromOffset(56, 26), BackgroundColor3 = WOOD_DARK, Text = name, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = PAPER, ZIndex = 4 }, strip)
+	for i, name in ipairs({ "ALL", "PLAYERS", "NPCS", "CORPSE", "JOBS", "SHOP", "POST" }) do
+		local x = 98 + (i - 1) * 53 + (i >= 5 and 6 or 0) -- a little gap before JOBS / SHOP / POST
+		local tab = new("TextButton", { Position = UDim2.fromOffset(x, 4), Size = UDim2.fromOffset(50, 26), BackgroundColor3 = WOOD_DARK, Text = name, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = PAPER, ZIndex = 4 }, strip)
 		corner(tab, 6)
 		new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, tab)
 		tab.Activated:Connect(function()
@@ -1953,8 +2085,8 @@ local function buildBoard()
 		end)
 		tabs[name] = tab
 	end
-	huntingLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 2), Size = UDim2.fromOffset(170, 16), Text = "", TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
-	countLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 18), Size = UDim2.fromOffset(170, 12), Text = "", Font = Enum.Font.GothamBold, TextColor3 = PAPER_DARK, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+	huntingLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 2), Size = UDim2.fromOffset(150, 16), Text = "", TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+	countLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 18), Size = UDim2.fromOffset(150, 12), Text = "", Font = Enum.Font.GothamBold, TextColor3 = PAPER_DARK, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
 	grid = new("ScrollingFrame", { Name = "Grid", BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(22, 118), Size = UDim2.new(1, -44, 1, -136), ScrollBarThickness = 6, ScrollBarImageColor3 = PAPER_DARK, CanvasSize = UDim2.new(), ZIndex = 4 }, board)
 	label(grid, { Name = "Empty", Position = UDim2.fromScale(0.08, 0.32), Size = UDim2.fromScale(0.84, 0.14), Text = "", TextColor3 = PAPER, Visible = false, ZIndex = 4 })
 
@@ -2169,6 +2301,11 @@ function BountyUI.step()
 		where = "HIDDEN"
 		marker.Enabled = false
 	end
+	-- Smoke bomb (bounty-board shop): no marker, no distance while it lasts.
+	if model and (model:GetAttribute("SmokedUntil") or 0) > workspace:GetServerTimeNow() then
+		where = "LOST IN SMOKE"
+		marker.Enabled = false
+	end
 	tracker:FindFirstChild("Info").Text = string.format("%s  ·  %d:%02d", where, math.floor(left / 60), math.floor(left % 60))
 	if marker.Enabled then
 		marker:FindFirstChild("Arrow").Position = UDim2.new(0.5, 0, 0, 26 + math.sin(os.clock() * 5) * 4)
@@ -2187,15 +2324,18 @@ function BountyUI.init()
 		elseif kind == "Active" then
 			showActive(data)
 			showBanner("BOUNTY ACCEPTED: " .. string.upper(data.Name or ""), PAPER)
+			Cinematic.title("THE HUNT BEGINS", data.Name or "", GOLD, "$" .. tostring(data.Reward or 0) .. " · DEAD OR ALIVE")
 		elseif kind == "Complete" and data.Price then
 			showBanner("PRICE ON THEIR HEAD!  +$" .. tostring(data.Reward), GOLD)
 		elseif kind == "Complete" then
 			clearActive()
 			showBanner("BOUNTY CLAIMED!  +$" .. tostring(data.Reward), GOLD)
+			Cinematic.title("BOUNTY CLAIMED", "+$" .. tostring(data.Reward), GOLD, data.Name or "")
 		elseif kind == "Refresh" then
 			lastList = data.Bounties or lastList
 			lastJobs, lastShop, jobsUntil = data.Jobs or lastJobs, data.Shop or lastShop, data.JobsUntil or jobsUntil
 			lastStable = data.Stable or lastStable
+			lastTargets = data.Targets or lastTargets
 			cashLabel.Text = cashText()
 			if dim.Visible then
 				fillGrid()
@@ -2208,6 +2348,19 @@ function BountyUI.init()
 			showBanner("$" .. tostring(data.Total) .. " ON " .. string.upper(tostring(data.Name)) .. "'S HEAD", GOLD)
 		elseif kind == "Warned" then
 			showBanner(string.upper(tostring(data.By)) .. " PUT A PRICE ON YOUR HEAD!  ($" .. tostring(data.Total) .. ")", Color3.fromRGB(255, 140, 120))
+		elseif kind == "Posted" then
+			local amount, name = tostring(data.Amount), string.upper(tostring(data.Name))
+			if data.Mine then
+				showBanner((data.Self and "YOU PUT $" .. amount .. " ON YOUR OWN HEAD!") or ("BOUNTY POSTED: $" .. amount .. " ON " .. name), GOLD)
+			elseif data.You then
+				showBanner(string.upper(tostring(data.By)) .. " POSTED $" .. amount .. " ON YOUR HEAD!", Color3.fromRGB(255, 140, 120))
+			elseif data.Self then
+				showBanner(string.upper(tostring(data.By)) .. " PUT $" .. amount .. " ON THEIR OWN HEAD!", GOLD)
+			else
+				showBanner(string.upper(tostring(data.By)) .. " POSTED $" .. amount .. " ON " .. name, PAPER)
+			end
+		elseif kind == "Refunded" then
+			showBanner("$" .. tostring(data.Amount) .. " REFUNDED (" .. string.upper(tostring(data.Name)) .. " IS GONE)", PAPER)
 		elseif kind == "Denied" then
 			showBanner(string.upper(tostring(data.Reason or "CAN'T DO THAT")), Color3.fromRGB(255, 160, 140))
 		elseif kind == "Lost" then
@@ -3142,6 +3295,390 @@ function CharacterCard.step()
 end
 
 return CharacterCard
+end
+
+-- ======================================================================
+-- MODULE: Cinematic
+-- ======================================================================
+__modules["Cinematic"] = function()
+--[[
+	Cinematic  (StarterPlayerScripts.SpinClient.Cinematic)
+
+	Makes the whole game feel more like a film. All client-side, and scaled
+	by the VFX setting (Low / Medium / High). Numbers: TuskConfig.Cinematic.
+	  * GRADE: a film look on top of the map's own lighting: a touch more
+	    contrast and warmth; on High, distant things soften (depth of field)
+	  * VIGNETTE: darker screen edges (under the HUD)
+	  * DUST: fine desert dust drifting in the air round the camera (High)
+	  * LOW HEALTH: the edges pulse red, the world drains of colour
+	  * TAKEN DOWN: when you finish someone, letterbox bars slide in, the
+	    picture punches in and "TAKEN DOWN" + their name hits the screen
+	  * DEATH CAM: when you go down, the world fades to grey behind bars:
+	    "YOU WERE TAKEN DOWN · BY <name>" until you respawn
+	  * TITLE CARDS: Cinematic.title(top, main, color) for big moments
+	    (the bounty board uses it: "THE HUNT BEGINS", "BOUNTY CLAIMED")
+	It never takes the camera away from you (cutscenes do that), and it
+	stays out of the way while a cutscene is playing.
+]]
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local Shared = nil -- (bundled: modules are inlined)
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local VFXQuality = __require("VFXQuality")
+local Net = __require("Net")
+local CameraFX = __require("CameraFX")
+
+local Cinematic = {}
+local cfg = TuskConfig.Cinematic or {}
+local player = Players.LocalPlayer
+
+local GOLD = Color3.fromRGB(255, 205, 90)
+local PAPER = Color3.fromRGB(234, 205, 160)
+local BLOOD = Color3.fromRGB(170, 20, 16)
+
+local grade, dof, dust, dustEmitter
+local gui, vignette, redEdges, bars, cardTop, cardMain, cardSub
+local mood -- a ColorCorrection the moments (KO, death, low health) push on
+local recentHits = setmetatable({}, { __mode = "k" }) -- [victim model] = os.clock() of your last hit on them
+local watching = setmetatable({}, { __mode = "k" })
+local cardToken = 0
+local dead = false
+local lastKO = -math.huge
+
+local function level()
+	local _, name = VFXQuality.get()
+	return name == "High" and 3 or (name == "Medium" and 2 or 1)
+end
+
+local function on(key)
+	return cfg.Enabled ~= false and cfg[key] ~= false
+end
+
+local function cutscenePlaying()
+	local cam = workspace.CurrentCamera
+	return cam ~= nil and cam.CameraType == Enum.CameraType.Scriptable
+end
+
+local function new(class, props, parent)
+	local o = Instance.new(class)
+	for k, v in pairs(props) do
+		o[k] = v
+	end
+	o.Parent = parent
+	return o
+end
+
+---------------------------------------------------------------------------
+-- Grade, depth of field, dust
+---------------------------------------------------------------------------
+local function applyQuality()
+	local lv = level()
+	if grade then
+		grade.Enabled = on("Grade")
+	end
+	if dof then
+		dof.Enabled = on("DepthOfField") and lv >= 3
+	end
+	if dustEmitter then
+		dustEmitter.Enabled = on("Dust") and lv >= 3
+	end
+	if vignette then
+		vignette.Visible = on("Vignette") and lv >= 2
+	end
+end
+
+local function buildWorld()
+	grade = new("ColorCorrectionEffect", { Name = "SpinCinematicGrade", Contrast = cfg.Contrast or 0.08, Saturation = cfg.Saturation or 0.06, Brightness = 0, TintColor = cfg.Tint or Color3.fromRGB(255, 247, 234) }, Lighting)
+	mood = new("ColorCorrectionEffect", { Name = "SpinCinematicMood", Contrast = 0, Saturation = 0, Brightness = 0, TintColor = Color3.new(1, 1, 1) }, Lighting)
+	dof = new("DepthOfFieldEffect", { Name = "SpinCinematicDOF", FarIntensity = cfg.FarBlur or 0.12, NearIntensity = 0, FocusDistance = 70, InFocusRadius = 90 }, Lighting)
+	-- Dust drifting round the camera (a local part, so only you see yours).
+	dust = new("Part", { Name = "SpinDust", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1, Size = Vector3.new(50, 18, 50) }, workspace.CurrentCamera or workspace)
+	dustEmitter = new("ParticleEmitter", {
+		Name = "Dust",
+		Rate = cfg.DustRate or 14,
+		Lifetime = NumberRange.new(5, 8),
+		Speed = NumberRange.new(0.3, 1.2),
+		SpreadAngle = Vector2.new(180, 180),
+		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.5, 0.12), NumberSequenceKeypoint.new(1, 0.05) }),
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.55), NumberSequenceKeypoint.new(0.7, 0.55), NumberSequenceKeypoint.new(1, 1) }),
+		Color = ColorSequence.new(Color3.fromRGB(240, 214, 170)),
+		LightEmission = 0.3,
+		LightInfluence = 0.6,
+		Acceleration = Vector3.new(1.2, -0.1, 0.4),
+		RotSpeed = NumberRange.new(-30, 30),
+	}, dust)
+	pcall(function()
+		dustEmitter.Shape = Enum.ParticleEmitterShape.Box
+		dustEmitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	end)
+end
+
+---------------------------------------------------------------------------
+-- Screen: vignette, red edges, letterbox and title cards
+---------------------------------------------------------------------------
+-- Four soft edges of one colour (a vignette).
+local function edges(parent, color, depth, name)
+	local frame = new("Frame", { Name = name, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, parent)
+	local sides = {
+		{ UDim2.fromScale(0, 0), UDim2.fromScale(1, depth), 90 },
+		{ UDim2.fromScale(0, 1 - depth), UDim2.fromScale(1, depth), -90 },
+		{ UDim2.fromScale(0, 0), UDim2.fromScale(depth * 0.7, 1), 0 },
+		{ UDim2.fromScale(1 - depth * 0.7, 0), UDim2.fromScale(depth * 0.7, 1), 180 },
+	}
+	for _, s in ipairs(sides) do
+		local f = new("Frame", { BackgroundColor3 = color, BorderSizePixel = 0, Position = s[1], Size = s[2] }, frame)
+		new("UIGradient", { Rotation = s[3], Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) }) }, f)
+	end
+	return frame
+end
+
+local function buildScreen()
+	local pg = player:WaitForChild("PlayerGui")
+	-- The vignette sits under the HUD.
+	local back = new("ScreenGui", { Name = "SpinCinematicBack", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = -5 }, pg)
+	vignette = edges(back, Color3.new(0, 0, 0), 0.22, "Vignette")
+	vignette.BackgroundTransparency = 1
+	for _, f in ipairs(vignette:GetChildren()) do
+		f.BackgroundTransparency = cfg.VignetteStrength and (1 - cfg.VignetteStrength) or 0.55
+	end
+	redEdges = edges(back, BLOOD, 0.28, "LowHealth")
+	for _, f in ipairs(redEdges:GetChildren()) do
+		f.BackgroundTransparency = 1
+	end
+	-- Letterbox and title cards sit above most things.
+	gui = new("ScreenGui", { Name = "SpinCinematic", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 15 }, pg)
+	bars = {}
+	for i, y in ipairs({ 0, 1 }) do
+		bars[i] = new("Frame", { AnchorPoint = Vector2.new(0, y), Position = UDim2.fromScale(0, y), Size = UDim2.new(1, 0, 0, 0), BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0 }, gui)
+	end
+	cardTop = new("TextLabel", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.36), Size = UDim2.fromScale(0.6, 0.05), BackgroundTransparency = 1, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = PAPER, TextTransparency = 1, TextStrokeTransparency = 1, Text = "" }, gui)
+	cardMain = new("TextLabel", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromScale(0.8, 0.13), BackgroundTransparency = 1, Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = GOLD, TextTransparency = 1, TextStrokeTransparency = 1, TextStrokeColor3 = Color3.fromRGB(40, 22, 10), Text = "" }, gui)
+	new("UIScale", { Scale = 1 }, cardMain)
+	cardSub = new("TextLabel", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.54), Size = UDim2.fromScale(0.6, 0.045), BackgroundTransparency = 1, Font = Enum.Font.GothamBold, TextScaled = true, TextColor3 = PAPER, TextTransparency = 1, TextStrokeTransparency = 1, Text = "" }, gui)
+	for _, l in ipairs({ cardTop, cardMain, cardSub }) do
+		new("UITextSizeConstraint", { MaxTextSize = l == cardMain and 80 or 28 }, l)
+	end
+end
+
+local QUICK = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local SLAM = TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+local function letterbox(show, size)
+	for _, b in ipairs(bars) do
+		TweenService:Create(b, QUICK, { Size = UDim2.new(1, 0, show and (size or 0.11) or 0, 0) }):Play()
+	end
+end
+
+local function hideCard(token)
+	if token ~= cardToken then
+		return
+	end
+	letterbox(false)
+	for _, l in ipairs({ cardTop, cardMain, cardSub }) do
+		TweenService:Create(l, QUICK, { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	end
+end
+
+-- A title card: letterbox bars, a small line on top, a big slammed word,
+-- a line under it. `hold` nil keeps it up until the next card / clear.
+local function card(top, main, sub, color, hold, barSize)
+	if not gui then
+		return
+	end
+	cardToken = cardToken + 1
+	local token = cardToken
+	letterbox(true, barSize)
+	cardTop.Text = string.upper(top or "")
+	cardMain.Text = string.upper(main or "")
+	cardSub.Text = string.upper(sub or "")
+	cardMain.TextColor3 = color or GOLD
+	local scale = cardMain:FindFirstChildOfClass("UIScale")
+	scale.Scale = 1.8
+	TweenService:Create(scale, SLAM, { Scale = 1 }):Play()
+	for _, l in ipairs({ cardTop, cardMain, cardSub }) do
+		l.TextTransparency = 1
+		TweenService:Create(l, QUICK, { TextTransparency = 0, TextStrokeTransparency = 0.3 }):Play()
+	end
+	if hold then
+		task.delay(hold, function()
+			hideCard(token)
+		end)
+	end
+	return token
+end
+
+-- Push the mood colour for a moment (or hold it with `hold` = nil).
+local function moodTo(props, time)
+	if not mood then
+		return
+	end
+	TweenService:Create(mood, TweenInfo.new(time or 0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+end
+
+local function moodClear(time)
+	moodTo({ Contrast = 0, Saturation = 0, Brightness = 0, TintColor = Color3.new(1, 1, 1) }, time or 0.6)
+end
+
+---------------------------------------------------------------------------
+-- Public: title cards for other systems
+---------------------------------------------------------------------------
+function Cinematic.title(top, main, color, sub, hold)
+	if not on("TitleCards") or cutscenePlaying() or dead then
+		return
+	end
+	card(top, main, sub, color, hold or 2.2, 0.08)
+end
+
+---------------------------------------------------------------------------
+-- TAKEN DOWN / death cam
+---------------------------------------------------------------------------
+local function nameOf(model)
+	local p = Players:GetPlayerFromCharacter(model)
+	if p then
+		return p.DisplayName
+	end
+	local h = model:FindFirstChildOfClass("Humanoid")
+	local n = h and h.DisplayName ~= "" and h.DisplayName or model.Name
+	return (n:gsub("^Stand User: ", ""))
+end
+
+local function takenDown(victim)
+	if not on("KOCam") or dead or cutscenePlaying() or os.clock() - lastKO < (cfg.KOCooldown or 2.5) then
+		return
+	end
+	lastKO = os.clock()
+	local lv = level()
+	card("", "TAKEN DOWN", nameOf(victim), GOLD, cfg.KOHold or 1.5, lv >= 2 and 0.1 or 0.06)
+	CameraFX.fovPunch(-10, 0.6)
+	if lv >= 2 then
+		moodTo({ Contrast = 0.25, Saturation = -0.35, TintColor = Color3.fromRGB(255, 236, 210) }, 0.08)
+		task.delay(0.7, function()
+			if not dead then
+				moodClear(0.8)
+			end
+		end)
+	end
+end
+
+local function watchVictim(model)
+	if watching[model] then
+		return
+	end
+	local h = model:FindFirstChildOfClass("Humanoid")
+	if not h then
+		return
+	end
+	watching[model] = true
+	h.Died:Connect(function()
+		local t = recentHits[model]
+		if t and os.clock() - t <= (cfg.KillCredit or 6) then
+			takenDown(model)
+		end
+	end)
+end
+
+local function onDeath(character)
+	if not on("DeathCam") then
+		return
+	end
+	dead = true
+	local by
+	local id = character:GetAttribute("LastAttackerId")
+	local when = character:GetAttribute("LastAttackTime") or -math.huge
+	if id and workspace:GetServerTimeNow() - when <= 6 then
+		local p = Players:GetPlayerByUserId(id)
+		by = p and p.DisplayName
+	end
+	cardToken = cardToken + 1
+	card("", "YOU WERE TAKEN DOWN", by and ("BY " .. by) or "THE DESERT TAKES ANOTHER", Color3.fromRGB(230, 90, 70), nil, 0.13)
+	moodTo({ Saturation = -1, Contrast = 0.2, Brightness = -0.05, TintColor = Color3.fromRGB(235, 225, 215) }, 1.4)
+end
+
+local function onCharacter(character)
+	dead = false
+	cardToken = cardToken + 1
+	hideCard(cardToken)
+	moodClear(0.6)
+	local h = character:WaitForChild("Humanoid", 10)
+	if h then
+		h.Died:Connect(function()
+			onDeath(character)
+		end)
+	end
+end
+
+---------------------------------------------------------------------------
+-- Every frame: dust follows the camera; low-health pulse
+---------------------------------------------------------------------------
+local lowOn = false
+local function step()
+	local cam = workspace.CurrentCamera
+	if dust and cam then
+		if dust.Parent ~= cam then
+			dust.Parent = cam
+		end
+		dust.CFrame = CFrame.new(cam.CFrame.Position + cam.CFrame.LookVector * 14)
+	end
+	-- Low health: red edges pulse, the colour drains.
+	local character = player.Character
+	local h = character and character:FindFirstChildOfClass("Humanoid")
+	local k = 0
+	if on("LowHealth") and h and h.Health > 0 and h.MaxHealth > 0 then
+		local frac = h.Health / h.MaxHealth
+		local threshold = cfg.LowHealth or 0.3
+		if frac < threshold then
+			k = 1 - frac / threshold
+		end
+	end
+	if redEdges then
+		local pulse = k > 0 and (0.55 + 0.45 * math.abs(math.sin(os.clock() * (3 + k * 3)))) or 0
+		for _, f in ipairs(redEdges:GetChildren()) do
+			f.BackgroundTransparency = 1 - k * 0.75 * pulse
+		end
+	end
+	if not dead and mood then
+		if k > 0 then
+			lowOn = true
+			mood.Saturation = -0.5 * k
+		elseif lowOn then
+			lowOn = false
+			mood.Saturation = 0
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+function Cinematic.init()
+	if cfg.Enabled == false then
+		return
+	end
+	if _G.__SpinCinematic then
+		return
+	end
+	_G.__SpinCinematic = true
+	buildWorld()
+	buildScreen()
+	applyQuality()
+	VFXQuality.Changed:Connect(applyQuality)
+	-- Your hits (to know when YOU took someone down).
+	Net.get("SpinFX").OnClientEvent:Connect(function(name, data)
+		if name == "Hit" and typeof(data) == "table" and data.AttackerId == player.UserId and typeof(data.Victim) == "Instance" then
+			recentHits[data.Victim] = os.clock()
+			watchVictim(data.Victim)
+		end
+	end)
+	player.CharacterAdded:Connect(onCharacter)
+	if player.Character then
+		task.spawn(onCharacter, player.Character)
+	end
+	RunService.RenderStepped:Connect(step)
+end
+
+return Cinematic
 end
 
 -- ======================================================================
@@ -14963,7 +15500,7 @@ local function __start(name)
 		warn("[Spin] " .. name .. " failed to start: " .. tostring(err))
 	end
 end
-for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient", "CorpseClient", "RaceClient", "Cutscenes" }) do
+for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient", "CorpseClient", "RaceClient", "Cutscenes", "Cinematic" }) do
 	__start(name)
 end
 print("[Spin] Client ready")

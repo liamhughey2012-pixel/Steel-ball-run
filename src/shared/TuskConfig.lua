@@ -146,6 +146,21 @@ TuskConfig.Cutscenes = {
 	CorpseComplete = true, -- a golden orbit when you complete the Saint's Corpse
 }
 
+-- CINEMATIC: the film look over the whole game (client; scaled by the VFX
+-- setting: Low = grade + cards only, Medium = + vignette, High = + depth of
+-- field and drifting dust).
+TuskConfig.Cinematic = {
+	Enabled = true,
+	Grade = true, Contrast = 0.08, Saturation = 0.06, Tint = Color3.fromRGB(255, 247, 234),
+	DepthOfField = true, FarBlur = 0.12,
+	Vignette = true, VignetteStrength = 0.45,
+	Dust = true, DustRate = 14,
+	LowHealth = 0.3, -- below this much health the edges pulse red and colour drains
+	KOCam = true, KOHold = 1.5, KOCooldown = 2.5, KillCredit = 6, -- "TAKEN DOWN" when you finish someone
+	DeathCam = true, -- "YOU WERE TAKEN DOWN · BY ..." until you respawn
+	TitleCards = true, -- big moments (bounties) get a letterboxed title card
+}
+
 TuskConfig.Roster = {
 	{ Id = "Johnny", Name = "JOHNNY JOESTAR", Stand = "TUSK", Available = true, Color = Color3.fromRGB(90, 230, 255) },
 	{ Id = "Gyro", Name = "GYRO ZEPPELI", Stand = "BALL BREAKER", Available = true, Color = Color3.fromRGB(110, 210, 90) },
@@ -182,7 +197,21 @@ TuskConfig.Bounty = {
 	StartingCash = 0,
 	-- PUT A PRICE ON THEIR HEAD: pay to raise another player's bounty. Whoever
 	-- takes them down next gets it (contract or not); it's gone when they die.
-	PlaceAmount = 100, PlaceMax = 2000,
+	PlaceAmount = 100, PlaceMax = 10000,
+	-- POST A BOUNTY (the POST tab): put your own Cash on anyone in the server
+	-- (yourself too), any Stand-user NPC, or any Saint's Corpse part, for as
+	-- much as you like. Whoever takes them down (or takes the part) is paid
+	-- it, contract or not. A price on a player stays on until someone takes
+	-- them down (dying any other way doesn't clear it). If the target leaves
+	-- or an NPC vanishes without being taken down, everyone who posted gets
+	-- their Cash back.
+	Post = {
+		Min = 25, -- smallest post
+		Max = 5000, -- biggest single post
+		Cap = 10000, -- most that can be on one target at once
+		Quick = { 25, 100, 500 }, -- the +$ buttons
+		Announce = true, -- tell the whole server when a bounty's posted
+	},
 	-- JOBS: a few paid tasks on the board, the same for everyone, swapped for
 	-- new ones every RefreshEvery seconds. Progress counts on its own (no
 	-- need to accept); you're paid the moment one's done.
@@ -204,6 +233,11 @@ TuskConfig.Bounty = {
 		{ Id = "Tonic", Name = "SNAKE-OIL TONIC", Price = 90, Text = "+15% speed for 2 minutes", Icon = "~", Speed = 1.15, Time = 120 },
 		{ Id = "Horseshoe", Name = "LUCKY HORSESHOE", Price = 120, Text = "+25% ultimate charge for 2 minutes", Icon = "U", UltGain = 1.25, Time = 120 },
 		{ Id = "Compass", Name = "CORPSE COMPASS", Price = 100, Text = "Points you to the nearest Saint's Corpse part for 60 s", Icon = "N", Time = 60 },
+		{ Id = "Canteen", Name = "TIN CANTEEN", Price = 80, Text = "Heal 3 health a second for 20 s", Icon = "C", Regen = 3, Time = 20 },
+		{ Id = "Duster", Name = "LEATHER DUSTER", Price = 140, Text = "Take 15% less damage for 2 minutes", Icon = "D", Resist = 0.85, Time = 120 },
+		{ Id = "Whiskey", Name = "RYE WHISKEY", Price = 130, Text = "Hit 12% harder for 90 s", Icon = "W", Damage = 1.12, Time = 90 },
+		{ Id = "Badge", Name = "PINKERTON BADGE", Price = 160, Text = "Bounties and prices you claim pay 50% more for 3 minutes", Icon = "*", BountyBonus = 1.5, Time = 180 },
+		{ Id = "Smoke", Name = "SMOKE BOMB", Price = 110, Text = "Hunters lose your trail (no marker, no distance) for 60 s", Icon = "S", Time = 60 },
 		{ Id = "ClearName", Name = "CLEAR YOUR NAME", Price = 0, Text = "Wipe your kill streak and any price on your head", Icon = "X", BaseCost = 50, PerStreak = 50 },
 	},
 }

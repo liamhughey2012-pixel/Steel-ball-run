@@ -66,3 +66,21 @@ The tabs are now ALL · PLAYERS · NPCS · CORPSE · **JOBS** · **SHOP**.
   - Whoever takes them down next is paid it. That's included in the reward if they had a contract on that player, or paid on its own if not.
   - It's gone when they die.
   - Posters show a gold +$X tag.
+
+## POST tab: post your own bounty (2026-11-25)
+- Pick **who it's on**: yourself (marked YOU), any other player, any Stand-user NPC, or any Saint's Corpse part. Type **how much**, or use +$25 / +$100 / +$500 / MAX / RESET, then **POST**.
+- Limits (`TuskConfig.Bounty.Post`): $25–$5,000 a post, at most $10,000 on one target.
+- **Payout:** whoever takes the target down (with the last hit inside the kill-credit window) is paid it, whether or not they have a contract. For a corpse part, it's whoever takes the part. A contract on the same target pays only its own share, so nothing is paid twice.
+- A price on a player **stays on** if they die any other way (falling, resetting); only a takedown claims it.
+- **Refunds:** if a player with a price on them leaves, or an NPC with one vanishes or dies to no player, everyone who posted gets their Cash back.
+- The whole server sees a banner: "BOB POSTED $500 ON GYRO". The target sees "… POSTED $500 ON YOUR HEAD!", and posting on yourself shows "… PUT $500 ON THEIR OWN HEAD!".
+- Posted amounts show on the posters (players, NPCs and corpse contracts). Server: `post`, `postTargets`, `refund`, `bonusPay` in `BountyService`. Remote action `"Post"` with `{ Key, Amount }`.
+
+## New shop items (2026-11-25)
+| Item | Price | Effect |
+|---|---|---|
+| TIN CANTEEN | $80 | +3 health a second for 20 s |
+| LEATHER DUSTER | $140 | take 15% less damage for 2 min (`ShopResist`, CombatAdapter) |
+| RYE WHISKEY | $130 | hit 12% harder for 90 s (`ShopDamage`, CombatAdapter) |
+| PINKERTON BADGE | $160 | bounties and prices you claim pay +50% for 3 min |
+| SMOKE BOMB | $110 | hunters tracking you lose your marker and distance for 60 s ("LOST IN SMOKE") |

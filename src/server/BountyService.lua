@@ -23,6 +23,11 @@
 	    (filtered). You ride it with M and race on it
 	  * PUT A PRICE ON THEIR HEAD: from a player's contract, pay to raise
 	    their bounty. Whoever takes them down next is paid it
+	  * POST tab: post your own bounty, for as much Cash as you like, on any
+	    player (yourself too), any Stand-user NPC or any Saint's Corpse
+	    part. Whoever takes them down (or takes the part) is paid it; the
+	    whole server hears about it. If the target leaves or vanishes
+	    first, everyone who posted gets their Cash back
 	Numbers: TuskConfig.Bounty. Remote: Net "Bounty".
 ]]
 
@@ -43,6 +48,9 @@ local npcIds = setmetatable({}, { __mode = "k" }) -- [model] = id
 local npcById = {} -- [id] = model
 local nextNpcId = 0
 local posterGuis = {} -- the posters on the physical board
+local posts = {} -- [target key] = { { UserId, Amount }, ... } who put Cash on it (for refunds)
+local corpsePosted = {} -- [part id] = Cash posted on that Saint's Corpse part
+local pcfg = cfg.Post or {}
 
 local WOOD = Color3.fromRGB(112, 74, 44)
 local WOOD_DARK = Color3.fromRGB(88, 57, 34)
@@ -223,7 +231,8 @@ local function retrieveBounties(viewer)
 				Kind = "Corpse",
 				Part = info.Id,
 				Name = "SAINT'S CORPSE: " .. info.Name,
-				Reward = (corpse.RetrieveRewards or {})[info.Id] or corpse.RetrieveReward or 120,
+				Reward = ((corpse.RetrieveRewards or {})[info.Id] or corpse.RetrieveReward or 120) + (corpsePosted[info.Id] or 0),
+				Placed = (corpsePosted[info.Id] or 0) > 0 and corpsePosted[info.Id] or nil,
 				HeldBy = where.Holder and where.Holder.DisplayName or nil,
 				Boost = info.Text,
 			})
@@ -288,7 +297,8 @@ local function listBounties(viewer)
 				Kind = "NPC",
 				Model = model,
 				Name = h.DisplayName ~= "" and h.DisplayName or model.Name,
-				Reward = (cfg.NPCReward or 75) + bonus,
+				Reward = (cfg.NPCReward or 75) + bonus + (model:GetAttribute("PlacedBounty") or 0),
+				Placed = (model:GetAttribute("PlacedBounty") or 0) > 0 and model:GetAttribute("PlacedBounty") or nil,
 				Act = model:GetAttribute("TuskAct"),
 				Corpse = #names > 0 and table.concat(names, ", ") or nil,
 			})
@@ -432,6 +442,11 @@ local function shopFor(player)
 			Tonic = character:GetAttribute("ShopTonicUntil"),
 			Horseshoe = character:GetAttribute("ShopUltUntil"),
 			Compass = character:GetAttribute("CompassUntil"),
+			Canteen = character:GetAttribute("ShopRegenUntil"),
+			Duster = character:GetAttribute("ShopResistUntil"),
+			Whiskey = character:GetAttribute("ShopDamageUntil"),
+			Badge = character:GetAttribute("ShopBadgeUntil"),
+			Smoke = character:GetAttribute("SmokedUntil"),
 		})[item.Id]
 		table.insert(list, {
 			Id = item.Id, Name = item.Name, Text = item.Text, Icon = item.Icon, Price = price,
@@ -470,6 +485,31 @@ local function buy(player, id)
 	local t = workspace:GetServerTimeNow()
 	if item.Heal then
 		humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + item.Heal)
+	elseif item.Regen then
+		-- A little health every second while it lasts.
+		local token = tostring({})
+		character:SetAttribute("ShopRegenUntil", t + item.Time)
+		character:SetAttribute("ShopRegenToken", token)
+		task.spawn(function()
+			for _ = 1, math.floor(item.Time) do
+				task.wait(1)
+				if not humanoid.Parent or humanoid.Health <= 0 or character:GetAttribute("ShopRegenToken") ~= token then
+					return
+				end
+				humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + item.Regen)
+			end
+		end)
+	elseif item.Resist then
+		character:SetAttribute("ShopResist", item.Resist)
+		character:SetAttribute("ShopResistUntil", t + item.Time)
+	elseif item.Damage then
+		character:SetAttribute("ShopDamage", item.Damage)
+		character:SetAttribute("ShopDamageUntil", t + item.Time)
+	elseif item.BountyBonus then
+		character:SetAttribute("ShopBadge", item.BountyBonus)
+		character:SetAttribute("ShopBadgeUntil", t + item.Time)
+	elseif item.Id == "Smoke" then
+		character:SetAttribute("SmokedUntil", t + item.Time)
 	elseif item.Speed then
 		local token = tostring({})
 		character:SetAttribute("ShopTonicUntil", t + item.Time)
@@ -631,8 +671,159 @@ local function place(player, key)
 		return
 	end
 	target:SetAttribute("PlacedBounty", placed + amount)
+	posts["P" .. target.UserId] = posts["P" .. target.UserId] or {}
+	table.insert(posts["P" .. target.UserId], { UserId = player.UserId, Amount = amount })
 	send(player, "Placed", { Name = target.DisplayName, Amount = amount, Total = placed + amount })
 	send(target, "Warned", { By = player.DisplayName, Total = placed + amount })
+end
+
+---------------------------------------------------------------------------
+-- POST A BOUNTY: your own Cash on a player (you too), an NPC or a corpse part
+---------------------------------------------------------------------------
+-- Pinkerton Badge: bounties and prices you claim pay more.
+local function bonusPay(player, amount)
+	local character = player.Character
+	if character and (character:GetAttribute("ShopBadgeUntil") or 0) > workspace:GetServerTimeNow() then
+		amount = amount * (character:GetAttribute("ShopBadge") or 1)
+	end
+	return math.floor(amount + 0.5)
+end
+
+local function remember(key, player, amount)
+	posts[key] = posts[key] or {}
+	table.insert(posts[key], { UserId = player.UserId, Amount = amount })
+end
+
+-- Paid out: forget who posted.
+local function settled(key)
+	posts[key] = nil
+end
+
+-- The target's gone without being taken down: everyone gets their Cash back.
+local function refund(key, name)
+	local list = posts[key]
+	posts[key] = nil
+	for _, p in ipairs(list or {}) do
+		local poster = Players:GetPlayerByUserId(p.UserId)
+		if poster then
+			pay(poster, p.Amount)
+			send(poster, "Refunded", { Name = name, Amount = p.Amount })
+		end
+	end
+end
+
+-- Everyone (and everything) you can post a bounty on, you first.
+local function postTargets(viewer)
+	local list = {}
+	local function add(entry)
+		table.insert(list, entry)
+	end
+	local mine = viewer:GetAttribute("PlacedBounty") or 0
+	add({ Key = "P" .. viewer.UserId, Kind = "Player", UserId = viewer.UserId, Name = viewer.DisplayName, Self = true, Posted = mine, Act = viewer.Character and viewer.Character:GetAttribute("TuskAct") })
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= viewer then
+			add({ Key = "P" .. p.UserId, Kind = "Player", UserId = p.UserId, Name = p.DisplayName, Posted = p:GetAttribute("PlacedBounty") or 0, Act = p.Character and p.Character:GetAttribute("TuskAct") })
+		end
+	end
+	for _, model in ipairs(CollectionService:GetTagged("SpinFighter")) do
+		if aliveModel(model) then
+			local h = model:FindFirstChildOfClass("Humanoid")
+			add({ Key = npcId(model), Kind = "NPC", Model = model, Name = h.DisplayName ~= "" and h.DisplayName or model.Name, Posted = model:GetAttribute("PlacedBounty") or 0, Act = model:GetAttribute("TuskAct") })
+		end
+	end
+	local C = corpseService()
+	if C and TuskConfig.Corpse and TuskConfig.Corpse.Enabled ~= false then
+		for _, info in ipairs(C.parts()) do
+			local where = C.where(info.Id)
+			add({ Key = "C" .. info.Id, Kind = "Corpse", Part = info.Id, Name = "SAINT'S CORPSE: " .. info.Name, Posted = corpsePosted[info.Id] or 0, HeldBy = where and where.Holder and where.Holder.DisplayName or nil })
+		end
+	end
+	return list
+end
+
+local function post(player, data)
+	if typeof(data) ~= "table" then
+		return
+	end
+	local key, amount = data.Key, tonumber(data.Amount)
+	if typeof(key) ~= "string" or not amount or amount ~= amount or amount == math.huge then
+		return
+	end
+	amount = math.floor(amount)
+	local min, max, cap = pcfg.Min or 25, pcfg.Max or 5000, pcfg.Cap or 10000
+	if amount < min then
+		send(player, "Denied", { Reason = "The smallest bounty is $" .. min .. "." })
+		return
+	end
+	if amount > max then
+		send(player, "Denied", { Reason = "The biggest single bounty is $" .. max .. "." })
+		return
+	end
+	-- Who (or what) it's on, and what's on them already.
+	local kind, name, current, apply, targetPlayer
+	local head = key:sub(1, 1)
+	if head == "P" then
+		targetPlayer = Players:GetPlayerByUserId(tonumber(key:sub(2)) or 0)
+		if not targetPlayer then
+			send(player, "Denied", { Reason = "They've left." })
+			return
+		end
+		kind, name = "Player", targetPlayer.DisplayName
+		current = targetPlayer:GetAttribute("PlacedBounty") or 0
+		apply = function(total)
+			targetPlayer:SetAttribute("PlacedBounty", total)
+		end
+	elseif head == "C" then
+		local C = corpseService()
+		local partId = key:sub(2)
+		local found
+		for _, info in ipairs(C and C.parts() or {}) do
+			if info.Id == partId then
+				found = info
+			end
+		end
+		if not found then
+			send(player, "Denied", { Reason = "That part isn't out there." })
+			return
+		end
+		kind, name = "Corpse", "THE SAINT'S " .. string.upper(found.Name)
+		current = corpsePosted[partId] or 0
+		apply = function(total)
+			corpsePosted[partId] = total
+		end
+	else
+		local model = npcById[key]
+		if not aliveModel(model) then
+			send(player, "Denied", { Reason = "They're gone." })
+			return
+		end
+		local h = model:FindFirstChildOfClass("Humanoid")
+		kind, name = "NPC", h.DisplayName ~= "" and h.DisplayName or model.Name
+		current = model:GetAttribute("PlacedBounty") or 0
+		apply = function(total)
+			model:SetAttribute("PlacedBounty", total)
+		end
+	end
+	if current + amount > cap then
+		send(player, "Denied", { Reason = "There's already $" .. current .. " on " .. name .. " (the most is $" .. cap .. ")." })
+		return
+	end
+	if not spend(player, amount) then
+		send(player, "Denied", { Reason = "Not enough Cash ($" .. amount .. ")." })
+		return
+	end
+	local total = current + amount
+	apply(total)
+	remember(key, player, amount)
+	local self = targetPlayer == player
+	send(player, "Posted", { Name = name, Amount = amount, Total = total, Self = self, Mine = true })
+	if pcfg.Announce ~= false then
+		for _, other in ipairs(Players:GetPlayers()) do
+			if other ~= player then
+				send(other, "Posted", { By = player.DisplayName, Name = name, Amount = amount, Total = total, Self = self, You = other == targetPlayer, Kind = kind })
+			end
+		end
+	end
 end
 
 local function accept(player, key)
@@ -674,15 +865,31 @@ local function onDeath(model)
 		killer:SetAttribute("KillStreak", (killer:GetAttribute("KillStreak") or 0) + 1)
 		jobProgress(killer, victimPlayer and "PlayerKills" or "NPCKills", 1)
 	end
-	-- A price on their head: whoever took them down gets it (a contract on
-	-- them already includes it), and it's gone.
-	local placed = victimPlayer and victimPlayer:GetAttribute("PlacedBounty") or 0
-	if victimPlayer and placed > 0 then
-		victimPlayer:SetAttribute("PlacedBounty", nil)
-		local b = killer and active[killer]
-		if killer and killer ~= victimPlayer and not (b and targetsThis(b, victimPlayer, model)) then
-			pay(killer, placed)
-			send(killer, "Complete", { Name = victimPlayer.DisplayName, Reward = placed, Price = true })
+	-- A price on their head (posted bounties): whoever took them down gets
+	-- it. A player who dies any other way keeps it on; an NPC that does is
+	-- gone, so its posters get their Cash back.
+	local holder = victimPlayer or model
+	local placed = holder:GetAttribute("PlacedBounty") or 0
+	if placed > 0 then
+		local key = victimPlayer and ("P" .. victimPlayer.UserId) or npcIds[model]
+		local name = victimPlayer and victimPlayer.DisplayName or model.Name
+		local h = model:FindFirstChildOfClass("Humanoid")
+		if h and h.DisplayName ~= "" and not victimPlayer then
+			name = h.DisplayName
+		end
+		if killer and killer ~= victimPlayer then
+			holder:SetAttribute("PlacedBounty", nil)
+			local paid = bonusPay(killer, placed)
+			pay(killer, paid)
+			send(killer, "Complete", { Name = name, Reward = paid, Price = true })
+			if key then
+				settled(key)
+			end
+		elseif not victimPlayer then
+			holder:SetAttribute("PlacedBounty", nil)
+			if key then
+				refund(key, name)
+			end
 		end
 	end
 	for hunter, b in pairs(active) do
@@ -690,14 +897,16 @@ local function onDeath(model)
 			if killer == hunter then
 				local ls = leaderstats(hunter)
 				local cash, claimed = ls:FindFirstChild("Cash"), ls:FindFirstChild("Bounties")
+				-- (The price on their head was paid above, so it's not paid twice.)
+				local reward = bonusPay(hunter, math.max(0, b.Reward - (b.Placed or 0)))
 				if cash then
-					cash.Value = cash.Value + b.Reward
+					cash.Value = cash.Value + reward
 				end
 				if claimed then
 					claimed.Value = claimed.Value + 1
 				end
 				active[hunter] = nil
-				send(hunter, "Complete", { Name = b.Name, Reward = b.Reward })
+				send(hunter, "Complete", { Name = b.Name, Reward = reward })
 				jobProgress(hunter, "Bounties", 1)
 			elseif b.Kind == "NPC" then
 				active[hunter] = nil
@@ -807,6 +1016,8 @@ function BountyService.init()
 			Shop = shopFor(player),
 			Stable = stableFor(player),
 			PlaceAmount = cfg.PlaceAmount or 100,
+			Targets = postTargets(player),
+			Post = { Min = pcfg.Min or 25, Max = pcfg.Max or 5000, Cap = pcfg.Cap or 10000, Quick = pcfg.Quick },
 		}
 	end
 	prompt.Triggered:Connect(function(player)
@@ -827,18 +1038,27 @@ function BountyService.init()
 	if C and C.OnTaken then
 		table.insert(C.OnTaken, function(player, partId)
 			jobProgress(player, "Corpse", 1)
+			local posted = corpsePosted[partId] or 0
+			if posted > 0 then
+				corpsePosted[partId] = nil
+				settled("C" .. partId)
+				local paid = bonusPay(player, posted)
+				pay(player, paid)
+				send(player, "Complete", { Name = "THE SAINT'S CORPSE", Reward = paid, Price = true })
+			end
 			local b = active[player]
 			if b and b.Kind == "Corpse" and b.Part == partId then
 				local ls = leaderstats(player)
 				local cash, claimed = ls:FindFirstChild("Cash"), ls:FindFirstChild("Bounties")
+				local reward = bonusPay(player, math.max(0, b.Reward - (b.Placed or 0)))
 				if cash then
-					cash.Value = cash.Value + b.Reward
+					cash.Value = cash.Value + reward
 				end
 				if claimed then
 					claimed.Value = claimed.Value + 1
 				end
 				active[player] = nil
-				send(player, "Complete", { Name = b.Name, Reward = b.Reward })
+				send(player, "Complete", { Name = b.Name, Reward = reward })
 				jobProgress(player, "Bounties", 1)
 			end
 		end)
@@ -854,6 +1074,9 @@ function BountyService.init()
 			send(player, "Refresh", boardData(player))
 		elseif action == "Place" then
 			place(player, key)
+			send(player, "Refresh", boardData(player))
+		elseif action == "Post" then
+			post(player, key)
 			send(player, "Refresh", boardData(player))
 		elseif action == "BuyHorse" then
 			buyHorse(player, key)
@@ -877,6 +1100,10 @@ function BountyService.init()
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		active[player] = nil
+		-- A price on someone who leaves goes back to whoever posted it.
+		if (player:GetAttribute("PlacedBounty") or 0) > 0 then
+			refund("P" .. player.UserId, player.DisplayName)
+		end
 		for hunter, b in pairs(active) do
 			if b.Kind == "Player" and b.UserId == player.UserId then
 				active[hunter] = nil
@@ -889,6 +1116,14 @@ function BountyService.init()
 	end
 	CollectionService:GetInstanceAddedSignal("SpinFighter"):Connect(function(model)
 		task.spawn(watchCharacter, model)
+	end)
+	-- An NPC that vanishes with a price on it (despawned, not taken down).
+	CollectionService:GetInstanceRemovedSignal("SpinFighter"):Connect(function(model)
+		local key = npcIds[model]
+		if key and (model:GetAttribute("PlacedBounty") or 0) > 0 then
+			model:SetAttribute("PlacedBounty", nil)
+			refund(key, model.Name)
+		end
 	end)
 
 	-- Expiry, vanished NPC targets, and the posters on the board.

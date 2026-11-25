@@ -377,7 +377,7 @@ local function __start(name)
 		warn("[Spin] " .. name .. " failed to start: " .. tostring(err))
 	end
 end
-for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient", "CorpseClient", "RaceClient", "Cutscenes" }) do
+for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient", "CorpseClient", "RaceClient", "Cutscenes", "Cinematic" }) do
 	__start(name)
 end
 print("[Spin] Client ready")
