@@ -330,6 +330,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "RingoVFX", -- client visuals (TuskActVFX.RingoVFX)
 		CardTitle = "STAND  ·  MANDOM",
 	},
+	-- JOTARO KUJO: STAR PLATINUM. Precision, speed and power; stops time.
+	[20] = {
+		Name = "STAR PLATINUM",
+		Character = "Jotaro",
+		Tagline = "Ora ora ora",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(130, 110, 220), Secondary = Color3.fromRGB(240, 196, 70) },
+		M1 = "ORA COMBO",
+		Abilities = { "ORA RUSH", "STAR FINGER", "BEARING SHOT" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "STAR PLATINUM: THE WORLD",
+		Next = nil,
+		Module = "Jotaro", -- server moves
+		ClientModule = "JotaroVFX", -- client visuals (TuskActVFX.JotaroVFX)
+		CardTitle = "STAND  ·  STAR PLATINUM",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -339,7 +355,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

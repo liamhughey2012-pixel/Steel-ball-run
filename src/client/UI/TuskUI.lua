@@ -149,6 +149,14 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("ORA RUSH") or has("ORA BARRAGE") then
+		return "barrage"
+	elseif has("STAR FINGER") then
+		return "dash"
+	elseif has("BEARING SHOT") then
+		return "nail"
+	elseif has("STAR PLATINUM: THE WORLD") then
+		return "clock"
 	elseif has("SIX SECONDS") or has("PATH OF JUSTICE") then
 		return "clock"
 	elseif has("QUICK DRAW") then

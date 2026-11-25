@@ -178,6 +178,7 @@ TuskConfig.Roster = {
 	{ Id = "Tooru", Name = "TOORU", Stand = "WONDER OF U", Available = true, Color = Color3.fromRGB(150, 70, 190) },
 	{ Id = "JohnRod", Name = "JOHN ROD", Stand = "JOHN ROD", Available = true, Color = Color3.fromRGB(200, 215, 235) },
 	{ Id = "Jodio", Name = "JODIO JOESTAR", Stand = "NOVEMBER RAIN", Available = true, Color = Color3.fromRGB(90, 170, 240) },
+	{ Id = "Jotaro", Name = "JOTARO KUJO", Stand = "STAR PLATINUM", Available = true, Color = Color3.fromRGB(130, 110, 220) },
 }
 
 ---------------------------------------------------------------------------
@@ -250,10 +251,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 16, -- how many at once (each takes a free spot below)
+	Count = 17, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -288,6 +289,7 @@ TuskConfig.StandBots = {
 		Vector3.new(110, 0, 380), -- far north
 		Vector3.new(380, 0, 290), -- north-east edge
 		Vector3.new(400, 0, -380), -- south-east corner
+		Vector3.new(400, 0, 130), -- east edge
 	},
 	Distance = 70, -- (no map) studs from the spawn to their camp
 	Spacing = 14, -- (no map) studs between them at the camp
@@ -1145,6 +1147,51 @@ TuskConfig.Ringo = {
 	CorpseRewind = { Radius = 20, Damage = 7, Stun = 1.2 }, -- corpse move SECOND HAND: everyone round him loses 6 seconds (dazed)
 }
 
+---------------------------------------------------------------------------
+-- JOTARO KUJO: STAR PLATINUM (a visitor from another world: Part 3).
+-- Close-range power, precision and speed; stops time for a few seconds.
+---------------------------------------------------------------------------
+TuskConfig.Jotaro = {
+	M1 = { -- ORA COMBO: Star Platinum punches with him; the 4th is a straight that launches
+		Interval = 0.26, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.07,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.8, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.8, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4.2, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7.5, Stun = 0.55, Knockback = 42, Launch = 14, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	OraRush = { -- 1: ORA ORA ORA: a storm of punches in front of him, dragging them along
+		Cooldown = 11, Windup = 0.15,
+		Duration = 1.5, Tick = 0.09,
+		Damage = 0.95, Stun = 0.35, Knockback = 0,
+		HitboxSize = Vector3.new(6, 6, 7), HitboxForward = 4, MaxTargets = 4,
+		Drag = 6,
+		WalkMultiplier = 0.55,
+		FinalDamage = 8, FinalKnockback = 70, FinalLaunch = 14, FinalStun = 0.7, -- "ORA!"
+		ShockwaveRadius = 8, ShockwaveDamage = 3,
+	},
+	StarFinger = { -- 2: Star Platinum's fingers shoot out in a long, fast line
+		Cooldown = 7, Windup = 0.2,
+		Length = 22, Width = 3.5,
+		Damage = 9, Stun = 0.7, Knockback = 14,
+	},
+	BearingShot = { -- 3: a ball bearing flicked like a bullet (instant)
+		Cooldown = 6, Windup = 0.18,
+		Range = 100, Width = 3,
+		Damage = 7, Stun = 0.5, Knockback = 8,
+	},
+	Ultimate = { -- STAR PLATINUM: THE WORLD: time stops round him; only he moves
+		Windup = 0.7,
+		Duration = 5, BotDuration = 3.5,
+		Range = 55,
+		SpeedMultiplier = 1.15,
+		ResetCooldowns = { "OraRush", "StarFinger" }, -- ready the moment time stops
+	},
+	CorpseOra = { Radius = 16, Hits = 6, Gap = 0.08, Damage = 2, FinalDamage = 6, Stun = 0.6 }, -- corpse move ORA BARRAGE: a 360 rush
+}
+
 TuskConfig.Gyro = {
 	M1 = {
 		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,
@@ -1231,7 +1278,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }

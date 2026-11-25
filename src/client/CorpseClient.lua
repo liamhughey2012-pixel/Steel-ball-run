@@ -737,6 +737,9 @@ local function onMove(data)
 		end
 	elseif who == "Jodio" then
 		-- (November Rain's cloud and crush are drawn by JodioVFX.)
+	elseif who == "Jotaro" and data.Phase == "Barrage" and data.Position then
+		-- ORA BARRAGE: a violet ring of punches spreading out round him.
+		ring(data.Position, data.Radius or 16, Color3.fromRGB(150, 120, 255), data.Time or 0.5)
 	elseif who == "Ringo" and data.Phase == "Rewind" and data.Position then
 		-- SECOND HAND: a pink ring sweeps out; everyone in it loses 6 seconds.
 		ring(data.Position, data.Radius or 20, Color3.fromRGB(240, 130, 180), 0.6)

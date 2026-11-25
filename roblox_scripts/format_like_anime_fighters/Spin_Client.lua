@@ -4950,6 +4950,9 @@ local function onMove(data)
 		end
 	elseif who == "Jodio" then
 		-- (November Rain's cloud and crush are drawn by JodioVFX.)
+	elseif who == "Jotaro" and data.Phase == "Barrage" and data.Position then
+		-- ORA BARRAGE: a violet ring of punches spreading out round him.
+		ring(data.Position, data.Radius or 16, Color3.fromRGB(150, 120, 255), data.Time or 0.5)
 	elseif who == "Ringo" and data.Phase == "Rewind" and data.Position then
 		-- SECOND HAND: a pink ring sweeps out; everyone in it loses 6 seconds.
 		ring(data.Position, data.Radius or 20, Color3.fromRGB(240, 130, 180), 0.6)
@@ -6231,6 +6234,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 6) == "Jotaro" then
+		starColor = Color3.fromRGB(170, 150, 255)
 	elseif source:sub(1, 5) == "Ringo" then
 		starColor = Color3.fromRGB(246, 204, 40)
 	elseif source:sub(1, 7) == "JohnRod" then
@@ -7885,6 +7890,7 @@ Common.Palettes = {
 	[16] = { Main = Color3.fromRGB(150, 40, 50), Second = Color3.fromRGB(240, 196, 60), Light = Color3.fromRGB(255, 236, 200) }, -- Tooru (Wonder of U maroon + scarf gold)
 	[17] = { Main = Color3.fromRGB(90, 170, 240), Second = Color3.fromRGB(240, 120, 190), Light = Color3.fromRGB(225, 240, 255) }, -- Jodio (November Rain blue + strap pink)
 	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
+	[20] = { Main = Color3.fromRGB(130, 110, 220), Second = Color3.fromRGB(240, 196, 70), Light = Color3.fromRGB(230, 225, 255) }, -- Jotaro (Star Platinum violet + gold)
 	[19] = { Main = Color3.fromRGB(230, 120, 170), Second = Color3.fromRGB(246, 204, 40), Light = Color3.fromRGB(255, 236, 220) }, -- Ringo (Mandom pink + watch-hand gold)
 }
 
@@ -8428,6 +8434,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "RingoVFX", -- client visuals (TuskActVFX.RingoVFX)
 		CardTitle = "STAND  ·  MANDOM",
 	},
+	-- JOTARO KUJO: STAR PLATINUM. Precision, speed and power; stops time.
+	[20] = {
+		Name = "STAR PLATINUM",
+		Character = "Jotaro",
+		Tagline = "Ora ora ora",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(130, 110, 220), Secondary = Color3.fromRGB(240, 196, 70) },
+		M1 = "ORA COMBO",
+		Abilities = { "ORA RUSH", "STAR FINGER", "BEARING SHOT" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "STAR PLATINUM: THE WORLD",
+		Next = nil,
+		Module = "Jotaro", -- server moves
+		ClientModule = "JotaroVFX", -- client visuals (TuskActVFX.JotaroVFX)
+		CardTitle = "STAND  ·  STAR PLATINUM",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -8437,7 +8459,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -8689,6 +8711,11 @@ TuskAnimation.Poses = {
 	RGStance = { Root = { 0, 4, 0, 0 }, Waist = { -2, 4, 0 }, Neck = { 4, -6, 0 }, RightArm = { -8, 0, 16 }, RightElbow = { 34, 0, 0 }, LeftArm = { -6, 0, -10 }, LeftElbow = { 22, 0, 0 } },
 	RGShoot = { Root = { 0, -20, 0, -0.02 }, Waist = { 0, -16, 0 }, Neck = { 2, 20, 0 }, RightArm = { 90, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { -10, 0, -12 }, LeftElbow = { 20, 0, 0 } },
 	RGWatch = { Root = { 0, 0, 0, 0 }, Waist = { 4, 0, 0 }, Neck = { 22, -12, 0 }, RightArm = { 70, 0, -36 }, RightElbow = { 70, 0, 0 }, LeftArm = { 74, 0, 40 }, LeftElbow = { 80, 0, 0 } },
+	-- JOTARO: tall, a hand in his pocket; pointing; a tug at his cap brim; a flick.
+	JTStance = { Root = { 2, 6, 0, 0 }, Waist = { 2, 4, 0 }, Neck = { 4, -6, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 }, RightArm = { -4, 0, 8 }, RightElbow = { 12, 0, 0 }, RightHip = { 6, 0, 0 }, LeftHip = { -4, 0, 0 } },
+	JTPoint = { Root = { 0, -16, 0, 0 }, Waist = { 0, -12, 0 }, Neck = { 2, 16, 0 }, RightArm = { 90, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 } },
+	JTCap = { Root = { 0, 0, 0, 0 }, Waist = { 0, 0, 0 }, Neck = { -10, -8, 0 }, RightArm = { 150, 0, 26 }, RightElbow = { 125, 0, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 } },
+	JTFlick = { Root = { 0, -14, 0, 0 }, Waist = { 0, -10, 0 }, Neck = { 0, 14, 0 }, RightArm = { 84, 0, 10 }, RightElbow = { 24, 0, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -8892,6 +8919,14 @@ TuskAnimation.Actions = {
 	RGDraw = { { 0, "RGStance" }, { 0.12, "RGShoot", "Back", 3 }, { 0.45, "RGShoot", "Linear" }, { 0.65, "RGStance", "Sine" } },
 	RGWatchTurn = { { 0, "RGStance" }, { 0.15, "RGWatch", "Out" }, { 0.55, "RGWatch", "Linear" }, { 0.8, "RGStance", "Sine" } },
 	RGCounter = { { 0, "RGStance" }, { 0.1, "RGWatch", "Out" }, { 1.0, "RGWatch", "Linear" }, { 1.2, "RGStance", "Sine" } },
+	JT_M1_1 = { { 0, "JTStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JTStance", "Sine" } },
+	JT_M1_2 = { { 0, "JTStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "JTStance", "Sine" } },
+	JT_M1_3 = { { 0, "JTStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JTStance", "Sine" } },
+	JT_M1_4 = { { 0, "JTStance" }, { 0.08, "JTPoint", "Back", 4 }, { 0.3, "JTPoint", "Linear" }, { 0.5, "JTStance", "Sine" } },
+	JTRush = { { 0, "JTStance" }, { 0.12, "JTPoint", "Out" }, { 1.5, "JTPoint", "Linear" }, { 1.75, "JTStance", "Sine" } },
+	JTPoint = { { 0, "JTStance" }, { 0.12, "JTPoint", "Back", 3 }, { 0.5, "JTPoint", "Linear" }, { 0.7, "JTStance", "Sine" } },
+	JTCap = { { 0, "JTStance" }, { 0.2, "JTCap", "Out" }, { 1.1, "JTCap", "Linear" }, { 1.4, "JTStance", "Sine" } },
+	JTFlick = { { 0, "JTStance" }, { 0.1, "JTFlick", "Back", 3 }, { 0.35, "JTFlick", "Linear" }, { 0.55, "JTStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },
@@ -12089,6 +12124,14 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("ORA RUSH") or has("ORA BARRAGE") then
+		return "barrage"
+	elseif has("STAR FINGER") then
+		return "dash"
+	elseif has("BEARING SHOT") then
+		return "nail"
+	elseif has("STAR PLATINUM: THE WORLD") then
+		return "clock"
 	elseif has("SIX SECONDS") or has("PATH OF JUSTICE") then
 		return "clock"
 	elseif has("QUICK DRAW") then

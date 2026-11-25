@@ -1819,6 +1819,7 @@ __modules["CorpseMoves"] = function()
 	  Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him
 	  John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is)
 	  Ringo        SECOND HAND: everyone round him loses 6 seconds (hit, dazed)
+	  Jotaro       ORA BARRAGE: Star Platinum punches everyone round him, then a big ORA!
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -2193,6 +2194,31 @@ USE.JohnRod = function(S, player, state, character, root)
 			local away = Vector3.new(tr.Position.X - center.X, 0, tr.Position.Z - center.Z)
 			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 18, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JohnRodSnap" })
 		end
+	end
+end
+
+-- ORA BARRAGE: Star Platinum spins round Jotaro punching everyone near,
+-- then one big ORA! sends them flying.
+USE.Jotaro = function(S, player, state, character, root)
+	local c = TuskConfig.Jotaro and TuskConfig.Jotaro.CorpseOra or { Radius = 16, Hits = 6, Gap = 0.08, Damage = 2, FinalDamage = 6, Stun = 0.6 }
+	S.lock(state, c.Hits * c.Gap + 0.3)
+	fx({ Character = character, Who = "Jotaro", Phase = "Barrage", Position = root.Position, Radius = c.Radius, Time = c.Hits * c.Gap })
+	for i = 1, c.Hits do
+		task.delay((i - 1) * c.Gap, function()
+			local char = player.Character
+			local r = char and char:FindFirstChild("HumanoidRootPart")
+			if not r then
+				return
+			end
+			local last = i == c.Hits
+			for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, c.Radius, 10)) do
+				local tr = target:FindFirstChild("HumanoidRootPart")
+				if tr then
+					local away = Vector3.new(tr.Position.X - r.Position.X, 0, tr.Position.Z - r.Position.Z)
+					S.hit(player, target, { Damage = last and c.FinalDamage or c.Damage, Stun = c.Stun, Knockback = last and 40 or 0, Launch = last and 12 or nil, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JotaroCorpse" })
+				end
+			end
+		end)
 	end
 end
 
@@ -9269,7 +9295,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -9327,6 +9353,7 @@ local LOOKS = {
 	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 	DiegoAU = { Skin = Color3.fromRGB(240, 205, 170), Torso = Color3.fromRGB(110, 200, 185), Legs = Color3.fromRGB(196, 170, 110) },
 	Josuke = { Skin = Color3.fromRGB(214, 168, 130), Torso = Color3.fromRGB(240, 240, 236), Legs = Color3.fromRGB(236, 236, 232) },
+	Jotaro = { Skin = Color3.fromRGB(214, 170, 130), Torso = Color3.fromRGB(36, 36, 42), Legs = Color3.fromRGB(36, 36, 42) },
 	Ringo = { Skin = Color3.fromRGB(206, 146, 100), Torso = Color3.fromRGB(240, 240, 244), Legs = Color3.fromRGB(240, 240, 244) },
 	JohnRod = { Skin = Color3.fromRGB(226, 190, 160), Torso = Color3.fromRGB(90, 96, 110), Legs = Color3.fromRGB(52, 54, 64) },
 	Jodio = { Skin = Color3.fromRGB(236, 200, 166), Torso = Color3.fromRGB(34, 34, 64), Legs = Color3.fromRGB(36, 42, 84) },
@@ -11412,6 +11439,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "RingoVFX", -- client visuals (TuskActVFX.RingoVFX)
 		CardTitle = "STAND  ·  MANDOM",
 	},
+	-- JOTARO KUJO: STAR PLATINUM. Precision, speed and power; stops time.
+	[20] = {
+		Name = "STAR PLATINUM",
+		Character = "Jotaro",
+		Tagline = "Ora ora ora",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(130, 110, 220), Secondary = Color3.fromRGB(240, 196, 70) },
+		M1 = "ORA COMBO",
+		Abilities = { "ORA RUSH", "STAR FINGER", "BEARING SHOT" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "STAR PLATINUM: THE WORLD",
+		Next = nil,
+		Module = "Jotaro", -- server moves
+		ClientModule = "JotaroVFX", -- client visuals (TuskActVFX.JotaroVFX)
+		CardTitle = "STAND  ·  STAR PLATINUM",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -11421,7 +11464,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -13136,7 +13179,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

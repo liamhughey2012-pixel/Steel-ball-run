@@ -232,6 +232,11 @@ TuskAnimation.Poses = {
 	RGStance = { Root = { 0, 4, 0, 0 }, Waist = { -2, 4, 0 }, Neck = { 4, -6, 0 }, RightArm = { -8, 0, 16 }, RightElbow = { 34, 0, 0 }, LeftArm = { -6, 0, -10 }, LeftElbow = { 22, 0, 0 } },
 	RGShoot = { Root = { 0, -20, 0, -0.02 }, Waist = { 0, -16, 0 }, Neck = { 2, 20, 0 }, RightArm = { 90, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { -10, 0, -12 }, LeftElbow = { 20, 0, 0 } },
 	RGWatch = { Root = { 0, 0, 0, 0 }, Waist = { 4, 0, 0 }, Neck = { 22, -12, 0 }, RightArm = { 70, 0, -36 }, RightElbow = { 70, 0, 0 }, LeftArm = { 74, 0, 40 }, LeftElbow = { 80, 0, 0 } },
+	-- JOTARO: tall, a hand in his pocket; pointing; a tug at his cap brim; a flick.
+	JTStance = { Root = { 2, 6, 0, 0 }, Waist = { 2, 4, 0 }, Neck = { 4, -6, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 }, RightArm = { -4, 0, 8 }, RightElbow = { 12, 0, 0 }, RightHip = { 6, 0, 0 }, LeftHip = { -4, 0, 0 } },
+	JTPoint = { Root = { 0, -16, 0, 0 }, Waist = { 0, -12, 0 }, Neck = { 2, 16, 0 }, RightArm = { 90, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 } },
+	JTCap = { Root = { 0, 0, 0, 0 }, Waist = { 0, 0, 0 }, Neck = { -10, -8, 0 }, RightArm = { 150, 0, 26 }, RightElbow = { 125, 0, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 } },
+	JTFlick = { Root = { 0, -14, 0, 0 }, Waist = { 0, -10, 0 }, Neck = { 0, 14, 0 }, RightArm = { 84, 0, 10 }, RightElbow = { 24, 0, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -435,6 +440,14 @@ TuskAnimation.Actions = {
 	RGDraw = { { 0, "RGStance" }, { 0.12, "RGShoot", "Back", 3 }, { 0.45, "RGShoot", "Linear" }, { 0.65, "RGStance", "Sine" } },
 	RGWatchTurn = { { 0, "RGStance" }, { 0.15, "RGWatch", "Out" }, { 0.55, "RGWatch", "Linear" }, { 0.8, "RGStance", "Sine" } },
 	RGCounter = { { 0, "RGStance" }, { 0.1, "RGWatch", "Out" }, { 1.0, "RGWatch", "Linear" }, { 1.2, "RGStance", "Sine" } },
+	JT_M1_1 = { { 0, "JTStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JTStance", "Sine" } },
+	JT_M1_2 = { { 0, "JTStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "JTStance", "Sine" } },
+	JT_M1_3 = { { 0, "JTStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JTStance", "Sine" } },
+	JT_M1_4 = { { 0, "JTStance" }, { 0.08, "JTPoint", "Back", 4 }, { 0.3, "JTPoint", "Linear" }, { 0.5, "JTStance", "Sine" } },
+	JTRush = { { 0, "JTStance" }, { 0.12, "JTPoint", "Out" }, { 1.5, "JTPoint", "Linear" }, { 1.75, "JTStance", "Sine" } },
+	JTPoint = { { 0, "JTStance" }, { 0.12, "JTPoint", "Back", 3 }, { 0.5, "JTPoint", "Linear" }, { 0.7, "JTStance", "Sine" } },
+	JTCap = { { 0, "JTStance" }, { 0.2, "JTCap", "Out" }, { 1.1, "JTCap", "Linear" }, { 1.4, "JTStance", "Sine" } },
+	JTFlick = { { 0, "JTStance" }, { 0.1, "JTFlick", "Back", 3 }, { 0.35, "JTFlick", "Linear" }, { 0.55, "JTStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },
