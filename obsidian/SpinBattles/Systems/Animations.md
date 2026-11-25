@@ -41,3 +41,12 @@ Keyframes are `{ Time, Pose, Ease, Shake }`:
 
 ## Johnny
 Finger-gun flicks with a cocked wind-up, recoil with shake, slam with knee drop, barrage of snapping flicks, Awakening crouch with building shake then an overshoot rise.
+
+## Sprint cycle (Sandman) (2026-11-25)
+`TuskAnimation.sprint(character, enabled)` draws a full-speed running cycle on the joints every frame. No uploads are needed, and it works on R15 (R6 has no knees or elbows, so it does what it can).
+- **Pose:** a hard forward lean; high knees in front; heels kicking right up behind; arms pumping opposite the legs from hip to chin with elbows bent about 90°; the head stays level, looking up the track; a bounce each stride.
+- **Stride rate** follows his real speed (`speed / 13` cycles a second, 1.1–3.6), so it's quicker at race speed (as fast as a horse) than at normal running speed.
+- **When it runs:** it blends in above 14 studs/s and out when he slows. It mutes the default walk/run animation underneath. In the air his knees tuck. It steps aside while a move animation plays and while he's riding (RaceHorse / Sit).
+- **Who uses it:** SandmanVFX turns it on for anyone playing Sandman (players and NPCs).
+
+![[sandman_sprint.png]]

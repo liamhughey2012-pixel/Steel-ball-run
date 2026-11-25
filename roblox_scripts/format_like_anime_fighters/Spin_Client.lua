@@ -9115,7 +9115,7 @@ local function startIdle(character, s)
 	local motors = motorsOf(character)
 	local seed = math.random() * 10
 	s.Idle = VFXLib.animate(1e6, function()
-		if s.Action or not s.Hold or os.clock() < s.SettleUntil then
+		if s.Action or not s.Hold or os.clock() < s.SettleUntil or s.Sprinting then
 			return
 		end
 		local pose = resolvePose(s.Hold)
@@ -9249,6 +9249,147 @@ function TuskAnimation.hold(character, poseName)
 		blendTo(character, resolvePose(poseName), 0.25)
 	end
 	startIdle(character, s)
+end
+
+---------------------------------------------------------------------------
+-- SPRINT: a full-speed running cycle drawn on the joints every frame (no
+-- uploads needed), for characters who run like athletes (Sandman). It
+-- takes over from the walk/run animation whenever they're moving fast on
+-- their own legs: a hard forward lean, high knees, heels kicking up
+-- behind, arms pumping from hip to chin with bent elbows, a head that
+-- stays level, and a bounce each stride. The stride rate follows how fast
+-- they're actually going. Moves (M1s, abilities) still play on top: the
+-- cycle steps aside while one runs. Blends in and out smoothly.
+---------------------------------------------------------------------------
+local sprinters = setmetatable({}, { __mode = "k" }) -- [character] = { Enabled, K, Phase, Job }
+
+local function mixValue(a, b, k)
+	a = a or {}
+	b = b or {}
+	local out = {}
+	for i = 1, 5 do
+		out[i] = (a[i] or 0) * (1 - k) + (b[i] or 0) * k
+	end
+	return out
+end
+
+-- The sprint pose at stride phase p (radians); `lean` 0..1 = how hard.
+local function sprintPose(p, lean, airborne)
+	local sp = math.sin(p)
+	local kick = 0.5 - 0.5 * math.sin(p + 0.6) -- 1 when that heel is up behind
+	local kickL = 0.5 - 0.5 * math.sin(p + math.pi + 0.6)
+	local bounce = math.abs(math.cos(p))
+	if airborne then
+		-- In the air: knees tucked, arms held mid-swing.
+		return {
+			Root = { -10 * lean, 0, 0, 0 },
+			Waist = { -8 * lean, 0, 0 },
+			Neck = { 12 * lean, 0, 0 },
+			RightArm = { -30, 0, 10 }, RightElbow = { 90, 0, 0 },
+			LeftArm = { 40, 0, -10 }, LeftElbow = { 90, 0, 0 },
+			RightHip = { 55, 0, 0 }, RightKnee = { -70, 0, 0 },
+			LeftHip = { -15, 0, 0 }, LeftKnee = { -90, 0, 0 },
+		}
+	end
+	return {
+		Root = { -16 * lean, sp * 6, 0, -0.12 + bounce * 0.28 },
+		Waist = { -10 * lean, sp * 9, 0 },
+		Neck = { 22 * lean, -sp * 7, 0 }, -- eyes up the track
+		-- Arms pump opposite the legs, elbows ~90 degrees, a little across the body.
+		RightArm = { -sp * 72 + 8, 0, 10 - sp * 4 },
+		LeftArm = { sp * 72 + 8, 0, -10 - sp * 4 },
+		RightElbow = { 95 + math.max(0, sp) * 25, 0, 0 },
+		LeftElbow = { 95 + math.max(0, -sp) * 25, 0, 0 },
+		-- High knees in front, heels kicking right up behind.
+		RightHip = { sp * 68 + 14, 0, 0 },
+		LeftHip = { -sp * 68 + 14, 0, 0 },
+		RightKnee = { -(18 + 105 * kick), 0, 0 },
+		LeftKnee = { -(18 + 105 * kickL), 0, 0 },
+	}
+end
+TuskAnimation.sprintPose = sprintPose
+
+function TuskAnimation.sprint(character, enabled)
+	if not character then
+		return
+	end
+	local sp = sprinters[character]
+	if not sp then
+		if not enabled then
+			return
+		end
+		sp = { Enabled = true, K = 0, Phase = 0 }
+		sprinters[character] = sp
+	end
+	sp.Enabled = enabled
+	if sp.Job then
+		return
+	end
+	local s = getState(character)
+	local motors = motorsOf(character)
+	local last = os.clock()
+	sp.Job = VFXLib.animate(1e6, function()
+		local now = os.clock()
+		local dt = math.min(now - last, 0.1)
+		last = now
+		local root = character:FindFirstChild("HumanoidRootPart")
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if not character.Parent or not root or not humanoid then
+			VFXLib.cancel(sp.Job)
+			sp.Job = nil
+			sprinters[character] = nil
+			s.Sprinting = nil
+			return
+		end
+		local v = root.AssemblyLinearVelocity
+		local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+		local riding = character:FindFirstChild("RaceHorse") ~= nil or humanoid.Sit
+		local airborne = humanoid.FloorMaterial == Enum.Material.Air
+		local want = (sp.Enabled and not riding and speed > 14 and humanoid.Health > 0) and 1 or 0
+		sp.K = sp.K + (want - sp.K) * math.min(1, dt * (want > sp.K and 7 or 9))
+		-- Stride rate follows the real speed.
+		local rate = math.clamp(speed / 13, 1.1, 3.6)
+		if not airborne then
+			sp.Phase = (sp.Phase + dt * rate * math.pi * 2) % (math.pi * 2)
+		end
+		if sp.K < 0.01 and want == 0 then
+			if s.Sprinting then
+				s.Sprinting = nil
+				if not s.Action then
+					blendTo(character, resolvePose(s.Hold), 0.15)
+				end
+			end
+			if not sp.Enabled then
+				VFXLib.cancel(sp.Job)
+				sp.Job = nil
+				sprinters[character] = nil
+			end
+			return
+		end
+		s.Sprinting = true
+		if s.Action then
+			return -- a move is playing: it gets the joints
+		end
+		local lean = math.clamp((speed - 14) / 30, 0.4, 1)
+		local pose = sprintPose(sp.Phase, lean, airborne)
+		local hold = resolvePose(s.Hold)
+		for name, motor in pairs(motors) do
+			if motor.Parent then
+				JointCache.write(motor, poseC0(motor, mixValue(hold[name], pose[name], sp.K)))
+			end
+		end
+		-- Mute the default walk/run animation underneath.
+		if sp.K > 0.5 then
+			local a = animator(character)
+			if a then
+				for _, track in ipairs(a:GetPlayingAnimationTracks()) do
+					if track.Priority == Enum.AnimationPriority.Core or track.Priority == Enum.AnimationPriority.Idle or track.Priority == Enum.AnimationPriority.Movement then
+						track:AdjustWeight(0.001, 0)
+					end
+				end
+			end
+		end
+	end)
 end
 
 -- Lift a character's whole body (e.g. onto a horse's saddle); nil / 0 to stop.

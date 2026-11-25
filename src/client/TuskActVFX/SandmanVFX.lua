@@ -355,6 +355,10 @@ local function stepStance()
 		local character = player.Character
 		if character then
 			local want = character:GetAttribute("TuskAct") == ACT
+			-- He runs like a sprinter (the race too: on foot, as fast as a horse).
+			if TuskAnimation.sprint and want ~= (stanced[character] ~= nil) then
+				TuskAnimation.sprint(character, want)
+			end
 			if want and not stanced[character] then
 				stanced[character] = true
 				TuskAnimation.hold(character, "SandStance")
