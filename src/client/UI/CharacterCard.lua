@@ -1,27 +1,28 @@
 --[[
 	CharacterCard  (StarterPlayerScripts.SpinClient.UI.CharacterCard)
 
-	Top-left character card, in the bounty-board style:
-	  * a small framed wooden board (planks, grain, metal corner brackets)
-	    that bounces when you hover or press it
+	Top-left character card, in the bounty-board style, kept clean:
+	  * a framed wooden board (planks, metal corner brackets) that lifts a
+	    little and turns its rim gold when you hover it
 	  * portrait in a parchment mat with a nail on top: your uploaded image
 	    (TuskConfig.Character.PortraitImage), or a live 3D view of your own
 	    avatar, on a backing in your character's Roster colour
-	  * JOHNNY JOESTAR name plate: a burnt-edge parchment strip, Bangers ink
-	  * current Stand ("TUSK ACT 2") on a dark inset in that Act's colour
-	  * four brass-rimmed Act pips that light up as Tusk awakens
-	  * wood-framed health meter with numbers (green -> red)
+	  * a straight parchment NAME PLATE (Bangers ink)
+	  * the Stand on a dark inset with a strip of the Stand's colour
+	  * Tusk's four Act pips (Johnny only; for everyone else the health bar
+	    moves up into their place)
+	  * a wood-framed HEALTH bar: "HP" on the left, numbers on the right
+	  * a gold "CHARACTERS ▼" tab hanging under the card
 	Pops and flashes the planks in the Act colour when Tusk evolves.
 
-	DROPDOWN: tap/click the card to open the character list
-	(TuskConfig.Roster) on a wooden board: one parchment row per character
-	with a Roster-colour badge, name, Stand and a status chip (green
-	PLAYING, red SELECT, grey NOT INSTALLED / IN DEVELOPMENT); rows light
-	up, take a Roster-colour outline and bounce on hover, and the whole row
-	is clickable. Your current character is outlined and listed first.
-	Characters whose scripts aren't in the game are shown as NOT INSTALLED,
-	and characters that aren't finished as IN DEVELOPMENT (neither is
-	selectable).
+	CHARACTER LIST (tap the card or its tab): a wooden board, "CHOOSE YOUR
+	FIGHTER" and how many there are, a SEARCH box (name or Stand), then one
+	parchment row per character: a strip and a round badge in the
+	character's colour with their initials, their name, their Stand, and a
+	status pill (green PLAYING, red SELECT, grey NOT INSTALLED / IN
+	DEVELOPMENT). Rows lighten, take their character's colour as an outline
+	and lift on hover; the whole row is the button. The one you're playing
+	is pinned to the top.
 ]]
 
 local Players = game:GetService("Players")
@@ -42,10 +43,11 @@ local GOLD = C.GOLD
 local PIP_OFF = Color3.fromRGB(58, 40, 26)
 local FADED_INK = Color3.fromRGB(150, 122, 96)
 
-local gui, card, portrait, viewport, photo, nameLabel, standLabel, pips, hpFill, hpText, scale, arrow, flash, cardStroke
-local dropdown, dropdownList, rosterRows
+local CARD_W, CARD_H = 330, 100
+local gui, card, portrait, viewport, photo, nameLabel, standLabel, standStrip, pipRow, pips, hpBar, hpFill, hpText, scale, arrow, flash, cardStroke, tab
+local dropdown, dropdownList, rosterRows, searchBox, countLabel, emptyLabel
 -- Declared up here so init() can call them (they are defined further down).
-local buildDropdown, refreshDropdown
+local buildDropdown, refreshDropdown, applyFilter
 local shownAct
 local open = false
 local Net = require(Shared.Net)
@@ -72,29 +74,42 @@ local function label(parent, props)
 	return l
 end
 
+local function frame(parent, props)
+	local f = Instance.new("Frame")
+	f.BorderSizePixel = 0
+	f.ZIndex = 3
+	for k, v in pairs(props) do
+		f[k] = v
+	end
+	f.Parent = parent
+	return f
+end
+
+local function sizeLimit(l, max, min)
+	local c = Instance.new("UITextSizeConstraint")
+	c.MaxTextSize = max
+	c.MinTextSize = min or 8
+	c.Parent = l
+	return c
+end
+
 local function tweenTo(obj, info, props)
 	TweenService:Create(obj, info, props):Play()
 end
 
 -- Parchment without UITheme.paper's stroke (rows need their own outline).
-local function parchment(frame, rotation)
-	frame.BackgroundColor3 = C.PAPER
-	frame.BackgroundTransparency = 0
-	frame.BorderSizePixel = 0
+local function parchment(f, rotation)
+	f.BackgroundColor3 = C.PAPER
+	f.BackgroundTransparency = 0
+	f.BorderSizePixel = 0
 	local g = Instance.new("UIGradient")
-	g.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, C.PAPER_DARK), ColorSequenceKeypoint.new(0.38, C.PAPER), ColorSequenceKeypoint.new(1, C.PAPER_DARK) })
+	g.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, C.PAPER_DARK), ColorSequenceKeypoint.new(0.4, C.PAPER), ColorSequenceKeypoint.new(1, C.PAPER_DARK) })
 	g.Rotation = rotation or 70
-	g.Parent = frame
+	g.Parent = f
 end
 
 local function nail(parent, pos, z)
-	local n = Instance.new("Frame")
-	n.AnchorPoint = Vector2.new(0.5, 0.5)
-	n.Position = pos
-	n.Size = UDim2.fromOffset(7, 7)
-	n.BackgroundColor3 = C.NAIL
-	n.ZIndex = z or 5
-	n.Parent = parent
+	local n = frame(parent, { AnchorPoint = Vector2.new(0.5, 0.5), Position = pos, Size = UDim2.fromOffset(7, 7), BackgroundColor3 = C.NAIL, ZIndex = z or 5 })
 	corner(n, 99)
 	stroke(n, C.STEEL_DARK, 1)
 	return n
@@ -149,26 +164,27 @@ end
 
 local function buildPips(parent)
 	pips = {}
-	local row = Instance.new("Frame")
-	row.BackgroundTransparency = 1
-	row.Position = UDim2.fromOffset(98, 53)
-	row.Size = UDim2.fromOffset(124, 12)
-	row.ZIndex = 3
-	row.Parent = parent
+	pipRow = frame(parent, { BackgroundTransparency = 1, Position = UDim2.fromOffset(102, 60), Size = UDim2.fromOffset(124, 8) })
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
 	layout.Padding = UDim.new(0, 5)
-	layout.Parent = row
+	layout.Parent = pipRow
 	for i = 1, 4 do
-		local pip = Instance.new("Frame")
-		pip.Size = UDim2.fromOffset(25, 9)
-		pip.BackgroundColor3 = PIP_OFF
-		pip.BorderSizePixel = 0
-		pip.ZIndex = 3
-		pip.Parent = row
+		local pip = frame(pipRow, { Size = UDim2.fromOffset(26, 8), BackgroundColor3 = PIP_OFF })
 		corner(pip, 4)
-		stroke(pip, C.BRASS, 1.5).Transparency = 0.15
+		stroke(pip, C.BRASS, 1).Transparency = 0.2
 		pips[i] = pip
+	end
+end
+
+-- Health sits under the pips (Johnny), or moves up into their place.
+local function layoutHealth(withPips)
+	if hpBar then
+		hpBar.Position = UDim2.fromOffset(102, withPips and 72 or 64)
+		hpBar.Size = UDim2.new(1, -112, 0, withPips and 18 or 24)
+	end
+	if pipRow then
+		pipRow.Visible = withPips
 	end
 end
 
@@ -185,38 +201,19 @@ function CharacterCard.init()
 	card = Instance.new("Frame")
 	card.Name = "Card"
 	card.Position = UDim2.fromOffset(12, 10)
-	card.Size = UDim2.fromOffset(330, 96)
+	card.Size = UDim2.fromOffset(CARD_W, CARD_H)
 	card.Parent = gui
 	local planks = UITheme.wood(card, { Planks = 3, Border = 5, Radius = 10, Brackets = true, BracketSize = 12, Nails = false })
 	cardStroke = card:FindFirstChildOfClass("UIStroke")
 	scale = Instance.new("UIScale")
 	scale.Parent = card
 	-- Evolve flash over the planks (see CharacterCard.pop).
-	flash = Instance.new("Frame")
-	flash.Name = "Flash"
-	flash.BorderSizePixel = 0
-	flash.Size = UDim2.fromScale(1, 1)
-	flash.BackgroundColor3 = GOLD
-	flash.BackgroundTransparency = 1
-	flash.ZIndex = 2
-	flash.Parent = planks
+	flash = frame(planks, { Name = "Flash", Size = UDim2.fromScale(1, 1), BackgroundColor3 = GOLD, BackgroundTransparency = 1, ZIndex = 2 })
 
 	-- Portrait: a parchment mat, the picture on a Roster-colour backing.
-	local frame = Instance.new("Frame")
-	frame.Name = "Portrait"
-	frame.Position = UDim2.fromOffset(8, 8)
-	frame.Size = UDim2.fromOffset(80, 80)
-	frame.ZIndex = 3
-	frame.Parent = card
-	UITheme.paper(frame, { Radius = 6, Stroke = 2 })
-	photo = Instance.new("Frame")
-	photo.Name = "Photo"
-	photo.Position = UDim2.fromOffset(5, 5)
-	photo.Size = UDim2.new(1, -10, 1, -10)
-	photo.BackgroundColor3 = (TuskConfig.Roster and TuskConfig.Roster[1] and TuskConfig.Roster[1].Color) or GOLD
-	photo.ClipsDescendants = true
-	photo.ZIndex = 3
-	photo.Parent = frame
+	local mat = frame(card, { Name = "Portrait", Position = UDim2.fromOffset(9, 9), Size = UDim2.fromOffset(84, 82) })
+	UITheme.paper(mat, { Radius = 6, Stroke = 2 })
+	photo = frame(mat, { Name = "Photo", Position = UDim2.fromOffset(5, 5), Size = UDim2.new(1, -10, 1, -10), BackgroundColor3 = (TuskConfig.Roster and TuskConfig.Roster[1] and TuskConfig.Roster[1].Color) or GOLD, ClipsDescendants = true })
 	corner(photo, 4)
 	stroke(photo, C.INK, 1.5)
 	local photoShade = Instance.new("UIGradient")
@@ -241,120 +238,105 @@ function CharacterCard.init()
 		viewport.ZIndex = 3
 		viewport.Parent = photo
 	end
-	nail(frame, UDim2.new(0.5, 0, 0, 1), 5)
+	nail(mat, UDim2.new(0.5, 0, 0, 1), 5)
 
-	-- Name plate: a burnt-edge parchment strip.
-	local plate = Instance.new("Frame")
-	plate.Name = "NamePlate"
-	plate.Position = UDim2.fromOffset(96, 7)
-	plate.Size = UDim2.new(1, -132, 0, 26)
-	plate.Rotation = -1
-	plate.ZIndex = 3
-	plate.Parent = card
-	UITheme.paper(plate, { Radius = 4, Stroke = 2 })
+	-- Name plate: a straight parchment strip, the name in Bangers ink.
+	local plate = frame(card, { Name = "NamePlate", Position = UDim2.fromOffset(102, 9), Size = UDim2.new(1, -112, 0, 28) })
+	UITheme.paper(plate, { Radius = 5, Stroke = 2 })
 	nameLabel = label(plate, {
-		Position = UDim2.fromOffset(6, 1),
-		Size = UDim2.new(1, -12, 1, -2),
+		Position = UDim2.fromOffset(8, 1),
+		Size = UDim2.new(1, -16, 1, -2),
 		Font = F.Title,
-		TextScaled = true, -- long names ("FUNNY VALENTINE") shrink to fit
+		TextScaled = true, -- long names shrink to fit
 		TextColor3 = C.INK,
 		TextStrokeTransparency = 1,
 		Text = config.Name,
 	})
-	local nameLimit = Instance.new("UITextSizeConstraint")
-	nameLimit.MaxTextSize = 26
-	nameLimit.MinTextSize = 12
-	nameLimit.Parent = nameLabel
+	sizeLimit(nameLabel, 24, 12)
 
-	-- Stand: a dark inset so the Act colour reads on the wood.
-	local inset = Instance.new("Frame")
-	inset.Name = "StandInset"
-	inset.Position = UDim2.fromOffset(96, 35)
-	inset.Size = UDim2.new(1, -104, 0, 16)
-	inset.BackgroundColor3 = C.SHADOW
-	inset.BackgroundTransparency = 0.3
-	inset.BorderSizePixel = 0
-	inset.ZIndex = 3
-	inset.Parent = card
+	-- Stand: a dark inset with a strip of the Stand's colour.
+	local inset = frame(card, { Name = "StandInset", Position = UDim2.fromOffset(102, 40), Size = UDim2.new(1, -112, 0, 17), BackgroundColor3 = C.SHADOW, BackgroundTransparency = 0.25 })
 	corner(inset, 4)
+	standStrip = frame(inset, { Size = UDim2.new(0, 4, 1, 0), BackgroundColor3 = Color3.fromRGB(200, 220, 255) })
+	corner(standStrip, 4)
 	standLabel = label(inset, {
-		Position = UDim2.fromOffset(6, 0),
-		Size = UDim2.new(1, -10, 1, 0),
+		Position = UDim2.fromOffset(10, 0),
+		Size = UDim2.new(1, -14, 1, 0),
 		Font = F.Heavy,
-		TextSize = 12,
+		TextScaled = true,
 		TextColor3 = Color3.fromRGB(200, 220, 255),
-		TextStrokeTransparency = 0.2,
+		TextStrokeTransparency = 0.3,
 		Text = config.Title,
 	})
+	sizeLimit(standLabel, 12, 8)
 	buildPips(card)
 
-	-- Health: a wood-framed meter with the numbers on top.
-	local hp
-	hp, hpFill = UITheme.bar(card, Color3.fromRGB(90, 220, 120), {
-		Name = "Health",
-		Position = UDim2.fromOffset(96, 68),
-		Size = UDim2.new(1, -104, 0, 20),
-		ZIndex = 3,
-	})
-	hpText = label(hp, {
-		Size = UDim2.fromScale(1, 1),
+	-- Health: a wood-framed bar, "HP" on the left and the numbers on the right.
+	hpBar, hpFill = UITheme.bar(card, Color3.fromRGB(90, 220, 120), { Name = "Health", ZIndex = 3 })
+	label(hpBar, { Position = UDim2.fromOffset(8, 0), Size = UDim2.new(0, 30, 1, 0), Font = F.Heavy, TextSize = 11, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0.1, Text = "HP", ZIndex = 5 })
+	hpText = label(hpBar, {
+		Position = UDim2.fromOffset(0, 0),
+		Size = UDim2.new(1, -8, 1, 0),
 		Font = F.Heavy,
 		TextSize = 12,
 		TextColor3 = Color3.new(1, 1, 1),
 		TextStrokeTransparency = 0.1,
-		TextXAlignment = Enum.TextXAlignment.Center,
+		TextXAlignment = Enum.TextXAlignment.Right,
 		Text = "",
 		ZIndex = 5,
 	})
+	layoutHealth(true)
 
-	-- The whole card is a button that opens the character dropdown.
-	local knob = Instance.new("Frame")
-	knob.Name = "Arrow"
-	knob.AnchorPoint = Vector2.new(1, 0)
-	knob.Position = UDim2.new(1, -9, 0, 9)
-	knob.Size = UDim2.fromOffset(22, 22)
-	knob.BackgroundColor3 = GOLD
-	knob.ZIndex = 3
-	knob.Parent = card
-	corner(knob, 99)
-	stroke(knob, C.WOOD_EDGE, 2)
-	arrow = label(knob, {
-		Size = UDim2.fromScale(1, 1),
-		Font = F.Heavy,
-		TextSize = 12,
+	-- A gold tab hanging under the card: opens the character list.
+	tab = frame(gui, { Name = "CharactersTab", AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromOffset(12 + CARD_W - 14, 10 + CARD_H - 3), Size = UDim2.fromOffset(122, 22), BackgroundColor3 = GOLD, ZIndex = 2 })
+	corner(tab, 6)
+	stroke(tab, C.WOOD_EDGE, 2)
+	arrow = label(tab, {
+		Position = UDim2.fromOffset(0, 2),
+		Size = UDim2.new(1, 0, 1, -2),
+		Font = F.Title,
+		TextSize = 15,
 		TextColor3 = C.INK,
 		TextStrokeTransparency = 1,
 		TextXAlignment = Enum.TextXAlignment.Center,
-		Text = "▼",
-		ZIndex = 4,
+		Text = "CHARACTERS  ▼",
+		ZIndex = 3,
 	})
-	local hit = Instance.new("TextButton")
-	hit.Name = "OpenCharacters"
-	hit.BackgroundTransparency = 1
-	hit.Text = ""
-	hit.Size = UDim2.fromScale(1, 1)
-	hit.ZIndex = 8
-	hit.Parent = card
-	hit.Activated:Connect(CharacterCard.toggle)
-	-- Hover / press: the board bounces and its rim turns gold.
-	hit.MouseEnter:Connect(function()
-		tweenTo(scale, UITheme.FAST, { Scale = 1.03 })
-		if cardStroke then
-			cardStroke.Color = GOLD
-		end
-	end)
-	hit.MouseLeave:Connect(function()
-		tweenTo(scale, UITheme.SOFT, { Scale = 1 })
-		if cardStroke then
-			cardStroke.Color = C.WOOD_EDGE
-		end
-	end)
-	hit.MouseButton1Down:Connect(function()
-		tweenTo(scale, UITheme.SOFT, { Scale = 0.97 })
-	end)
-	hit.MouseButton1Up:Connect(function()
-		tweenTo(scale, UITheme.FAST, { Scale = 1 })
-	end)
+
+	-- The whole card (and the tab) open the character list.
+	local function hitbox(parent)
+		local hit = Instance.new("TextButton")
+		hit.Name = "OpenCharacters"
+		hit.BackgroundTransparency = 1
+		hit.Text = ""
+		hit.Size = UDim2.fromScale(1, 1)
+		hit.ZIndex = 8
+		hit.Parent = parent
+		hit.Activated:Connect(CharacterCard.toggle)
+		hit.MouseEnter:Connect(function()
+			tweenTo(scale, UITheme.FAST, { Scale = 1.02 })
+			if cardStroke then
+				cardStroke.Color = GOLD
+			end
+			tab.BackgroundColor3 = C.GLOW
+		end)
+		hit.MouseLeave:Connect(function()
+			tweenTo(scale, UITheme.SOFT, { Scale = 1 })
+			if cardStroke then
+				cardStroke.Color = C.WOOD_EDGE
+			end
+			tab.BackgroundColor3 = GOLD
+		end)
+		hit.MouseButton1Down:Connect(function()
+			tweenTo(scale, UITheme.SOFT, { Scale = 0.98 })
+		end)
+		hit.MouseButton1Up:Connect(function()
+			tweenTo(scale, UITheme.FAST, { Scale = 1 })
+		end)
+		return hit
+	end
+	hitbox(card)
+	hitbox(tab)
 	buildDropdown()
 
 	local function onCharacter(character)
@@ -369,23 +351,24 @@ function CharacterCard.init()
 end
 
 ---------------------------------------------------------------------------
--- Dropdown
+-- The character list
 ---------------------------------------------------------------------------
-local ROW_W = 330
-local ROW_H = 54
+local LIST_W = 360
+local ROW_H = 52
+local HEAD_H = 84 -- title, count and search box
 local dropdownHeight = 0
 local ROW_BG = C.PAPER
-local ROW_HOVER = Color3.fromRGB(255, 236, 196)
+local ROW_HOVER = Color3.fromRGB(255, 238, 204)
 local GREEN = C.GREEN
 local RED = C.RED
-local GREY = Color3.fromRGB(120, 104, 88)
+local GREY = Color3.fromRGB(128, 112, 96)
 local REST_EDGE = C.BURNT
 
 -- "JOHNNY JOESTAR" -> "JJ", "SANDMAN" -> "S".
 local function initials(name)
 	local out = ""
 	for word in string.gmatch(name, "%S+") do
-		if #out < 2 then
+		if #out < 2 and word:sub(1, 1):match("%w") then
 			out = out .. word:sub(1, 1)
 		end
 	end
@@ -402,71 +385,72 @@ end
 -- when hovered or playing.
 local function setOutline(info, on)
 	info.Outline.Color = on and info.Entry.Color or REST_EDGE
-	info.Outline.Thickness = on and 3 or 2
-	info.Outline.Transparency = on and 0 or 0.2
+	info.Outline.Thickness = on and 3 or 1.5
+	info.Outline.Transparency = on and 0 or 0.35
 end
 
 function buildDropdown()
 	dropdown = Instance.new("Frame")
 	dropdown.Name = "CharacterList"
-	dropdown.Position = UDim2.fromOffset(12, 112)
-	dropdown.Size = UDim2.fromOffset(ROW_W, 0)
+	dropdown.Position = UDim2.fromOffset(12, 10 + CARD_H + 26)
+	dropdown.Size = UDim2.fromOffset(LIST_W, 0)
 	dropdown.ClipsDescendants = true
 	dropdown.Visible = false
 	dropdown.Parent = gui
-	UITheme.wood(dropdown, { Planks = 6, Border = 5, Radius = 10, Nails = true })
+	UITheme.wood(dropdown, { Planks = 6, Border = 5, Radius = 10, Nails = true, Brackets = true, BracketSize = 12 })
 
-	-- Header (stays put while the list scrolls): a painted title on the planks.
-	label(dropdown, {
-		Position = UDim2.fromOffset(14, 7),
-		Size = UDim2.new(1, -28, 0, 24),
-		Font = F.Title,
-		TextSize = 24,
-		TextColor3 = C.PAPER,
-		TextStrokeTransparency = 0.2,
-		Text = "CHARACTERS",
-	})
-	label(dropdown, {
-		Position = UDim2.fromOffset(14, 31),
-		Size = UDim2.new(1, -28, 0, 14),
-		Font = F.Body,
-		TextSize = 10,
-		TextColor3 = GOLD,
-		TextStrokeTransparency = 0.5,
-		Text = "Scroll for more  ·  BLOCK (F)  ·  DASH (Q)",
-	})
-	local line = Instance.new("Frame")
-	line.Position = UDim2.fromOffset(12, 49)
-	line.Size = UDim2.new(1, -24, 0, 2)
-	line.BackgroundColor3 = C.WOOD_EDGE
-	line.BackgroundTransparency = 0.2
-	line.BorderSizePixel = 0
-	line.ZIndex = 3
-	line.Parent = dropdown
+	-- Header: title, how many, a search box (stays put while the list scrolls).
+	label(dropdown, { Position = UDim2.fromOffset(16, 8), Size = UDim2.new(1, -130, 0, 28), Font = F.Title, TextSize = 26, TextColor3 = C.PAPER, TextStrokeTransparency = 0.2, Text = "CHOOSE YOUR FIGHTER" })
+	local countChip = frame(dropdown, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 11), Size = UDim2.fromOffset(96, 22), BackgroundColor3 = C.SHADOW, BackgroundTransparency = 0.25 })
+	corner(countChip, 11)
+	countLabel = label(countChip, { Size = UDim2.fromScale(1, 1), Font = F.Heavy, TextSize = 11, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Center, TextStrokeTransparency = 1, Text = "" })
+	local searchMat = frame(dropdown, { Position = UDim2.fromOffset(14, 42), Size = UDim2.new(1, -28, 0, 30) })
+	UITheme.paper(searchMat, { Radius = 8, Stroke = 2 })
+	label(searchMat, { Position = UDim2.fromOffset(9, 0), Size = UDim2.fromOffset(20, 30), Font = F.Heavy, TextSize = 14, TextColor3 = C.BURNT, TextStrokeTransparency = 1, Text = "⌕" })
+	searchBox = Instance.new("TextBox")
+	searchBox.Name = "Search"
+	searchBox.BackgroundTransparency = 1
+	searchBox.Position = UDim2.fromOffset(30, 0)
+	searchBox.Size = UDim2.new(1, -38, 1, 0)
+	searchBox.Font = F.Body
+	searchBox.TextSize = 14
+	searchBox.TextColor3 = C.INK
+	searchBox.PlaceholderText = "Search a name or a Stand..."
+	searchBox.PlaceholderColor3 = FADED_INK
+	searchBox.TextXAlignment = Enum.TextXAlignment.Left
+	searchBox.ClearTextOnFocus = false
+	searchBox.Text = ""
+	searchBox.ZIndex = 4
+	searchBox.Parent = searchMat
+	searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+		applyFilter()
+	end)
+	frame(dropdown, { Position = UDim2.fromOffset(14, HEAD_H - 4), Size = UDim2.new(1, -28, 0, 2), BackgroundColor3 = C.WOOD_EDGE, BackgroundTransparency = 0.3 })
 
 	dropdownList = Instance.new("ScrollingFrame")
 	dropdownList.BackgroundTransparency = 1
 	dropdownList.BorderSizePixel = 0
-	dropdownList.Position = UDim2.fromOffset(0, 52)
-	dropdownList.Size = UDim2.new(1, 0, 1, -56)
+	dropdownList.Position = UDim2.fromOffset(0, HEAD_H)
+	dropdownList.Size = UDim2.new(1, 0, 1, -HEAD_H - 4)
 	dropdownList.CanvasSize = UDim2.new()
 	dropdownList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	dropdownList.ScrollBarThickness = 6
+	dropdownList.ScrollBarThickness = 5
 	dropdownList.ScrollingDirection = Enum.ScrollingDirection.Y
 	dropdownList.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 	dropdownList.ScrollBarImageColor3 = GOLD
 	dropdownList.ZIndex = 3
 	dropdownList.Parent = dropdown
 	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 5)
+	layout.Padding = UDim.new(0, 6)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = dropdownList
 	local pad = Instance.new("UIPadding")
 	pad.PaddingTop = UDim.new(0, 6)
-	pad.PaddingBottom = UDim.new(0, 8)
-	pad.PaddingLeft = UDim.new(0, 10)
+	pad.PaddingBottom = UDim.new(0, 10)
+	pad.PaddingLeft = UDim.new(0, 12)
 	pad.PaddingRight = UDim.new(0, 12)
 	pad.Parent = dropdownList
+	emptyLabel = label(dropdownList, { LayoutOrder = 9999, Size = UDim2.new(1, 0, 0, 40), Font = F.Body, TextSize = 13, TextColor3 = C.PAPER, TextXAlignment = Enum.TextXAlignment.Center, Text = "Nobody by that name.", Visible = false })
 
 	rosterRows = {}
 	for order, entry in ipairs(TuskConfig.Roster or {}) do
@@ -480,93 +464,59 @@ function buildDropdown()
 		row.ZIndex = 3
 		row.Parent = dropdownList
 		parchment(row, 80)
-		corner(row, 6)
-		local outline = stroke(row, REST_EDGE, 2)
-		outline.Transparency = 0.2
+		corner(row, 8)
+		local outline = stroke(row, REST_EDGE, 1.5)
+		outline.Transparency = 0.35
 		local rowScale = Instance.new("UIScale")
 		rowScale.Parent = row
+		-- A strip of the character's colour down the left edge.
+		local strip = frame(row, { Size = UDim2.new(0, 6, 1, 0), BackgroundColor3 = entry.Color })
+		corner(strip, 8)
 
-		-- Colour badge with initials (the character's Roster colour).
-		local badge = Instance.new("Frame")
-		badge.Position = UDim2.fromOffset(7, 7)
-		badge.Size = UDim2.fromOffset(40, 40)
-		badge.BackgroundColor3 = entry.Color
-		badge.ZIndex = 3
-		badge.Parent = row
-		corner(badge, 8)
+		-- Round badge with their initials.
+		local badge = frame(row, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.5, 0), Size = UDim2.fromOffset(38, 38), BackgroundColor3 = entry.Color })
+		corner(badge, 99)
 		stroke(badge, C.WOOD_EDGE, 2)
 		local shade = Instance.new("UIGradient")
 		shade.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(150, 150, 150))
 		shade.Rotation = 90
 		shade.Parent = badge
-		label(badge, {
-			Size = UDim2.fromScale(1, 1),
-			Font = F.Title,
-			TextSize = 22,
-			TextColor3 = Color3.new(1, 1, 1),
-			TextXAlignment = Enum.TextXAlignment.Center,
-			TextStrokeTransparency = 0.2,
-			Text = initials(entry.Name),
-		})
+		label(badge, { Size = UDim2.fromScale(1, 1), Font = F.Title, TextSize = 19, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextStrokeTransparency = 0.2, Text = initials(entry.Name) })
 
-		-- Names and Stands shrink to fit instead of being cut off ("JOHNNY...").
-		local nameText = label(row, {
-			Position = UDim2.fromOffset(55, 6),
-			Size = UDim2.new(1, -150, 0, 24),
-			Font = F.Title,
-			TextScaled = true,
-			TextStrokeTransparency = 1,
-			TextColor3 = entry.Available and C.INK or FADED_INK,
-			Text = entry.Name,
-		})
-		local nameLimit = Instance.new("UITextSizeConstraint")
-		nameLimit.MaxTextSize = 21
-		nameLimit.MinTextSize = 11
-		nameLimit.Parent = nameText
-		local standText = label(row, {
-			Position = UDim2.fromOffset(55, 30),
-			Size = UDim2.new(1, -150, 0, 14),
-			Font = F.Heavy,
-			TextScaled = true,
-			TextStrokeTransparency = 1,
-			-- The Roster colour, darkened so it reads on parchment.
-			TextColor3 = entry.Color:Lerp(Color3.new(0, 0, 0), 0.4),
-			Text = "STAND: " .. entry.Stand,
-		})
-		local standLimit = Instance.new("UITextSizeConstraint")
-		standLimit.MaxTextSize = 10
-		standLimit.MinTextSize = 7
-		standLimit.Parent = standText
+		-- Name and Stand shrink to fit instead of being cut off.
+		local nameText = label(row, { Position = UDim2.fromOffset(60, 7), Size = UDim2.new(1, -158, 0, 22), Font = F.Title, TextScaled = true, TextStrokeTransparency = 1, TextColor3 = entry.Available and C.INK or FADED_INK, Text = entry.Name })
+		sizeLimit(nameText, 20, 11)
+		local standText = label(row, { Position = UDim2.fromOffset(60, 30), Size = UDim2.new(1, -158, 0, 14), Font = F.Heavy, TextScaled = true, TextStrokeTransparency = 1, TextColor3 = entry.Color:Lerp(Color3.new(0, 0, 0), 0.45), Text = entry.Stand })
+		sizeLimit(standText, 11, 7)
 
+		-- Status pill.
 		local status = label(row, {
 			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -8, 0.5, 0),
-			Size = UDim2.fromOffset(86, 26),
+			Position = UDim2.new(1, -10, 0.5, 0),
+			Size = UDim2.fromOffset(84, 24),
 			Font = F.Title,
 			TextScaled = true,
 			TextColor3 = Color3.new(1, 1, 1),
 			TextXAlignment = Enum.TextXAlignment.Center,
-			TextStrokeTransparency = 0.6,
+			TextStrokeTransparency = 0.7,
 			BackgroundTransparency = 0,
 			BackgroundColor3 = GREY,
 			Text = entry.Available and "SELECT" or "IN DEVELOPMENT",
 		})
-		corner(status, 7)
-		local statusStroke = stroke(status, C.WOOD_EDGE, 2)
+		corner(status, 12)
+		local statusStroke = stroke(status, C.WOOD_EDGE, 1.5)
 		local statusPad = Instance.new("UIPadding")
 		statusPad.PaddingTop = UDim.new(0, 4)
 		statusPad.PaddingBottom = UDim.new(0, 3)
-		statusPad.PaddingLeft = UDim.new(0, 4)
-		statusPad.PaddingRight = UDim.new(0, 4)
+		statusPad.PaddingLeft = UDim.new(0, 6)
+		statusPad.PaddingRight = UDim.new(0, 6)
 		statusPad.Parent = status
-		local statusLimit = Instance.new("UITextSizeConstraint")
-		statusLimit.MaxTextSize = 17
-		statusLimit.Parent = status
+		sizeLimit(status, 16, 8)
 
 		local info = { Row = row, Order = order, Status = status, StatusStroke = statusStroke, Entry = entry, Outline = outline, Name = nameText, Selectable = false, Playing = false }
 		rosterRows[entry.Id] = info
 
-		-- Hover: the row lights up, bounces, and the outline shows in the character's colour.
+		-- Hover: the row lightens, lifts, and takes the character's colour as its outline.
 		local function hover(on)
 			local from = row.BackgroundColor3
 			local to = on and ROW_HOVER or ROW_BG
@@ -574,7 +524,7 @@ function buildDropdown()
 				row.BackgroundColor3 = from:Lerp(to, a)
 			end)
 			setOutline(info, on or info.Playing)
-			tweenTo(rowScale, on and UITheme.FAST or UITheme.SOFT, { Scale = on and 1.02 or 1 })
+			tweenTo(rowScale, on and UITheme.FAST or UITheme.SOFT, { Scale = on and 1.015 or 1 })
 		end
 		row.MouseEnter:Connect(function()
 			hover(true)
@@ -586,9 +536,9 @@ function buildDropdown()
 			if not info.Selectable then
 				return
 			end
-			-- Little press bounce, then ask the server and close.
+			-- A little press bounce, then ask the server and close.
 			tween(0.15, function(a)
-				status.Size = UDim2.fromOffset(86 - 8 * math.sin(a * math.pi), 26 - 4 * math.sin(a * math.pi))
+				status.Size = UDim2.fromOffset(84 - 8 * math.sin(a * math.pi), 24 - 4 * math.sin(a * math.pi))
 			end)
 			Net.get("TuskRequest"):FireServer("Character", entry.Id)
 			task.delay(0.15, function()
@@ -597,6 +547,31 @@ function buildDropdown()
 				end
 			end)
 		end)
+	end
+	applyFilter()
+end
+
+-- Search: show only rows whose name or Stand contains the text.
+function applyFilter()
+	if not rosterRows then
+		return
+	end
+	local q = searchBox and string.lower((searchBox.Text or ""):gsub("^%s+", ""):gsub("%s+$", "")) or ""
+	local shown, total = 0, 0
+	for _, info in pairs(rosterRows) do
+		total = total + 1
+		local hay = string.lower(info.Entry.Name .. " " .. info.Entry.Stand .. " " .. info.Entry.Id)
+		local match = q == "" or string.find(hay, q, 1, true) ~= nil
+		info.Row.Visible = match
+		if match then
+			shown = shown + 1
+		end
+	end
+	if emptyLabel then
+		emptyLabel.Visible = shown == 0
+	end
+	if countLabel then
+		countLabel.Text = q == "" and (total .. " FIGHTERS") or (shown .. " OF " .. total)
 	end
 end
 
@@ -617,8 +592,8 @@ function refreshDropdown(act)
 	if not dropdown then
 		return
 	end
-	-- Each character row: PLAYING (green), SELECT (blue), NOT INSTALLED (grey:
-	-- that character's _Server/_Client scripts aren't in the game) or IN DEVELOPMENT.
+	-- Each row: PLAYING (green), SELECT (red), NOT INSTALLED (grey: that
+	-- character's _Server/_Client scripts aren't in the game) or IN DEVELOPMENT.
 	local current = act and Registry.characterOf(act)
 	local installed = installedSet()
 	for id, row in pairs(rosterRows) do
@@ -628,14 +603,15 @@ function refreshDropdown(act)
 		if row.Entry.Available then
 			row.Status.Text = playing and "PLAYING" or (missing and "NOT INSTALLED" or "SELECT")
 			row.Status.BackgroundColor3 = playing and GREEN or (missing and GREY or RED)
-			row.Status.TextColor3 = missing and Color3.fromRGB(225, 212, 196) or Color3.new(1, 1, 1)
+			row.Status.TextColor3 = missing and Color3.fromRGB(228, 216, 200) or Color3.new(1, 1, 1)
 			row.Selectable = not playing and not missing
 		end
 		row.StatusStroke.Color = row.Status.BackgroundColor3:Lerp(Color3.new(0, 0, 0), 0.5)
 		setOutline(row, playing)
-		row.Name.TextColor3 = (row.Entry.Available and not missing) and (playing and RED or C.INK) or FADED_INK
+		row.Name.TextColor3 = (row.Entry.Available and not missing) and C.INK or FADED_INK
 		row.Row.LayoutOrder = playing and 0 or row.Order
 	end
+	applyFilter()
 end
 
 function CharacterCard.toggle()
@@ -644,21 +620,23 @@ function CharacterCard.toggle()
 	end
 	open = not open
 	local rows = #(TuskConfig.Roster or {})
-	local full = 52 + 14 + rows * (ROW_H + 5)
-	-- Short list (about 4 rows, never more than 45% of the screen); the rest scrolls.
+	local full = HEAD_H + 16 + rows * (ROW_H + 6)
+	-- About five rows (never more than 60% of the screen); the rest scrolls.
 	local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 600
-	local target = math.min(full, 52 + 14 + 4.4 * (ROW_H + 5), math.max(180, screenH * 0.45))
+	local target = math.min(full, HEAD_H + 16 + 5.4 * (ROW_H + 6), math.max(220, screenH * 0.6))
 	refreshDropdown(shownAct)
 	if open then
 		dropdown.Visible = true
 		dropdownList.CanvasPosition = Vector2.new()
+	elseif searchBox then
+		searchBox.Text = ""
 	end
-	arrow.Text = open and "▲" or "▼"
+	arrow.Text = open and "CLOSE  ▲" or "CHARACTERS  ▼"
 	local from = dropdownHeight
 	local to = open and target or 0
 	VFXLib.animate(0.22, function(a)
 		dropdownHeight = from + (to - from) * VFXLib.easeOut(a)
-		dropdown.Size = UDim2.fromOffset(ROW_W, dropdownHeight)
+		dropdown.Size = UDim2.fromOffset(LIST_W, dropdownHeight)
 	end, function()
 		if not open then
 			dropdown.Visible = false
@@ -673,7 +651,7 @@ function CharacterCard.pop(color)
 		cardStroke.Color = color
 	end
 	VFXLib.animate(0.5, function(a)
-		scale.Scale = 1 + 0.12 * math.sin(a * math.pi)
+		scale.Scale = 1 + 0.1 * math.sin(a * math.pi)
 		flash.BackgroundTransparency = 0.35 + 0.65 * a
 	end, function()
 		scale.Scale = 1
@@ -702,7 +680,7 @@ function CharacterCard.step()
 		shownAct = act
 		local info = act and Registry.get(act)
 		local who = act ~= nil and Registry.characterOf(act) or "Johnny"
-		local isGyro = who ~= "Johnny" -- (any non-Tusk character: no Act pips / evolve pop)
+		local isTusk = who == "Johnny" -- (only Tusk has Act pips / the evolve pop)
 		-- Name plate follows the character (from TuskConfig.Roster).
 		for _, entry in ipairs(TuskConfig.Roster or {}) do
 			if entry.Id == who then
@@ -715,15 +693,16 @@ function CharacterCard.step()
 		else
 			standLabel.Text = info and ("STAND  ·  " .. info.Name) or TuskConfig.Character.Title
 		end
-		standLabel.TextColor3 = info and info.Theme.Primary or Color3.fromRGB(200, 220, 255)
-		-- Act pips are Tusk's progression; hidden for other characters.
+		local theme = info and info.Theme.Primary or Color3.fromRGB(200, 220, 255)
+		standLabel.TextColor3 = theme:Lerp(Color3.new(1, 1, 1), 0.25)
+		standStrip.BackgroundColor3 = theme
 		for i, pip in ipairs(pips) do
-			pip.Visible = not isGyro
 			local on = act ~= nil and i <= act
-			local theme = Registry.get(i) and Registry.get(i).Theme.Primary or GOLD
-			pip.BackgroundColor3 = on and theme or PIP_OFF
+			local t = Registry.get(i) and Registry.get(i).Theme.Primary or GOLD
+			pip.BackgroundColor3 = on and t or PIP_OFF
 		end
-		if isGyro then
+		layoutHealth(isTusk)
+		if not isTusk then
 			evolved = false
 		end
 		if evolved and info then

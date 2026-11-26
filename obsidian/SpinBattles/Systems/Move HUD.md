@@ -25,3 +25,12 @@ updated: 2026-11-22
 - Icons are drawn from UI shapes (no image uploads). Matched by move name: nail, barrage, spin, portal, dash, ball, tornado, vibration, star.
 - Scales down on small screens (phones) and up a little on big ones.
 - Key badges follow the last input: keyboard keys, gamepad buttons, hidden on touch.
+
+## Character card + list restyle (2026-11-26)
+Same wooden bounty-board style, cleaner:
+- **Card:** a straight parchment name plate; the Stand on a dark inset with a strip of its colour; the health bar shows "HP" on the left and the numbers on the right. Act pips appear for Johnny only; for everyone else the health bar moves up into their place. A gold **CHARACTERS ▼** tab hangs under the card, and the card and the tab both open the list.
+- **List:**
+  - The header is "CHOOSE YOUR FIGHTER" with a count chip ("21 FIGHTERS" / "3 OF 21"), plus a **search box** that matches name or Stand.
+  - Each row has a colour strip down its left edge, a round initial badge, the name and Stand, and a rounded status pill.
+  - Your current character is pinned to the top. Hover lifts a row and outlines it in the character's colour.
+  - The list is up to about 5 rows tall (never more than 60% of the screen); the rest scrolls.

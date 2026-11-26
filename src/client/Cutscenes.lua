@@ -23,6 +23,13 @@
 	functions returning one (to follow something that moves). opts.Priority:
 	a cutscene only interrupts a lower-priority one. The camera always goes
 	back to exactly what it was following before (you, a horse, John Rod...).
+
+	SHIFT LOCK: with shift lock on, Roblox turns your character to face
+	wherever the camera looks, so an orbiting cutscene camera used to spin
+	you round and round. While a cutscene plays, shift lock is switched off
+	(and the mouse freed); it's switched back on afterwards if you had it on.
+	The camera is moved after Roblox's own camera each frame, so it doesn't
+	fight it (no jitter).
 ]]
 
 local Players = game:GetService("Players")
@@ -30,6 +37,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("SpinShared")
 local TuskConfig = require(Shared.TuskConfig)
@@ -115,9 +123,65 @@ local function restoreCamera(saved)
 	if not (subject and subject.Parent) then
 		subject = hum
 	end
+	-- Hand back from behind your character (not wherever the last shot
+	-- ended, e.g. facing you), so the normal camera picks up naturally.
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if root and subject == hum then
+		local behind = (root.CFrame * CFrame.new(0, 3, 11)).Position
+		camera.CFrame = CFrame.lookAt(behind, root.Position + Vector3.new(0, 1.5, 0))
+	end
 	camera.CameraSubject = subject
 	camera.CameraType = saved.Type == Enum.CameraType.Scriptable and Enum.CameraType.Custom or (saved.Type or Enum.CameraType.Custom)
 	camera.FieldOfView = saved.FOV or 70
+end
+
+-- Shift lock off for the cutscene (it would turn you to face the camera).
+local gameSettings
+pcall(function()
+	gameSettings = UserSettings():GetService("UserGameSettings")
+end)
+
+local function holdStill()
+	if UserInputService.MouseBehavior ~= Enum.MouseBehavior.Default then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+	end
+	if gameSettings then
+		pcall(function()
+			if gameSettings.RotationType ~= Enum.RotationType.MovementRelative then
+				gameSettings.RotationType = Enum.RotationType.MovementRelative
+			end
+		end)
+	end
+end
+
+local function releaseMouseLock(run)
+	run.MouseLock = player.DevEnableMouseLock
+	run.WasLocked = UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter
+	pcall(function()
+		player.DevEnableMouseLock = false
+	end)
+	holdStill()
+end
+
+local function restoreMouseLock(run)
+	if run.MouseLock ~= nil then
+		pcall(function()
+			player.DevEnableMouseLock = run.MouseLock
+		end)
+	end
+	-- Shift lock was on: turn it back on (the camera scripts' own toggle).
+	if run.WasLocked and run.MouseLock then
+		task.defer(function()
+			pcall(function()
+				local pm = require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule", 2))
+				local cams = pm:GetCameras()
+				local mlc = cams and cams.activeMouseLockController
+				if mlc and mlc.GetIsMouseLocked and not mlc:GetIsMouseLocked() and mlc.OnMouseLockToggled then
+					mlc:OnMouseLockToggled()
+				end
+			end)
+		end)
+	end
 end
 
 local function finish(run, skipped)
@@ -125,9 +189,13 @@ local function finish(run, skipped)
 		return
 	end
 	playing = nil
+	pcall(function()
+		RunService:UnbindFromRenderStep("SpinCutscene")
+	end)
 	if run.Conn then
 		run.Conn:Disconnect()
 	end
+	restoreMouseLock(run)
 	ContextActionService:UnbindAction("SpinCutsceneSkip")
 	restoreCamera(run.Saved)
 	showTitle(nil)
@@ -183,6 +251,7 @@ function Cutscenes.play(shots, opts)
 			return Enum.ContextActionResult.Sink
 		end, false, 4000, Enum.KeyCode.Return, Enum.KeyCode.KeypadEnter, Enum.KeyCode.ButtonSelect)
 	end
+	releaseMouseLock(run)
 	camera.CameraType = Enum.CameraType.Scriptable
 	local index, started = 1, os.clock()
 	local function begin(i)
@@ -192,10 +261,16 @@ function Cutscenes.play(shots, opts)
 		showTitle(shot.Title, shot.Subtitle, shot.Color)
 	end
 	begin(1)
-	run.Conn = RunService.RenderStepped:Connect(function()
+	-- After Roblox's own camera each frame, so nothing fights the move.
+	RunService:BindToRenderStep("SpinCutscene", Enum.RenderPriority.Camera.Value + 2, function()
 		if playing ~= run then
 			return
 		end
+		camera = workspace.CurrentCamera or camera
+		if camera.CameraType ~= Enum.CameraType.Scriptable then
+			camera.CameraType = Enum.CameraType.Scriptable
+		end
+		holdStill()
 		local shot = shots[index]
 		local a = math.clamp((os.clock() - started) / math.max(shot.Time or 2, 0.05), 0, 1)
 		local from, to = resolve(shot.From), resolve(shot.To or shot.From)
