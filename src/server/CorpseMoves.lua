@@ -25,6 +25,7 @@
 	  DIO          WRYYY: drains everyone round him (he heals)
 	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
 	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
+	  Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA!
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -470,6 +471,31 @@ USE.Jotaro = function(S, player, state, character, root)
 				if tr then
 					local away = Vector3.new(tr.Position.X - r.Position.X, 0, tr.Position.Z - r.Position.Z)
 					S.hit(player, target, { Damage = last and c.FinalDamage or c.Damage, Stun = c.Stun, Knockback = last and 40 or 0, Launch = last and 12 or nil, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JotaroCorpse" })
+				end
+			end
+		end)
+	end
+end
+
+-- DORA BARRAGE: Crazy Diamond spins round Josuke (Part 4) punching
+-- everyone near, then one big DORA! sends them flying.
+USE.Josuke4 = function(S, player, state, character, root)
+	local c = TuskConfig.Josuke4 and TuskConfig.Josuke4.CorpseDora or { Radius = 16, Hits = 6, Gap = 0.08, Damage = 2, FinalDamage = 6, Stun = 0.6 }
+	S.lock(state, c.Hits * c.Gap + 0.3)
+	fx({ Character = character, Who = "Josuke4", Phase = "Barrage", Position = root.Position, Radius = c.Radius, Time = c.Hits * c.Gap })
+	for i = 1, c.Hits do
+		task.delay((i - 1) * c.Gap, function()
+			local char = player.Character
+			local r = char and char:FindFirstChild("HumanoidRootPart")
+			if not r then
+				return
+			end
+			local last = i == c.Hits
+			for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, c.Radius, 10)) do
+				local tr = target:FindFirstChild("HumanoidRootPart")
+				if tr then
+					local away = Vector3.new(tr.Position.X - r.Position.X, 0, tr.Position.Z - r.Position.Z)
+					S.hit(player, target, { Damage = last and c.FinalDamage or c.Damage, Stun = c.Stun, Knockback = last and 40 or 0, Launch = last and 12 or nil, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "Josuke4Corpse" })
 				end
 			end
 		end)

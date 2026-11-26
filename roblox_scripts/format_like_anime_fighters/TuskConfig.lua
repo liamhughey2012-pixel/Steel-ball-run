@@ -183,6 +183,7 @@ TuskConfig.Roster = {
 	{ Id = "Dio", Name = "DIO", Stand = "THE WORLD", Available = true, Color = Color3.fromRGB(240, 196, 50) },
 	{ Id = "Joseph", Name = "JOSEPH JOESTAR", Stand = "HERMIT PURPLE", Available = true, Color = Color3.fromRGB(150, 80, 200) },
 	{ Id = "Polnareff", Name = "JEAN PIERRE POLNAREFF", Stand = "SILVER CHARIOT", Available = true, Color = Color3.fromRGB(196, 206, 222) },
+	{ Id = "Josuke4", Name = "JOSUKE HIGASHIKATA (4)", Stand = "CRAZY DIAMOND", Available = true, Color = Color3.fromRGB(236, 120, 190) },
 }
 
 ---------------------------------------------------------------------------
@@ -259,7 +260,7 @@ TuskConfig.StandBots = {
 	Count = 20, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph", "Polnareff" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph", "Polnareff", "Josuke4" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -1201,6 +1202,57 @@ TuskConfig.Jotaro = {
 }
 
 ---------------------------------------------------------------------------
+-- JOSUKE HIGASHIKATA (Part 4): CRAZY DIAMOND (a visitor from another world:
+-- Diamond is Unbreakable; not the JoJolion Josuke). Breaks things, and
+-- "restores" them: into rock, or back to where they came from.
+---------------------------------------------------------------------------
+TuskConfig.Josuke4 = {
+	M1 = { -- DORA COMBO: Crazy Diamond punches with him; the 4th is a heavy straight that launches
+		Interval = 0.26, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.07,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.7, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.7, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4.2, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7.5, Stun = 0.55, Knockback = 42, Launch = 14, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	DoraRush = { -- 1: DORARARA: a storm of punches in front of him, dragging them along
+		Cooldown = 11, Windup = 0.15,
+		Duration = 1.4, Tick = 0.09,
+		Damage = 0.95, Stun = 0.35, Knockback = 0,
+		HitboxSize = Vector3.new(6, 6, 7), HitboxForward = 4, MaxTargets = 4,
+		Drag = 6,
+		WalkMultiplier = 0.55,
+		FinalDamage = 8, FinalKnockback = 70, FinalLaunch = 12, FinalStun = 0.7, -- "DORA!"
+		ShockwaveRadius = 8, ShockwaveDamage = 3,
+	},
+	RockFusion = { -- 2: BREAK & RESTORE: punch the nearest enemy in front, then "fix" them into a lump of rock
+		Cooldown = 13, MissCooldown = 3, Windup = 0.25,
+		Range = 9, Cone = 80,
+		Damage = 7, -- the punch
+		EncaseTime = 2.2, -- stuck in the rock (can't move or act)
+		BurstDamage = 7, BurstKnockback = 40, BurstLaunch = 10, -- the rock breaks off
+	},
+	HomingShard = { -- 3: a bloodied glass shard; Crazy Diamond restores it, so it flies back to the blood (the nearest enemy)
+		Cooldown = 8, Windup = 0.25,
+		LockRange = 90, Cone = 120, -- picks the nearest enemy in front this close
+		Speed = 75, Turn = 7, -- studs/s, how hard it steers
+		Life = 2.2, HitRadius = 3,
+		Damage = 8, Stun = 0.6, Knockback = 10,
+	},
+	Ultimate = { -- "WHAT DID YOU SAY ABOUT MY HAIR?!": he snaps. Hits harder, moves faster, rush and fusion ready at once
+		Windup = 0.9,
+		Duration = 10, BotDuration = 7,
+		DamageMultiplier = 1.3,
+		SpeedMultiplier = 1.2,
+		ShoutRadius = 14, ShoutDamage = 6, ShoutKnockback = 45, -- the outburst blows people back
+		ResetCooldowns = { "DoraRush", "RockFusion" },
+	},
+	CorpseDora = { Radius = 16, Hits = 6, Gap = 0.08, Damage = 2, FinalDamage = 6, Stun = 0.6 }, -- corpse move DORA BARRAGE: a 360 rush
+}
+
+---------------------------------------------------------------------------
 -- DIO: THE WORLD (a visitor from another world: Part 3). Not Diego's The
 -- World: a vampire with a golden Stand, knives, and a ROAD ROLLER.
 ---------------------------------------------------------------------------
@@ -1480,7 +1532,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT", Polnareff = "SWORD WHIRL",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT", Polnareff = "SWORD WHIRL", Josuke4 = "DORA BARRAGE",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }

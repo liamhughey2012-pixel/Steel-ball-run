@@ -356,6 +356,10 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	if (targetCharacter:GetAttribute("ArrowBlessUntil") or 0) > shopNow then
 		damage = damage * (targetCharacter:GetAttribute("ArrowResist") or 1)
 	end
+	-- Josuke's rage ("WHAT DID YOU SAY ABOUT MY HAIR?!").
+	if attackerCharacter and (attackerCharacter:GetAttribute("HairRageUntil") or 0) > shopNow then
+		damage = damage * (attackerCharacter:GetAttribute("HairRageDamage") or 1)
+	end
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
 
 	-- Who hit them last (kill credit for bounties and kill streaks).

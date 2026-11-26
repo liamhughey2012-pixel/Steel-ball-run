@@ -154,6 +154,8 @@ PACKS = [
      "Joseph Joestar (Part 3): Hermit Purple and Hamon."),
     ("Polnareff", {"server": ["Polnareff", "PolnareffOutfit", "ChariotRequiem"], "client": ["PolnareffVFX", "SilverChariotStand", "ChariotRequiemVFX", "ChariotRequiemStand"]},
      "Jean Pierre Polnareff (Part 3): Silver Chariot."),
+    ("Josuke4", {"server": ["Josuke4", "Josuke4Outfit"], "client": ["Josuke4VFX", "CrazyDiamondStand"]},
+     "Josuke Higashikata (Part 4): Crazy Diamond."),
 ]
 
 def deps(code):
@@ -317,7 +319,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit", "Josuke4Outfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

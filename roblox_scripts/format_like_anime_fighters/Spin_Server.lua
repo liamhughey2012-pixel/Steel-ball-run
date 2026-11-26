@@ -2086,6 +2086,10 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	if (targetCharacter:GetAttribute("ArrowBlessUntil") or 0) > shopNow then
 		damage = damage * (targetCharacter:GetAttribute("ArrowResist") or 1)
 	end
+	-- Josuke's rage ("WHAT DID YOU SAY ABOUT MY HAIR?!").
+	if attackerCharacter and (attackerCharacter:GetAttribute("HairRageUntil") or 0) > shopNow then
+		damage = damage * (attackerCharacter:GetAttribute("HairRageDamage") or 1)
+	end
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
 
 	-- Who hit them last (kill credit for bounties and kill streaks).
@@ -2212,6 +2216,7 @@ __modules["CorpseMoves"] = function()
 	  DIO          WRYYY: drains everyone round him (he heals)
 	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
 	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
+	  Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA!
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -2657,6 +2662,31 @@ USE.Jotaro = function(S, player, state, character, root)
 				if tr then
 					local away = Vector3.new(tr.Position.X - r.Position.X, 0, tr.Position.Z - r.Position.Z)
 					S.hit(player, target, { Damage = last and c.FinalDamage or c.Damage, Stun = c.Stun, Knockback = last and 40 or 0, Launch = last and 12 or nil, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JotaroCorpse" })
+				end
+			end
+		end)
+	end
+end
+
+-- DORA BARRAGE: Crazy Diamond spins round Josuke (Part 4) punching
+-- everyone near, then one big DORA! sends them flying.
+USE.Josuke4 = function(S, player, state, character, root)
+	local c = TuskConfig.Josuke4 and TuskConfig.Josuke4.CorpseDora or { Radius = 16, Hits = 6, Gap = 0.08, Damage = 2, FinalDamage = 6, Stun = 0.6 }
+	S.lock(state, c.Hits * c.Gap + 0.3)
+	fx({ Character = character, Who = "Josuke4", Phase = "Barrage", Position = root.Position, Radius = c.Radius, Time = c.Hits * c.Gap })
+	for i = 1, c.Hits do
+		task.delay((i - 1) * c.Gap, function()
+			local char = player.Character
+			local r = char and char:FindFirstChild("HumanoidRootPart")
+			if not r then
+				return
+			end
+			local last = i == c.Hits
+			for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, c.Radius, 10)) do
+				local tr = target:FindFirstChild("HumanoidRootPart")
+				if tr then
+					local away = Vector3.new(tr.Position.X - r.Position.X, 0, tr.Position.Z - r.Position.Z)
+					S.hit(player, target, { Damage = last and c.FinalDamage or c.Damage, Stun = c.Stun, Knockback = last and 40 or 0, Launch = last and 12 or nil, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "Josuke4Corpse" })
 				end
 			end
 		end)
@@ -9736,7 +9766,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO, Joseph, Polnareff:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO, Joseph, Polnareff, Josuke (4):
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -9798,6 +9828,7 @@ local LOOKS = {
 	Joseph = { Skin = Color3.fromRGB(226, 186, 150), Torso = Color3.fromRGB(40, 52, 84), Legs = Color3.fromRGB(178, 152, 110) },
 	Dio = { Skin = Color3.fromRGB(240, 210, 180), Torso = Color3.fromRGB(26, 26, 30), Legs = Color3.fromRGB(214, 164, 72) },
 	Jotaro = { Skin = Color3.fromRGB(214, 170, 130), Torso = Color3.fromRGB(36, 36, 42), Legs = Color3.fromRGB(36, 36, 42) },
+	Josuke4 = { Skin = Color3.fromRGB(226, 186, 150), Torso = Color3.fromRGB(38, 38, 82), Legs = Color3.fromRGB(38, 38, 82) },
 	Ringo = { Skin = Color3.fromRGB(206, 146, 100), Torso = Color3.fromRGB(240, 240, 244), Legs = Color3.fromRGB(240, 240, 244) },
 	JohnRod = { Skin = Color3.fromRGB(226, 190, 160), Torso = Color3.fromRGB(90, 96, 110), Legs = Color3.fromRGB(52, 54, 64) },
 	Jodio = { Skin = Color3.fromRGB(236, 200, 166), Torso = Color3.fromRGB(34, 34, 64), Legs = Color3.fromRGB(36, 42, 84) },
@@ -11964,6 +11995,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "ChariotRequiemVFX", -- client visuals (TuskActVFX.ChariotRequiemVFX)
 		CardTitle = "STAND  ·  SILVER CHARIOT REQUIEM",
 	},
+	-- JOSUKE HIGASHIKATA (Part 4): CRAZY DIAMOND. Breaks things and restores them.
+	[25] = {
+		Name = "CRAZY DIAMOND",
+		Character = "Josuke4",
+		Tagline = "Dorarara",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(236, 120, 190), Secondary = Color3.fromRGB(150, 220, 240) },
+		M1 = "DORA COMBO",
+		Abilities = { "DORARARA RUSH", "BREAK & RESTORE", "HOMING SHARD" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "WHAT DID YOU SAY ABOUT MY HAIR?!",
+		Next = nil,
+		Module = "Josuke4", -- server moves
+		ClientModule = "Josuke4VFX", -- client visuals (TuskActVFX.Josuke4VFX)
+		CardTitle = "STAND  ·  CRAZY DIAMOND",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -11973,7 +12020,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -13714,7 +13761,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit", "Josuke4Outfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

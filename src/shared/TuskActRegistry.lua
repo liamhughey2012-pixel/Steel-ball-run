@@ -411,6 +411,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "ChariotRequiemVFX", -- client visuals (TuskActVFX.ChariotRequiemVFX)
 		CardTitle = "STAND  ·  SILVER CHARIOT REQUIEM",
 	},
+	-- JOSUKE HIGASHIKATA (Part 4): CRAZY DIAMOND. Breaks things and restores them.
+	[25] = {
+		Name = "CRAZY DIAMOND",
+		Character = "Josuke4",
+		Tagline = "Dorarara",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(236, 120, 190), Secondary = Color3.fromRGB(150, 220, 240) },
+		M1 = "DORA COMBO",
+		Abilities = { "DORARARA RUSH", "BREAK & RESTORE", "HOMING SHARD" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "WHAT DID YOU SAY ABOUT MY HAIR?!",
+		Next = nil,
+		Module = "Josuke4", -- server moves
+		ClientModule = "Josuke4VFX", -- client visuals (TuskActVFX.Josuke4VFX)
+		CardTitle = "STAND  ·  CRAZY DIAMOND",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -420,7 +436,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
