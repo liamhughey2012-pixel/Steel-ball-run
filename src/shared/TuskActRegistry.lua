@@ -346,6 +346,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "JotaroVFX", -- client visuals (TuskActVFX.JotaroVFX)
 		CardTitle = "STAND  ·  STAR PLATINUM",
 	},
+	-- DIO: THE WORLD (Part 3; not Diego's). A vampire; knives; a road roller.
+	[21] = {
+		Name = "THE WORLD",
+		Character = "Dio",
+		Tagline = "Muda muda muda",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(240, 196, 50), Secondary = Color3.fromRGB(60, 160, 110) },
+		M1 = "MUDA COMBO",
+		Abilities = { "VAMPIRE DRAIN", "SPACE RIPPER STINGY EYES", "KNIFE VOLLEY" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "ZA WARUDO: ROAD ROLLER",
+		Next = nil,
+		Module = "Dio", -- server moves
+		ClientModule = "DioVFX", -- client visuals (TuskActVFX.DioVFX)
+		CardTitle = "STAND  ·  THE WORLD",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -355,7 +371,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

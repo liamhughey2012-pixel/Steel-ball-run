@@ -180,6 +180,7 @@ TuskConfig.Roster = {
 	{ Id = "JohnRod", Name = "JOHN ROD", Stand = "JOHN ROD", Available = true, Color = Color3.fromRGB(200, 215, 235) },
 	{ Id = "Jodio", Name = "JODIO JOESTAR", Stand = "NOVEMBER RAIN", Available = true, Color = Color3.fromRGB(90, 170, 240) },
 	{ Id = "Jotaro", Name = "JOTARO KUJO", Stand = "STAR PLATINUM", Available = true, Color = Color3.fromRGB(130, 110, 220) },
+	{ Id = "Dio", Name = "DIO", Stand = "THE WORLD", Available = true, Color = Color3.fromRGB(240, 196, 50) },
 }
 
 ---------------------------------------------------------------------------
@@ -252,10 +253,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 17, -- how many at once (each takes a free spot below)
+	Count = 18, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -291,6 +292,7 @@ TuskConfig.StandBots = {
 		Vector3.new(380, 0, 290), -- north-east edge
 		Vector3.new(400, 0, -380), -- south-east corner
 		Vector3.new(400, 0, 130), -- east edge
+		Vector3.new(20, 0, 410), -- far north, beyond the river
 	},
 	Distance = 70, -- (no map) studs from the spawn to their camp
 	Spacing = 14, -- (no map) studs between them at the camp
@@ -1193,6 +1195,52 @@ TuskConfig.Jotaro = {
 	CorpseOra = { Radius = 16, Hits = 6, Gap = 0.08, Damage = 2, FinalDamage = 6, Stun = 0.6 }, -- corpse move ORA BARRAGE: a 360 rush
 }
 
+---------------------------------------------------------------------------
+-- DIO: THE WORLD (a visitor from another world: Part 3). Not Diego's The
+-- World: a vampire with a golden Stand, knives, and a ROAD ROLLER.
+---------------------------------------------------------------------------
+TuskConfig.Dio = {
+	M1 = { -- MUDA COMBO: The World punches with him; the 4th is a heavy hook that launches
+		Interval = 0.26, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.07,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.6, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.6, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4.2, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7.5, Stun = 0.55, Knockback = 38, Launch = 18, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	VampireDrain = { -- 1: grab the nearest enemy in front and drink their blood: they're held and hurt, he heals
+		Cooldown = 12, MissCooldown = 3, Windup = 0.2,
+		Range = 9, Cone = 80,
+		Time = 1.5, Tick = 0.3, TickDamage = 3, HealPerDamage = 0.8,
+		EndKnockback = 30, EndStun = 0.6,
+	},
+	StingyEyes = { -- 2: SPACE RIPPER STINGY EYES: two thin beams of fluid from his eyes, long and fast
+		Cooldown = 9, Windup = 0.35,
+		Length = 70, Width = 2.5,
+		Damage = 10, Stun = 0.6, Knockback = 6,
+	},
+	Knives = { -- 3: a fan of knives; thrown in stopped time they hang in the air until it moves again
+		Cooldown = 7, Windup = 0.15,
+		Count = 5, Spread = 7, -- degrees between knives
+		StoppedCount = 10, StoppedSpread = 9, StoppedCooldown = 2, -- in his own stopped time: a wall of knives, quick
+		Speed = 150, Radius = 0.7, Range = 110,
+		Damage = 4, Stun = 0.35, Knockback = 5,
+	},
+	Ultimate = { -- ZA WARUDO: time stops round him... and a ROAD ROLLER comes down
+		Windup = 0.8,
+		Duration = 5, BotDuration = 3.5,
+		Range = 55,
+		SpeedMultiplier = 1.2,
+		ResetCooldowns = { "Knives", "StingyEyes" },
+		RollerAt = 1.3, -- seconds before time moves again: ROAD ROLLER DA!
+		RollerRange = 40, -- on the nearest frozen enemy this close (else wherever he's facing)
+		RollerRadius = 9, RollerDamage = 22, RollerStun = 1.2, RollerKnockback = 30,
+	},
+	CorpseDrain = { Radius = 18, Damage = 7, Stun = 0.6, HealPerDamage = 0.6 }, -- corpse move WRYYY: drains everyone round him
+}
+
 TuskConfig.Gyro = {
 	M1 = {
 		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,
@@ -1279,7 +1327,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }

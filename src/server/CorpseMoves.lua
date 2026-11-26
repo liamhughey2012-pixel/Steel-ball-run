@@ -22,6 +22,7 @@
 	  John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is)
 	  Ringo        SECOND HAND: everyone round him loses 6 seconds (hit, dazed)
 	  Jotaro       ORA BARRAGE: Star Platinum punches everyone round him, then a big ORA!
+	  DIO          WRYYY: drains everyone round him (he heals)
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -396,6 +397,28 @@ USE.JohnRod = function(S, player, state, character, root)
 			local away = Vector3.new(tr.Position.X - center.X, 0, tr.Position.Z - center.Z)
 			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 18, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JohnRodSnap" })
 		end
+	end
+end
+
+-- WRYYY: DIO drains everyone round him at once; he heals from it.
+USE.Dio = function(S, player, state, character, root)
+	local c = TuskConfig.Dio and TuskConfig.Dio.CorpseDrain or { Radius = 18, Damage = 7, Stun = 0.6, HealPerDamage = 0.6 }
+	S.lock(state, 0.5)
+	fx({ Character = character, Who = "Dio", Phase = "Drain", Position = root.Position, Radius = c.Radius })
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local healed = 0
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		local hum = target:FindFirstChildOfClass("Humanoid")
+		if tr and hum then
+			local before = hum.Health
+			if S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Direction = Vector3.new(0, 1, 0), Position = tr.Position, Source = "DioCorpse" }) then
+				healed = healed + math.max(0, before - hum.Health) * c.HealPerDamage
+			end
+		end
+	end
+	if humanoid and healed > 0 then
+		humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + healed)
 	end
 end
 

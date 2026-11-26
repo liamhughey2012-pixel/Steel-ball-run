@@ -308,6 +308,21 @@ function TuskService.fireKnife(player, state, spec)
 	})
 end
 
+-- Server projectile with a silver dinner-knife visual (DIO: The World).
+function TuskService.fireDioKnife(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "DioKnife",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Knife" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
 -- Server projectile with a plunder-bubble visual (Josuke: Soft & Wet).
 function TuskService.fireBubble(player, state, spec)
 	return Projectiles.fire(player, {

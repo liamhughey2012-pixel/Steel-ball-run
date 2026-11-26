@@ -1820,6 +1820,7 @@ __modules["CorpseMoves"] = function()
 	  John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is)
 	  Ringo        SECOND HAND: everyone round him loses 6 seconds (hit, dazed)
 	  Jotaro       ORA BARRAGE: Star Platinum punches everyone round him, then a big ORA!
+	  DIO          WRYYY: drains everyone round him (he heals)
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -2194,6 +2195,28 @@ USE.JohnRod = function(S, player, state, character, root)
 			local away = Vector3.new(tr.Position.X - center.X, 0, tr.Position.Z - center.Z)
 			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 18, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JohnRodSnap" })
 		end
+	end
+end
+
+-- WRYYY: DIO drains everyone round him at once; he heals from it.
+USE.Dio = function(S, player, state, character, root)
+	local c = TuskConfig.Dio and TuskConfig.Dio.CorpseDrain or { Radius = 18, Damage = 7, Stun = 0.6, HealPerDamage = 0.6 }
+	S.lock(state, 0.5)
+	fx({ Character = character, Who = "Dio", Phase = "Drain", Position = root.Position, Radius = c.Radius })
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local healed = 0
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		local hum = target:FindFirstChildOfClass("Humanoid")
+		if tr and hum then
+			local before = hum.Health
+			if S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Direction = Vector3.new(0, 1, 0), Position = tr.Position, Source = "DioCorpse" }) then
+				healed = healed + math.max(0, before - hum.Health) * c.HealPerDamage
+			end
+		end
+	end
+	if humanoid and healed > 0 then
+		humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + healed)
 	end
 end
 
@@ -9295,7 +9318,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -9353,6 +9376,7 @@ local LOOKS = {
 	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 	DiegoAU = { Skin = Color3.fromRGB(240, 205, 170), Torso = Color3.fromRGB(110, 200, 185), Legs = Color3.fromRGB(196, 170, 110) },
 	Josuke = { Skin = Color3.fromRGB(214, 168, 130), Torso = Color3.fromRGB(240, 240, 236), Legs = Color3.fromRGB(236, 236, 232) },
+	Dio = { Skin = Color3.fromRGB(240, 210, 180), Torso = Color3.fromRGB(236, 194, 58), Legs = Color3.fromRGB(236, 194, 58) },
 	Jotaro = { Skin = Color3.fromRGB(214, 170, 130), Torso = Color3.fromRGB(36, 36, 42), Legs = Color3.fromRGB(36, 36, 42) },
 	Ringo = { Skin = Color3.fromRGB(206, 146, 100), Torso = Color3.fromRGB(240, 240, 244), Legs = Color3.fromRGB(240, 240, 244) },
 	JohnRod = { Skin = Color3.fromRGB(226, 190, 160), Torso = Color3.fromRGB(90, 96, 110), Legs = Color3.fromRGB(52, 54, 64) },
@@ -11455,6 +11479,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "JotaroVFX", -- client visuals (TuskActVFX.JotaroVFX)
 		CardTitle = "STAND  ·  STAR PLATINUM",
 	},
+	-- DIO: THE WORLD (Part 3; not Diego's). A vampire; knives; a road roller.
+	[21] = {
+		Name = "THE WORLD",
+		Character = "Dio",
+		Tagline = "Muda muda muda",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(240, 196, 50), Secondary = Color3.fromRGB(60, 160, 110) },
+		M1 = "MUDA COMBO",
+		Abilities = { "VAMPIRE DRAIN", "SPACE RIPPER STINGY EYES", "KNIFE VOLLEY" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "ZA WARUDO: ROAD ROLLER",
+		Next = nil,
+		Module = "Dio", -- server moves
+		ClientModule = "DioVFX", -- client visuals (TuskActVFX.DioVFX)
+		CardTitle = "STAND  ·  THE WORLD",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -11464,7 +11504,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -12210,6 +12250,21 @@ end
 function TuskService.fireKnife(player, state, spec)
 	return Projectiles.fire(player, {
 		Kind = "WorldKnife",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Knife" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Server projectile with a silver dinner-knife visual (DIO: The World).
+function TuskService.fireDioKnife(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "DioKnife",
 		Origin = spec.Origin,
 		Direction = spec.Direction,
 		Speed = spec.Speed,
@@ -13179,7 +13234,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

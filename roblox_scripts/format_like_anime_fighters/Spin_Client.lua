@@ -4965,6 +4965,9 @@ local function onMove(data)
 		end
 	elseif who == "Jodio" then
 		-- (November Rain's cloud and crush are drawn by JodioVFX.)
+	elseif who == "Dio" and data.Phase == "Drain" and data.Position then
+		-- WRYYY: a blood-red ring pulling in.
+		ring(data.Position, data.Radius or 18, Color3.fromRGB(190, 20, 30), 0.6)
 	elseif who == "Jotaro" and data.Phase == "Barrage" and data.Position then
 		-- ORA BARRAGE: a violet ring of punches spreading out round him.
 		ring(data.Position, data.Radius or 16, Color3.fromRGB(150, 120, 255), data.Time or 0.5)
@@ -6249,6 +6252,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 3) == "Dio" then
+		starColor = Color3.fromRGB(255, 210, 70)
 	elseif source:sub(1, 6) == "Jotaro" then
 		starColor = Color3.fromRGB(170, 150, 255)
 	elseif source:sub(1, 5) == "Ringo" then
@@ -7905,6 +7910,7 @@ Common.Palettes = {
 	[16] = { Main = Color3.fromRGB(150, 40, 50), Second = Color3.fromRGB(240, 196, 60), Light = Color3.fromRGB(255, 236, 200) }, -- Tooru (Wonder of U maroon + scarf gold)
 	[17] = { Main = Color3.fromRGB(90, 170, 240), Second = Color3.fromRGB(240, 120, 190), Light = Color3.fromRGB(225, 240, 255) }, -- Jodio (November Rain blue + strap pink)
 	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
+	[21] = { Main = Color3.fromRGB(240, 196, 50), Second = Color3.fromRGB(60, 160, 110), Light = Color3.fromRGB(255, 244, 200) }, -- DIO (The World gold + green)
 	[20] = { Main = Color3.fromRGB(130, 110, 220), Second = Color3.fromRGB(240, 196, 70), Light = Color3.fromRGB(230, 225, 255) }, -- Jotaro (Star Platinum violet + gold)
 	[19] = { Main = Color3.fromRGB(230, 120, 170), Second = Color3.fromRGB(246, 204, 40), Light = Color3.fromRGB(255, 236, 220) }, -- Ringo (Mandom pink + watch-hand gold)
 }
@@ -8565,6 +8571,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "JotaroVFX", -- client visuals (TuskActVFX.JotaroVFX)
 		CardTitle = "STAND  ·  STAR PLATINUM",
 	},
+	-- DIO: THE WORLD (Part 3; not Diego's). A vampire; knives; a road roller.
+	[21] = {
+		Name = "THE WORLD",
+		Character = "Dio",
+		Tagline = "Muda muda muda",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(240, 196, 50), Secondary = Color3.fromRGB(60, 160, 110) },
+		M1 = "MUDA COMBO",
+		Abilities = { "VAMPIRE DRAIN", "SPACE RIPPER STINGY EYES", "KNIFE VOLLEY" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "ZA WARUDO: ROAD ROLLER",
+		Next = nil,
+		Module = "Dio", -- server moves
+		ClientModule = "DioVFX", -- client visuals (TuskActVFX.DioVFX)
+		CardTitle = "STAND  ·  THE WORLD",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -8574,7 +8596,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -8830,6 +8852,12 @@ TuskAnimation.Poses = {
 	RGShoot = { Root = { 0, -20, 0, -0.02 }, Waist = { 0, -16, 0 }, Neck = { 2, 20, 0 }, RightArm = { 90, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { -10, 0, -12 }, LeftElbow = { 20, 0, 0 } },
 	RGWatch = { Root = { 0, 0, 0, 0 }, Waist = { 4, 0, 0 }, Neck = { 22, -12, 0 }, RightArm = { 70, 0, -36 }, RightElbow = { 70, 0, 0 }, LeftArm = { 74, 0, 40 }, LeftElbow = { 80, 0, 0 } },
 	-- JOTARO: tall, a hand in his pocket; pointing; a tug at his cap brim; a flick.
+	-- DIO: leaning back, one hand at his chest, the other held out; feeding; eyes; knives; ZA WARUDO.
+	DIOStance = { Root = { 8, 18, 0, 0 }, Waist = { 10, 16, 0 }, Neck = { -12, -12, 4 }, RightArm = { 62, 0, -32 }, RightElbow = { 105, 0, 0 }, LeftArm = { 28, 0, -58 }, LeftElbow = { 30, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { -6, 0, 0 }, LeftKnee = { -8, 0, 0 } },
+	DIODrainPose = { Root = { -10, -14, 0, -0.06 }, Waist = { -14, -14, 0 }, Neck = { 6, 14, 0 }, RightArm = { 92, 0, 6 }, RightElbow = { 22, 0, 0 }, LeftArm = { 40, 0, -40 }, LeftElbow = { 70, 0, 0 } },
+	DIOEyesPose = { Root = { -6, 0, 0, 0 }, Waist = { -8, 0, 0 }, Neck = { 10, 0, 0 }, RightArm = { 140, 0, 18 }, RightElbow = { 120, 0, 0 }, LeftArm = { 140, 0, -18 }, LeftElbow = { 120, 0, 0 } },
+	DIOThrowPose = { Root = { 0, -18, 0, 0 }, Waist = { 0, -20, 0 }, Neck = { 0, 18, 0 }, RightArm = { 80, 0, 48 }, RightElbow = { 10, 0, 0 }, LeftArm = { 80, 0, -48 }, LeftElbow = { 10, 0, 0 } },
+	DIOWorldPose = { Root = { 10, 0, 0, 0 }, Waist = { 14, 0, 0 }, Neck = { -18, 0, 0 }, RightArm = { 150, 0, 60 }, RightElbow = { 20, 0, 0 }, LeftArm = { 150, 0, -60 }, LeftElbow = { 20, 0, 0 } },
 	JTStance = { Root = { 2, 6, 0, 0 }, Waist = { 2, 4, 0 }, Neck = { 4, -6, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 }, RightArm = { -4, 0, 8 }, RightElbow = { 12, 0, 0 }, RightHip = { 6, 0, 0 }, LeftHip = { -4, 0, 0 } },
 	JTPoint = { Root = { 0, -16, 0, 0 }, Waist = { 0, -12, 0 }, Neck = { 2, 16, 0 }, RightArm = { 90, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 } },
 	JTCap = { Root = { 0, 0, 0, 0 }, Waist = { 0, 0, 0 }, Neck = { -10, -8, 0 }, RightArm = { 150, 0, 26 }, RightElbow = { 125, 0, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 } },
@@ -9037,6 +9065,14 @@ TuskAnimation.Actions = {
 	RGDraw = { { 0, "RGStance" }, { 0.12, "RGShoot", "Back", 3 }, { 0.45, "RGShoot", "Linear" }, { 0.65, "RGStance", "Sine" } },
 	RGWatchTurn = { { 0, "RGStance" }, { 0.15, "RGWatch", "Out" }, { 0.55, "RGWatch", "Linear" }, { 0.8, "RGStance", "Sine" } },
 	RGCounter = { { 0, "RGStance" }, { 0.1, "RGWatch", "Out" }, { 1.0, "RGWatch", "Linear" }, { 1.2, "RGStance", "Sine" } },
+	DIO_M1_1 = { { 0, "DIOStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DIOStance", "Sine" } },
+	DIO_M1_2 = { { 0, "DIOStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DIOStance", "Sine" } },
+	DIO_M1_3 = { { 0, "DIOStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DIOStance", "Sine" } },
+	DIO_M1_4 = { { 0, "DIOStance" }, { 0.08, "DIOThrowPose", "Back", 4 }, { 0.3, "DIOThrowPose", "Linear" }, { 0.5, "DIOStance", "Sine" } },
+	DIODrain = { { 0, "DIOStance" }, { 0.15, "DIODrainPose", "Back", 3 }, { 1.5, "DIODrainPose", "Linear" }, { 1.8, "DIOStance", "Sine" } },
+	DIOEyes = { { 0, "DIOStance" }, { 0.2, "DIOEyesPose", "Out" }, { 0.6, "DIOEyesPose", "Linear", 2 }, { 0.85, "DIOStance", "Sine" } },
+	DIOThrow = { { 0, "DIOStance" }, { 0.1, "DIOThrowPose", "Back", 3 }, { 0.4, "DIOThrowPose", "Linear" }, { 0.6, "DIOStance", "Sine" } },
+	DIOZaWarudo = { { 0, "DIOStance" }, { 0.25, "DIOWorldPose", "Out" }, { 1.1, "DIOWorldPose", "Linear" }, { 1.4, "DIOStance", "Sine" } },
 	JT_M1_1 = { { 0, "JTStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JTStance", "Sine" } },
 	JT_M1_2 = { { 0, "JTStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "JTStance", "Sine" } },
 	JT_M1_3 = { { 0, "JTStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JTStance", "Sine" } },
@@ -12242,6 +12278,14 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("VAMPIRE DRAIN") or has("WRYYY") then
+		return "grab"
+	elseif has("STINGY EYES") then
+		return "dash"
+	elseif has("KNIFE VOLLEY") then
+		return "knife"
+	elseif has("ZA WARUDO") then
+		return "clock"
 	elseif has("ORA RUSH") or has("ORA BARRAGE") then
 		return "barrage"
 	elseif has("STAR FINGER") then

@@ -149,6 +149,14 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("VAMPIRE DRAIN") or has("WRYYY") then
+		return "grab"
+	elseif has("STINGY EYES") then
+		return "dash"
+	elseif has("KNIFE VOLLEY") then
+		return "knife"
+	elseif has("ZA WARUDO") then
+		return "clock"
 	elseif has("ORA RUSH") or has("ORA BARRAGE") then
 		return "barrage"
 	elseif has("STAR FINGER") then
