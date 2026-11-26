@@ -55,9 +55,23 @@ function ArrowService.isOut()
 end
 
 ---------------------------------------------------------------------------
--- The arrow: a wooden shaft stuck in the sand at a slant, a gold arrowhead
--- with a scarab on it, feathered fletching. Nothing glows.
+-- The arrow (like the Stand Arrows in the series): an ornate GOLD
+-- leaf-shaped head with barbs and a raised ridge, its tip just in the sand;
+-- a gold SCARAB clasped at its base (wing cases, legs, a violet gem on its
+-- back); a dark wooden shaft with gold bands and a bound grip; three
+-- striped feathers; a little mound of disturbed sand and pebbles round it.
+-- Nothing glows.
 ---------------------------------------------------------------------------
+local GOLD = Color3.fromRGB(222, 178, 66)
+local GOLD_DARK = Color3.fromRGB(164, 120, 38)
+local GOLD_LIGHT = Color3.fromRGB(246, 214, 120)
+local WOOD = Color3.fromRGB(92, 58, 34)
+local BIND = Color3.fromRGB(56, 36, 24)
+local GEM = Color3.fromRGB(120, 60, 176)
+local FEATHER = Color3.fromRGB(236, 230, 214)
+local STRIPE = Color3.fromRGB(120, 84, 52)
+local SAND = Color3.fromRGB(206, 176, 128)
+
 local function part(model, name, size, cf, color, material, shape)
 	local p = Instance.new("Part")
 	p.Name = name
@@ -65,6 +79,7 @@ local function part(model, name, size, cf, color, material, shape)
 	p.CanCollide = false
 	p.CanTouch = false
 	p.CanQuery = true
+	p.CastShadow = true
 	p.Size = size
 	p.CFrame = cf
 	p.Color = color
@@ -78,24 +93,82 @@ local function part(model, name, size, cf, color, material, shape)
 	return p
 end
 
+local function egg(model, name, size, cf, color, material)
+	local p = part(model, name, size, cf, color, material)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = p
+	return p
+end
+
+-- A ring round the shaft (local Y) at height y.
+local function band(model, base, y, d, h, color, material)
+	return part(model, "Band", Vector3.new(h, d, d), base * CFrame.new(0, y, 0) * CFrame.Angles(0, 0, math.pi / 2), color, material or Enum.Material.Metal, Enum.PartType.Cylinder)
+end
+
 local function buildArrow(at)
 	local model = Instance.new("Model")
 	model.Name = "RequiemArrow"
-	-- Stuck in the sand, leaning; a random way round.
-	local base = CFrame.new(at) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0) * CFrame.Angles(math.rad(-28), 0, 0)
-	local shaft = part(model, "Shaft", Vector3.new(0.16, 3.2, 0.16), base * CFrame.new(0, 1.2, 0), Color3.fromRGB(120, 82, 46), Enum.Material.Wood)
+	-- Stuck in the sand, leaning; a random way round. Local Y runs up the arrow.
+	local base = CFrame.new(at) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0) * CFrame.Angles(math.rad(-26), 0, 0) * CFrame.new(0, 0.5, 0)
+	local metal = Enum.Material.Metal
+
+	-- The shaft: dark wood, gold bands, a bound grip.
+	local shaft = part(model, "Shaft", Vector3.new(0.14, 3.3, 0.14), base * CFrame.new(0, 2.55, 0), WOOD, Enum.Material.Wood, nil)
 	model.PrimaryPart = shaft
-	-- The head, half buried: a gold point with a scarab on it.
-	part(model, "Head", Vector3.new(0.5, 0.5, 0.12), base * CFrame.new(0, -0.35, 0) * CFrame.Angles(0, 0, math.rad(45)), Color3.fromRGB(214, 170, 64), Enum.Material.Metal)
-	part(model, "Scarab", Vector3.new(0.34, 0.42, 0.22), base * CFrame.new(0, -0.15, -0.06), Color3.fromRGB(150, 112, 40), Enum.Material.Metal, Enum.PartType.Ball)
-	part(model, "Socket", Vector3.new(0.22, 0.3, 0.22), base * CFrame.new(0, 0.05, 0), Color3.fromRGB(184, 140, 50), Enum.Material.Metal)
-	-- Fletching at the top.
-	for k = 0, 2 do
-		part(model, "Feather", Vector3.new(0.04, 0.6, 0.3), base * CFrame.new(0, 2.6, 0) * CFrame.Angles(0, k * math.pi * 2 / 3, 0) * CFrame.new(0, 0, 0.14), Color3.fromRGB(230, 226, 214))
+	band(model, base, 1.0, 0.26, 0.22, GOLD) -- socket
+	band(model, base, 1.14, 0.3, 0.05, GOLD_LIGHT)
+	band(model, base, 1.5, 0.2, 0.06, GOLD)
+	for k = 0, 5 do
+		band(model, base, 2.3 + k * 0.1, 0.18, 0.06, BIND, Enum.Material.Fabric)
 	end
-	part(model, "Nock", Vector3.new(0.18, 0.12, 0.18), base * CFrame.new(0, 2.82, 0), Color3.fromRGB(90, 60, 34), Enum.Material.Wood)
-	-- A little disturbed sand round it.
-	part(model, "Sand", Vector3.new(0.3, 1.6, 1.6), CFrame.new(at + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(206, 176, 128), Enum.Material.Sand, Enum.PartType.Cylinder)
+	band(model, base, 3.35, 0.2, 0.06, GOLD)
+
+	-- The head: a leaf-shaped gold blade (slices, narrow at the tip), a
+	-- raised ridge down the middle, two barbs at the back.
+	local widths = { 0.1, 0.26, 0.42, 0.56, 0.66, 0.7, 0.64, 0.54 }
+	for k, w in ipairs(widths) do
+		part(model, "Blade", Vector3.new(w, 0.15, 0.08), base * CFrame.new(0, -0.5 + (k - 1) * 0.14, 0), k % 2 == 0 and GOLD or GOLD_LIGHT, metal)
+	end
+	part(model, "Ridge", Vector3.new(0.07, 1.0, 0.11), base * CFrame.new(0, 0.05, 0), GOLD_DARK, metal)
+	for _, side in ipairs({ -1, 1 }) do
+		part(model, "Barb", Vector3.new(0.12, 0.42, 0.08), base * CFrame.new(side * 0.36, 0.58, 0) * CFrame.Angles(0, 0, side * 0.55), GOLD, metal)
+		part(model, "Engraving", Vector3.new(0.03, 0.55, 0.075), base * CFrame.new(side * 0.13, 0.12, 0) * CFrame.Angles(0, 0, side * -0.18), GOLD_DARK, metal)
+	end
+
+	-- The scarab clasped at the base of the head, on both faces.
+	for _, face in ipairs({ -1, 1 }) do
+		local f = base * CFrame.new(0, 0.74, face * 0.1)
+		egg(model, "ScarabBody", Vector3.new(0.34, 0.46, 0.2), f, GOLD_DARK, metal)
+		for _, side in ipairs({ -1, 1 }) do
+			egg(model, "WingCase", Vector3.new(0.17, 0.38, 0.12), f * CFrame.new(side * 0.085, -0.03, face * 0.06), GOLD, metal)
+			for leg = -1, 1 do
+				part(model, "Leg", Vector3.new(0.18, 0.035, 0.035), f * CFrame.new(side * 0.2, leg * 0.12, face * 0.02) * CFrame.Angles(0, 0, side * (0.4 + leg * 0.35)), GOLD_DARK, metal)
+			end
+		end
+		part(model, "WingLine", Vector3.new(0.025, 0.36, 0.13), f * CFrame.new(0, -0.03, face * 0.07), GOLD_DARK, metal)
+		part(model, "ScarabHead", Vector3.new(0.16, 0.16, 0.16), f * CFrame.new(0, 0.27, face * 0.02), GOLD_DARK, metal, Enum.PartType.Ball)
+		part(model, "Gem", Vector3.new(0.11, 0.11, 0.11), f * CFrame.new(0, 0.08, face * 0.13), GEM, Enum.Material.Glass, Enum.PartType.Ball)
+	end
+
+	-- Three striped feathers at the top, and the nock.
+	for k = 0, 2 do
+		local spin = base * CFrame.new(0, 3.45, 0) * CFrame.Angles(0, k * math.pi * 2 / 3, 0)
+		local profile = { 0.12, 0.2, 0.26, 0.28, 0.26, 0.2 }
+		for i, w in ipairs(profile) do
+			part(model, "Feather", Vector3.new(0.03, 0.15, w), spin * CFrame.new(0, (i - 1) * 0.14, 0.06 + w / 2), i % 3 == 0 and STRIPE or FEATHER, Enum.Material.Fabric)
+		end
+	end
+	part(model, "Nock", Vector3.new(0.18, 0.14, 0.18), base * CFrame.new(0, 4.25, 0), GOLD, metal)
+
+	-- Disturbed sand and a few pebbles round where it went in.
+	part(model, "Sand", Vector3.new(0.08, 1.8, 1.8), CFrame.new(at + Vector3.new(0, 0.02, 0)) * CFrame.Angles(0, 0, math.pi / 2), SAND, Enum.Material.Sand, Enum.PartType.Cylinder)
+	egg(model, "Mound", Vector3.new(0.9, 0.3, 0.7), CFrame.new(at + Vector3.new(0, 0.02, 0)), Color3.fromRGB(194, 165, 120), Enum.Material.Sand)
+	for k = 1, 5 do
+		local a = rng:NextNumber(0, math.pi * 2)
+		local r = rng:NextNumber(0.6, 1.2)
+		part(model, "Pebble", Vector3.new(0.14, 0.1, 0.12) * rng:NextNumber(0.8, 1.4), CFrame.new(at + Vector3.new(math.cos(a) * r, 0.1, math.sin(a) * r)) * CFrame.Angles(0, a, 0.3), Color3.fromRGB(150, 126, 96), Enum.Material.Slate)
+	end
 	-- Hold E to take it (only shows up close).
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Take the arrow"
@@ -245,6 +318,7 @@ local function spawnArrow()
 	end
 end
 ArrowService.spawnNow = spawnArrow
+ArrowService.buildArrow = buildArrow -- (for previews and tests)
 
 function ArrowService.init(service)
 	S = service
