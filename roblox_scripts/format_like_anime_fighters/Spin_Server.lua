@@ -58,7 +58,8 @@ __modules["ArrowService"] = function()
 	  * anyone else: THE ARROW'S BLESSING (hit harder, take less, faster,
 	    quicker ultimate) for a while
 	An arrow nobody takes vanishes when the next one turns up somewhere else.
-	Hooks: ArrowService.OnTaken = { function(player) ... }.
+	Hooks: ArrowService.OnTaken = { function(player) ... },
+	       ArrowService.OnSpawned / OnVanished = { function() ... }.
 ]]
 
 local Players = game:GetService("Players")
@@ -72,6 +73,8 @@ local Adapter = __require("CombatAdapter")
 
 local ArrowService = {}
 ArrowService.OnTaken = {}
+ArrowService.OnSpawned = {}
+ArrowService.OnVanished = {}
 local cfg = TuskConfig.RequiemArrow or {}
 local S -- TuskService
 local current -- { Model, Position, Spawned }
@@ -249,6 +252,9 @@ local function spawnArrow()
 	if current and current.Model and current.Model.Parent then
 		current.Model:Destroy()
 		fx({ Phase = "Vanished" })
+		for _, f in ipairs(ArrowService.OnVanished) do
+			pcall(f)
+		end
 	end
 	local at = findSpot()
 	local model, prompt = buildArrow(at)
@@ -257,6 +263,9 @@ local function spawnArrow()
 	prompt.Triggered:Connect(take)
 	-- Everyone's told, but not where.
 	fx({ Phase = "Spawned" })
+	for _, f in ipairs(ArrowService.OnSpawned) do
+		pcall(f)
+	end
 end
 ArrowService.spawnNow = spawnArrow
 
@@ -472,6 +481,7 @@ local nextNpcId = 0
 local posterGuis = {} -- the posters on the physical board
 local posts = {} -- [target key] = { { UserId, Amount }, ... } who put Cash on it (for refunds)
 local corpsePosted = {} -- [part id] = Cash posted on that Saint's Corpse part
+local arrowPosted = 0 -- Cash players posted on the Requiem Arrow (carries over to the next one)
 local pcfg = cfg.Post or {}
 
 local WOOD = Color3.fromRGB(112, 74, 44)
@@ -650,6 +660,11 @@ local function arrowService()
 	return Arrow or nil
 end
 
+local function arrowEnabled()
+	local A = arrowService()
+	return A ~= nil and (TuskConfig.RequiemArrow or {}).Enabled ~= false
+end
+
 local function arrowBounty()
 	local A = arrowService()
 	if not A or not A.isOut() then
@@ -659,7 +674,8 @@ local function arrowBounty()
 		Key = "ARROW",
 		Kind = "Arrow",
 		Name = "THE REQUIEM ARROW",
-		Reward = (TuskConfig.RequiemArrow or {}).Bounty or 250,
+		Reward = ((TuskConfig.RequiemArrow or {}).Bounty or 250) + arrowPosted,
+		Placed = arrowPosted > 0 and arrowPosted or nil,
 		Boost = "Polnareff: Silver Chariot Requiem · anyone else: a blessing",
 	}
 end
@@ -1185,6 +1201,11 @@ local function postTargets(viewer)
 			add({ Key = npcId(model), Kind = "NPC", Model = model, Name = h.DisplayName ~= "" and h.DisplayName or model.Name, Posted = model:GetAttribute("PlacedBounty") or 0, Act = model:GetAttribute("TuskAct") })
 		end
 	end
+	-- The Requiem Arrow: post on it even before one turns up (it waits for the next).
+	if arrowEnabled() then
+		local out = arrowService().isOut()
+		add({ Key = "ARROW", Kind = "Arrow", Name = out and "THE REQUIEM ARROW" or "THE NEXT REQUIEM ARROW", Posted = arrowPosted, Out = out })
+	end
 	local C = corpseService()
 	if C and TuskConfig.Corpse and TuskConfig.Corpse.Enabled ~= false then
 		for _, info in ipairs(C.parts()) do
@@ -1216,7 +1237,17 @@ local function post(player, data)
 	-- Who (or what) it's on, and what's on them already.
 	local kind, name, current, apply, targetPlayer
 	local head = key:sub(1, 1)
-	if head == "P" then
+	if key == "ARROW" then
+		if not arrowEnabled() then
+			send(player, "Denied", { Reason = "There's no Requiem Arrow to post on." })
+			return
+		end
+		kind, name = "Arrow", "THE REQUIEM ARROW"
+		current = arrowPosted
+		apply = function(total)
+			arrowPosted = total
+		end
+	elseif head == "P" then
 		targetPlayer = Players:GetPlayerByUserId(tonumber(key:sub(2)) or 0)
 		if not targetPlayer then
 			send(player, "Denied", { Reason = "They've left." })
@@ -1521,12 +1552,20 @@ function BountyService.init()
 	local A = arrowService()
 	if A and A.OnTaken then
 		table.insert(A.OnTaken, function(player)
+			-- Whatever players posted on it goes to whoever takes it.
+			if arrowPosted > 0 then
+				local paid = bonusPay(player, arrowPosted)
+				arrowPosted = 0
+				settled("ARROW")
+				pay(player, paid)
+				send(player, "Complete", { Name = "THE REQUIEM ARROW", Reward = paid, Price = true, Arrow = true })
+			end
 			for hunter, b in pairs(active) do
 				if b.Kind == "Arrow" then
 					if hunter == player then
 						local ls = leaderstats(hunter)
 						local cash, claimed = ls:FindFirstChild("Cash"), ls:FindFirstChild("Bounties")
-						local reward = bonusPay(hunter, b.Reward)
+						local reward = bonusPay(hunter, math.max(0, b.Reward - (b.Placed or 0)))
 						if cash then
 							cash.Value = cash.Value + reward
 						end
@@ -1540,6 +1579,27 @@ function BountyService.init()
 						active[hunter] = nil
 						send(hunter, "Lost", { Reason = player.DisplayName .. " took the Requiem Arrow." })
 					end
+				end
+			end
+		end)
+	end
+	-- A new arrow: everyone's told there's a bounty on it. One that vanishes
+	-- untaken: anyone hunting it loses the contract (posted Cash stays on
+	-- for the next one).
+	if A and A.OnSpawned then
+		table.insert(A.OnSpawned, function()
+			local reward = ((TuskConfig.RequiemArrow or {}).Bounty or 250) + arrowPosted
+			for _, p in ipairs(Players:GetPlayers()) do
+				send(p, "ArrowBounty", { Reward = reward, Placed = arrowPosted > 0 and arrowPosted or nil })
+			end
+		end)
+	end
+	if A and A.OnVanished then
+		table.insert(A.OnVanished, function()
+			for hunter, b in pairs(active) do
+				if b.Kind == "Arrow" then
+					active[hunter] = nil
+					send(hunter, "Lost", { Reason = "The Requiem Arrow vanished before you found it." })
 				end
 			end
 		end)

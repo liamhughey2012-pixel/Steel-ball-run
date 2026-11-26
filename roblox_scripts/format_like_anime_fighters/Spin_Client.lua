@@ -1509,7 +1509,7 @@ local function showConfirm(entry)
 		placeButton:FindFirstChild("Top").Text = "+$" .. placeAmount
 	end
 	if entry.Placed then
-		body:FindFirstChild("Note").Text = "Includes a $" .. entry.Placed .. " price on their head. " .. body:FindFirstChild("Note").Text
+		body:FindFirstChild("Note").Text = (entry.Kind == "Arrow" and ("Includes $" .. entry.Placed .. " players posted on it. ") or ("Includes a $" .. entry.Placed .. " price on their head. ")) .. body:FindFirstChild("Note").Text
 	end
 	confirmEntry = entry
 	local scale = confirm:FindFirstChildOfClass("UIScale")
@@ -1988,7 +1988,7 @@ local function showPost()
 	end
 	local who = label(card, { Position = UDim2.fromOffset(128, 44), Size = UDim2.new(1, -144, 0, 26), Text = picked and string.upper((picked.Self and "YOURSELF: " or "ON: ") .. picked.Name) or "PICK WHO IT'S ON BELOW", TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
 	new("UITextSizeConstraint", { MaxTextSize = 22, MinTextSize = 10 }, who)
-	label(card, { Position = UDim2.fromOffset(128, 70), Size = UDim2.new(1, -144, 0, 16), Text = picked and ((picked.Posted or 0) > 0 and ("ALREADY ON THEM: $" .. picked.Posted) or "NOTHING ON THEM YET") or "", Font = Enum.Font.GothamBold, TextColor3 = (picked and (picked.Posted or 0) > 0) and RED or INK, TextXAlignment = Enum.TextXAlignment.Left })
+	label(card, { Position = UDim2.fromOffset(128, 70), Size = UDim2.new(1, -144, 0, 16), Text = picked and ((picked.Posted or 0) > 0 and ((picked.Kind == "Arrow" and "ALREADY ON IT: $" or "ALREADY ON THEM: $") .. picked.Posted) or (picked.Kind == "Arrow" and "NOTHING ON IT YET" or "NOTHING ON THEM YET")) or "", Font = Enum.Font.GothamBold, TextColor3 = (picked and (picked.Posted or 0) > 0) and RED or INK, TextXAlignment = Enum.TextXAlignment.Left })
 	-- Amount: type it, or tap the chips.
 	local box = new("TextBox", { Position = UDim2.fromOffset(128, 94), Size = UDim2.fromOffset(120, 38), BackgroundColor3 = Color3.fromRGB(250, 236, 205), Text = tostring(postAmount), PlaceholderText = "$", ClearTextOnFocus = false, Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = INK }, card)
 	corner(box, 6)
@@ -2033,7 +2033,7 @@ local function showPost()
 	corner(postButton, 8)
 	new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, postButton)
 	new("UIStroke", { Color = Color3.fromRGB(30, 70, 34), Thickness = 2 }, postButton)
-	local note = label(card, { Position = UDim2.fromOffset(16, 150), Size = UDim2.new(1, -210, 0, 18), Text = picked and picked.Self and "Bold. Whoever takes YOU down gets it." or "Whoever takes them down (or takes the part) gets it. Cash back if they leave.", Font = Enum.Font.GothamMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
+	local note = label(card, { Position = UDim2.fromOffset(16, 150), Size = UDim2.new(1, -210, 0, 18), Text = picked and picked.Self and "Bold. Whoever takes YOU down gets it." or (picked and picked.Kind == "Arrow" and (picked.Out and "Whoever takes the arrow gets it." or "No arrow out yet: it goes on the next one, to whoever takes it.") or "Whoever takes them down (or takes the part) gets it. Cash back if they leave."), Font = Enum.Font.GothamMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
 	new("UITextSizeConstraint", { MaxTextSize = 13, MinTextSize = 8 }, note)
 	refreshButton()
 	postButton.Activated:Connect(function()
@@ -2061,11 +2061,11 @@ local function showPost()
 		corner(ph, 4)
 		local nm = label(tc, { Position = UDim2.fromOffset(68, 6), Size = UDim2.new(1, -74, 0, 22), Text = string.upper((t.Name or ""):gsub("^SAINT'S CORPSE: ", "")), TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
 		new("UITextSizeConstraint", { MaxTextSize = 16, MinTextSize = 8 }, nm)
-		local kindText = t.Self and "YOU" or (t.Kind == "Corpse" and "CORPSE PART" or (t.Kind == "NPC" and "NPC" or "PLAYER"))
-		local chip = new("Frame", { Position = UDim2.fromOffset(68, 30), Size = UDim2.fromOffset(t.Kind == "Corpse" and 84 or 52, 16), BackgroundColor3 = t.Self and GOLD or (t.Kind == "Corpse" and Color3.fromRGB(214, 178, 96) or (t.Kind == "NPC" and WOOD_DARK or GREEN)) }, tc)
+		local kindText = t.Self and "YOU" or (t.Kind == "Arrow" and (t.Out and "ARROW · OUT NOW" or "ARROW · NEXT ONE") or (t.Kind == "Corpse" and "CORPSE PART" or (t.Kind == "NPC" and "NPC" or "PLAYER")))
+		local chip = new("Frame", { Position = UDim2.fromOffset(68, 30), Size = UDim2.fromOffset(t.Kind == "Arrow" and 110 or (t.Kind == "Corpse" and 84 or 52), 16), BackgroundColor3 = t.Self and GOLD or (t.Kind == "Arrow" and Color3.fromRGB(110, 60, 140) or (t.Kind == "Corpse" and Color3.fromRGB(214, 178, 96) or (t.Kind == "NPC" and WOOD_DARK or GREEN))) }, tc)
 		corner(chip, 4)
 		label(chip, { Size = UDim2.fromScale(1, 1), Text = kindText, Font = Enum.Font.GothamBlack, TextColor3 = (t.Self or t.Kind == "Corpse") and INK or PAPER })
-		label(tc, { Position = UDim2.fromOffset(68, 48), Size = UDim2.new(1, -74, 0, 16), Text = (t.Posted or 0) > 0 and ("$" .. t.Posted .. " ON THEM") or "", Font = Enum.Font.GothamBlack, TextColor3 = RED, TextXAlignment = Enum.TextXAlignment.Left })
+		label(tc, { Position = UDim2.fromOffset(68, 48), Size = UDim2.new(1, -74, 0, 16), Text = (t.Posted or 0) > 0 and ("$" .. t.Posted .. (t.Kind == "Arrow" and " ON IT" or " ON THEM")) or "", Font = Enum.Font.GothamBlack, TextColor3 = RED, TextXAlignment = Enum.TextXAlignment.Left })
 		tc.Activated:Connect(function()
 			postPick = t.Key
 			fillGrid()
@@ -2139,17 +2139,19 @@ function fillGrid()
 		tab.BackgroundColor3 = on and GOLD or WOOD_DARK
 		tab.TextColor3 = on and INK or PAPER
 	end
-	local players, npcs, parts = 0, 0, 0
+	local players, npcs, parts, arrowOut = 0, 0, 0, false
 	for _, e in ipairs(lastList) do
 		if e.Kind == "Player" then
 			players = players + 1
 		elseif e.Kind == "Corpse" then
 			parts = parts + 1
+		elseif e.Kind == "Arrow" then
+			arrowOut = true
 		else
 			npcs = npcs + 1
 		end
 	end
-	countLabel.Text = players .. " PLAYERS · " .. npcs .. " NPCS · " .. parts .. " PARTS"
+	countLabel.Text = players .. " PLAYERS · " .. npcs .. " NPCS · " .. parts .. " PARTS" .. (arrowOut and " · THE ARROW" or "")
 end
 
 local function openBoard(data)
@@ -2492,7 +2494,10 @@ function BountyUI.init()
 			showBanner("BOUNTY ACCEPTED: " .. string.upper(data.Name or ""), PAPER)
 			Cinematic.title("THE HUNT BEGINS", data.Name or "", GOLD, "$" .. tostring(data.Reward or 0) .. " · DEAD OR ALIVE")
 		elseif kind == "Complete" and data.Price then
-			showBanner("PRICE ON THEIR HEAD!  +$" .. tostring(data.Reward), GOLD)
+			showBanner((data.Arrow and "THE ARROW'S BOUNTY!  +$" or "PRICE ON THEIR HEAD!  +$") .. tostring(data.Reward), GOLD)
+		elseif kind == "ArrowBounty" then
+			-- A new Requiem Arrow: there's a bounty on it (not where it is).
+			showBanner("NEW BOUNTY: THE REQUIEM ARROW · $" .. tostring(data.Reward) .. " · CHECK THE BOARD", Color3.fromRGB(214, 180, 255))
 		elseif kind == "Complete" then
 			clearActive()
 			showBanner("BOUNTY CLAIMED!  +$" .. tostring(data.Reward), GOLD)

@@ -13,7 +13,8 @@
 	  * anyone else: THE ARROW'S BLESSING (hit harder, take less, faster,
 	    quicker ultimate) for a while
 	An arrow nobody takes vanishes when the next one turns up somewhere else.
-	Hooks: ArrowService.OnTaken = { function(player) ... }.
+	Hooks: ArrowService.OnTaken = { function(player) ... },
+	       ArrowService.OnSpawned / OnVanished = { function() ... }.
 ]]
 
 local Players = game:GetService("Players")
@@ -27,6 +28,8 @@ local Adapter = require(script.Parent.CombatAdapter)
 
 local ArrowService = {}
 ArrowService.OnTaken = {}
+ArrowService.OnSpawned = {}
+ArrowService.OnVanished = {}
 local cfg = TuskConfig.RequiemArrow or {}
 local S -- TuskService
 local current -- { Model, Position, Spawned }
@@ -204,6 +207,9 @@ local function spawnArrow()
 	if current and current.Model and current.Model.Parent then
 		current.Model:Destroy()
 		fx({ Phase = "Vanished" })
+		for _, f in ipairs(ArrowService.OnVanished) do
+			pcall(f)
+		end
 	end
 	local at = findSpot()
 	local model, prompt = buildArrow(at)
@@ -212,6 +218,9 @@ local function spawnArrow()
 	prompt.Triggered:Connect(take)
 	-- Everyone's told, but not where.
 	fx({ Phase = "Spawned" })
+	for _, f in ipairs(ArrowService.OnSpawned) do
+		pcall(f)
+	end
 end
 ArrowService.spawnNow = spawnArrow
 
