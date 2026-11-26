@@ -418,14 +418,43 @@ task.spawn(function()
 	end
 	if #problems > 0 then
 		local text = #problems == 1 and problems[1] or (#problems .. " characters have no effects: see the Output window.")
-		for _ = 1, 10 do
-			local ok = pcall(function()
-				game:GetService("StarterGui"):SetCore("SendNotification", { Title = "Spin: setup problem", Text = text, Duration = 20 })
+		-- Our own notice (not StarterGui:SetCore, which errors until Roblox's
+		-- CoreScripts are ready and stops Studio's debugger).
+		local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui", 10)
+		if playerGui then
+			local gui = Instance.new("ScreenGui")
+			gui.Name = "SpinSetupProblem"
+			gui.ResetOnSpawn = false
+			gui.DisplayOrder = 50
+			local box = Instance.new("TextButton")
+			box.AnchorPoint = Vector2.new(0.5, 0)
+			box.Position = UDim2.new(0.5, 0, 0, 12)
+			box.Size = UDim2.fromOffset(520, 64)
+			box.BackgroundColor3 = Color3.fromRGB(92, 58, 32)
+			box.TextColor3 = Color3.fromRGB(255, 236, 200)
+			box.Font = Enum.Font.GothamBold
+			box.TextWrapped = true
+			box.TextSize = 14
+			box.AutoButtonColor = false
+			box.Text = "SPIN SETUP PROBLEM: " .. text .. "  (click to close)"
+			box.Parent = gui
+			local corner = Instance.new("UICorner")
+			corner.CornerRadius = UDim.new(0, 8)
+			corner.Parent = box
+			local stroke = Instance.new("UIStroke")
+			stroke.Color = Color3.fromRGB(40, 24, 12)
+			stroke.Thickness = 2
+			stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			stroke.Parent = box
+			gui.Parent = playerGui
+			box.Activated:Connect(function()
+				gui:Destroy()
 			end)
-			if ok then
-				break
-			end
-			task.wait(1)
+			task.delay(20, function()
+				if gui.Parent then
+					gui:Destroy()
+				end
+			end)
 		end
 	end
 end)
