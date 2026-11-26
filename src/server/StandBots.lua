@@ -60,7 +60,7 @@ local LOOKS = {
 	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 	DiegoAU = { Skin = Color3.fromRGB(240, 205, 170), Torso = Color3.fromRGB(110, 200, 185), Legs = Color3.fromRGB(196, 170, 110) },
 	Josuke = { Skin = Color3.fromRGB(214, 168, 130), Torso = Color3.fromRGB(240, 240, 236), Legs = Color3.fromRGB(236, 236, 232) },
-	Dio = { Skin = Color3.fromRGB(240, 210, 180), Torso = Color3.fromRGB(236, 194, 58), Legs = Color3.fromRGB(236, 194, 58) },
+	Dio = { Skin = Color3.fromRGB(240, 210, 180), Torso = Color3.fromRGB(26, 26, 30), Legs = Color3.fromRGB(214, 164, 72) },
 	Jotaro = { Skin = Color3.fromRGB(214, 170, 130), Torso = Color3.fromRGB(36, 36, 42), Legs = Color3.fromRGB(36, 36, 42) },
 	Ringo = { Skin = Color3.fromRGB(206, 146, 100), Torso = Color3.fromRGB(240, 240, 244), Legs = Color3.fromRGB(240, 240, 244) },
 	JohnRod = { Skin = Color3.fromRGB(226, 190, 160), Torso = Color3.fromRGB(90, 96, 110), Legs = Color3.fromRGB(52, 54, 64) },

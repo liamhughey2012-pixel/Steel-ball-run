@@ -9,10 +9,12 @@ Server moves: `TuskActs/Dio`. Outfit: `DioOutfit`. Visuals: `TuskActVFX/DioVFX`.
 
 ![[dio_preview.png]]
 ![[the_world_dio_preview.png]]
-**DIO:**
-- Swept-up blond hair with spiky points, a green headband with a gold heart, and green lips.
-- A yellow sleeveless jacket (flared shoulders, high collar), open over a black top. Bare arms with green wristbands.
-- A black belt with a green buckle, yellow trousers with gold heart knee pads, and yellow boots with green trim.
+**DIO (updated 2026-11-26 to the art):**
+- Wild, spiky blond hair, and a thin band with a **green heart** on his forehead.
+- A tight **black bodysuit** with the muscles drawn on it, a turtleneck with a silver ring, running down over his hips like a leotard.
+- A **cropped tan-ochre jacket** (it stops at his chest) with long sleeves, big **puffed shoulders**, and coiled bracelets at the wrists.
+- A **green belt with a green heart buckle**, and a green strap looping down his left leg.
+- Ochre trousers with big **green heart knee pads**, and ribbed ochre boots.
 - He leans back with a hand at his chest.
 
 **The World (Part 3):**
