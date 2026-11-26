@@ -13185,6 +13185,13 @@ local function __loadPacks(side)
 			if builtIn and pack:IsA("LuaSourceContainer") and not __packsLoaded[name] then
 				__packsLoaded[name] = true
 				print("[Spin] " .. pack:GetFullName() .. " isn't needed any more (it's built into Spin_" .. (side == "server" and "Server" or "Client") .. "). You can delete it.")
+			elseif not allowed[name] and not __packsLoaded[name] and pack:IsA("ModuleScript")
+				and pack.Parent and pack.Parent.Name == "SpinCharacters" and name:match("^%w+" .. suffix .. "$") then
+				-- A character script this copy of the game doesn't know about:
+				-- Spin_Server / Spin_Client is older than the character.
+				__packsLoaded[name] = true
+				warn("[Spin] " .. pack:GetFullName() .. " is a character this Spin_" .. (side == "server" and "Server" or "Client")
+					.. " doesn't know yet. Replace Spin_" .. (side == "server" and "Server" or "Client") .. " (and TuskConfig) with the newest version.")
 			elseif allowed[name] and not __packsLoaded[name] then
 				if pack:IsA("ModuleScript") then
 					local ok, install = pcall(require, pack)

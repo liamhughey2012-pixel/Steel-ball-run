@@ -194,3 +194,10 @@ Every new update will say which scripts are **new** and which are **changed**:
 - **New script:** create it in the place shown in its note.
 - **Changed script:** open it, Ctrl+A, paste the new version.
 - **Asset ids** (sounds, animations) go in [[SpinConfig]] and [[TuskConfig]], not in new scripts.
+
+## "A character has no effects or animations" (2026-11-26)
+This means that character's **client** half isn't running. The server (Spin_Server + `<Name>_Server`) plays the moves, but every player's screen draws them with Spin_Client + `<Name>_Client`. There are two usual causes:
+1. **`<Name>_Client` is missing or in the wrong place.** It must be a **ModuleScript** named exactly `<Name>_Client` (e.g. `Dio_Client`) in **ReplicatedStorage › SpinCharacters**, not in ServerScriptService and not in StarterPlayerScripts.
+2. **Spin_Client is older than the character.** If Spin_Client was last replaced before the character was added, it doesn't know the character and quietly ignores its `_Client` script. Replace Spin_Client (and TuskConfig) with the newest files.
+
+Spin_Client now checks this when you join. For every character the server has installed, it makes sure the client has that character too. If not, it warns in Output (`[Spin] No effects or animations for Dio: ...`) and shows an on-screen notification. A `<Name>_Client` / `<Name>_Server` in a SpinCharacters folder that the core doesn't recognise also gets a warning ("…is a character this Spin_Client doesn't know yet").
