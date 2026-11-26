@@ -16,3 +16,6 @@ Server: `ArrowService`. Client: `RequiemClient`. Numbers: `TuskConfig.RequiemArr
 - **Announced as a bounty:** when an arrow turns up, everyone gets a banner: "NEW BOUNTY: THE REQUIEM ARROW · $X · CHECK THE BOARD". If it vanishes untaken, anyone hunting it loses the contract.
 - **Post your own bounty on it:** in the board's POST tab, the arrow is a target ("ARROW · OUT NOW", or "ARROW · NEXT ONE" while none is out). Posted Cash adds to its poster's reward and is paid (Pinkerton Badge applies) to **whoever takes the arrow**, contract or not. It carries over to the next arrow if one vanishes; it's never refunded. Same min, max and cap as other posts (`TuskConfig.Bounty.Post`).
 - Blessing hooks: `ArrowBlessUntil`, `ArrowDamage` and `ArrowResist` (in CombatAdapter.dealHit), `ArrowUltGain` (in TuskService.addUlt), and the `ArrowBlessing` move modifier.
+
+- **Purple flash:** when an arrow turns up, a purple Highlight shows it through walls for `HighlightTime` (5) seconds, fading over the last second. After that it's unmarked.
+- **Starting Cash:** players start with `Bounty.StartingCash` (250), so they can post straight away. In Studio they get at least `StudioCash` (5000). Pressing POST without enough Cash, or without picking a target, now shows a banner saying why.

@@ -3,9 +3,10 @@
 
 	THE REQUIEM ARROW. Every few minutes (TuskConfig.RequiemArrow.Every) an
 	arrow turns up at a random spot in the desert: on open, low ground,
-	never on the mountains or in water. It is NOT marked: no glow, no beam,
-	no light, no map marker. It's an ordinary-looking arrow stuck in the
-	sand. Everyone is told one has appeared (WorldFX "RequiemArrow"), and the
+	never on the mountains or in water. For its first few seconds
+	(HighlightTime) a purple Highlight shows it through walls, then it fades
+	and it's an ordinary-looking arrow stuck in the sand: no glow, no beam,
+	no light, no map marker. Everyone is told one has appeared (WorldFX "RequiemArrow"), and the
 	bounty board posts a contract for it (BountyService).
 	Hold E next to it to take it:
 	  * playing POLNAREFF (Silver Chariot): it pierces Silver Chariot and it
@@ -216,7 +217,28 @@ local function spawnArrow()
 	model.Parent = workspace:FindFirstChild("SBRMap") or workspace
 	current = { Model = model, Position = at, Spawned = now() }
 	prompt.Triggered:Connect(take)
-	-- Everyone's told, but not where.
+	-- A purple highlight, seen through walls, for a few seconds; then it fades.
+	local showFor = cfg.HighlightTime or 5
+	if showFor > 0 then
+		local hl = Instance.new("Highlight")
+		hl.Name = "ArrowFlash"
+		hl.Adornee = model
+		hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		hl.FillColor = Color3.fromRGB(150, 70, 230)
+		hl.OutlineColor = Color3.fromRGB(225, 190, 255)
+		hl.FillTransparency = 0.35
+		hl.OutlineTransparency = 0
+		hl.Parent = model
+		task.delay(math.max(0, showFor - 1), function()
+			if hl.Parent then
+				game:GetService("TweenService"):Create(hl, TweenInfo.new(1), { FillTransparency = 1, OutlineTransparency = 1 }):Play()
+			end
+		end)
+		task.delay(showFor, function()
+			hl:Destroy()
+		end)
+	end
+	-- Everyone's told.
 	fx({ Phase = "Spawned" })
 	for _, f in ipairs(ArrowService.OnSpawned) do
 		pcall(f)

@@ -198,7 +198,8 @@ TuskConfig.Bounty = {
 	KillCreditTime = 6, -- seconds: your hit must be this recent for the kill to count
 	Duration = 300, -- seconds before an accepted bounty runs out
 	MaxPosters = 12,
-	StartingCash = 0,
+	StartingCash = 250, -- every player starts with this (so they can post a bounty or shop straight away)
+	StudioCash = 5000, -- testing in Roblox Studio: start with at least this much
 	-- PUT A PRICE ON THEIR HEAD: pay to raise another player's bounty. Whoever
 	-- takes them down next gets it (contract or not); it's gone when they die.
 	PlaceAmount = 100, PlaceMax = 10000,
@@ -1346,6 +1347,7 @@ TuskConfig.RequiemArrow = {
 	Every = 300, -- seconds between arrows (an untaken one vanishes and a new one turns up elsewhere)
 	FirstAfter = 60, -- the first one, this long after the server starts
 	HoldTime = 1.5, -- hold E this long to take it
+	HighlightTime = 5, -- seconds a purple highlight shows it (through walls) when it turns up; 0 = never
 	Radius = 360, -- how far from the map's centre it can turn up
 	MaxHeight = 10, -- never on high ground (studs above the map's base)
 	Blessing = {

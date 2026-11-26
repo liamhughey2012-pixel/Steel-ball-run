@@ -177,7 +177,11 @@ local function leaderstats(player)
 		ls.Parent = player
 		local cash = Instance.new("IntValue")
 		cash.Name = "Cash"
-		cash.Value = cfg.StartingCash or 0
+		cash.Value = cfg.StartingCash or 250
+		-- Testing in Studio: enough Cash to try posting, the shop and the stable.
+		if RunService:IsStudio() then
+			cash.Value = math.max(cash.Value, cfg.StudioCash or 5000)
+		end
 		cash.Parent = ls
 		local claimed = Instance.new("IntValue")
 		claimed.Name = "Bounties"

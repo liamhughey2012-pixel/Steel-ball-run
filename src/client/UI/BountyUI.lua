@@ -235,6 +235,7 @@ local lastTargets = {} -- who you can post a bounty on (POST tab)
 local postCfg = { Min = 25, Max = 5000, Cap = 10000, Quick = { 25, 100, 500 } }
 local postPick -- the Key of the target picked in the POST tab
 local postAmount = 100
+local showBanner -- (defined further down)
 local jobsTimer -- "NEW JOBS IN m:ss"
 local filter = "ALL"
 local tabs = {}
@@ -857,11 +858,19 @@ local function showPost()
 	corner(postButton, 8)
 	new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, postButton)
 	new("UIStroke", { Color = Color3.fromRGB(30, 70, 34), Thickness = 2 }, postButton)
+	local have = label(card, { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -14, 1, -54), Size = UDim2.fromOffset(170, 16), Text = "YOU HAVE $" .. cash, Font = Enum.Font.GothamBlack, TextColor3 = cash >= (postCfg.Min or 25) and GREEN or RED, TextXAlignment = Enum.TextXAlignment.Right })
+	have.Name = "YouHave"
 	local note = label(card, { Position = UDim2.fromOffset(16, 150), Size = UDim2.new(1, -210, 0, 18), Text = picked and picked.Self and "Bold. Whoever takes YOU down gets it." or (picked and picked.Kind == "Arrow" and (picked.Out and "Whoever takes the arrow gets it." or "No arrow out yet: it goes on the next one, to whoever takes it.") or "Whoever takes them down (or takes the part) gets it. Cash back if they leave."), Font = Enum.Font.GothamMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
 	new("UITextSizeConstraint", { MaxTextSize = 13, MinTextSize = 8 }, note)
 	refreshButton()
 	postButton.Activated:Connect(function()
-		if not picked or postAmount > cashNow() then
+		-- Always say why nothing happened.
+		if not picked then
+			showBanner("PICK WHO (OR WHAT) IT'S ON FIRST", Color3.fromRGB(255, 160, 140))
+			return
+		end
+		if postAmount > cashNow() then
+			showBanner("NOT ENOUGH CASH: YOU HAVE $" .. cashNow() .. " (DO JOBS OR CLAIM BOUNTIES)", Color3.fromRGB(255, 160, 140))
 			return
 		end
 		local sc = postButton:FindFirstChildOfClass("UIScale") or new("UIScale", { Scale = 1 }, postButton)
@@ -1243,7 +1252,7 @@ local function clearActive()
 	marker.Enabled = false
 end
 
-local function showBanner(text, color)
+function showBanner(text, color)
 	banner.Text = text
 	banner.TextColor3 = color
 	banner.Visible = true
