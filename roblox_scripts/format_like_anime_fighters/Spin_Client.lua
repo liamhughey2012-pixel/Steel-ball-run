@@ -59,6 +59,7 @@ local CameraFX = __require("CameraFX")
 local TuskVFX = __require("TuskVFX")
 local TuskAnimation = __require("TuskAnimation")
 local TuskStand = __require("TuskStand")
+local Common = __require("TuskActCommon")
 
 local Act1 = {}
 local colors = TuskConfig.Colors
@@ -135,25 +136,28 @@ local function onAbility(data)
 	if data.Move == "NailShot" and data.Phase == "Startup" then
 		TuskAnimation.play(character, "NailShot")
 		TuskStand.action(character, "Lunge", { Target = CFrame.new(1.4, 0.8, -1.2), Duration = data.Startup + 0.25 })
-		-- Anticipation: a small spinning charge at the fingertip.
-		local charge = TuskVFX.CreateEnergyCharge({
-			Follow = function()
-				return root.Parent and root.CFrame * CFrame.new(0.9, 0.55, -1.6) or nil
-			end,
-			Color = colors.Cyan,
-			Color2 = colors.Ice,
-			MaxRadius = 0.5,
-			Duration = data.Startup,
-			Rings = 1,
-			Particles = 0.5,
-		})
+		-- Anticipation: hand up, fingers up, blue whirls spinning round his
+		-- fingertips; they shoot out with the nail.
+		local whirl = Common.fingerWhirl(character, data.Startup)
 		task.delay(data.Startup, function()
-			charge:Release(data.Direction)
+			whirl:Release(data.Direction)
 		end)
 	elseif data.Move == "NailBarrage" and data.Phase == "Startup" then
 		TuskAnimation.play(character, "NailBarrage")
 		TuskStand.action(character, "Lunge", { Target = CFrame.new(1.6, 1.2, -1), Duration = data.Startup + data.Count * data.Interval + 0.2 })
-		VFXLib.burst((root.CFrame * CFrame.new(0.9, 0.55, -1.6)).Position, { Count = 10, Color = colors.Cyan, Speed = 6, Lifetime = 0.2 })
+		-- Whirls spin up while his hand is raised, then burst out with each nail.
+		local whirl = Common.fingerWhirl(character, data.Startup)
+		task.delay(data.Startup, function()
+			whirl:Release(data.Direction)
+		end)
+		for i = 1, (data.Count or 5) - 1 do
+			task.delay(data.Startup + i * (data.Interval or 0.09) - 0.06, function()
+				local puff = Common.fingerWhirl(character, 0.06)
+				task.delay(0.06, function()
+					puff:Release(data.Direction)
+				end)
+			end)
+		end
 	elseif data.Move == "SpinningNail" then
 		if data.Phase == "Release" then
 			TuskAnimation.stopHold(character, "ChargeNail")
@@ -446,9 +450,17 @@ local function onAbility(data)
 	if data.Move == "WormholeNail" and root then
 		TuskAnimation.play(character, "NailShot")
 		TuskStand.action(character, "Lunge", { Target = CFrame.new(1.4, 0.8, -1.2), Duration = data.Startup + 0.25 })
-		-- A small golden rectangle opens at the fingertip; the nail is fired through it.
-		local tip = (root.CFrame * CFrame.new(0.9, 0.55, -2.2)).Position
-		Common.golden(tip, tip + data.Direction * 5, 1, data.Startup + 0.2, pal)
+		-- Whirls spin round his raised fingertips; then a small golden
+		-- rectangle opens there and the nail is fired through it.
+		local whirl = Common.fingerWhirl(character, data.Startup)
+		task.delay(data.Startup, function()
+			whirl:Release(data.Direction)
+			local r = Common.rootOf(character)
+			if r then
+				local tip = (r.CFrame * CFrame.new(0.9, 0.55, -2.2)).Position
+				Common.golden(tip, tip + data.Direction * 5, 1, 0.3, pal)
+			end
+		end)
 	elseif data.Move == "NailDimension" and data.Phase == "Open" then
 		if root then
 			TuskAnimation.play(character, "NailDimension")
@@ -757,9 +769,12 @@ local function onAbility(data)
 		TuskAnimation.play(character, "GoldenSpinNail")
 		TuskStand.action(character, "Lunge", { Target = CFrame.new(1.6, 1.2, -1.6), Duration = data.Startup + 0.3 })
 		local charge = golden(root, CFrame.new(0.9, 0.6, -2), data.Startup, 1)
+		-- Gold-tinged whirls round his raised fingertips.
+		local whirl = Common.fingerWhirl(character, data.Startup, { Color = Color3.fromRGB(255, 214, 110), Light = Color3.fromRGB(150, 210, 255) })
 		VFXLib.sound(sounds.ChargeFull, root, 0.5, 0.8)
 		task.delay(data.Startup, function()
 			charge:Release(data.Direction)
+			whirl:Release(data.Direction)
 		end)
 	elseif data.Move == "InfiniteRotation" then
 		if data.Phase == "Release" then
@@ -7894,6 +7909,106 @@ Common.Palettes = {
 	[19] = { Main = Color3.fromRGB(230, 120, 170), Second = Color3.fromRGB(246, 204, 40), Light = Color3.fromRGB(255, 236, 220) }, -- Ringo (Mandom pink + watch-hand gold)
 }
 
+---------------------------------------------------------------------------
+-- FINGER WHIRLS (Johnny's nail shots, from the art): blue rings spinning
+-- round his fingertips while his hand is up, following the hand; on
+-- Release(direction) they shoot out along the shot, spreading and fading.
+---------------------------------------------------------------------------
+local WHIRL = Color3.fromRGB(120, 200, 255)
+local WHIRL_LIGHT = Color3.fromRGB(200, 236, 255)
+
+-- Where his fingertips are, and the way they point (a CFrame whose
+-- UpVector runs along the fingers).
+local function fingertips(character)
+	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if hand then
+		local down = -hand.CFrame.UpVector
+		local tip = (hand.CFrame * CFrame.new(0, -hand.Size.Y / 2 - 0.15, 0)).Position
+		return CFrame.lookAt(tip, tip + down) * CFrame.Angles(-math.pi / 2, 0, 0)
+	elseif root then
+		local tip = (root.CFrame * CFrame.new(0.9, 0.55, -1.6)).Position
+		return CFrame.lookAt(tip, tip + root.CFrame.LookVector) * CFrame.Angles(-math.pi / 2, 0, 0)
+	end
+	return nil
+end
+Common.fingertips = fingertips
+
+function Common.fingerWhirl(character, duration, opts)
+	opts = opts or {}
+	local color, light = opts.Color or WHIRL, opts.Light or WHIRL_LIGHT
+	local rings = {}
+	local spec = { { 0.32, 0, 9 }, { 0.55, 0.14, -7 }, { 0.8, 0.28, 5 } } -- radius, along the fingers, spin speed
+	for i, sp in ipairs(spec) do
+		local ring = VFXLib.ring({ Radius = 0.05, Width = i == 1 and 0.12 or 0.09, Color = i % 2 == 1 and color or light, Transparency = 0.1, Segments = 14 })
+		rings[i] = { Ring = ring, Radius = sp[1], Along = sp[2], Spin = sp[3], Angle = math.random() * math.pi * 2 }
+	end
+	local glow = VFXLib.part({ Shape = Enum.PartType.Ball, Size = Vector3.new(0.3, 0.3, 0.3), Color = light, Transparency = 0.3 })
+	local handle = { Released = false }
+	local start = os.clock()
+	local last = start
+	local job = VFXLib.animate(math.max(duration, 0.05) + 0.6, function()
+		if handle.Released then
+			return
+		end
+		local now = os.clock()
+		local dt = now - last
+		last = now
+		local cf = character.Parent and fingertips(character)
+		if not cf then
+			return
+		end
+		local grow = math.min((now - start) / 0.15, 1)
+		for i, r in ipairs(rings) do
+			r.Angle = r.Angle + r.Spin * dt
+			local wobble = math.sin(now * 11 + i) * 0.08
+			local radius = r.Radius * grow * (1 + math.sin(now * 14 + i * 2) * 0.1)
+			r.Ring:SetRadius(radius)
+			r.Ring:SetCFrame(cf * CFrame.new(0, r.Along, 0) * CFrame.Angles(wobble, r.Angle, -wobble))
+		end
+		glow.CFrame = cf
+		local pulse = 0.3 + math.abs(math.sin(now * 18)) * 0.25
+		glow.Size = Vector3.new(pulse, pulse, pulse) * (1 + grow * 0.5)
+	end)
+	function handle:Release(direction)
+		if self.Released then
+			return
+		end
+		self.Released = true
+		VFXLib.cancel(job)
+		local cf = character.Parent and fingertips(character)
+		glow:Destroy()
+		if not cf then
+			for _, r in ipairs(rings) do
+				r.Ring:Destroy()
+			end
+			return
+		end
+		local dir = (direction and direction.Magnitude > 1e-3) and direction.Unit or cf.UpVector
+		local from = cf.Position
+		local axis = CFrame.lookAt(from, from + dir) * CFrame.Angles(-math.pi / 2, 0, 0)
+		-- The whirls fly out along the shot, spinning, spreading and fading.
+		for i, r in ipairs(rings) do
+			local base = r.Radius
+			VFXLib.animate(0.32, function(a)
+				r.Angle = r.Angle + r.Spin * 0.03
+				r.Ring:SetRadius(base * (1 + a * (1.5 + i * 0.4)))
+				r.Ring:SetCFrame(axis * CFrame.new(0, a * (2.5 + i * 1.6), 0) * CFrame.Angles(0, r.Angle, 0))
+				r.Ring:SetTransparency(0.1 + 0.9 * a)
+			end, function()
+				r.Ring:Destroy()
+			end)
+		end
+		VFXLib.flash(from, color, 4, 10, 0.1)
+		VFXLib.burst(from, { Count = 8, Color = light, Speed = 12, Lifetime = 0.25 })
+	end
+	-- Never left behind if nobody releases it.
+	task.delay(math.max(duration, 0.05) + 0.6, function()
+		handle:Release(nil)
+	end)
+	return handle
+end
+
 function Common.palette(act)
 	return Common.Palettes[act] or Common.Palettes[1]
 end
@@ -8556,6 +8671,9 @@ TuskAnimation.Poses = {
 	FlickR = { Root = { 0, -18, 0, -0.05, 0.2 }, RightArm = { 96, -8, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 38, 0, -22 }, LeftElbow = { 40, 0, 0 }, Waist = { 0, -22, 0 }, Neck = { 0, 16, 0 }, RightHip = { 18, 0, 0 }, RightKnee = { -16, 0, 0 }, LeftHip = { -10, 0, 0 } },
 	FlickRFollow = { Root = { -2, -22, 0, -0.08, 0.15 }, RightArm = { 84, -14, 2 }, RightElbow = { 12, 0, 0 }, LeftArm = { 34, 0, -24 }, LeftElbow = { 40, 0, 0 }, Waist = { -4, -26, 0 }, Neck = { 0, 18, 0 }, RightHip = { 14, 0, 0 }, RightKnee = { -14, 0, 0 } },
 	FingerGun = { Root = { 0, -14, 0, -0.08 }, RightArm = { 95, 0, 5 }, LeftArm = { 62, 0, -38 }, LeftElbow = { 50, 0, 0 }, Waist = { 0, -22, 0 }, Neck = { 0, 16, 0 }, RightHip = { 12, 0, 0 }, RightKnee = { -14, 0, 0 }, LeftHip = { -10, 0, 0 }, LeftKnee = { -6, 0, 0 } },
+	-- NAIL SHOT start-up (Johnny): his right hand comes up in front of him,
+	-- fingers pointing up, the nails spinning (then he levels it and fires).
+	NailRaise = { Root = { 0, -16, 0, -0.06 }, Waist = { -2, -18, 0 }, Neck = { 4, 14, 0 }, RightArm = { 118, 0, 10 }, RightElbow = { 62, 0, 0 }, LeftArm = { 40, 0, -26 }, LeftElbow = { 60, 0, 0 }, RightHip = { 10, 0, 0 }, RightKnee = { -12, 0, 0 }, LeftHip = { -8, 0, 0 } },
 	FingerGunRecoil = { Root = { 8, -10, 0, -0.04, -0.15 }, RightArm = { 120, 0, 6 }, RightElbow = { 14, 0, 0 }, LeftArm = { 56, 0, -36 }, LeftElbow = { 50, 0, 0 }, Waist = { 8, -16, 0 }, Neck = { 6, 12, 0 }, RightHip = { 8, 0, 0 }, RightKnee = { -10, 0, 0 } },
 	SlamWindup = { Root = { 10, 16, 0, -0.1 }, RightArm = { 168, 0, 12 }, RightElbow = { 30, 0, 0 }, LeftArm = { 42, 0, -32 }, Waist = { 14, 18, 0 }, Neck = { 8, -8, 0 }, LeftHip = { 24, 0, 0 }, LeftKnee = { -28, 0, 0 } },
 	Slam = { Root = { -16, -12, 0, -0.4, 0.4 }, RightArm = { 52, 0, 0 }, RightElbow = { 0, 0, 0 }, LeftArm = { 18, 0, -24 }, Waist = { -24, -12, 0 }, Neck = { -6, 10, 0 }, RightHip = { 36, 0, 0 }, RightKnee = { -46, 0, 0 }, LeftHip = { -14, 0, 0 }, LeftKnee = { -20, 0, 0 } },
@@ -8801,10 +8919,10 @@ TuskAnimation.Actions = {
 	M1_2 = { { 0, "FlickRFollow" }, { 0.07, "FlickLCoil", "In" }, { 0.12, "FlickLStrike", "Back", 4 }, { 0.17, "FlickLStrike", "Linear" }, { 0.3, "FlickLFollow", "Sine" } },
 	M1_3 = { { 0, "Rest" }, { 0.06, "FlickRCoil", "In" }, { 0.1, "FingerGun", "Snap" }, { 0.14, "FingerGunRecoil", "Snap", 4 }, { 0.2, "FingerGun", "Out" }, { 0.24, "FingerGunRecoil", "Snap", 3 }, { 0.36, "FingerGun", "Sine" } },
 	M1_4 = { { 0, "Rest" }, { 0.08, "SlamWindup", "In" }, { 0.16, "SlamLeap", "Out" }, { 0.24, "Slam", "Snap", 8 }, { 0.3, "Slam", "Linear" }, { 0.48, "SlamFollow", "Sine" }, { 0.6, "SlamFollow" } },
-	NailShot = { { 0, "Rest" }, { 0.12, "FingerGun", "Sine" }, { 0.2, "FingerGunRecoil", "Snap", 5 }, { 0.45, "FingerGun", "Back" } },
+	NailShot = { { 0, "Rest" }, { 0.12, "NailRaise", "Out" }, { 0.31, "NailRaise", "Linear" }, { 0.36, "FingerGun", "Snap" }, { 0.42, "FingerGunRecoil", "Snap", 5 }, { 0.7, "FingerGun", "Back" } },
 	NailBarrage = {
-		{ 0, "Rest" }, { 0.08, "FlickRWind", "In" }, { 0.12, "FlickR", "Snap", 2 }, { 0.2, "FlickL", "Snap", 2 }, { 0.28, "FlickR", "Snap", 2 },
-		{ 0.36, "FlickL", "Snap", 2 }, { 0.44, "FlickR", "Snap", 2 }, { 0.52, "FlickL", "Snap", 2 }, { 0.62, "FingerGunRecoil", "Snap", 4 }, { 0.82, "FingerGun", "Sine" },
+		{ 0, "Rest" }, { 0.12, "NailRaise", "Out" }, { 0.28, "NailRaise", "Linear" }, { 0.31, "FlickR", "Snap", 2 }, { 0.4, "FlickL", "Snap", 2 }, { 0.49, "FlickR", "Snap", 2 },
+		{ 0.58, "FlickL", "Snap", 2 }, { 0.67, "FlickR", "Snap", 2 }, { 0.78, "FingerGunRecoil", "Snap", 4 }, { 0.98, "FingerGun", "Sine" },
 	},
 	SpinChargeLoop = { { 0, "SpinChargeA" }, { 0.12, "SpinChargeB", "Sine" }, { 0.24, "SpinChargeA", "Sine" } },
 	UndergroundDive = { { 0, "Rest" }, { 0.1, "SpreadWind", "In" }, { 0.22, "Dive", "Snap" }, { 0.55, "Dive" } },
@@ -8812,7 +8930,7 @@ TuskAnimation.Actions = {
 	DimensionalStep = { { 0, "Rest" }, { 0.06, "FlickRWind", "In" }, { 0.12, "LungeStep", "Snap", 2 }, { 0.38, "LungeStep", "Sine" } },
 	SpatialPursuit = { { 0, "Rest" }, { 0.08, "FlickR", "Snap", 2 }, { 0.22, "SpreadWind", "In" }, { 0.32, "Spread", "Back", 3 }, { 0.6, "Spread" } },
 	DimensionalBreak = { { 0, "Rest" }, { 0.25, "AwakenCrouch", "In" }, { 0.72, "AwakenCrouch", "Linear", 2 }, { 0.82, "PushTwo", "Snap", 6 }, { 1.2, "PushTwo", "Sine" } },
-	GoldenSpinNail = { { 0, "Rest" }, { 0.16, "WindSpin", "In" }, { 0.28, "FingerGunRecoil", "Snap", 6 }, { 0.6, "FingerGun", "Back" } },
+	GoldenSpinNail = { { 0, "Rest" }, { 0.12, "NailRaise", "Out" }, { 0.3, "WindSpin", "In" }, { 0.41, "FingerGunRecoil", "Snap", 6 }, { 0.72, "FingerGun", "Back" } },
 	GoldenPursuit = { { 0, "Rest" }, { 0.12, "SlamWindup", "In" }, { 0.24, "DashPunch", "Snap", 5 }, { 0.7, "DashPunch", "Sine" } },
 
 	-- GYRO

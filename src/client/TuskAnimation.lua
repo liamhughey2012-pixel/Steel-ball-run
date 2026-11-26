@@ -77,6 +77,9 @@ TuskAnimation.Poses = {
 	FlickR = { Root = { 0, -18, 0, -0.05, 0.2 }, RightArm = { 96, -8, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 38, 0, -22 }, LeftElbow = { 40, 0, 0 }, Waist = { 0, -22, 0 }, Neck = { 0, 16, 0 }, RightHip = { 18, 0, 0 }, RightKnee = { -16, 0, 0 }, LeftHip = { -10, 0, 0 } },
 	FlickRFollow = { Root = { -2, -22, 0, -0.08, 0.15 }, RightArm = { 84, -14, 2 }, RightElbow = { 12, 0, 0 }, LeftArm = { 34, 0, -24 }, LeftElbow = { 40, 0, 0 }, Waist = { -4, -26, 0 }, Neck = { 0, 18, 0 }, RightHip = { 14, 0, 0 }, RightKnee = { -14, 0, 0 } },
 	FingerGun = { Root = { 0, -14, 0, -0.08 }, RightArm = { 95, 0, 5 }, LeftArm = { 62, 0, -38 }, LeftElbow = { 50, 0, 0 }, Waist = { 0, -22, 0 }, Neck = { 0, 16, 0 }, RightHip = { 12, 0, 0 }, RightKnee = { -14, 0, 0 }, LeftHip = { -10, 0, 0 }, LeftKnee = { -6, 0, 0 } },
+	-- NAIL SHOT start-up (Johnny): his right hand comes up in front of him,
+	-- fingers pointing up, the nails spinning (then he levels it and fires).
+	NailRaise = { Root = { 0, -16, 0, -0.06 }, Waist = { -2, -18, 0 }, Neck = { 4, 14, 0 }, RightArm = { 118, 0, 10 }, RightElbow = { 62, 0, 0 }, LeftArm = { 40, 0, -26 }, LeftElbow = { 60, 0, 0 }, RightHip = { 10, 0, 0 }, RightKnee = { -12, 0, 0 }, LeftHip = { -8, 0, 0 } },
 	FingerGunRecoil = { Root = { 8, -10, 0, -0.04, -0.15 }, RightArm = { 120, 0, 6 }, RightElbow = { 14, 0, 0 }, LeftArm = { 56, 0, -36 }, LeftElbow = { 50, 0, 0 }, Waist = { 8, -16, 0 }, Neck = { 6, 12, 0 }, RightHip = { 8, 0, 0 }, RightKnee = { -10, 0, 0 } },
 	SlamWindup = { Root = { 10, 16, 0, -0.1 }, RightArm = { 168, 0, 12 }, RightElbow = { 30, 0, 0 }, LeftArm = { 42, 0, -32 }, Waist = { 14, 18, 0 }, Neck = { 8, -8, 0 }, LeftHip = { 24, 0, 0 }, LeftKnee = { -28, 0, 0 } },
 	Slam = { Root = { -16, -12, 0, -0.4, 0.4 }, RightArm = { 52, 0, 0 }, RightElbow = { 0, 0, 0 }, LeftArm = { 18, 0, -24 }, Waist = { -24, -12, 0 }, Neck = { -6, 10, 0 }, RightHip = { 36, 0, 0 }, RightKnee = { -46, 0, 0 }, LeftHip = { -14, 0, 0 }, LeftKnee = { -20, 0, 0 } },
@@ -322,10 +325,10 @@ TuskAnimation.Actions = {
 	M1_2 = { { 0, "FlickRFollow" }, { 0.07, "FlickLCoil", "In" }, { 0.12, "FlickLStrike", "Back", 4 }, { 0.17, "FlickLStrike", "Linear" }, { 0.3, "FlickLFollow", "Sine" } },
 	M1_3 = { { 0, "Rest" }, { 0.06, "FlickRCoil", "In" }, { 0.1, "FingerGun", "Snap" }, { 0.14, "FingerGunRecoil", "Snap", 4 }, { 0.2, "FingerGun", "Out" }, { 0.24, "FingerGunRecoil", "Snap", 3 }, { 0.36, "FingerGun", "Sine" } },
 	M1_4 = { { 0, "Rest" }, { 0.08, "SlamWindup", "In" }, { 0.16, "SlamLeap", "Out" }, { 0.24, "Slam", "Snap", 8 }, { 0.3, "Slam", "Linear" }, { 0.48, "SlamFollow", "Sine" }, { 0.6, "SlamFollow" } },
-	NailShot = { { 0, "Rest" }, { 0.12, "FingerGun", "Sine" }, { 0.2, "FingerGunRecoil", "Snap", 5 }, { 0.45, "FingerGun", "Back" } },
+	NailShot = { { 0, "Rest" }, { 0.12, "NailRaise", "Out" }, { 0.31, "NailRaise", "Linear" }, { 0.36, "FingerGun", "Snap" }, { 0.42, "FingerGunRecoil", "Snap", 5 }, { 0.7, "FingerGun", "Back" } },
 	NailBarrage = {
-		{ 0, "Rest" }, { 0.08, "FlickRWind", "In" }, { 0.12, "FlickR", "Snap", 2 }, { 0.2, "FlickL", "Snap", 2 }, { 0.28, "FlickR", "Snap", 2 },
-		{ 0.36, "FlickL", "Snap", 2 }, { 0.44, "FlickR", "Snap", 2 }, { 0.52, "FlickL", "Snap", 2 }, { 0.62, "FingerGunRecoil", "Snap", 4 }, { 0.82, "FingerGun", "Sine" },
+		{ 0, "Rest" }, { 0.12, "NailRaise", "Out" }, { 0.28, "NailRaise", "Linear" }, { 0.31, "FlickR", "Snap", 2 }, { 0.4, "FlickL", "Snap", 2 }, { 0.49, "FlickR", "Snap", 2 },
+		{ 0.58, "FlickL", "Snap", 2 }, { 0.67, "FlickR", "Snap", 2 }, { 0.78, "FingerGunRecoil", "Snap", 4 }, { 0.98, "FingerGun", "Sine" },
 	},
 	SpinChargeLoop = { { 0, "SpinChargeA" }, { 0.12, "SpinChargeB", "Sine" }, { 0.24, "SpinChargeA", "Sine" } },
 	UndergroundDive = { { 0, "Rest" }, { 0.1, "SpreadWind", "In" }, { 0.22, "Dive", "Snap" }, { 0.55, "Dive" } },
@@ -333,7 +336,7 @@ TuskAnimation.Actions = {
 	DimensionalStep = { { 0, "Rest" }, { 0.06, "FlickRWind", "In" }, { 0.12, "LungeStep", "Snap", 2 }, { 0.38, "LungeStep", "Sine" } },
 	SpatialPursuit = { { 0, "Rest" }, { 0.08, "FlickR", "Snap", 2 }, { 0.22, "SpreadWind", "In" }, { 0.32, "Spread", "Back", 3 }, { 0.6, "Spread" } },
 	DimensionalBreak = { { 0, "Rest" }, { 0.25, "AwakenCrouch", "In" }, { 0.72, "AwakenCrouch", "Linear", 2 }, { 0.82, "PushTwo", "Snap", 6 }, { 1.2, "PushTwo", "Sine" } },
-	GoldenSpinNail = { { 0, "Rest" }, { 0.16, "WindSpin", "In" }, { 0.28, "FingerGunRecoil", "Snap", 6 }, { 0.6, "FingerGun", "Back" } },
+	GoldenSpinNail = { { 0, "Rest" }, { 0.12, "NailRaise", "Out" }, { 0.3, "WindSpin", "In" }, { 0.41, "FingerGunRecoil", "Snap", 6 }, { 0.72, "FingerGun", "Back" } },
 	GoldenPursuit = { { 0, "Rest" }, { 0.12, "SlamWindup", "In" }, { 0.24, "DashPunch", "Snap", 5 }, { 0.7, "DashPunch", "Sine" } },
 
 	-- GYRO

@@ -24,9 +24,17 @@ local function onAbility(data)
 	if data.Move == "WormholeNail" and root then
 		TuskAnimation.play(character, "NailShot")
 		TuskStand.action(character, "Lunge", { Target = CFrame.new(1.4, 0.8, -1.2), Duration = data.Startup + 0.25 })
-		-- A small golden rectangle opens at the fingertip; the nail is fired through it.
-		local tip = (root.CFrame * CFrame.new(0.9, 0.55, -2.2)).Position
-		Common.golden(tip, tip + data.Direction * 5, 1, data.Startup + 0.2, pal)
+		-- Whirls spin round his raised fingertips; then a small golden
+		-- rectangle opens there and the nail is fired through it.
+		local whirl = Common.fingerWhirl(character, data.Startup)
+		task.delay(data.Startup, function()
+			whirl:Release(data.Direction)
+			local r = Common.rootOf(character)
+			if r then
+				local tip = (r.CFrame * CFrame.new(0.9, 0.55, -2.2)).Position
+				Common.golden(tip, tip + data.Direction * 5, 1, 0.3, pal)
+			end
+		end)
 	elseif data.Move == "NailDimension" and data.Phase == "Open" then
 		if root then
 			TuskAnimation.play(character, "NailDimension")

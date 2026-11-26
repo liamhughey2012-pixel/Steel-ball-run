@@ -371,7 +371,7 @@ TuskConfig.Act1 = {
 	},
 	NailShot = {
 		Cooldown = 4,
-		Startup = 0.18,
+		Startup = 0.35, -- hand up, fingers up, nails whirling... then he levels it and fires
 		Damage = 8,
 		Speed = 150,
 		Radius = 0.7,
@@ -381,7 +381,7 @@ TuskConfig.Act1 = {
 	},
 	NailBarrage = {
 		Cooldown = 9,
-		Startup = 0.15,
+		Startup = 0.3,
 		Count = 5,
 		Interval = 0.09,
 		SpreadDegrees = 7,
@@ -434,7 +434,7 @@ TuskConfig.Act2 = {
 			{ Damage = 7, Stun = 0.5, Knockback = 45, Launch = 14, Portal = true, ShockwaveRadius = 8 },
 		},
 	},
-	WormholeNail = { Cooldown = 6, Startup = 0.16, Damage = 8, ExitDamage = 7, Speed = 160, Radius = 0.75, Range = 170, ExitDelay = 0.4, ExitSearch = 12, Stun = 0.4, Knockback = 14 },
+	WormholeNail = { Cooldown = 6, Startup = 0.35, Damage = 8, ExitDamage = 7, Speed = 160, Radius = 0.75, Range = 170, ExitDelay = 0.4, ExitSearch = 12, Stun = 0.4, Knockback = 14 },
 	UndergroundPursuit = { Cooldown = 11, Range = 45, ConeDegrees = 100, BurrowTime = 0.55, WarningTime = 0.35, Damage = 11, Stun = 0.55, Knockback = 20, Launch = 30, HitRadius = 7 },
 	NailDimension = { Cooldown = 13, Range = 70, ConeDegrees = 50, Portals = 3, PortalRadius = 11, OpenTime = 0.4, Damage = 5, Speed = 140, Stun = 0.35, Knockback = 8, FinalRadius = 9, FinalDamage = 6 },
 	Ultimate = { -- DIMENSIONAL STORM -> evolves to Act 3
@@ -479,7 +479,7 @@ TuskConfig.Act4 = {
 			{ Damage = 10, Stun = 0.55, Knockback = 60, Launch = 22, ShockwaveRadius = 13, AoeRadius = 9 },
 		},
 	},
-	GoldenSpinNail = { Cooldown = 7, Startup = 0.3, Damage = 16, Speed = 175, Radius = 1.4, Range = 210, Stun = 0.5, Knockback = 40, ImpactRadius = 6, ImpactDamage = 5 },
+	GoldenSpinNail = { Cooldown = 7, Startup = 0.4, Damage = 16, Speed = 175, Radius = 1.4, Range = 210, Stun = 0.5, Knockback = 40, ImpactRadius = 6, ImpactDamage = 5 },
 	InfiniteRotation = {
 		Cooldown = 15, WalkSpeedMultiplier = 0.4, MaxHold = 3.5,
 		Stages = { 0.6, 1.3, 2.0 }, -- seconds of charge for stage 1 / 2 / 3
