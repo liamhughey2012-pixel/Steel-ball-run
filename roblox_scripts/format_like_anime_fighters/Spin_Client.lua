@@ -1340,6 +1340,13 @@ end
 
 local function photoFor(entry, parent)
 	local photo = new("ImageLabel", { Name = "Photo", BackgroundColor3 = PAPER_DARK, BorderSizePixel = 0, ImageColor3 = Color3.fromRGB(240, 220, 190), ClipsDescendants = true }, parent)
+	if entry.Kind == "Arrow" then
+		-- The Requiem Arrow: a sketch of an arrow on a dark backdrop (no photo: nobody knows where it is).
+		photo.BackgroundColor3 = Color3.fromRGB(60, 44, 70)
+		label(photo, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.48), Size = UDim2.fromScale(0.8, 0.8), Rotation = -35, Text = "➶", Font = Enum.Font.GothamBlack, TextColor3 = GOLD })
+		label(photo, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -2), Size = UDim2.new(1, -6, 0, 14), Text = "?", Font = Enum.Font.Bangers, TextColor3 = PAPER })
+		return photo
+	end
 	if entry.Kind == "Corpse" then
 		-- The relic on a gold backdrop, or the face of whoever carries it.
 		photo.BackgroundColor3 = Color3.fromRGB(214, 178, 96)
@@ -1478,7 +1485,7 @@ local function showConfirm(entry)
 	new("UIStroke", { Color = WOOD_DARK, Thickness = 4 }, photo)
 	body:FindFirstChild("Who").Text = string.upper(entry.Name)
 	local stand = standOf(entry.Act)
-	if entry.Kind == "Corpse" then
+	if entry.Kind == "Corpse" or entry.Kind == "Arrow" then
 		body:FindFirstChild("Stand").Text = "GIVES: " .. string.upper(entry.Boost or "")
 		body:FindFirstChild("Stand").TextColor3 = Color3.fromRGB(150, 100, 20)
 	else
@@ -1492,6 +1499,7 @@ local function showConfirm(entry)
 	end
 	local minutes = math.floor((TuskConfig.Bounty and TuskConfig.Bounty.Duration or 300) / 60)
 	body:FindFirstChild("Note").Text = (current and current.Key ~= entry.Key) and ("This replaces your bounty on " .. current.Name .. ".")
+		or (entry.Kind == "Arrow" and "Nobody knows where it is: somewhere out in the desert. Find it and take it. Paid the moment you do.")
 		or (entry.Kind == "Corpse" and (entry.HeldBy and (entry.HeldBy .. " is carrying it: take them down, then take the part. Paid the moment you take it.") or "It's lying out in the desert under a pillar of light. Paid the moment you take it."))
 		or (entry.Corpse and ("Carrying the Saint's Corpse: " .. entry.Corpse .. ". Take them down and the parts drop."))
 		or (minutes .. " minutes to find them. Land the final hit to claim the reward.")
@@ -1529,15 +1537,18 @@ local function makePoster(entry, index)
 	corner(pin, 99)
 	new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.4, Size = UDim2.fromOffset(4, 4), Position = UDim2.fromOffset(3, 3), ZIndex = 3 }, pin)
 	local isCorpse = entry.Kind == "Corpse"
-	label(paper, { Position = UDim2.fromScale(0.06, 0.06), Size = UDim2.fromScale(0.88, 0.13), Text = isCorpse and "RETRIEVE" or "WANTED", Font = Enum.Font.Bangers, TextColor3 = isCorpse and Color3.fromRGB(150, 100, 20) or INK })
-	label(paper, { Position = UDim2.fromScale(0.1, 0.185), Size = UDim2.fromScale(0.8, 0.05), Text = isCorpse and "SAINT'S CORPSE" or "DEAD OR ALIVE", Font = Enum.Font.GothamBold, TextColor3 = INK:Lerp(PAPER, 0.25) })
+	local isArrow = entry.Kind == "Arrow"
+	label(paper, { Position = UDim2.fromScale(0.06, 0.06), Size = UDim2.fromScale(0.88, 0.13), Text = isArrow and "FIND IT" or (isCorpse and "RETRIEVE" or "WANTED"), Font = Enum.Font.Bangers, TextColor3 = isArrow and Color3.fromRGB(110, 60, 140) or (isCorpse and Color3.fromRGB(150, 100, 20) or INK) })
+	label(paper, { Position = UDim2.fromScale(0.1, 0.185), Size = UDim2.fromScale(0.8, 0.05), Text = isArrow and "LOCATION UNKNOWN" or (isCorpse and "SAINT'S CORPSE" or "DEAD OR ALIVE"), Font = Enum.Font.GothamBold, TextColor3 = INK:Lerp(PAPER, 0.25) })
 	local photo = photoFor(entry, paper)
 	photo.Position = UDim2.fromScale(0.15, 0.25)
 	photo.Size = UDim2.fromScale(0.7, 0.36)
 	new("UIStroke", { Color = INK, Thickness = 2 }, photo)
 	label(paper, { Position = UDim2.fromScale(0.05, 0.63), Size = UDim2.fromScale(0.9, 0.08), Text = isCorpse and string.upper((entry.Name:gsub("^SAINT'S CORPSE: ", ""))) or string.upper(entry.Name), TextTruncate = Enum.TextTruncate.AtEnd })
 	local stand = standOf(entry.Act)
-	if isCorpse then
+	if isArrow then
+		label(paper, { Position = UDim2.fromScale(0.05, 0.71), Size = UDim2.fromScale(0.9, 0.05), Text = "SOMEWHERE IN THE DESERT", Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(110, 60, 140) })
+	elseif isCorpse then
 		label(paper, { Position = UDim2.fromScale(0.05, 0.71), Size = UDim2.fromScale(0.9, 0.05), Text = entry.HeldBy and ("HELD BY " .. string.upper(entry.HeldBy)) or "LYING IN THE DESERT", Font = Enum.Font.GothamBold, TextColor3 = entry.HeldBy and RED or INK:Lerp(PAPER, 0.3) })
 	elseif stand then
 		label(paper, { Position = UDim2.fromScale(0.05, 0.71), Size = UDim2.fromScale(0.9, 0.05), Text = "STAND: " .. stand, Font = Enum.Font.GothamBold, TextColor3 = themeOf(entry.Act):Lerp(INK, 0.5) })
@@ -2339,6 +2350,9 @@ local function targetModel()
 	if current.Kind == "Corpse" then
 		return corpseHolder(current.Part) or corpseRelic(current.Part)
 	end
+	if current.Kind == "Arrow" then
+		return nil
+	end
 	return current.Model
 end
 
@@ -2446,6 +2460,11 @@ function BountyUI.step()
 	local sneak = TuskConfig.Sneak or {}
 	if model and model:GetAttribute("TuskSneaking") and mine and theirs and (theirs.Position - mine.Position).Magnitude > (sneak.HiddenFromBounty or 30) then
 		where = "HIDDEN"
+		marker.Enabled = false
+	end
+	-- The Requiem Arrow: never a marker or a distance.
+	if current.Kind == "Arrow" then
+		where = "SOMEWHERE IN THE DESERT"
 		marker.Enabled = false
 	end
 	-- Smoke bomb (bounty-board shop): no marker, no distance while it lasts.
@@ -6312,6 +6331,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 7) == "Requiem" then
+		starColor = Color3.fromRGB(190, 160, 255)
 	elseif source:sub(1, 9) == "Polnareff" then
 		starColor = Color3.fromRGB(220, 232, 250)
 	elseif source:sub(1, 6) == "Joseph" then
@@ -7815,6 +7836,191 @@ return RaceClient
 end
 
 -- ======================================================================
+-- MODULE: RequiemClient
+-- ======================================================================
+__modules["RequiemClient"] = function()
+--[[
+	RequiemClient  (StarterPlayerScripts.SpinClient.RequiemClient)
+
+	Client side of THE REQUIEM ARROW (server: ArrowService).
+	  * when one turns up: a wooden sign drops in at the top of everyone's
+	    screen ("A REQUIEM ARROW HAS APPEARED · SOMEWHERE IN THE DESERT")
+	    and a letterboxed title card. Where it is is never shown.
+	  * when someone takes it, everyone hears who
+	  * POLNAREFF: an arrow streaks down out of the sky into Silver Chariot,
+	    a dark violet burst, "SILVER CHARIOT REQUIEM"
+	  * anyone else: "THE ARROW'S BLESSING", and a gold glint round them
+	    for as long as it lasts (everyone can see it)
+]]
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local Shared = nil -- (bundled: modules are inlined)
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local Net = __require("Net")
+local VFXLib = __require("VFXLib")
+local CameraFX = __require("CameraFX")
+local TuskVFX = __require("TuskVFX")
+local Fighters = __require("Fighters")
+local Cinematic = __require("Cinematic")
+local UITheme = __require("UITheme")
+local C = UITheme.C
+
+local RequiemClient = {}
+local player = Players.LocalPlayer
+local VIOLET = Color3.fromRGB(170, 120, 240)
+local GOLD = Color3.fromRGB(255, 214, 110)
+
+local gui, sign, signTitle, signSub
+local signToken = 0
+
+local function buildUI()
+	gui = UITheme.new("ScreenGui", { Name = "SpinRequiem", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 12 }, player:WaitForChild("PlayerGui"))
+	sign = UITheme.new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -120), Size = UDim2.fromOffset(460, 70), Visible = false }, gui)
+	UITheme.wood(sign, { Planks = 2, Border = 4, Brackets = true, BracketSize = 12 })
+	UITheme.new("UISizeConstraint", { MaxSize = Vector2.new(460, 70) }, sign)
+	signTitle = UITheme.label(sign, { Position = UDim2.fromOffset(14, 6), Size = UDim2.new(1, -28, 0, 36), Text = "", Font = UITheme.Font.Title, TextColor3 = VIOLET, TextStrokeTransparency = 0.3, TextStrokeColor3 = C.WOOD_EDGE, ZIndex = 4 })
+	signSub = UITheme.label(sign, { Position = UDim2.fromOffset(14, 42), Size = UDim2.new(1, -28, 0, 18), Text = "", Font = UITheme.Font.Body, TextColor3 = C.PAPER, ZIndex = 4 })
+end
+
+-- A sign drops in at the top of the screen for a few seconds.
+local function announce(title, sub, color, hold)
+	if not sign then
+		return
+	end
+	signToken = signToken + 1
+	local token = signToken
+	signTitle.Text = title
+	signTitle.TextColor3 = color or VIOLET
+	signSub.Text = sub or ""
+	sign.Visible = true
+	sign.Position = UDim2.new(0.5, 0, 0, -120)
+	TweenService:Create(sign, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.new(0.5, 0, 0, 58) }):Play()
+	task.delay(hold or 6, function()
+		if signToken == token then
+			TweenService:Create(sign, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(0.5, 0, 0, -120) }):Play()
+			task.delay(0.35, function()
+				if signToken == token then
+					sign.Visible = false
+				end
+			end)
+		end
+	end)
+end
+RequiemClient.announce = announce
+
+-- An arrow streaks down out of the sky into Silver Chariot.
+local function pierce(character)
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	local function standPoint()
+		local r = character:FindFirstChild("HumanoidRootPart")
+		return r and (r.CFrame * CFrame.new(2.2, 2, 2.6)).Position or root.Position
+	end
+	local from = standPoint() + Vector3.new(-30, 60, -20)
+	local shaft = VFXLib.part({ Size = Vector3.new(0.2, 0.2, 3.4), Color = Color3.fromRGB(120, 82, 46), Material = Enum.Material.Wood, Transparency = 0 })
+	local head = VFXLib.part({ Size = Vector3.new(0.6, 0.6, 0.15), Color = Color3.fromRGB(214, 170, 64), Material = Enum.Material.Metal, Transparency = 0 })
+	local trail = VFXLib.part({ Size = Vector3.new(0.3, 0.3, 8), Color = VIOLET, Transparency = 0.4 })
+	VFXLib.animate(0.8, function(a)
+		local to = standPoint()
+		local e = a * a
+		local p = from:Lerp(to, e)
+		local dir = (to - from).Unit
+		local cf = CFrame.lookAt(p, p + dir)
+		shaft.CFrame = cf * CFrame.new(0, 0, 1.7)
+		head.CFrame = cf * CFrame.Angles(0, 0, math.pi / 4)
+		trail.CFrame = cf * CFrame.new(0, 0, 6)
+	end, function()
+		shaft:Destroy()
+		head:Destroy()
+		trail:Destroy()
+		local at = standPoint()
+		VFXLib.flash(at, VIOLET, 10, 40, 0.4)
+		TuskVFX.CreateRotationalShockwave(CFrame.new(at - Vector3.new(0, 3, 0)), { Radius = 16, Layers = 3, Color = VIOLET, Color2 = GOLD, Ground = true, Particles = 2, Width = 0.6 })
+		TuskVFX.CreateImpactStar(at, { Size = 8, Rays = 10, Color = VIOLET, Color2 = Color3.new(1, 1, 1), Duration = 0.4 })
+		VFXLib.burst(at, { Count = 40, Color = Color3.fromRGB(60, 40, 90), Speed = 24, Lifetime = 1.0 })
+		local r = character:FindFirstChild("HumanoidRootPart")
+		local mine = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if r and mine and (mine.Position - r.Position).Magnitude < 80 then
+			CameraFX.shake(1, 0.5)
+		end
+	end)
+end
+
+local function onEvent(data)
+	local phase = data.Phase
+	local mine = data.Player == player.UserId
+	if phase == "Spawned" then
+		announce("A REQUIEM ARROW HAS APPEARED", "SOMEWHERE IN THE DESERT · IT'S ON THE BOUNTY BOARD", VIOLET, 8)
+		Cinematic.title("SOMETHING HAS APPEARED", "THE REQUIEM ARROW", VIOLET, "SOMEWHERE IN THE DESERT", 2.4)
+	elseif phase == "Vanished" then
+		announce("THE ARROW HAS VANISHED", "ANOTHER ONE WILL TURN UP...", C.PAPER, 4)
+	elseif phase == "Requiem" then
+		announce(string.upper(tostring(data.Name)) .. " TOOK THE ARROW", "SILVER CHARIOT HAS BECOME SILVER CHARIOT REQUIEM", VIOLET, 7)
+		if typeof(data.Character) == "Instance" then
+			pierce(data.Character)
+		end
+		if mine then
+			task.delay(0.8, function()
+				Cinematic.title("THE ARROW PIERCES SILVER CHARIOT", "SILVER CHARIOT REQUIEM", VIOLET, "UNTIL YOU GO DOWN", 3)
+				TuskVFX.ScreenTint(1.5, { Tint = Color3.fromRGB(160, 120, 220), Brightness = -0.25, Saturation = -0.4, Contrast = 0.2, Release = 0.1, FadeOut = 0.6 })
+			end)
+		end
+	elseif phase == "Blessing" then
+		announce(string.upper(tostring(data.Name)) .. " TOOK THE ARROW", "THE ARROW'S BLESSING", GOLD, 6)
+		if typeof(data.Character) == "Instance" then
+			local r = data.Character:FindFirstChild("HumanoidRootPart")
+			if r then
+				VFXLib.flash(r.Position, GOLD, 6, 20, 0.3)
+				TuskVFX.CreateRotationalShockwave(CFrame.new(r.Position - Vector3.new(0, 2.5, 0)), { Radius = 8, Layers = 2, Color = GOLD, Color2 = VIOLET, Ground = true, Particles = 1, Width = 0.4 })
+			end
+		end
+		if mine then
+			Cinematic.title("THE REQUIEM ARROW", "BLESSED", GOLD, "HIT HARDER · TAKE LESS · FASTER · " .. tostring(data.Time or 90) .. " S", 2.6)
+		end
+	elseif phase == "BlessingOver" and mine then
+		announce("THE BLESSING HAS FADED", "", C.PAPER, 3)
+	end
+end
+
+-- The blessing: a gold glint round whoever has it.
+local nextGlint = 0
+local function step()
+	local t = os.clock()
+	if t < nextGlint then
+		return
+	end
+	nextGlint = t + 0.25
+	local now = workspace:GetServerTimeNow()
+	for _, f in ipairs(Fighters.list()) do
+		local character = f.Character
+		local r = character and character:FindFirstChild("HumanoidRootPart")
+		if r and (character:GetAttribute("ArrowBlessUntil") or 0) > now then
+			VFXLib.burst(r.Position + Vector3.new((math.random() - 0.5) * 2, math.random() * 3 - 1, (math.random() - 0.5) * 2), { Count = 2, Color = GOLD, Speed = 2, Lifetime = 0.5 })
+		end
+	end
+end
+
+function RequiemClient.init()
+	if (TuskConfig.RequiemArrow or {}).Enabled == false then
+		return
+	end
+	buildUI()
+	Net.get("WorldFX").OnClientEvent:Connect(function(name, data)
+		if name == "RequiemArrow" and typeof(data) == "table" then
+			onEvent(data)
+		end
+	end)
+	game:GetService("RunService").RenderStepped:Connect(step)
+end
+
+return RequiemClient
+end
+
+-- ======================================================================
 -- MODULE: SettingsUI
 -- ======================================================================
 __modules["SettingsUI"] = function()
@@ -7974,6 +8180,7 @@ Common.Palettes = {
 	[16] = { Main = Color3.fromRGB(150, 40, 50), Second = Color3.fromRGB(240, 196, 60), Light = Color3.fromRGB(255, 236, 200) }, -- Tooru (Wonder of U maroon + scarf gold)
 	[17] = { Main = Color3.fromRGB(90, 170, 240), Second = Color3.fromRGB(240, 120, 190), Light = Color3.fromRGB(225, 240, 255) }, -- Jodio (November Rain blue + strap pink)
 	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
+	[24] = { Main = Color3.fromRGB(150, 110, 220), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(230, 220, 255) }, -- Silver Chariot Requiem
 	[23] = { Main = Color3.fromRGB(196, 206, 222), Second = Color3.fromRGB(110, 170, 230), Light = Color3.fromRGB(240, 246, 255) }, -- Polnareff (Silver Chariot)
 	[22] = { Main = Color3.fromRGB(150, 80, 200), Second = Color3.fromRGB(255, 214, 80), Light = Color3.fromRGB(255, 246, 200) }, -- Joseph (Hermit Purple + Hamon gold)
 	[21] = { Main = Color3.fromRGB(240, 196, 50), Second = Color3.fromRGB(60, 160, 110), Light = Color3.fromRGB(255, 244, 200) }, -- DIO (The World gold + green)
@@ -8684,6 +8891,23 @@ TuskActRegistry.Acts = {
 		Module = "Polnareff", -- server moves
 		ClientModule = "PolnareffVFX", -- client visuals (TuskActVFX.PolnareffVFX)
 		CardTitle = "STAND  ·  SILVER CHARIOT",
+	},
+	-- SILVER CHARIOT REQUIEM: Silver Chariot pierced by the Requiem Arrow
+	-- (Polnareff only, from the arrow; back to Act 23 when he goes down).
+	[24] = {
+		Name = "SILVER CHARIOT REQUIEM",
+		Character = "Polnareff",
+		Tagline = "Requiem",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(150, 110, 220), Secondary = Color3.fromRGB(240, 200, 90) },
+		M1 = "REQUIEM STRIKES",
+		Abilities = { "SOUL SWAP", "REQUIEM'S SLEEP", "SHADOW STEP" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "SOUL REVERSAL",
+		Next = nil,
+		Module = "ChariotRequiem", -- server moves
+		ClientModule = "ChariotRequiemVFX", -- client visuals (TuskActVFX.ChariotRequiemVFX)
+		CardTitle = "STAND  ·  SILVER CHARIOT REQUIEM",
 	},
 }
 
@@ -12400,6 +12624,12 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("SOUL SWAP") or has("SOUL REVERSAL") then
+		return "ghost"
+	elseif has("REQUIEM'S SLEEP") then
+		return "spiral"
+	elseif has("SHADOW STEP") then
+		return "dash"
 	elseif has("HORA HORA") then
 		return "barrage"
 	elseif has("ARMOR OFF") then
@@ -16217,7 +16447,7 @@ local function __start(name)
 		warn("[Spin] " .. name .. " failed to start: " .. tostring(err))
 	end
 end
-for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient", "CorpseClient", "RaceClient", "Cutscenes", "Cinematic" }) do
+for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient", "CorpseClient", "RaceClient", "Cutscenes", "Cinematic", "RequiemClient" }) do
 	__start(name)
 end
 print("[Spin] Client ready")

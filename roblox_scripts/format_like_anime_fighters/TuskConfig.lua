@@ -1333,6 +1333,65 @@ TuskConfig.Polnareff = {
 	CorpseWhirl = { Radius = 14, Damage = 9, Stun = 0.7 }, -- corpse move SWORD WHIRL: the rapier spins round him
 }
 
+---------------------------------------------------------------------------
+-- THE REQUIEM ARROW: one turns up somewhere in the desert every 5 minutes.
+-- It isn't marked anywhere (no glow, no beam, no map marker): everyone is
+-- told it's out there, and the bounty board posts a contract for it.
+-- Take it (hold E next to it):
+--   * playing POLNAREFF: Silver Chariot is pierced and becomes SILVER
+--     CHARIOT REQUIEM (Act 24) until you go down
+--   * anyone else: THE ARROW'S BLESSING for a while
+---------------------------------------------------------------------------
+TuskConfig.RequiemArrow = {
+	Enabled = true,
+	Every = 300, -- seconds between arrows (an untaken one vanishes and a new one turns up elsewhere)
+	FirstAfter = 60, -- the first one, this long after the server starts
+	HoldTime = 1.5, -- hold E this long to take it
+	Radius = 360, -- how far from the map's centre it can turn up
+	MaxHeight = 10, -- never on high ground (studs above the map's base)
+	Blessing = {
+		Time = 90,
+		Damage = 1.2, -- you hit 20% harder
+		Resist = 0.8, -- you take 20% less
+		Speed = 1.15,
+		UltGain = 1.5,
+	},
+	Bounty = 250, -- the bounty board pays this to whoever takes it (with the contract)
+}
+
+---------------------------------------------------------------------------
+-- SILVER CHARIOT REQUIEM (Polnareff, Act 24): what the Requiem Arrow makes
+-- of Silver Chariot. Lasts until Polnareff goes down.
+---------------------------------------------------------------------------
+TuskConfig.Requiem = {
+	M1 = { -- REQUIEM STRIKES: slow, heavy, long-reaching blows
+		Interval = 0.34, ResetAfter = 1.2, EndLag = 0.95, Windup = 0.1,
+		HitboxSize = Vector3.new(7, 6, 9), HitboxForward = 4.6, MaxTargets = 4,
+		Hits = {
+			{ Damage = 5, Stun = 0.55, Knockback = 6 },
+			{ Damage = 5, Stun = 0.55, Knockback = 6 },
+			{ Damage = 5.5, Stun = 0.6, Knockback = 8 },
+			{ Damage = 10, Stun = 0.7, Knockback = 50, Launch = 14, ShockwaveRadius = 9, AoeRadius = 8 },
+		},
+	},
+	SoulSwap = { -- 1: you and the nearest enemy in front swap places (and they're left reeling)
+		Cooldown = 10, Windup = 0.35, Range = 45, Cone = 100,
+		Damage = 8, Stun = 1.4,
+	},
+	Sleep = { -- 2: everyone round you falls asleep
+		Cooldown = 16, Windup = 0.5, Radius = 26,
+		Damage = 4, Time = 2.2,
+	},
+	ShadowStep = { -- 3: you slip forward like a shadow (you can't be hit for a moment)
+		Cooldown = 6, Distance = 24, IFrames = 0.45,
+	},
+	Ultimate = { -- SOUL REVERSAL: everyone near: souls pulled out, held, then slammed back
+		Windup = 0.8, Radius = 35,
+		HoldTime = 2.2, Tick = 0.3, TickDamage = 2.5,
+		FinalDamage = 18, FinalStun = 1.4,
+	},
+}
+
 TuskConfig.Gyro = {
 	M1 = {
 		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,

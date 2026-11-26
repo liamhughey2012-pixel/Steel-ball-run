@@ -215,6 +215,33 @@ local function corpseService()
 	return Corpse or nil
 end
 
+-- The Requiem Arrow (ArrowService): a contract to find it. Where it is
+-- is never given away.
+local Arrow
+local function arrowService()
+	if Arrow == nil then
+		local ok, mod = pcall(function()
+			return require(script.Parent.ArrowService)
+		end)
+		Arrow = ok and mod or false
+	end
+	return Arrow or nil
+end
+
+local function arrowBounty()
+	local A = arrowService()
+	if not A or not A.isOut() then
+		return nil
+	end
+	return {
+		Key = "ARROW",
+		Kind = "Arrow",
+		Name = "THE REQUIEM ARROW",
+		Reward = (TuskConfig.RequiemArrow or {}).Bounty or 250,
+		Boost = "Polnareff: Silver Chariot Requiem · anyone else: a blessing",
+	}
+end
+
 local function retrieveBounties(viewer)
 	local C = corpseService()
 	local corpse = TuskConfig.Corpse
@@ -306,6 +333,10 @@ local function listBounties(viewer)
 	end
 	for _, entry in ipairs(retrieveBounties(viewer)) do
 		table.insert(list, entry)
+	end
+	local arrow = arrowBounty()
+	if arrow then
+		table.insert(list, arrow)
 	end
 	table.sort(list, function(a, b)
 		return a.Reward > b.Reward
@@ -1061,6 +1092,33 @@ function BountyService.init()
 				active[player] = nil
 				send(player, "Complete", { Name = b.Name, Reward = reward })
 				jobProgress(player, "Bounties", 1)
+			end
+		end)
+	end
+	-- The Requiem Arrow: paid when the hunter takes it; anyone else's contract is lost.
+	local A = arrowService()
+	if A and A.OnTaken then
+		table.insert(A.OnTaken, function(player)
+			for hunter, b in pairs(active) do
+				if b.Kind == "Arrow" then
+					if hunter == player then
+						local ls = leaderstats(hunter)
+						local cash, claimed = ls:FindFirstChild("Cash"), ls:FindFirstChild("Bounties")
+						local reward = bonusPay(hunter, b.Reward)
+						if cash then
+							cash.Value = cash.Value + reward
+						end
+						if claimed then
+							claimed.Value = claimed.Value + 1
+						end
+						active[hunter] = nil
+						send(hunter, "Complete", { Name = b.Name, Reward = reward })
+						jobProgress(hunter, "Bounties", 1)
+					else
+						active[hunter] = nil
+						send(hunter, "Lost", { Reason = player.DisplayName .. " took the Requiem Arrow." })
+					end
+				end
 			end
 		end)
 	end

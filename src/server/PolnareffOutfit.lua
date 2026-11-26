@@ -191,9 +191,9 @@ end
 
 local function watch(character)
 	local function update()
-		if character:GetAttribute("TuskAct") == PolnareffOutfit.Act then
+		if (character:GetAttribute("TuskAct") == PolnareffOutfit.Act or character:GetAttribute("TuskAct") == 24) then
 			task.delay(0.3, function()
-				if character.Parent and character:GetAttribute("TuskAct") == PolnareffOutfit.Act then
+				if character.Parent and (character:GetAttribute("TuskAct") == PolnareffOutfit.Act or character:GetAttribute("TuskAct") == 24) then
 					PolnareffOutfit.apply(character)
 				end
 			end)

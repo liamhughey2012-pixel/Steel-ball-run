@@ -26,3 +26,22 @@ Server moves: `TuskActs/Polnareff`. Outfit: `PolnareffOutfit`. Visuals: `TuskAct
 
 - **Corpse move (V): SWORD WHIRL.** The rapier spins round him: 9 damage to everyone within 14 studs.
 - He's a Stand-user NPC (20 NPCs; new camp on the east edge at 420, -120) and a bounty-board target.
+
+## SILVER CHARIOT REQUIEM (Act 24, from the Requiem Arrow)
+See [[Requiem Arrow]]. Only Polnareff can get it, by taking the arrow, and it lasts until he goes down. Numbers: `TuskConfig.Requiem`. Server: `TuskActs/ChariotRequiem`. Client: `TuskActVFX/ChariotRequiemVFX`, `ChariotRequiemStand`. It ships inside `Polnareff_Server` / `Polnareff_Client`.
+
+![[chariot_requiem_preview.png]]
+**Look:** a tall dark wraith in near-black armour.
+- A dark hood round a pale mask with hollow eyes.
+- The Requiem Arrow's golden scarab glowing in its chest.
+- Gold trim, a high collar of spikes, and long thin arms with clawed hands.
+- No legs: a long torn robe.
+- A floating gold ring behind its head, and a violet aura.
+
+| Input | Move | What it does |
+|---|---|---|
+| M1 | REQUIEM STRIKES | slow, heavy, long-reaching blows (dark slashes edged in gold) |
+| 1 | SOUL SWAP | he and the nearest enemy in front (45 studs) **swap places**; two souls cross between them. They take 8 and reel for 1.4 s ("SOULS SWAPPED"). 10 s |
+| 2 | REQUIEM'S SLEEP | a violet mist spreads out: everyone within 26 studs **falls asleep** for 2.2 s ("Z z z"; a sleeper's screen goes dark). 16 s |
+| 3 | SHADOW STEP | he slips 24 studs forward like a shadow (can't be hit for a moment), leaving a dark afterimage and black smoke. 6 s |
+| G | SOUL REVERSAL | everyone within 35 studs has their **soul pulled out**: a pale see-through copy of them rises and hangs. They're held and drained for 2.2 s, then the souls slam back (18) |

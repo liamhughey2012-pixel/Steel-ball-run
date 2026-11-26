@@ -349,6 +349,13 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	if (targetCharacter:GetAttribute("ShopResistUntil") or 0) > shopNow then
 		damage = damage * (targetCharacter:GetAttribute("ShopResist") or 1)
 	end
+	-- The Requiem Arrow's blessing.
+	if attackerCharacter and (attackerCharacter:GetAttribute("ArrowBlessUntil") or 0) > shopNow then
+		damage = damage * (attackerCharacter:GetAttribute("ArrowDamage") or 1)
+	end
+	if (targetCharacter:GetAttribute("ArrowBlessUntil") or 0) > shopNow then
+		damage = damage * (targetCharacter:GetAttribute("ArrowResist") or 1)
+	end
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
 
 	-- Who hit them last (kill credit for bounties and kill streaks).

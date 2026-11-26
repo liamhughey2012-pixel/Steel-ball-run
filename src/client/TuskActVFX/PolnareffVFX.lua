@@ -388,7 +388,10 @@ local function stepStance()
 				TuskAnimation.hold(character, "PNStance")
 			elseif not want and stanced[character] then
 				stanced[character] = nil
-				TuskAnimation.stopHold(character, "PNStance")
+				-- (Chariot Requiem keeps the same stance.)
+				if character:GetAttribute("TuskAct") ~= 24 then
+					TuskAnimation.stopHold(character, "PNStance")
+				end
 			end
 			-- Armour off: silver afterimages as he moves.
 			if want and (character:GetAttribute("ChariotArmorOffUntil") or 0) > serverNow and now >= (trailNext[character] or 0) then

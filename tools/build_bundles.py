@@ -152,7 +152,7 @@ PACKS = [
      "DIO (Part 3): The World, knives and a road roller."),
     ("Joseph", {"server": ["Joseph", "JosephOutfit"], "client": ["JosephVFX", "HermitPurpleStand"]},
      "Joseph Joestar (Part 3): Hermit Purple and Hamon."),
-    ("Polnareff", {"server": ["Polnareff", "PolnareffOutfit"], "client": ["PolnareffVFX", "SilverChariotStand"]},
+    ("Polnareff", {"server": ["Polnareff", "PolnareffOutfit", "ChariotRequiem"], "client": ["PolnareffVFX", "SilverChariotStand", "ChariotRequiemVFX", "ChariotRequiemStand"]},
      "Jean Pierre Polnareff (Part 3): Silver Chariot."),
 ]
 
@@ -344,6 +344,7 @@ __start("BountyService")
 __start("DataService")
 __start("WeatherService")
 __start("CorpseService", TuskService)
+__start("ArrowService", TuskService)
 __start("RaceService")
 __start("NPCService")
 __start("TestDummies")
@@ -436,7 +437,7 @@ local function __start(name)
 		warn("[Spin] " .. name .. " failed to start: " .. tostring(err))
 	end
 end
-for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient", "CorpseClient", "RaceClient", "Cutscenes", "Cinematic" }) do
+for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient", "CorpseClient", "RaceClient", "Cutscenes", "Cinematic", "RequiemClient" }) do
 	__start(name)
 end
 print("[Spin] Client ready")

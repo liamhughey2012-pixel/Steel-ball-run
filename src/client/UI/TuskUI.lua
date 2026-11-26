@@ -149,6 +149,12 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("SOUL SWAP") or has("SOUL REVERSAL") then
+		return "ghost"
+	elseif has("REQUIEM'S SLEEP") then
+		return "spiral"
+	elseif has("SHADOW STEP") then
+		return "dash"
 	elseif has("HORA HORA") then
 		return "barrage"
 	elseif has("ARMOR OFF") then

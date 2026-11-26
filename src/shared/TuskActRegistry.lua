@@ -394,6 +394,23 @@ TuskActRegistry.Acts = {
 		ClientModule = "PolnareffVFX", -- client visuals (TuskActVFX.PolnareffVFX)
 		CardTitle = "STAND  ·  SILVER CHARIOT",
 	},
+	-- SILVER CHARIOT REQUIEM: Silver Chariot pierced by the Requiem Arrow
+	-- (Polnareff only, from the arrow; back to Act 23 when he goes down).
+	[24] = {
+		Name = "SILVER CHARIOT REQUIEM",
+		Character = "Polnareff",
+		Tagline = "Requiem",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(150, 110, 220), Secondary = Color3.fromRGB(240, 200, 90) },
+		M1 = "REQUIEM STRIKES",
+		Abilities = { "SOUL SWAP", "REQUIEM'S SLEEP", "SHADOW STEP" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "SOUL REVERSAL",
+		Next = nil,
+		Module = "ChariotRequiem", -- server moves
+		ClientModule = "ChariotRequiemVFX", -- client visuals (TuskActVFX.ChariotRequiemVFX)
+		CardTitle = "STAND  ·  SILVER CHARIOT REQUIEM",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).

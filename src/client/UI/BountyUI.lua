@@ -164,6 +164,13 @@ end
 
 local function photoFor(entry, parent)
 	local photo = new("ImageLabel", { Name = "Photo", BackgroundColor3 = PAPER_DARK, BorderSizePixel = 0, ImageColor3 = Color3.fromRGB(240, 220, 190), ClipsDescendants = true }, parent)
+	if entry.Kind == "Arrow" then
+		-- The Requiem Arrow: a sketch of an arrow on a dark backdrop (no photo: nobody knows where it is).
+		photo.BackgroundColor3 = Color3.fromRGB(60, 44, 70)
+		label(photo, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.48), Size = UDim2.fromScale(0.8, 0.8), Rotation = -35, Text = "➶", Font = Enum.Font.GothamBlack, TextColor3 = GOLD })
+		label(photo, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -2), Size = UDim2.new(1, -6, 0, 14), Text = "?", Font = Enum.Font.Bangers, TextColor3 = PAPER })
+		return photo
+	end
 	if entry.Kind == "Corpse" then
 		-- The relic on a gold backdrop, or the face of whoever carries it.
 		photo.BackgroundColor3 = Color3.fromRGB(214, 178, 96)
@@ -302,7 +309,7 @@ local function showConfirm(entry)
 	new("UIStroke", { Color = WOOD_DARK, Thickness = 4 }, photo)
 	body:FindFirstChild("Who").Text = string.upper(entry.Name)
 	local stand = standOf(entry.Act)
-	if entry.Kind == "Corpse" then
+	if entry.Kind == "Corpse" or entry.Kind == "Arrow" then
 		body:FindFirstChild("Stand").Text = "GIVES: " .. string.upper(entry.Boost or "")
 		body:FindFirstChild("Stand").TextColor3 = Color3.fromRGB(150, 100, 20)
 	else
@@ -316,6 +323,7 @@ local function showConfirm(entry)
 	end
 	local minutes = math.floor((TuskConfig.Bounty and TuskConfig.Bounty.Duration or 300) / 60)
 	body:FindFirstChild("Note").Text = (current and current.Key ~= entry.Key) and ("This replaces your bounty on " .. current.Name .. ".")
+		or (entry.Kind == "Arrow" and "Nobody knows where it is: somewhere out in the desert. Find it and take it. Paid the moment you do.")
 		or (entry.Kind == "Corpse" and (entry.HeldBy and (entry.HeldBy .. " is carrying it: take them down, then take the part. Paid the moment you take it.") or "It's lying out in the desert under a pillar of light. Paid the moment you take it."))
 		or (entry.Corpse and ("Carrying the Saint's Corpse: " .. entry.Corpse .. ". Take them down and the parts drop."))
 		or (minutes .. " minutes to find them. Land the final hit to claim the reward.")
@@ -353,15 +361,18 @@ local function makePoster(entry, index)
 	corner(pin, 99)
 	new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.4, Size = UDim2.fromOffset(4, 4), Position = UDim2.fromOffset(3, 3), ZIndex = 3 }, pin)
 	local isCorpse = entry.Kind == "Corpse"
-	label(paper, { Position = UDim2.fromScale(0.06, 0.06), Size = UDim2.fromScale(0.88, 0.13), Text = isCorpse and "RETRIEVE" or "WANTED", Font = Enum.Font.Bangers, TextColor3 = isCorpse and Color3.fromRGB(150, 100, 20) or INK })
-	label(paper, { Position = UDim2.fromScale(0.1, 0.185), Size = UDim2.fromScale(0.8, 0.05), Text = isCorpse and "SAINT'S CORPSE" or "DEAD OR ALIVE", Font = Enum.Font.GothamBold, TextColor3 = INK:Lerp(PAPER, 0.25) })
+	local isArrow = entry.Kind == "Arrow"
+	label(paper, { Position = UDim2.fromScale(0.06, 0.06), Size = UDim2.fromScale(0.88, 0.13), Text = isArrow and "FIND IT" or (isCorpse and "RETRIEVE" or "WANTED"), Font = Enum.Font.Bangers, TextColor3 = isArrow and Color3.fromRGB(110, 60, 140) or (isCorpse and Color3.fromRGB(150, 100, 20) or INK) })
+	label(paper, { Position = UDim2.fromScale(0.1, 0.185), Size = UDim2.fromScale(0.8, 0.05), Text = isArrow and "LOCATION UNKNOWN" or (isCorpse and "SAINT'S CORPSE" or "DEAD OR ALIVE"), Font = Enum.Font.GothamBold, TextColor3 = INK:Lerp(PAPER, 0.25) })
 	local photo = photoFor(entry, paper)
 	photo.Position = UDim2.fromScale(0.15, 0.25)
 	photo.Size = UDim2.fromScale(0.7, 0.36)
 	new("UIStroke", { Color = INK, Thickness = 2 }, photo)
 	label(paper, { Position = UDim2.fromScale(0.05, 0.63), Size = UDim2.fromScale(0.9, 0.08), Text = isCorpse and string.upper((entry.Name:gsub("^SAINT'S CORPSE: ", ""))) or string.upper(entry.Name), TextTruncate = Enum.TextTruncate.AtEnd })
 	local stand = standOf(entry.Act)
-	if isCorpse then
+	if isArrow then
+		label(paper, { Position = UDim2.fromScale(0.05, 0.71), Size = UDim2.fromScale(0.9, 0.05), Text = "SOMEWHERE IN THE DESERT", Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(110, 60, 140) })
+	elseif isCorpse then
 		label(paper, { Position = UDim2.fromScale(0.05, 0.71), Size = UDim2.fromScale(0.9, 0.05), Text = entry.HeldBy and ("HELD BY " .. string.upper(entry.HeldBy)) or "LYING IN THE DESERT", Font = Enum.Font.GothamBold, TextColor3 = entry.HeldBy and RED or INK:Lerp(PAPER, 0.3) })
 	elseif stand then
 		label(paper, { Position = UDim2.fromScale(0.05, 0.71), Size = UDim2.fromScale(0.9, 0.05), Text = "STAND: " .. stand, Font = Enum.Font.GothamBold, TextColor3 = themeOf(entry.Act):Lerp(INK, 0.5) })
@@ -1163,6 +1174,9 @@ local function targetModel()
 	if current.Kind == "Corpse" then
 		return corpseHolder(current.Part) or corpseRelic(current.Part)
 	end
+	if current.Kind == "Arrow" then
+		return nil
+	end
 	return current.Model
 end
 
@@ -1270,6 +1284,11 @@ function BountyUI.step()
 	local sneak = TuskConfig.Sneak or {}
 	if model and model:GetAttribute("TuskSneaking") and mine and theirs and (theirs.Position - mine.Position).Magnitude > (sneak.HiddenFromBounty or 30) then
 		where = "HIDDEN"
+		marker.Enabled = false
+	end
+	-- The Requiem Arrow: never a marker or a distance.
+	if current.Kind == "Arrow" then
+		where = "SOMEWHERE IN THE DESERT"
 		marker.Enabled = false
 	end
 	-- Smoke bomb (bounty-board shop): no marker, no distance while it lasts.
