@@ -1821,6 +1821,7 @@ __modules["CorpseMoves"] = function()
 	  Ringo        SECOND HAND: everyone round him loses 6 seconds (hit, dazed)
 	  Jotaro       ORA BARRAGE: Star Platinum punches everyone round him, then a big ORA!
 	  DIO          WRYYY: drains everyone round him (he heals)
+	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -2194,6 +2195,19 @@ USE.JohnRod = function(S, player, state, character, root)
 		if tr then
 			local away = Vector3.new(tr.Position.X - center.X, 0, tr.Position.Z - center.Z)
 			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 18, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JohnRodSnap" })
+		end
+	end
+end
+
+-- HAMON BEAT: Joseph slaps the ground and a Hamon ripple runs out.
+USE.Joseph = function(S, player, state, character, root)
+	local c = TuskConfig.Joseph and TuskConfig.Joseph.CorpseHamon or { Radius = 16, Damage = 8, Stun = 1.0 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Joseph", Phase = "Hamon", Position = root.Position, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 8, Direction = Vector3.new(0, 1, 0), Position = tr.Position, Source = "JosephCorpse" })
 		end
 	end
 end
@@ -9318,7 +9332,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO, Joseph:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -9376,6 +9390,7 @@ local LOOKS = {
 	Axl = { Skin = Color3.fromRGB(230, 196, 160), Torso = Color3.fromRGB(110, 116, 128), Legs = Color3.fromRGB(46, 42, 50) },
 	DiegoAU = { Skin = Color3.fromRGB(240, 205, 170), Torso = Color3.fromRGB(110, 200, 185), Legs = Color3.fromRGB(196, 170, 110) },
 	Josuke = { Skin = Color3.fromRGB(214, 168, 130), Torso = Color3.fromRGB(240, 240, 236), Legs = Color3.fromRGB(236, 236, 232) },
+	Joseph = { Skin = Color3.fromRGB(226, 186, 150), Torso = Color3.fromRGB(40, 52, 84), Legs = Color3.fromRGB(178, 152, 110) },
 	Dio = { Skin = Color3.fromRGB(240, 210, 180), Torso = Color3.fromRGB(26, 26, 30), Legs = Color3.fromRGB(214, 164, 72) },
 	Jotaro = { Skin = Color3.fromRGB(214, 170, 130), Torso = Color3.fromRGB(36, 36, 42), Legs = Color3.fromRGB(36, 36, 42) },
 	Ringo = { Skin = Color3.fromRGB(206, 146, 100), Torso = Color3.fromRGB(240, 240, 244), Legs = Color3.fromRGB(240, 240, 244) },
@@ -11495,6 +11510,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "DioVFX", -- client visuals (TuskActVFX.DioVFX)
 		CardTitle = "STAND  ·  THE WORLD",
 	},
+	-- JOSEPH JOESTAR: HERMIT PURPLE. Thorny vines, Hamon through them, and running away.
+	[22] = {
+		Name = "HERMIT PURPLE",
+		Character = "Joseph",
+		Tagline = "Your next line is...",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(150, 80, 200), Secondary = Color3.fromRGB(255, 214, 80) },
+		M1 = "HAMON COMBO",
+		Abilities = { "HERMIT GRAB", "HAMON VINES", "NIGERUNDAYO!" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "HERMIT WEB OVERDRIVE",
+		Next = nil,
+		Module = "Joseph", -- server moves
+		ClientModule = "JosephVFX", -- client visuals (TuskActVFX.JosephVFX)
+		CardTitle = "STAND  ·  HERMIT PURPLE",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -11504,7 +11535,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -13241,7 +13272,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

@@ -180,6 +180,7 @@ TuskConfig.Roster = {
 	{ Id = "Jodio", Name = "JODIO JOESTAR", Stand = "NOVEMBER RAIN", Available = true, Color = Color3.fromRGB(90, 170, 240) },
 	{ Id = "Jotaro", Name = "JOTARO KUJO", Stand = "STAR PLATINUM", Available = true, Color = Color3.fromRGB(130, 110, 220) },
 	{ Id = "Dio", Name = "DIO", Stand = "THE WORLD", Available = true, Color = Color3.fromRGB(240, 196, 50) },
+	{ Id = "Joseph", Name = "JOSEPH JOESTAR", Stand = "HERMIT PURPLE", Available = true, Color = Color3.fromRGB(150, 80, 200) },
 }
 
 ---------------------------------------------------------------------------
@@ -252,10 +253,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 18, -- how many at once (each takes a free spot below)
+	Count = 19, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -292,6 +293,7 @@ TuskConfig.StandBots = {
 		Vector3.new(400, 0, -380), -- south-east corner
 		Vector3.new(400, 0, 130), -- east edge
 		Vector3.new(20, 0, 410), -- far north, beyond the river
+		Vector3.new(-60, 0, -420), -- far south
 	},
 	Distance = 70, -- (no map) studs from the spawn to their camp
 	Spacing = 14, -- (no map) studs between them at the camp
@@ -1240,6 +1242,43 @@ TuskConfig.Dio = {
 	CorpseDrain = { Radius = 18, Damage = 7, Stun = 0.6, HealPerDamage = 0.6 }, -- corpse move WRYYY: drains everyone round him
 }
 
+---------------------------------------------------------------------------
+-- JOSEPH JOESTAR: HERMIT PURPLE (a visitor from another world: Part 3).
+-- Thorny purple vines, Hamon through them, and running away.
+---------------------------------------------------------------------------
+TuskConfig.Joseph = {
+	M1 = { -- HAMON COMBO: Hamon-charged punches; the 4th is a SUNLIGHT YELLOW OVERDRIVE
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.6, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.6, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 8, Stun = 0.6, Knockback = 36, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	HermitGrab = { -- 1: vines shoot out, snag the first enemy in line, drag them to him, Hamon shock
+		Cooldown = 9, MissCooldown = 3, Windup = 0.2,
+		Range = 38, Width = 3.5,
+		Damage = 6, Stun = 1.0, PullTime = 0.35, StopDistance = 3.5,
+		ShockDamage = 4, -- the Hamon jolt when they arrive
+	},
+	HamonVines = { -- 2: a fan of vines in front; Hamon surges through them into everyone they touch
+		Cooldown = 10, Windup = 0.3,
+		Range = 22, Cone = 70,
+		Damage = 9, Stun = 0.9, Knockback = 14,
+	},
+	Nigerundayo = { -- 3: "NIGERUNDAYO!": run away! a burst of speed and a moment you can't be hit
+		Cooldown = 14, Time = 3.5, Speed = 1.7, IFrames = 0.5,
+	},
+	Ultimate = { -- HERMIT WEB OVERDRIVE: vines burst up and bind everyone near; Hamon pulses; then a blast
+		Windup = 0.6, Radius = 24,
+		BindTime = 2.4, Tick = 0.4, TickDamage = 2.5,
+		BlastDamage = 15, BlastStun = 1.2, BlastKnockback = 40, BlastLaunch = 16,
+	},
+	CorpseHamon = { Radius = 16, Damage = 8, Stun = 1.0 }, -- corpse move HAMON BEAT: a ripple through the ground round him
+}
+
 TuskConfig.Gyro = {
 	M1 = {
 		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,
@@ -1326,7 +1365,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }

@@ -362,6 +362,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "DioVFX", -- client visuals (TuskActVFX.DioVFX)
 		CardTitle = "STAND  ·  THE WORLD",
 	},
+	-- JOSEPH JOESTAR: HERMIT PURPLE. Thorny vines, Hamon through them, and running away.
+	[22] = {
+		Name = "HERMIT PURPLE",
+		Character = "Joseph",
+		Tagline = "Your next line is...",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(150, 80, 200), Secondary = Color3.fromRGB(255, 214, 80) },
+		M1 = "HAMON COMBO",
+		Abilities = { "HERMIT GRAB", "HAMON VINES", "NIGERUNDAYO!" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "HERMIT WEB OVERDRIVE",
+		Next = nil,
+		Module = "Joseph", -- server moves
+		ClientModule = "JosephVFX", -- client visuals (TuskActVFX.JosephVFX)
+		CardTitle = "STAND  ·  HERMIT PURPLE",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -371,7 +387,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

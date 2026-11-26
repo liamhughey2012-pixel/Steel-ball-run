@@ -149,6 +149,12 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("HERMIT GRAB") then
+		return "lasso"
+	elseif has("HAMON VINES") or has("HERMIT WEB") or has("HAMON BEAT") then
+		return "spiral"
+	elseif has("NIGERUNDAYO") then
+		return "dash"
 	elseif has("VAMPIRE DRAIN") or has("WRYYY") then
 		return "grab"
 	elseif has("STINGY EYES") then

@@ -737,6 +737,9 @@ local function onMove(data)
 		end
 	elseif who == "Jodio" then
 		-- (November Rain's cloud and crush are drawn by JodioVFX.)
+	elseif who == "Joseph" and data.Phase == "Hamon" and data.Position then
+		-- HAMON BEAT: a golden ripple across the ground.
+		ring(data.Position, data.Radius or 16, Color3.fromRGB(255, 214, 80), 0.5)
 	elseif who == "Dio" and data.Phase == "Drain" and data.Position then
 		-- WRYYY: a blood-red ring pulling in.
 		ring(data.Position, data.Radius or 18, Color3.fromRGB(190, 20, 30), 0.6)

@@ -4944,6 +4944,9 @@ local function onMove(data)
 		end
 	elseif who == "Jodio" then
 		-- (November Rain's cloud and crush are drawn by JodioVFX.)
+	elseif who == "Joseph" and data.Phase == "Hamon" and data.Position then
+		-- HAMON BEAT: a golden ripple across the ground.
+		ring(data.Position, data.Radius or 16, Color3.fromRGB(255, 214, 80), 0.5)
 	elseif who == "Dio" and data.Phase == "Drain" and data.Position then
 		-- WRYYY: a blood-red ring pulling in.
 		ring(data.Position, data.Radius or 18, Color3.fromRGB(190, 20, 30), 0.6)
@@ -6306,6 +6309,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 6) == "Joseph" then
+		starColor = Color3.fromRGB(255, 214, 80)
 	elseif source:sub(1, 3) == "Dio" then
 		starColor = Color3.fromRGB(255, 210, 70)
 	elseif source:sub(1, 6) == "Jotaro" then
@@ -7964,6 +7969,7 @@ Common.Palettes = {
 	[16] = { Main = Color3.fromRGB(150, 40, 50), Second = Color3.fromRGB(240, 196, 60), Light = Color3.fromRGB(255, 236, 200) }, -- Tooru (Wonder of U maroon + scarf gold)
 	[17] = { Main = Color3.fromRGB(90, 170, 240), Second = Color3.fromRGB(240, 120, 190), Light = Color3.fromRGB(225, 240, 255) }, -- Jodio (November Rain blue + strap pink)
 	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
+	[22] = { Main = Color3.fromRGB(150, 80, 200), Second = Color3.fromRGB(255, 214, 80), Light = Color3.fromRGB(255, 246, 200) }, -- Joseph (Hermit Purple + Hamon gold)
 	[21] = { Main = Color3.fromRGB(240, 196, 50), Second = Color3.fromRGB(60, 160, 110), Light = Color3.fromRGB(255, 244, 200) }, -- DIO (The World gold + green)
 	[20] = { Main = Color3.fromRGB(130, 110, 220), Second = Color3.fromRGB(240, 196, 70), Light = Color3.fromRGB(230, 225, 255) }, -- Jotaro (Star Platinum violet + gold)
 	[19] = { Main = Color3.fromRGB(230, 120, 170), Second = Color3.fromRGB(246, 204, 40), Light = Color3.fromRGB(255, 236, 220) }, -- Ringo (Mandom pink + watch-hand gold)
@@ -8641,6 +8647,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "DioVFX", -- client visuals (TuskActVFX.DioVFX)
 		CardTitle = "STAND  ·  THE WORLD",
 	},
+	-- JOSEPH JOESTAR: HERMIT PURPLE. Thorny vines, Hamon through them, and running away.
+	[22] = {
+		Name = "HERMIT PURPLE",
+		Character = "Joseph",
+		Tagline = "Your next line is...",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(150, 80, 200), Secondary = Color3.fromRGB(255, 214, 80) },
+		M1 = "HAMON COMBO",
+		Abilities = { "HERMIT GRAB", "HAMON VINES", "NIGERUNDAYO!" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "HERMIT WEB OVERDRIVE",
+		Next = nil,
+		Module = "Joseph", -- server moves
+		ClientModule = "JosephVFX", -- client visuals (TuskActVFX.JosephVFX)
+		CardTitle = "STAND  ·  HERMIT PURPLE",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -8650,7 +8672,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -8907,6 +8929,11 @@ TuskAnimation.Poses = {
 	RGWatch = { Root = { 0, 0, 0, 0 }, Waist = { 4, 0, 0 }, Neck = { 22, -12, 0 }, RightArm = { 70, 0, -36 }, RightElbow = { 70, 0, 0 }, LeftArm = { 74, 0, 40 }, LeftElbow = { 80, 0, 0 } },
 	-- JOTARO: tall, a hand in his pocket; pointing; a tug at his cap brim; a flick.
 	-- DIO: leaning back, one hand at his chest, the other held out; feeding; eyes; knives; ZA WARUDO.
+	-- JOSEPH: easy and ready, a finger raised ("your next line is..."); the grab; the lash; the web.
+	JOStance = { Root = { 0, 8, 0, 0 }, Waist = { -2, 8, 0 }, Neck = { 4, -8, 0 }, RightArm = { 50, 0, 18 }, RightElbow = { 80, 0, 0 }, LeftArm = { -8, 0, -12 }, LeftElbow = { 26, 0, 0 }, RightHip = { 8, 0, 0 }, LeftHip = { -6, 0, 0 } },
+	JOGrabPose = { Root = { -8, -18, 0, -0.06 }, Waist = { -10, -18, 0 }, Neck = { 4, 18, 0 }, RightArm = { 95, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -30 }, LeftElbow = { 60, 0, 0 } },
+	JOLashPose = { Root = { -4, 24, 0, -0.04 }, Waist = { -6, 28, 0 }, Neck = { 2, -24, 0 }, RightArm = { 85, 0, 60 }, RightElbow = { 10, 0, 0 }, LeftArm = { 20, 0, -30 }, LeftElbow = { 40, 0, 0 } },
+	JOWebPose = { Root = { -16, 0, 0, -0.5 }, Waist = { -20, 0, 0 }, Neck = { 14, 0, 0 }, RightArm = { 40, 0, 30 }, RightElbow = { 20, 0, 0 }, LeftArm = { 40, 0, -30 }, LeftElbow = { 20, 0, 0 }, RightHip = { 40, 0, 0 }, RightKnee = { -60, 0, 0 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -40, 0, 0 } },
 	DIOStance = { Root = { 8, 18, 0, 0 }, Waist = { 10, 16, 0 }, Neck = { -12, -12, 4 }, RightArm = { 62, 0, -32 }, RightElbow = { 105, 0, 0 }, LeftArm = { 28, 0, -58 }, LeftElbow = { 30, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { -6, 0, 0 }, LeftKnee = { -8, 0, 0 } },
 	DIODrainPose = { Root = { -10, -14, 0, -0.06 }, Waist = { -14, -14, 0 }, Neck = { 6, 14, 0 }, RightArm = { 92, 0, 6 }, RightElbow = { 22, 0, 0 }, LeftArm = { 40, 0, -40 }, LeftElbow = { 70, 0, 0 } },
 	DIOEyesPose = { Root = { -6, 0, 0, 0 }, Waist = { -8, 0, 0 }, Neck = { 10, 0, 0 }, RightArm = { 140, 0, 18 }, RightElbow = { 120, 0, 0 }, LeftArm = { 140, 0, -18 }, LeftElbow = { 120, 0, 0 } },
@@ -9119,6 +9146,13 @@ TuskAnimation.Actions = {
 	RGDraw = { { 0, "RGStance" }, { 0.12, "RGShoot", "Back", 3 }, { 0.45, "RGShoot", "Linear" }, { 0.65, "RGStance", "Sine" } },
 	RGWatchTurn = { { 0, "RGStance" }, { 0.15, "RGWatch", "Out" }, { 0.55, "RGWatch", "Linear" }, { 0.8, "RGStance", "Sine" } },
 	RGCounter = { { 0, "RGStance" }, { 0.1, "RGWatch", "Out" }, { 1.0, "RGWatch", "Linear" }, { 1.2, "RGStance", "Sine" } },
+	JO_M1_1 = { { 0, "JOStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JOStance", "Sine" } },
+	JO_M1_2 = { { 0, "JOStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "JOStance", "Sine" } },
+	JO_M1_3 = { { 0, "JOStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JOStance", "Sine" } },
+	JO_M1_4 = { { 0, "JOStance" }, { 0.08, "JOGrabPose", "Back", 5 }, { 0.32, "JOGrabPose", "Linear" }, { 0.52, "JOStance", "Sine" } },
+	JOGrab = { { 0, "JOStance" }, { 0.12, "JOGrabPose", "Back", 3 }, { 0.6, "JOGrabPose", "Linear" }, { 0.8, "JOStance", "Sine" } },
+	JOLash = { { 0, "JOStance" }, { 0.18, "JOLashPose", "Out" }, { 0.4, "JOLashPose", "Linear", 2 }, { 0.65, "JOStance", "Sine" } },
+	JOWeb = { { 0, "JOStance" }, { 0.3, "JOWebPose", "Out" }, { 1.0, "JOWebPose", "Linear", 3 }, { 1.3, "JOStance", "Sine" } },
 	DIO_M1_1 = { { 0, "DIOStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DIOStance", "Sine" } },
 	DIO_M1_2 = { { 0, "DIOStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DIOStance", "Sine" } },
 	DIO_M1_3 = { { 0, "DIOStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DIOStance", "Sine" } },
@@ -12332,6 +12366,12 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("HERMIT GRAB") then
+		return "lasso"
+	elseif has("HAMON VINES") or has("HERMIT WEB") or has("HAMON BEAT") then
+		return "spiral"
+	elseif has("NIGERUNDAYO") then
+		return "dash"
 	elseif has("VAMPIRE DRAIN") or has("WRYYY") then
 		return "grab"
 	elseif has("STINGY EYES") then
