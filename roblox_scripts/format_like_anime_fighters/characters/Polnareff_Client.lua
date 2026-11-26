@@ -16,33 +16,33 @@ __modules["ChariotRequiemStand"] = function()
 --[[
 	TuskActVFX.ChariotRequiemStand  (StarterPlayerScripts.SpinClient.TuskActVFX.ChariotRequiemStand)
 
-	SILVER CHARIOT REQUIEM: Silver Chariot after the Requiem Arrow, blocky.
-	Taller than Silver Chariot, dark and wraith-like:
-	  * near-black armour with deep purple shading and thin gold trim
-	  * a tall hooded head: a dark rounded hood round a pale, featureless
-	    MASK with two hollow eyes
-	  * the REQUIEM ARROW's golden scarab set glowing in its chest
-	  * a high collar of spikes; long thin arms with clawed hands
-	  * no legs: a long, torn ROBE hanging down in strips
-	  * a faint ring floating behind its head
+	SILVER CHARIOT REQUIEM, blocky, matched to the anime / manga art:
+	  * a tall, slim figure, glossy near-black with a navy tint, picked out
+	    with thin pale lavender SHEEN lines (collar, chest, ribs, pants)
+	  * a faceless dark head under a wide, tilted brimmed HAT: a round brim
+	    with a pale edge, a pointed front, a tall crown with a band
+	  * two big round DISC shoulder pads, each with concentric rings and a
+	    hollow centre
+	  * a belt with a row of white FANGS hanging from it
+	  * baggy pants puffed out to below the knee, tapering into boots
+	  * long arms with open clawed gloves; the REQUIEM ARROW (gold, with its
+	    scarab) held low in its right hand
 	Registered with TuskStandModels by ChariotRequiemVFX; TuskStand floats
-	it behind Polnareff (a little further and higher than Silver Chariot)
-	with a dark violet aura.
+	it behind Polnareff with a dark violet aura.
 ]]
 
 local ChariotRequiemStand = {}
 
-local DARK = Color3.fromRGB(32, 28, 44)
-local DARK_LIGHT = Color3.fromRGB(58, 48, 84)
-local PURPLE = Color3.fromRGB(90, 60, 140)
-local GOLD = Color3.fromRGB(232, 190, 80)
-local MASK = Color3.fromRGB(232, 228, 236)
-local EYE = Color3.fromRGB(14, 10, 20)
-local GLOW = Color3.fromRGB(255, 220, 120)
+local DARK = Color3.fromRGB(22, 20, 36)
+local MID = Color3.fromRGB(44, 42, 70)
+local SHEEN = Color3.fromRGB(176, 176, 218)
+local FANG = Color3.fromRGB(226, 224, 238)
+local GOLD = Color3.fromRGB(222, 182, 72)
+local SHAFT = Color3.fromRGB(150, 112, 50)
 
-ChariotRequiemStand.Aura = Color3.fromRGB(130, 80, 200)
-ChariotRequiemStand.AuraLight = Color3.fromRGB(220, 200, 255)
-ChariotRequiemStand.Offset = CFrame.new(2.6, 2.4, 3.6)
+ChariotRequiemStand.Aura = Color3.fromRGB(120, 80, 190)
+ChariotRequiemStand.AuraLight = Color3.fromRGB(214, 200, 255)
+ChariotRequiemStand.Offset = CFrame.new(2.6, 2.4, 3.4)
 
 local function newPart(model, name, size, color, material)
 	local p = Instance.new("Part")
@@ -74,93 +74,180 @@ local function box(model, parent, name, size, color, cf, material)
 end
 
 local function egg(model, parent, name, size, color, cf, material)
-	local p = box(model, parent, name, size, color, cf, material)
+	local p, w = box(model, parent, name, size, color, cf, material)
 	local mesh = Instance.new("SpecialMesh")
 	mesh.MeshType = Enum.MeshType.Sphere
 	mesh.Parent = p
+	return p, w
+end
+
+-- A cylinder whose round faces point along the local X axis of cf.
+local function disc(model, parent, name, length, d, color, cf, material)
+	local p = box(model, parent, name, Vector3.new(length, d, d), color, cf, material)
+	p.Shape = Enum.PartType.Cylinder
 	return p
 end
 
+-- A thin pale sheen line from a to b (in parent space), sat on the surface.
+local function line(model, parent, a, b, w)
+	local len = (b - a).Magnitude
+	return box(model, parent, "Sheen", Vector3.new(w, w, len + w), SHEEN, CFrame.lookAt((a + b) / 2, b))
+end
+
 function ChariotRequiemStand.build(scale)
-	local s = (scale or 1) * 1.0
+	local s = scale or 1
 	local model = Instance.new("Model")
 	model.Name = "ChariotRequiem"
 	local rig = { Joints = {} }
+	local V = function(x, y, z)
+		return Vector3.new(x, y, z) * s
+	end
+	local lw = 0.05 * s
 
-	-- A narrow, armoured chest.
-	local torso = newPart(model, "Body", Vector3.new(1.8, 2.0, 1.0) * s, DARK)
+	-- A slim chest tapering to a narrow waist.
+	local torso = newPart(model, "Body", V(1.5, 1.3, 0.82), DARK)
 	torso.Anchored = true
 	torso.Massless = false
 	torso.CFrame = CFrame.new()
 	model.PrimaryPart = torso
 	rig.Body = torso
-	local front = -0.52 * s
-	box(model, torso, "Chestplate", Vector3.new(1.6, 1.3, 0.12) * s, DARK_LIGHT, CFrame.new(0, 0.25 * s, front - 0.03 * s))
+	egg(model, torso, "Chest", V(1.7, 1.45, 0.98), DARK, CFrame.new(0, 0.12 * s, -0.04 * s))
+	box(model, torso, "Abdomen", V(1.12, 0.95, 0.72), DARK, CFrame.new(0, -1.0 * s, 0))
+	egg(model, torso, "Ribs", V(1.25, 1.0, 0.8), DARK, CFrame.new(0, -0.75 * s, -0.02 * s))
+	local f = -0.5 * s
+	-- Sheen lines: a collar curve, a V at the sternum, pec and rib curves.
+	line(model, torso, V(-0.75, 0.62, -0.34), V(-0.32, 0.4, -0.47), lw)
+	line(model, torso, V(-0.32, 0.4, -0.47), V(0.32, 0.4, -0.47), lw)
+	line(model, torso, V(0.32, 0.4, -0.47), V(0.75, 0.62, -0.34), lw)
+	line(model, torso, V(-0.2, 0.22, -0.5), V(0, 0.08, -0.51), lw)
+	line(model, torso, V(0, 0.08, -0.51), V(0.2, 0.22, -0.5), lw)
 	for _, side in ipairs({ -1, 1 }) do
-		box(model, torso, "GoldLine", Vector3.new(0.06, 1.7, 0.13) * s, GOLD, CFrame.new(side * 0.55 * s, 0, front - 0.04 * s) * CFrame.Angles(0, 0, side * -0.12), Enum.Material.Metal)
-		box(model, torso, "Rib", Vector3.new(0.5, 0.08, 0.13) * s, PURPLE, CFrame.new(side * 0.3 * s, -0.55 * s, front - 0.04 * s) * CFrame.Angles(0, 0, side * 0.3))
+		line(model, torso, V(side * 0.1, -0.22, -0.5), V(side * 0.45, -0.12, -0.46), lw)
+		line(model, torso, V(side * 0.45, -0.12, -0.46), V(side * 0.7, 0.08, -0.36), lw)
+		line(model, torso, V(side * 0.22, -0.62, -0.42), V(side * 0.5, -0.5, -0.36), lw)
 	end
-	-- The Requiem Arrow's golden scarab, set glowing in its chest.
-	local scarab = egg(model, torso, "Scarab", Vector3.new(0.5, 0.62, 0.3) * s, GOLD, CFrame.new(0, 0.35 * s, front - 0.12 * s), Enum.Material.Metal)
-	box(model, torso, "ScarabGlow", Vector3.new(0.18, 0.18, 0.05) * s, GLOW, CFrame.new(0, 0.38 * s, front - 0.27 * s) * CFrame.Angles(0, 0, math.pi / 4), Enum.Material.Neon)
-	box(model, torso, "ArrowPoint", Vector3.new(0.3, 0.3, 0.06) * s, GOLD, CFrame.new(0, -0.05 * s, front - 0.1 * s) * CFrame.Angles(0, 0, math.pi / 4), Enum.Material.Metal)
-	-- A high collar of spikes round the neck.
-	for k = -3, 3 do
-		local a = k / 3 * math.rad(80)
-		box(model, torso, "CollarSpike", Vector3.new(0.14, 0.7, 0.14) * s, k % 2 == 0 and DARK_LIGHT or DARK, CFrame.new(math.sin(a) * 0.55 * s, 1.15 * s, math.cos(a) * 0.35 * s + 0.1 * s) * CFrame.Angles(math.rad(-15) * math.cos(a), 0, -a * 0.6))
-	end
-	box(model, torso, "Neck", Vector3.new(0.45, 0.4, 0.45) * s, DARK, CFrame.new(0, 1.15 * s, 0))
+	line(model, torso, V(0, -0.45, -0.43), V(0, -1.2, -0.38), lw)
+	box(model, torso, "Neck", V(0.42, 0.4, 0.42), DARK, CFrame.new(0, 0.85 * s, 0))
+	line(model, torso, V(-0.22, 0.75, -0.2), V(0.22, 0.75, -0.2), lw)
 
-	-- The hooded head round a pale mask with hollow eyes.
-	local headBase = CFrame.new(0, 1.3 * s, 0)
-	local headOffset = CFrame.new(0, 0.62 * s, 0)
-	local head, headWeld = box(model, torso, "Head", Vector3.new(0.7, 0.9, 0.7) * s, DARK, headBase * headOffset)
+	-- A faceless dark head under a wide, tilted brimmed hat.
+	local headBase = CFrame.new(0, 1.0 * s, 0)
+	local headOffset = CFrame.new(0, 0.42 * s, 0)
+	local head, headWeld = egg(model, torso, "Head", V(0.66, 0.88, 0.72), DARK, headBase * headOffset)
 	rig.Joints.Head = { Weld = headWeld, Base = headBase, Offset = headOffset }
-	egg(model, head, "Hood", Vector3.new(1.05, 1.45, 1.05) * s, DARK, CFrame.new(0, 0.2 * s, 0.1 * s))
-	egg(model, head, "HoodPeak", Vector3.new(0.6, 0.8, 0.6) * s, DARK_LIGHT, CFrame.new(0, 0.75 * s, 0.3 * s) * CFrame.Angles(math.rad(-25), 0, 0))
-	egg(model, head, "Mask", Vector3.new(0.6, 0.8, 0.2) * s, MASK, CFrame.new(0, 0, -0.45 * s))
-	for _, side in ipairs({ -1, 1 }) do
-		egg(model, head, "EyeHole", Vector3.new(0.14, 0.2, 0.06) * s, EYE, CFrame.new(side * 0.13 * s, 0.08 * s, -0.55 * s), Enum.Material.Neon)
+	line(model, head, V(-0.14, -0.28, -0.33), V(0.14, -0.28, -0.33), lw * 0.8)
+	local hat = CFrame.new(0, 0.32 * s, 0) * CFrame.Angles(math.rad(-12), 0, math.rad(9))
+	disc(model, head, "Brim", 0.08 * s, 2.3 * s, DARK, hat * CFrame.Angles(0, 0, math.pi / 2))
+	-- The brim's pale edge.
+	local n = 22
+	for k = 0, n - 1 do
+		local a0, a1 = k / n * math.pi * 2, (k + 1) / n * math.pi * 2
+		local r = 1.13 * s
+		local pa = (hat * CFrame.new(math.cos(a0) * r, 0.05 * s, math.sin(a0) * r)).Position
+		local pb = (hat * CFrame.new(math.cos(a1) * r, 0.05 * s, math.sin(a1) * r)).Position
+		line(model, head, pa, pb, lw * 1.2)
 	end
-	box(model, head, "MaskLine", Vector3.new(0.03, 0.5, 0.05) * s, GOLD, CFrame.new(0, -0.05 * s, -0.56 * s), Enum.Material.Metal)
-	-- A faint ring floating behind its head.
-	for k = 0, 15 do
-		local ang = k / 16 * math.pi * 2
-		local seg = box(model, torso, "Halo", Vector3.new(0.08, 0.08, 0.42) * s, GOLD, CFrame.new(math.cos(ang) * 0.95 * s, 2.0 * s + math.sin(ang) * 0.95 * s, 0.75 * s) * CFrame.Angles(0, 0, ang) * CFrame.Angles(math.pi / 2, 0, 0), Enum.Material.Neon)
-		seg.Transparency = 0.35
-	end
+	-- A pointed front to the brim, dipping down.
+	local tip = hat * CFrame.new(0, -0.02 * s, -0.95 * s) * CFrame.Angles(math.rad(-10), math.pi / 4, 0)
+	box(model, head, "BrimPoint", V(0.7, 0.07, 0.7), DARK, tip)
+	line(model, head, (hat * CFrame.new(-0.42 * s, 0.03 * s, -0.95 * s)).Position, (hat * CFrame.new(0, -0.06 * s, -1.42 * s)).Position, lw * 1.2)
+	line(model, head, (hat * CFrame.new(0, -0.06 * s, -1.42 * s)).Position, (hat * CFrame.new(0.42 * s, 0.03 * s, -0.95 * s)).Position, lw * 1.2)
+	-- A tall crown with a band and a pinched front.
+	disc(model, head, "Crown", 0.65 * s, 0.98 * s, DARK, hat * CFrame.new(0, 0.35 * s, 0.05 * s) * CFrame.Angles(0, 0, math.pi / 2))
+	egg(model, head, "CrownTop", V(0.98, 0.4, 0.98), DARK, hat * CFrame.new(0, 0.68 * s, 0.05 * s))
+	disc(model, head, "HatBand", 0.12 * s, 1.03 * s, MID, hat * CFrame.new(0, 0.1 * s, 0.05 * s) * CFrame.Angles(0, 0, math.pi / 2))
+	line(model, head, (hat * CFrame.new(-0.52 * s, 0.17 * s, 0.05 * s)).Position, (hat * CFrame.new(-0.3 * s, 0.17 * s, -0.38 * s)).Position, lw)
+	line(model, head, (hat * CFrame.new(-0.3 * s, 0.17 * s, -0.38 * s)).Position, (hat * CFrame.new(0.3 * s, 0.17 * s, -0.38 * s)).Position, lw)
+	line(model, head, (hat * CFrame.new(-0.16 * s, 0.78 * s, -0.42 * s)).Position, (hat * CFrame.new(0, 0.42 * s, -0.48 * s)).Position, lw)
+	line(model, head, (hat * CFrame.new(0, 0.42 * s, -0.48 * s)).Position, (hat * CFrame.new(0.16 * s, 0.78 * s, -0.42 * s)).Position, lw)
+	line(model, head, (hat * CFrame.new(0, 0.42 * s, -0.48 * s)).Position, (hat * CFrame.new(0, 0.22 * s, -0.48 * s)).Position, lw)
 
-	-- Long thin arms with clawed hands.
+	-- Big round disc shoulder pads with ringed faces and a hollow centre.
 	for _, a in ipairs({ { "ArmL", -1 }, { "ArmR", 1 } }) do
 		local side = a[2]
-		box(model, torso, "Shoulder", Vector3.new(0.75, 0.5, 0.8) * s, DARK_LIGHT, CFrame.new(side * 1.1 * s, 0.85 * s, 0) * CFrame.Angles(0, 0, side * -0.4))
-		box(model, torso, "ShoulderTrim", Vector3.new(0.78, 0.06, 0.83) * s, GOLD, CFrame.new(side * 1.12 * s, 0.66 * s, 0) * CFrame.Angles(0, 0, side * -0.4), Enum.Material.Metal)
-		local base = CFrame.new(side * 1.15 * s, 0.5 * s, 0)
-		local offset = CFrame.new(0, -1.3 * s, 0)
-		local arm, weld = box(model, torso, a[1], Vector3.new(0.4, 2.6, 0.4) * s, DARK, base * offset)
+		local padCF = CFrame.new(side * 1.05 * s, 0.62 * s, 0) * CFrame.Angles(0, side * math.rad(-15), side * math.rad(-28))
+		local pad = disc(model, torso, "ShoulderDisc", 0.6 * s, 1.32 * s, DARK, padCF)
+		local out = side
+		disc(model, pad, "DiscRim", 0.05 * s, 1.3 * s, SHEEN, CFrame.new(out * 0.3 * s, 0, 0))
+		disc(model, pad, "DiscFace", 0.06 * s, 1.1 * s, DARK, CFrame.new(out * 0.32 * s, 0, 0))
+		disc(model, pad, "DiscRing", 0.05 * s, 0.88 * s, MID, CFrame.new(out * 0.35 * s, 0, 0))
+		disc(model, pad, "DiscInner", 0.06 * s, 0.8 * s, DARK, CFrame.new(out * 0.37 * s, 0, 0))
+		disc(model, pad, "Boss", 0.18 * s, 0.6 * s, DARK, CFrame.new(out * 0.44 * s, 0, 0))
+		disc(model, pad, "BossRim", 0.19 * s, 0.6 * s * 1.02, SHEEN, CFrame.new(out * 0.44 * s, 0, 0))
+		disc(model, pad, "BossFace", 0.2 * s, 0.5 * s, DARK, CFrame.new(out * 0.45 * s, 0, 0))
+		disc(model, pad, "Hollow", 0.21 * s, 0.24 * s, MID, CFrame.new(out * 0.46 * s, 0, 0))
+		disc(model, pad, "HollowRim", 0.22 * s, 0.14 * s, DARK, CFrame.new(out * 0.46 * s, 0, 0))
+		-- A pale edge round the back of the disc too.
+		disc(model, pad, "BackRim", 0.04 * s, 1.34 * s, SHEEN, CFrame.new(-out * 0.27 * s, 0, 0))
+
+		-- A long thin arm with an open clawed glove.
+		local base = CFrame.new(side * 1.0 * s, 0.32 * s, 0)
+		local offset = CFrame.new(0, -1.4 * s, 0)
+		local arm, weld = box(model, torso, a[1], V(0.36, 2.8, 0.36), DARK, base * offset)
 		rig.Joints[a[1]] = { Weld = weld, Base = base, Offset = offset }
-		box(model, arm, "Vambrace", Vector3.new(0.5, 0.9, 0.5) * s, DARK_LIGHT, CFrame.new(0, -0.6 * s, 0))
-		box(model, arm, "Band", Vector3.new(0.52, 0.08, 0.52) * s, GOLD, CFrame.new(0, -0.15 * s, 0), Enum.Material.Metal)
-		local hand = box(model, arm, "Hand", Vector3.new(0.4, 0.4, 0.4) * s, DARK, CFrame.new(0, -1.45 * s, 0))
-		for f = -1, 1 do
-			box(model, hand, "Claw", Vector3.new(0.08, 0.45, 0.08) * s, DARK_LIGHT, CFrame.new(f * 0.12 * s, -0.38 * s, -0.05 * s) * CFrame.Angles(math.rad(-15), 0, f * 0.15))
+		egg(model, arm, "Bicep", V(0.5, 1.25, 0.5), DARK, CFrame.new(0, 0.62 * s, 0))
+		egg(model, arm, "Forearm", V(0.48, 1.25, 0.48), DARK, CFrame.new(0, -0.6 * s, 0))
+		line(model, arm, V(side * 0.18, 1.0, -0.12), V(side * 0.22, 0.2, -0.16), lw)
+		line(model, arm, V(-0.2, -0.05, -0.18), V(0.2, -0.05, -0.18), lw)
+		line(model, arm, V(side * 0.2, -0.25, -0.15), V(side * 0.16, -1.05, -0.12), lw)
+		line(model, arm, V(-0.2, -1.12, -0.2), V(0.2, -1.12, -0.2), lw)
+		local hand = box(model, arm, "Hand", V(0.36, 0.4, 0.26), DARK, CFrame.new(0, -1.48 * s, 0))
+		for k = -1.5, 1.5 do
+			local fx = k * 0.085 * s
+			local finger = box(model, hand, "Finger", V(0.07, 0.34, 0.07), DARK, CFrame.new(fx, -0.34 * s, -0.02 * s) * CFrame.Angles(math.rad(-22), 0, k * 0.12))
+			box(model, finger, "Claw", V(0.06, 0.16, 0.06), MID, CFrame.new(0, -0.22 * s, -0.04 * s) * CFrame.Angles(math.rad(-30), 0, 0))
 		end
+		box(model, hand, "Thumb", V(0.08, 0.26, 0.08), DARK, CFrame.new(-side * 0.2 * s, -0.12 * s, -0.08 * s) * CFrame.Angles(math.rad(-30), 0, side * 0.5))
+		line(model, hand, V(-0.19, 0.18, -0.14), V(0.19, 0.18, -0.14), lw)
+
 		if a[1] == "ArmR" then
+			-- The Requiem Arrow, held low: a gold shaft, the scarab, a broad head.
+			local grip = CFrame.new(0, -0.1 * s, -0.05 * s)
+			disc(model, hand, "ArrowShaft", 2.6 * s, 0.07 * s, SHAFT, grip * CFrame.new(0, 0, -0.55 * s) * CFrame.Angles(0, math.pi / 2, 0), Enum.Material.Metal)
+			egg(model, hand, "ArrowScarab", V(0.2, 0.14, 0.28), GOLD, grip * CFrame.new(0, 0, -1.72 * s), Enum.Material.Metal)
+			box(model, hand, "ArrowHead", V(0.42, 0.05, 0.42), GOLD, grip * CFrame.new(0, 0, -2.0 * s) * CFrame.Angles(0, math.pi / 4, 0), Enum.Material.Metal)
+			box(model, hand, "ArrowBarb", V(0.5, 0.06, 0.08), GOLD, grip * CFrame.new(0, 0, -1.86 * s), Enum.Material.Metal)
+			box(model, hand, "ArrowNock", V(0.16, 0.05, 0.16), GOLD, grip * CFrame.new(0, 0, 0.72 * s) * CFrame.Angles(0, math.pi / 4, 0), Enum.Material.Metal)
 			local point = Instance.new("Attachment")
 			point.Name = "NailPoint"
-			point.Position = Vector3.new(0, -0.4 * s, 0)
+			point.Position = Vector3.new(0, -0.1 * s, -2.35 * s)
 			point.Parent = hand
 			rig.NailPoint = point
 		end
 	end
 
-	-- No legs: a long torn robe hanging in strips.
-	box(model, torso, "Waist", Vector3.new(1.4, 0.5, 0.9) * s, DARK_LIGHT, CFrame.new(0, -1.2 * s, 0))
-	box(model, torso, "WaistTrim", Vector3.new(1.45, 0.07, 0.95) * s, GOLD, CFrame.new(0, -1.0 * s, 0), Enum.Material.Metal)
-	for k = 0, 9 do
-		local a = k / 10 * math.pi * 2
-		local len = (2.2 + (k % 3) * 0.5) * s
-		box(model, torso, "Robe", Vector3.new(0.42, len, 0.08) * s / s * s, k % 2 == 0 and DARK or PURPLE, CFrame.new(math.sin(a) * 0.62 * s, -1.45 * s - len / 2, math.cos(a) * 0.45 * s) * CFrame.Angles(0, a, 0) * CFrame.Angles(math.rad(6), 0, 0))
+	-- The belt with a row of white fangs hanging from it.
+	local beltY = -1.55 * s
+	box(model, torso, "Belt", V(1.32, 0.26, 0.86), MID, CFrame.new(0, beltY, 0))
+	line(model, torso, V(-0.66, -1.42, -0.44), V(0.66, -1.42, -0.44), lw)
+	line(model, torso, V(-0.66, -1.68, -0.44), V(0.66, -1.68, -0.44), lw)
+	for k = -2, 2 do
+		box(model, torso, "BeltLoop", V(0.1, 0.32, 0.06), DARK, CFrame.new(k * 0.28 * s, beltY, -0.45 * s))
+	end
+	for k = -4, 4 do
+		local ang = k / 4 * math.rad(95)
+		local pos = CFrame.new(math.sin(ang) * 0.7 * s, beltY - 0.2 * s, -math.cos(ang) * 0.47 * s)
+		local fang = egg(model, torso, "Fang", V(0.1, 0.34, 0.1), FANG, pos * CFrame.Angles(0, -ang, 0) * CFrame.Angles(math.rad(14), 0, 0))
+		egg(model, fang, "FangTip", V(0.06, 0.18, 0.06), FANG, CFrame.new(0, -0.18 * s, 0.03 * s) * CFrame.Angles(math.rad(25), 0, 0))
+	end
+	egg(model, torso, "Hips", V(1.45, 0.7, 0.95), DARK, CFrame.new(0, -1.9 * s, 0))
+
+	-- Baggy pants puffed out to below the knee, tapering into boots.
+	for i, side in ipairs({ -1, 1 }) do
+		local base = CFrame.new(side * 0.4 * s, -2.0 * s, 0)
+		local offset = CFrame.new(0, -1.3 * s, 0)
+		local leg, weld = box(model, torso, "Leg" .. i, V(0.45, 2.6, 0.45), DARK, base * offset)
+		rig.Joints["Leg" .. i] = { Weld = weld, Base = base, Offset = offset }
+		egg(model, leg, "Pants", V(0.92, 2.15, 0.94), DARK, CFrame.new(side * 0.05 * s, 0.25 * s, 0))
+		egg(model, leg, "Knee", V(0.84, 0.9, 0.9), DARK, CFrame.new(side * 0.04 * s, -0.3 * s, -0.04 * s))
+		box(model, leg, "Cuff", V(0.5, 0.14, 0.5), MID, CFrame.new(0, -0.75 * s, 0))
+		line(model, leg, V(side * 0.25, 1.05, -0.36), V(side * 0.1, 0.25, -0.43), lw)
+		line(model, leg, V(-side * 0.18, 0.2, -0.4), V(-side * 0.05, -0.55, -0.4), lw)
+		line(model, leg, V(side * 0.32, -0.1, -0.2), V(side * 0.22, -0.65, -0.3), lw)
+		box(model, leg, "Shin", V(0.42, 0.6, 0.42), DARK, CFrame.new(0, -0.95 * s, 0))
+		box(model, leg, "Boot", V(0.48, 0.42, 0.78), DARK, CFrame.new(0, -1.22 * s, -0.13 * s))
+		egg(model, leg, "Toe", V(0.46, 0.34, 0.4), DARK, CFrame.new(0, -1.27 * s, -0.5 * s))
+		line(model, leg, V(-0.25, -0.98, -0.25), V(0.25, -0.98, -0.25), lw)
 	end
 	return model, rig
 end
