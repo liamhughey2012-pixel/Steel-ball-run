@@ -378,6 +378,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "JosephVFX", -- client visuals (TuskActVFX.JosephVFX)
 		CardTitle = "STAND  ·  HERMIT PURPLE",
 	},
+	-- JEAN PIERRE POLNAREFF: SILVER CHARIOT. A knight with a rapier.
+	[23] = {
+		Name = "SILVER CHARIOT",
+		Character = "Polnareff",
+		Tagline = "Hora hora hora",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(196, 206, 222), Secondary = Color3.fromRGB(110, 170, 230) },
+		M1 = "RAPIER COMBO",
+		Abilities = { "HORA HORA RUSH", "ARMOR OFF", "RAPIER SHOT" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "AFTERIMAGE STORM",
+		Next = nil,
+		Module = "Polnareff", -- server moves
+		ClientModule = "PolnareffVFX", -- client visuals (TuskActVFX.PolnareffVFX)
+		CardTitle = "STAND  ·  SILVER CHARIOT",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -387,7 +403,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

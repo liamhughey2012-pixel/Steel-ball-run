@@ -24,6 +24,7 @@
 	  Jotaro       ORA BARRAGE: Star Platinum punches everyone round him, then a big ORA!
 	  DIO          WRYYY: drains everyone round him (he heals)
 	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
+	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -397,6 +398,20 @@ USE.JohnRod = function(S, player, state, character, root)
 		if tr then
 			local away = Vector3.new(tr.Position.X - center.X, 0, tr.Position.Z - center.Z)
 			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 18, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JohnRodSnap" })
+		end
+	end
+end
+
+-- SWORD WHIRL: Silver Chariot spins its rapier round Polnareff.
+USE.Polnareff = function(S, player, state, character, root)
+	local c = TuskConfig.Polnareff and TuskConfig.Polnareff.CorpseWhirl or { Radius = 14, Damage = 9, Stun = 0.7 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Polnareff", Phase = "Whirl", Position = root.Position, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local away = Vector3.new(tr.Position.X - root.Position.X, 0, tr.Position.Z - root.Position.Z)
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 20, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "PolnareffCorpse" })
 		end
 	end
 end

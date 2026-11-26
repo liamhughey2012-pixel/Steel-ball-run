@@ -181,6 +181,7 @@ TuskConfig.Roster = {
 	{ Id = "Jotaro", Name = "JOTARO KUJO", Stand = "STAR PLATINUM", Available = true, Color = Color3.fromRGB(130, 110, 220) },
 	{ Id = "Dio", Name = "DIO", Stand = "THE WORLD", Available = true, Color = Color3.fromRGB(240, 196, 50) },
 	{ Id = "Joseph", Name = "JOSEPH JOESTAR", Stand = "HERMIT PURPLE", Available = true, Color = Color3.fromRGB(150, 80, 200) },
+	{ Id = "Polnareff", Name = "JEAN PIERRE POLNAREFF", Stand = "SILVER CHARIOT", Available = true, Color = Color3.fromRGB(196, 206, 222) },
 }
 
 ---------------------------------------------------------------------------
@@ -253,10 +254,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 19, -- how many at once (each takes a free spot below)
+	Count = 20, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph", "Polnareff" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -294,6 +295,7 @@ TuskConfig.StandBots = {
 		Vector3.new(400, 0, 130), -- east edge
 		Vector3.new(20, 0, 410), -- far north, beyond the river
 		Vector3.new(-60, 0, -420), -- far south
+		Vector3.new(420, 0, -120), -- east edge, south
 	},
 	Distance = 70, -- (no map) studs from the spawn to their camp
 	Spacing = 14, -- (no map) studs between them at the camp
@@ -1279,6 +1281,57 @@ TuskConfig.Joseph = {
 	CorpseHamon = { Radius = 16, Damage = 8, Stun = 1.0 }, -- corpse move HAMON BEAT: a ripple through the ground round him
 }
 
+---------------------------------------------------------------------------
+-- JEAN PIERRE POLNAREFF: SILVER CHARIOT (a visitor from another world:
+-- Part 3). A knight with a rapier; faster still with its armour off.
+---------------------------------------------------------------------------
+TuskConfig.Polnareff = {
+	M1 = { -- RAPIER COMBO: quick thrusts; the 4th is a lunge that sends them back
+		Interval = 0.24, ResetAfter = 1.1, EndLag = 0.8, Windup = 0.06,
+		HitboxSize = Vector3.new(4, 5, 8), HitboxForward = 4.2, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.4, Stun = 0.4, Knockback = 3 },
+			{ Damage = 3.4, Stun = 0.4, Knockback = 3 },
+			{ Damage = 3.8, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.55, Knockback = 40, Launch = 8, ShockwaveRadius = 6, AoeRadius = 6 },
+		},
+	},
+	M1ArmorOff = { -- the same, faster, while the armour's off
+		Interval = 0.16, ResetAfter = 1.0, EndLag = 0.55, Windup = 0.04,
+		HitboxSize = Vector3.new(4, 5, 8), HitboxForward = 4.2, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.2, Stun = 0.35, Knockback = 3 },
+			{ Damage = 3.2, Stun = 0.35, Knockback = 3 },
+			{ Damage = 3.6, Stun = 0.4, Knockback = 5 },
+			{ Damage = 6.5, Stun = 0.5, Knockback = 40, Launch = 8, ShockwaveRadius = 6, AoeRadius = 6 },
+		},
+	},
+	HoraRush = { -- 1: a storm of rapier thrusts in front of him, holding them in place
+		Cooldown = 11, Windup = 0.12,
+		Duration = 1.4, Tick = 0.08,
+		Damage = 0.9, Stun = 0.3, Knockback = 0,
+		HitboxSize = Vector3.new(5, 6, 8), HitboxForward = 4.5, MaxTargets = 4,
+		Drag = 6, WalkMultiplier = 0.6,
+		FinalDamage = 7, FinalKnockback = 55, FinalLaunch = 10, FinalStun = 0.6,
+		ShockwaveRadius = 7, ShockwaveDamage = 3,
+	},
+	ArmorOff = { -- 2: Silver Chariot sheds its armour: faster thrusts, faster feet
+		Cooldown = 20, Time = 8, Speed = 1.35,
+	},
+	RapierShot = { -- 3: the Chariot fires its blade like a bullet (instant)
+		Cooldown = 7, Windup = 0.25,
+		Range = 85, Width = 3,
+		Damage = 11, Stun = 0.6, Knockback = 18,
+	},
+	Ultimate = { -- AFTERIMAGE STORM: the Chariot splits into afterimages round the nearest enemy
+		Windup = 0.5, Range = 30, Cone = 140, -- who it surrounds (else a spot in front)
+		Radius = 10, Images = 7,
+		Duration = 2.2, Tick = 0.15, TickDamage = 1.4, TickStun = 0.25,
+		FinalDamage = 12, FinalStun = 1.0, FinalKnockback = 45, FinalLaunch = 14,
+	},
+	CorpseWhirl = { Radius = 14, Damage = 9, Stun = 0.7 }, -- corpse move SWORD WHIRL: the rapier spins round him
+}
+
 TuskConfig.Gyro = {
 	M1 = {
 		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,
@@ -1365,7 +1418,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT", Polnareff = "SWORD WHIRL",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }

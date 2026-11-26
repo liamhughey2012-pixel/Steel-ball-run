@@ -238,6 +238,11 @@ TuskAnimation.Poses = {
 	-- JOTARO: tall, a hand in his pocket; pointing; a tug at his cap brim; a flick.
 	-- DIO: leaning back, one hand at his chest, the other held out; feeding; eyes; knives; ZA WARUDO.
 	-- JOSEPH: easy and ready, a finger raised ("your next line is..."); the grab; the lash; the web.
+	-- POLNAREFF: a fencer's guard; pointing; arms flung out (armour off).
+	PNStance = { Root = { 0, -14, 0, -0.04 }, Waist = { 0, -12, 0 }, Neck = { 2, 12, 0 }, RightArm = { 60, 0, 10 }, RightElbow = { 40, 0, 0 }, LeftArm = { 20, 0, -40 }, LeftElbow = { 90, 0, 0 }, RightHip = { 14, 0, 0 }, RightKnee = { -16, 0, 0 }, LeftHip = { -12, 0, 0 }, LeftKnee = { -10, 0, 0 } },
+	PNPointPose = { Root = { 0, -18, 0, -0.04 }, Waist = { 0, -14, 0 }, Neck = { 2, 18, 0 }, RightArm = { 92, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 20, 0, -40 }, LeftElbow = { 90, 0, 0 }, RightHip = { 16, 0, 0 }, RightKnee = { -18, 0, 0 } },
+	PNThrustPose = { Root = { -8, -24, 0, -0.1, 0.5 }, Waist = { -8, -18, 0 }, Neck = { 6, 22, 0 }, RightArm = { 95, 0, 2 }, RightElbow = { 0, 0, 0 }, LeftArm = { -20, 0, -40 }, LeftElbow = { 20, 0, 0 }, RightHip = { 40, 0, 0 }, RightKnee = { -40, 0, 0 }, LeftHip = { -20, 0, 0 } },
+	PNSpreadPose = { Root = { 6, 0, 0, 0 }, Waist = { 10, 0, 0 }, Neck = { -12, 0, 0 }, RightArm = { 40, 0, 80 }, RightElbow = { 10, 0, 0 }, LeftArm = { 40, 0, -80 }, LeftElbow = { 10, 0, 0 } },
 	JOStance = { Root = { 0, 8, 0, 0 }, Waist = { -2, 8, 0 }, Neck = { 4, -8, 0 }, RightArm = { 50, 0, 18 }, RightElbow = { 80, 0, 0 }, LeftArm = { -8, 0, -12 }, LeftElbow = { 26, 0, 0 }, RightHip = { 8, 0, 0 }, LeftHip = { -6, 0, 0 } },
 	JOGrabPose = { Root = { -8, -18, 0, -0.06 }, Waist = { -10, -18, 0 }, Neck = { 4, 18, 0 }, RightArm = { 95, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -30 }, LeftElbow = { 60, 0, 0 } },
 	JOLashPose = { Root = { -4, 24, 0, -0.04 }, Waist = { -6, 28, 0 }, Neck = { 2, -24, 0 }, RightArm = { 85, 0, 60 }, RightElbow = { 10, 0, 0 }, LeftArm = { 20, 0, -30 }, LeftElbow = { 40, 0, 0 } },
@@ -454,6 +459,13 @@ TuskAnimation.Actions = {
 	RGDraw = { { 0, "RGStance" }, { 0.12, "RGShoot", "Back", 3 }, { 0.45, "RGShoot", "Linear" }, { 0.65, "RGStance", "Sine" } },
 	RGWatchTurn = { { 0, "RGStance" }, { 0.15, "RGWatch", "Out" }, { 0.55, "RGWatch", "Linear" }, { 0.8, "RGStance", "Sine" } },
 	RGCounter = { { 0, "RGStance" }, { 0.1, "RGWatch", "Out" }, { 1.0, "RGWatch", "Linear" }, { 1.2, "RGStance", "Sine" } },
+	PN_M1_1 = { { 0, "PNStance" }, { 0.05, "PNThrustPose", "Snap", 3 }, { 0.12, "PNThrustPose", "Linear" }, { 0.26, "PNStance", "Sine" } },
+	PN_M1_2 = { { 0, "PNStance" }, { 0.05, "PNPointPose", "Snap", 3 }, { 0.12, "PNPointPose", "Linear" }, { 0.26, "PNStance", "Sine" } },
+	PN_M1_3 = { { 0, "PNStance" }, { 0.05, "PNThrustPose", "Snap", 3 }, { 0.12, "PNThrustPose", "Linear" }, { 0.26, "PNStance", "Sine" } },
+	PN_M1_4 = { { 0, "PNStance" }, { 0.08, "PNThrustPose", "Back", 5 }, { 0.32, "PNThrustPose", "Linear" }, { 0.5, "PNStance", "Sine" } },
+	PNRush = { { 0, "PNStance" }, { 0.1, "PNPointPose", "Out" }, { 1.4, "PNPointPose", "Linear", 1 }, { 1.65, "PNStance", "Sine" } },
+	PNPoint = { { 0, "PNStance" }, { 0.12, "PNPointPose", "Back", 3 }, { 0.5, "PNPointPose", "Linear" }, { 0.7, "PNStance", "Sine" } },
+	PNArmorOff = { { 0, "PNStance" }, { 0.15, "PNSpreadPose", "Back", 4 }, { 0.55, "PNSpreadPose", "Linear" }, { 0.8, "PNStance", "Sine" } },
 	JO_M1_1 = { { 0, "JOStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JOStance", "Sine" } },
 	JO_M1_2 = { { 0, "JOStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "JOStance", "Sine" } },
 	JO_M1_3 = { { 0, "JOStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JOStance", "Sine" } },

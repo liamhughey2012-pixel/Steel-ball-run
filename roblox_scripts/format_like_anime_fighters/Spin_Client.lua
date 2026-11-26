@@ -4944,6 +4944,9 @@ local function onMove(data)
 		end
 	elseif who == "Jodio" then
 		-- (November Rain's cloud and crush are drawn by JodioVFX.)
+	elseif who == "Polnareff" and data.Phase == "Whirl" and data.Position then
+		-- SWORD WHIRL: a silver ring of blade.
+		ring(data.Position, data.Radius or 14, Color3.fromRGB(220, 230, 250), 0.4)
 	elseif who == "Joseph" and data.Phase == "Hamon" and data.Position then
 		-- HAMON BEAT: a golden ripple across the ground.
 		ring(data.Position, data.Radius or 16, Color3.fromRGB(255, 214, 80), 0.5)
@@ -6309,6 +6312,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 9) == "Polnareff" then
+		starColor = Color3.fromRGB(220, 232, 250)
 	elseif source:sub(1, 6) == "Joseph" then
 		starColor = Color3.fromRGB(255, 214, 80)
 	elseif source:sub(1, 3) == "Dio" then
@@ -7969,6 +7974,7 @@ Common.Palettes = {
 	[16] = { Main = Color3.fromRGB(150, 40, 50), Second = Color3.fromRGB(240, 196, 60), Light = Color3.fromRGB(255, 236, 200) }, -- Tooru (Wonder of U maroon + scarf gold)
 	[17] = { Main = Color3.fromRGB(90, 170, 240), Second = Color3.fromRGB(240, 120, 190), Light = Color3.fromRGB(225, 240, 255) }, -- Jodio (November Rain blue + strap pink)
 	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
+	[23] = { Main = Color3.fromRGB(196, 206, 222), Second = Color3.fromRGB(110, 170, 230), Light = Color3.fromRGB(240, 246, 255) }, -- Polnareff (Silver Chariot)
 	[22] = { Main = Color3.fromRGB(150, 80, 200), Second = Color3.fromRGB(255, 214, 80), Light = Color3.fromRGB(255, 246, 200) }, -- Joseph (Hermit Purple + Hamon gold)
 	[21] = { Main = Color3.fromRGB(240, 196, 50), Second = Color3.fromRGB(60, 160, 110), Light = Color3.fromRGB(255, 244, 200) }, -- DIO (The World gold + green)
 	[20] = { Main = Color3.fromRGB(130, 110, 220), Second = Color3.fromRGB(240, 196, 70), Light = Color3.fromRGB(230, 225, 255) }, -- Jotaro (Star Platinum violet + gold)
@@ -8663,6 +8669,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "JosephVFX", -- client visuals (TuskActVFX.JosephVFX)
 		CardTitle = "STAND  ·  HERMIT PURPLE",
 	},
+	-- JEAN PIERRE POLNAREFF: SILVER CHARIOT. A knight with a rapier.
+	[23] = {
+		Name = "SILVER CHARIOT",
+		Character = "Polnareff",
+		Tagline = "Hora hora hora",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(196, 206, 222), Secondary = Color3.fromRGB(110, 170, 230) },
+		M1 = "RAPIER COMBO",
+		Abilities = { "HORA HORA RUSH", "ARMOR OFF", "RAPIER SHOT" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "AFTERIMAGE STORM",
+		Next = nil,
+		Module = "Polnareff", -- server moves
+		ClientModule = "PolnareffVFX", -- client visuals (TuskActVFX.PolnareffVFX)
+		CardTitle = "STAND  ·  SILVER CHARIOT",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -8672,7 +8694,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -8930,6 +8952,11 @@ TuskAnimation.Poses = {
 	-- JOTARO: tall, a hand in his pocket; pointing; a tug at his cap brim; a flick.
 	-- DIO: leaning back, one hand at his chest, the other held out; feeding; eyes; knives; ZA WARUDO.
 	-- JOSEPH: easy and ready, a finger raised ("your next line is..."); the grab; the lash; the web.
+	-- POLNAREFF: a fencer's guard; pointing; arms flung out (armour off).
+	PNStance = { Root = { 0, -14, 0, -0.04 }, Waist = { 0, -12, 0 }, Neck = { 2, 12, 0 }, RightArm = { 60, 0, 10 }, RightElbow = { 40, 0, 0 }, LeftArm = { 20, 0, -40 }, LeftElbow = { 90, 0, 0 }, RightHip = { 14, 0, 0 }, RightKnee = { -16, 0, 0 }, LeftHip = { -12, 0, 0 }, LeftKnee = { -10, 0, 0 } },
+	PNPointPose = { Root = { 0, -18, 0, -0.04 }, Waist = { 0, -14, 0 }, Neck = { 2, 18, 0 }, RightArm = { 92, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 20, 0, -40 }, LeftElbow = { 90, 0, 0 }, RightHip = { 16, 0, 0 }, RightKnee = { -18, 0, 0 } },
+	PNThrustPose = { Root = { -8, -24, 0, -0.1, 0.5 }, Waist = { -8, -18, 0 }, Neck = { 6, 22, 0 }, RightArm = { 95, 0, 2 }, RightElbow = { 0, 0, 0 }, LeftArm = { -20, 0, -40 }, LeftElbow = { 20, 0, 0 }, RightHip = { 40, 0, 0 }, RightKnee = { -40, 0, 0 }, LeftHip = { -20, 0, 0 } },
+	PNSpreadPose = { Root = { 6, 0, 0, 0 }, Waist = { 10, 0, 0 }, Neck = { -12, 0, 0 }, RightArm = { 40, 0, 80 }, RightElbow = { 10, 0, 0 }, LeftArm = { 40, 0, -80 }, LeftElbow = { 10, 0, 0 } },
 	JOStance = { Root = { 0, 8, 0, 0 }, Waist = { -2, 8, 0 }, Neck = { 4, -8, 0 }, RightArm = { 50, 0, 18 }, RightElbow = { 80, 0, 0 }, LeftArm = { -8, 0, -12 }, LeftElbow = { 26, 0, 0 }, RightHip = { 8, 0, 0 }, LeftHip = { -6, 0, 0 } },
 	JOGrabPose = { Root = { -8, -18, 0, -0.06 }, Waist = { -10, -18, 0 }, Neck = { 4, 18, 0 }, RightArm = { 95, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -30 }, LeftElbow = { 60, 0, 0 } },
 	JOLashPose = { Root = { -4, 24, 0, -0.04 }, Waist = { -6, 28, 0 }, Neck = { 2, -24, 0 }, RightArm = { 85, 0, 60 }, RightElbow = { 10, 0, 0 }, LeftArm = { 20, 0, -30 }, LeftElbow = { 40, 0, 0 } },
@@ -9146,6 +9173,13 @@ TuskAnimation.Actions = {
 	RGDraw = { { 0, "RGStance" }, { 0.12, "RGShoot", "Back", 3 }, { 0.45, "RGShoot", "Linear" }, { 0.65, "RGStance", "Sine" } },
 	RGWatchTurn = { { 0, "RGStance" }, { 0.15, "RGWatch", "Out" }, { 0.55, "RGWatch", "Linear" }, { 0.8, "RGStance", "Sine" } },
 	RGCounter = { { 0, "RGStance" }, { 0.1, "RGWatch", "Out" }, { 1.0, "RGWatch", "Linear" }, { 1.2, "RGStance", "Sine" } },
+	PN_M1_1 = { { 0, "PNStance" }, { 0.05, "PNThrustPose", "Snap", 3 }, { 0.12, "PNThrustPose", "Linear" }, { 0.26, "PNStance", "Sine" } },
+	PN_M1_2 = { { 0, "PNStance" }, { 0.05, "PNPointPose", "Snap", 3 }, { 0.12, "PNPointPose", "Linear" }, { 0.26, "PNStance", "Sine" } },
+	PN_M1_3 = { { 0, "PNStance" }, { 0.05, "PNThrustPose", "Snap", 3 }, { 0.12, "PNThrustPose", "Linear" }, { 0.26, "PNStance", "Sine" } },
+	PN_M1_4 = { { 0, "PNStance" }, { 0.08, "PNThrustPose", "Back", 5 }, { 0.32, "PNThrustPose", "Linear" }, { 0.5, "PNStance", "Sine" } },
+	PNRush = { { 0, "PNStance" }, { 0.1, "PNPointPose", "Out" }, { 1.4, "PNPointPose", "Linear", 1 }, { 1.65, "PNStance", "Sine" } },
+	PNPoint = { { 0, "PNStance" }, { 0.12, "PNPointPose", "Back", 3 }, { 0.5, "PNPointPose", "Linear" }, { 0.7, "PNStance", "Sine" } },
+	PNArmorOff = { { 0, "PNStance" }, { 0.15, "PNSpreadPose", "Back", 4 }, { 0.55, "PNSpreadPose", "Linear" }, { 0.8, "PNStance", "Sine" } },
 	JO_M1_1 = { { 0, "JOStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JOStance", "Sine" } },
 	JO_M1_2 = { { 0, "JOStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "JOStance", "Sine" } },
 	JO_M1_3 = { { 0, "JOStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JOStance", "Sine" } },
@@ -12366,6 +12400,14 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("HORA HORA") then
+		return "barrage"
+	elseif has("ARMOR OFF") then
+		return "dash"
+	elseif has("RAPIER SHOT") or has("SWORD WHIRL") then
+		return "slash"
+	elseif has("AFTERIMAGE STORM") then
+		return "spiral"
 	elseif has("HERMIT GRAB") then
 		return "lasso"
 	elseif has("HAMON VINES") or has("HERMIT WEB") or has("HAMON BEAT") then
