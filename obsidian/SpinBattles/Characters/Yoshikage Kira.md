@@ -1,26 +1,26 @@
 ---
 tags: [character, kira, killer-queen]
 status: built
-updated: 2026-11-27
+updated: 2026-11-27 (matched to art)
 ---
 # YOSHIKAGE KIRA (KILLER QUEEN)
 A visitor from another world (Part 4). He's last in the character list. Numbers: `TuskConfig.Kira`. Act 26.
 Server moves: `TuskActs/Kira`. Outfit: `KiraOutfit`. Visuals: `TuskActVFX/KiraVFX`. Stand model: `TuskActVFX/KillerQueenStand`. Scripts: `Kira_Server` + `Kira_Client`.
-Built from memory of the anime; the user sent no reference images.
+Matched to the reference art the user sent (2026-11-27).
 
 ![[kira_killer_queen_preview.png]]
 **Kira:**
-- Neat ash-blond hair with a side part.
-- A lavender suit with notched lapels, a breast pocket and a purple pocket square.
-- A white shirt and his purple tie dotted with little white skulls, with a gold tie clip.
-- A gold watch, lavender trousers and dark brown shoes.
-- He stands calm and composed.
+- Golden wavy hair swept up and back, with a loose strand curling over his forehead, and heavy brows.
+- A pale periwinkle suit with big shoulders and wide lapels.
+- A green shirt with yellow pinstripes and a black tie covered in gold skulls.
+- A black belt with a silver buckle, a gold watch and brown shoes.
 
 **Killer Queen:**
-- A slim pink body with dark purple lines (a V at the collar, a stomach line, stripes on the arms and shins).
-- A cat-like head with pointed ears, big slanted pale eyes with slit pupils, a dark crest and a grilled mouth.
-- A studded belt with a skull buckle, a skull on the back of its right hand, and studded wristbands and collar.
-- A lilac aura.
+- A lean, muscular light-pink body: a segmented upper arm, a six-pack and a diagonal chest crease.
+- Tall pointed cat ears and big pink eyes.
+- Studded navy bracers with gold skulls, and a gold skull-in-a-sun emblem on its left upper arm.
+- A wide navy belt with silver studs and a big gold skull buckle, over navy shorts.
+- A pink aura.
 
 | Input | Move | What it does |
 |---|---|---|

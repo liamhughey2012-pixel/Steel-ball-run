@@ -3,14 +3,15 @@
 
 	Gives a character the look of Yoshikage Kira (Part 4) while they play him
 	(TuskAct 26), built from blocky parts (no catalog asset ids):
-	  * neat ash-blond hair, combed with a side part, swept back over his
-	    ears; a calm brow
-	  * a lavender SUIT jacket with notched lapels and darker edging, a
-	    breast pocket and square, buttoned front
-	  * a white shirt and his purple TIE dotted with little white SKULLS,
-	    a gold tie clip
-	  * a gold watch on his left wrist; matching lavender trousers with a
-	    crease; dark brown shoes
+	  matched to his art:
+	  * GOLDEN blond hair, thick and wavy, swept up and back with one loose
+	    strand curling down over his forehead; heavy brows
+	  * a pale periwinkle SUIT: big shoulders, wide notched lapels, a breast
+	    pocket, buttoned front
+	  * a GREEN shirt with thin yellow pinstripes
+	  * a black TIE covered in GOLD SKULLS
+	  * a black belt with a silver buckle; matching periwinkle trousers with
+	    a crease; a gold watch; dark brown shoes
 	The player's own hats/hair are hidden while they play him and come back
 	when they switch. Built on the server so every player sees it.
 ]]
@@ -21,15 +22,17 @@ local KiraOutfit = {}
 KiraOutfit.Act = 26
 
 local C = {
-	Suit = Color3.fromRGB(150, 116, 180),
-	SuitShade = Color3.fromRGB(112, 82, 142),
-	SuitLight = Color3.fromRGB(184, 156, 210),
-	Shirt = Color3.fromRGB(240, 238, 236),
-	Tie = Color3.fromRGB(96, 48, 120),
-	Skull = Color3.fromRGB(244, 240, 244),
+	Suit = Color3.fromRGB(176, 162, 226),
+	SuitShade = Color3.fromRGB(134, 118, 196),
+	SuitLight = Color3.fromRGB(204, 194, 242),
+	Shirt = Color3.fromRGB(112, 176, 124),
+	Stripe = Color3.fromRGB(226, 214, 110),
+	Tie = Color3.fromRGB(22, 26, 24),
+	Skull = Color3.fromRGB(226, 182, 60),
 	Gold = Color3.fromRGB(236, 192, 72),
-	Hair = Color3.fromRGB(222, 210, 176),
-	HairShade = Color3.fromRGB(186, 172, 136),
+	Belt = Color3.fromRGB(24, 24, 28),
+	Hair = Color3.fromRGB(238, 200, 92),
+	HairShade = Color3.fromRGB(196, 150, 54),
 	Shoe = Color3.fromRGB(70, 44, 30),
 }
 
@@ -61,19 +64,25 @@ end
 local function headPieces(head, outfit)
 	local s = head.Size.Y / 1.2
 	local w, h, d = head.Size.X / 2, head.Size.Y / 2, head.Size.Z / 2
-	-- Neat, combed hair with a side part, swept back.
-	piece(head, outfit, "HairCap", Vector3.new(head.Size.X + 0.1 * s, 0.32 * s, head.Size.Z + 0.12 * s), C.Hair, CFrame.new(0, h + 0.06 * s, 0.02 * s))
-	piece(head, outfit, "HairSweep", Vector3.new(head.Size.X * 0.62, 0.22 * s, head.Size.Z + 0.14 * s), C.Hair, CFrame.new(0.12 * s, h + 0.25 * s, 0.02 * s) * CFrame.Angles(0, 0, math.rad(-6)))
-	piece(head, outfit, "Part", Vector3.new(0.05 * s, 0.06 * s, head.Size.Z * 0.9), C.HairShade, CFrame.new(-0.22 * s, h + 0.23 * s, 0))
-	piece(head, outfit, "Fringe", Vector3.new(head.Size.X + 0.06 * s, 0.18 * s, 0.14 * s), C.Hair, CFrame.new(0.04 * s, h - 0.02 * s, -d - 0.03 * s) * CFrame.Angles(0, 0, math.rad(-5)))
-	piece(head, outfit, "HairBack", Vector3.new(head.Size.X + 0.1 * s, 0.6 * s, 0.14 * s), C.Hair, CFrame.new(0, h - 0.25 * s, d + 0.05 * s))
-	for _, side in ipairs({ -1, 1 }) do
-		piece(head, outfit, "HairSide", Vector3.new(0.1 * s, 0.45 * s, head.Size.Z * 0.75), C.Hair, CFrame.new(side * (w + 0.04 * s), h - 0.22 * s, 0.08 * s))
-		for k = 0, 1 do
-			piece(head, outfit, "Comb", Vector3.new(0.03 * s, 0.04 * s, head.Size.Z * 0.7), C.HairShade, CFrame.new(side * (w + 0.09 * s), h - 0.12 * s - k * 0.14 * s, 0.08 * s))
-		end
-		piece(head, outfit, "Brow", Vector3.new(0.26 * s, 0.05 * s, 0.05 * s), C.HairShade, CFrame.new(side * 0.22 * s, 0.14 * s, -d - 0.02 * s))
+	-- Thick golden hair, swept up and back in waves.
+	piece(head, outfit, "HairCap", Vector3.new(head.Size.X + 0.12 * s, 0.36 * s, head.Size.Z + 0.14 * s), C.Hair, CFrame.new(0, h + 0.08 * s, 0.03 * s))
+	for k = 0, 3 do
+		-- Rolls of hair, each a little further back and higher.
+		local wave = piece(head, outfit, "Wave", Vector3.new(head.Size.X + 0.1 * s - k * 0.06 * s, 0.26 * s, 0.32 * s), k % 2 == 0 and C.Hair or C.HairShade, CFrame.new(0, h + 0.28 * s + math.sin(k * 1.4) * 0.04 * s, -d + 0.12 * s + k * 0.3 * s) * CFrame.Angles(math.rad(-20 + k * 12), 0, 0))
+		wave.Shape = Enum.PartType.Cylinder
+		wave.Size = Vector3.new(head.Size.X + 0.1 * s - k * 0.06 * s, 0.3 * s, 0.3 * s)
 	end
+	piece(head, outfit, "Quiff", Vector3.new(head.Size.X * 0.9, 0.24 * s, 0.3 * s), C.Hair, CFrame.new(0.06 * s, h + 0.34 * s, -d + 0.02 * s) * CFrame.Angles(math.rad(-30), 0, math.rad(-4)))
+	piece(head, outfit, "HairBack", Vector3.new(head.Size.X + 0.12 * s, 0.7 * s, 0.18 * s), C.Hair, CFrame.new(0, h - 0.2 * s, d + 0.06 * s))
+	for _, side in ipairs({ -1, 1 }) do
+		piece(head, outfit, "HairSide", Vector3.new(0.14 * s, 0.55 * s, head.Size.Z * 0.8), C.Hair, CFrame.new(side * (w + 0.05 * s), h - 0.18 * s, 0.08 * s) * CFrame.Angles(0, 0, side * -0.08))
+		piece(head, outfit, "HairWave", Vector3.new(0.04 * s, 0.05 * s, head.Size.Z * 0.7), C.HairShade, CFrame.new(side * (w + 0.12 * s), h - 0.08 * s, 0.08 * s))
+		-- Heavy brows.
+		piece(head, outfit, "Brow", Vector3.new(0.3 * s, 0.07 * s, 0.05 * s), C.HairShade, CFrame.new(side * 0.22 * s, 0.15 * s, -d - 0.02 * s) * CFrame.Angles(0, 0, side * 0.14))
+	end
+	-- The loose strand curling down over his forehead.
+	piece(head, outfit, "Strand", Vector3.new(0.09 * s, 0.4 * s, 0.07 * s), C.Hair, CFrame.new(-0.24 * s, h - 0.05 * s, -d - 0.05 * s) * CFrame.Angles(0, 0, math.rad(18)))
+	piece(head, outfit, "StrandCurl", Vector3.new(0.09 * s, 0.2 * s, 0.07 * s), C.Hair, CFrame.new(-0.31 * s, h - 0.28 * s, -d - 0.05 * s) * CFrame.Angles(0, 0, math.rad(-25)))
 end
 
 local function body(character, outfit)
@@ -85,14 +94,26 @@ local function body(character, outfit)
 		piece(upper, outfit, "Jacket", s + Vector3.new(0.12, 0.02, 0.12), C.Suit, CFrame.new())
 		-- White shirt and the skull tie in the V of the jacket.
 		piece(upper, outfit, "Shirt", Vector3.new(0.62, s.Y * 0.62, 0.04), C.Shirt, CFrame.new(0, top - s.Y * 0.31, front - 0.07))
-		piece(upper, outfit, "Collar", Vector3.new(0.7, 0.14, 0.2), C.Shirt, CFrame.new(0, top + 0.02, front + 0.02))
-		piece(upper, outfit, "TieKnot", Vector3.new(0.16, 0.14, 0.06), C.Tie, CFrame.new(0, top - 0.08, front - 0.1))
-		piece(upper, outfit, "Tie", Vector3.new(0.2, s.Y * 0.62, 0.05), C.Tie, CFrame.new(0, top - 0.15 - s.Y * 0.31, front - 0.1))
-		for k = 0, 3 do
-			local sk = piece(upper, outfit, "TieSkull", Vector3.new(0.05, 0.08, 0.08), C.Skull, CFrame.new((k % 2 == 0 and -0.03 or 0.04), top - 0.32 - k * 0.24, front - 0.13) * CFrame.Angles(0, math.pi / 2, 0))
-			sk.Shape = Enum.PartType.Cylinder
+		for k = -3, 3 do
+			piece(upper, outfit, "Pinstripe", Vector3.new(0.025, s.Y * 0.58, 0.045), C.Stripe, CFrame.new(k * 0.08, top - s.Y * 0.31, front - 0.075))
 		end
-		piece(upper, outfit, "TieClip", Vector3.new(0.3, 0.04, 0.05), C.Gold, CFrame.new(0, top - 0.6, front - 0.135), Enum.Material.Metal)
+		piece(upper, outfit, "Collar", Vector3.new(0.72, 0.16, 0.22), C.Shirt, CFrame.new(0, top + 0.03, front + 0.02))
+		for _, side in ipairs({ -1, 1 }) do
+			piece(upper, outfit, "CollarPoint", Vector3.new(0.2, 0.14, 0.05), C.Shirt, CFrame.new(side * 0.14, top - 0.04, front - 0.09) * CFrame.Angles(0, 0, side * 0.6))
+		end
+		piece(upper, outfit, "TieKnot", Vector3.new(0.16, 0.14, 0.06), C.Tie, CFrame.new(0, top - 0.08, front - 0.1))
+		piece(upper, outfit, "Tie", Vector3.new(0.26, s.Y * 0.62, 0.05), C.Tie, CFrame.new(0, top - 0.15 - s.Y * 0.31, front - 0.1))
+		-- Gold skulls all over the tie.
+		for k = 0, 3 do
+			local x = k % 2 == 0 and -0.04 or 0.05
+			local y = top - 0.3 - k * 0.24
+			local sk = piece(upper, outfit, "TieSkull", Vector3.new(0.05, 0.13, 0.12), C.Skull, CFrame.new(x, y, front - 0.13) * CFrame.Angles(0, math.pi / 2, 0))
+			sk.Shape = Enum.PartType.Cylinder
+			piece(upper, outfit, "TieSkullJaw", Vector3.new(0.07, 0.05, 0.04), C.Skull, CFrame.new(x, y - 0.07, front - 0.13))
+			for _, e in ipairs({ -1, 1 }) do
+				piece(upper, outfit, "TieSkullEye", Vector3.new(0.025, 0.03, 0.02), C.Tie, CFrame.new(x + e * 0.025, y + 0.01, front - 0.16))
+			end
+		end
 		-- Notched lapels.
 		for _, side in ipairs({ -1, 1 }) do
 			piece(upper, outfit, "Lapel", Vector3.new(0.3, s.Y * 0.62, 0.06), C.SuitLight, CFrame.new(side * 0.38, top - s.Y * 0.32, front - 0.08) * CFrame.Angles(0, 0, side * 0.3))
@@ -100,17 +121,20 @@ local function body(character, outfit)
 		end
 		-- Breast pocket and buttons.
 		piece(upper, outfit, "Pocket", Vector3.new(0.34, 0.05, 0.05), C.SuitShade, CFrame.new(-s.X * 0.28, top - 0.45, front - 0.08))
-		piece(upper, outfit, "PocketSquare", Vector3.new(0.2, 0.1, 0.04), C.Tie, CFrame.new(-s.X * 0.28, top - 0.39, front - 0.08))
 		for k = 0, 1 do
 			local b = piece(upper, outfit, "Button", Vector3.new(0.05, 0.11, 0.11), C.SuitShade, CFrame.new(0, -s.Y * 0.32 - k * 0.22, front - 0.09) * CFrame.Angles(0, math.pi / 2, 0))
 			b.Shape = Enum.PartType.Cylinder
+		end
+		for _, side in ipairs({ -1, 1 }) do
+			piece(upper, outfit, "ShoulderPad", Vector3.new(0.5, 0.16, s.Z + 0.16), C.Suit, CFrame.new(side * (s.X / 2 - 0.1), top + 0.02, 0) * CFrame.Angles(0, 0, side * -0.12))
 		end
 		piece(upper, outfit, "Hem", Vector3.new(s.X + 0.14, 0.08, s.Z + 0.14), C.SuitShade, CFrame.new(0, -top + 0.04, 0))
 	end
 	if lower then
 		local ls = lower.Size
 		piece(lower, outfit, "Trousers", ls + Vector3.new(0.06, 0.02, 0.06), C.Suit, CFrame.new())
-		piece(lower, outfit, "Belt", Vector3.new(ls.X + 0.1, 0.12, ls.Z + 0.1), C.SuitShade, CFrame.new(0, ls.Y / 2 - 0.06, 0))
+		piece(lower, outfit, "Belt", Vector3.new(ls.X + 0.1, 0.14, ls.Z + 0.1), C.Belt, CFrame.new(0, ls.Y / 2 - 0.06, 0))
+		piece(lower, outfit, "Buckle", Vector3.new(0.2, 0.12, 0.04), Color3.fromRGB(200, 204, 214), CFrame.new(0, ls.Y / 2 - 0.06, -ls.Z / 2 - 0.07), Enum.Material.Metal)
 		-- The jacket hangs a little below the waist.
 		piece(lower, outfit, "JacketSkirt", Vector3.new(ls.X + 0.14, 0.5, ls.Z + 0.14), C.Suit, CFrame.new(0, -0.1, 0))
 		piece(lower, outfit, "JacketVent", Vector3.new(0.04, 0.45, 0.04), C.SuitShade, CFrame.new(0, -0.1, ls.Z / 2 + 0.08))
