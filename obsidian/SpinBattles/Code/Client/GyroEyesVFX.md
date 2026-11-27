@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
 | **Exact name** | `GyroEyesVFX` (capitals matter) |
 
-**What it does:** Client visuals for GYRO WITH THE SAINT'S EYES (Act 29). Blocky. his steel ball now has the corpse's EYE set into it (a white eyeball, brown iris), spinning in his hand; the other eye is in his face (GyroOutfit) STEEL BALL COMBO: as ever (green swipes) SCAN SHOT: the eye-ball flies out, green spiral trails, curving after its target; whoever it hits glows for him (seen through walls) SCAN: a green ring sweeps out; for him the world dims and every enemy in range glows green through walls for a while, each with an eye over its head EYE RICOCHET: the eye-ball bounces from enemy to enemy, a green spark at each one SCAN: GOLDEN SPIN: the target is locked (a golden rectangle round them, for him), then a golden-spinning ball streaks straight through everything to them; golden spirals hold them paralysed
+**What it does:** Client visuals for GYRO WITH THE SAINT'S EYES (Act 29). Blocky. his steel ball now has the corpse's EYE set into it (a white eyeball, brown iris), spinning in his hand; the other eye is in his face (GyroOutfit) STEEL BALL COMBO: as ever (green swipes) SCAN SHOT: the eye-ball flies out, green spiral trails, curving after its target; whoever it hits glows for him (seen through walls) SCAN: a green ring sweeps out; VIBRATION LINES ripple across the ground (a big wave, then wavy rings and jittering dashes round him for as long as it lasts); for him the world dims and every enemy in range glows green through walls, an eye over its head and small vibration rings pulsing under its feet EYE RICOCHET: the eye-ball bounces from enemy to enemy, a green spark at each one SCAN: GOLDEN SPIN: the target is locked (a golden rectangle round them, for him), then a golden-spinning ball streaks straight through everything to them; golden spirals hold them paralysed
 
 ## How to add it
 1. In Studio's Explorer, find **TuskActVFX** (StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX).
@@ -34,9 +34,11 @@ Back to [[Where To Put Code]]
 	  * STEEL BALL COMBO: as ever (green swipes)
 	  * SCAN SHOT: the eye-ball flies out, green spiral trails, curving after
 	    its target; whoever it hits glows for him (seen through walls)
-	  * SCAN: a green ring sweeps out; for him the world dims and every enemy
-	    in range glows green through walls for a while, each with an eye
-	    over its head
+	  * SCAN: a green ring sweeps out; VIBRATION LINES ripple across the
+	    ground (a big wave, then wavy rings and jittering dashes round him
+	    for as long as it lasts); for him the world dims and every enemy in
+	    range glows green through walls, an eye over its head and small
+	    vibration rings pulsing under its feet
 	  * EYE RICOCHET: the eye-ball bounces from enemy to enemy, a green spark
 	    at each one
 	  * SCAN: GOLDEN SPIN: the target is locked (a golden rectangle round
@@ -243,12 +245,85 @@ local function reveal(target, time, color)
 	end
 end
 
+-- The ground right under a point (or the point itself).
+local function groundAt(pos)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ignore = { VFXLib.Folder }
+	for _, fighter in ipairs(Fighters.list()) do
+		if fighter.Character then
+			table.insert(ignore, fighter.Character)
+		end
+	end
+	params.FilterDescendantsInstances = ignore
+	local hit = workspace:Raycast(pos + Vector3.new(0, 4, 0), Vector3.new(0, -30, 0), params)
+	return hit and hit.Position or (pos - Vector3.new(0, 3, 0))
+end
+
+-- VIBRATION LINES: a wavy ring of thin glowing lines spreading out across
+-- the ground and fading, like the vibration the eyes read.
+local function vibrationRing(center, maxR, color, duration, waves)
+	local at = groundAt(center) + Vector3.new(0, 0.08, 0)
+	local n = math.clamp(math.floor(maxR * 1.2), 20, 56)
+	waves = waves or 10
+	local segs = {}
+	for i = 1, n do
+		segs[i] = VFXLib.part({ Size = Vector3.new(0.1, 0.05, 1), Color = color, Transparency = 0.15 })
+	end
+	local phase = math.random() * 6
+	VFXLib.animate(duration or 1.2, function(a)
+		local r = 1.5 + (maxR - 1.5) * VFXLib.easeOut(a)
+		local amp = 0.25 + r * 0.025
+		local function point(k)
+			local ang = k / n * math.pi * 2
+			local rr = r + math.sin(ang * waves + phase + a * 18) * amp
+			return at + Vector3.new(math.cos(ang) * rr, 0, math.sin(ang) * rr)
+		end
+		for i, seg in ipairs(segs) do
+			local p0, p1 = point(i - 1), point(i)
+			local len = (p1 - p0).Magnitude
+			seg.Size = Vector3.new(0.12, 0.05, len + 0.05)
+			seg.CFrame = CFrame.lookAt((p0 + p1) / 2, p1)
+			seg.Transparency = 0.15 + 0.85 * a
+		end
+	end, function()
+		for _, seg in ipairs(segs) do
+			seg:Destroy()
+		end
+	end)
+end
+
+-- Short jittering dashes on the ground round a point (things the eyes "hear").
+local function vibrationDashes(center, radius, color)
+	local at = groundAt(center) + Vector3.new(0, 0.08, 0)
+	for _ = 1, 8 do
+		local ang = math.random() * math.pi * 2
+		local r = radius * (0.3 + math.random() * 0.7)
+		local p = at + Vector3.new(math.cos(ang) * r, 0, math.sin(ang) * r)
+		local dash = VFXLib.part({ Size = Vector3.new(0.08, 0.05, 0.9), CFrame = CFrame.new(p) * CFrame.Angles(0, ang + math.pi / 2, 0), Color = color, Transparency = 0.2 })
+		local base = dash.CFrame
+		VFXLib.animate(0.5, function(a)
+			dash.CFrame = base * CFrame.new((math.random() - 0.5) * 0.25, 0, 0)
+			dash.Transparency = 0.2 + 0.8 * a
+		end, function()
+			dash:Destroy()
+		end)
+	end
+end
+
 local function stepReveals()
 	local now = os.clock()
 	for target, r in pairs(reveals) do
 		if now >= r.Until or not target.Parent then
 			r.Highlight:Destroy()
 			reveals[target] = nil
+		elseif now >= (r.NextPulse or 0) then
+			-- Small vibration rings under everyone the eyes have found.
+			r.NextPulse = now + 0.8
+			local tr = target:FindFirstChild("HumanoidRootPart")
+			if tr then
+				vibrationRing(tr.Position, 5, r.Highlight.OutlineColor, 0.7, 7)
+			end
 		end
 	end
 end
@@ -330,11 +405,27 @@ local function onAbility(data)
 			end, function()
 				ring:Destroy()
 			end)
+			-- Vibration lines across the ground: a big wave out, then
+			-- smaller ones round him for as long as the scan lasts.
+			vibrationRing(data.Position, math.min(data.Range or 130, 60), GREEN, 1.4, 14)
+			vibrationDashes(data.Position, 14, GREEN)
 			if character then
 				local head = character:FindFirstChild("Head")
 				if head then
 					VFXLib.flash(head.Position, GREEN, 6, 18, 0.2)
 				end
+				local nextWave = 0
+				VFXLib.animate(data.Time or 8, function()
+					local r = Common.rootOf(character)
+					if not r or os.clock() < nextWave then
+						return
+					end
+					nextWave = os.clock() + 0.55
+					vibrationRing(r.Position, 22, GREEN, 1.0, 11)
+					if math.random() < 0.6 then
+						vibrationDashes(r.Position, 10, Color3.fromRGB(200, 255, 170))
+					end
+				end)
 			end
 			if isMe(character) then
 				for _, target in ipairs(data.Targets or {}) do
