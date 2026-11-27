@@ -42,7 +42,7 @@ While Gyro holds the corpse's **Eyes**, he puts them to use: one sits in his fac
 |---|---|---|
 | M1 | STEEL BALL COMBO | as ever |
 | 1 | SCAN SHOT | the eye-ball sees its target and curves after it (the nearest enemy in front, up to 110 studs). 11 damage, and they're revealed to him for 6 s. 7 s |
-| 2 | SCAN | every enemy within 130 studs is revealed to him through walls (green glow, an eye over their head) for 8 s, and his hits on them do +20%. **Vibration lines** ripple across the ground: one big wave, then wavy rings and jittering dashes round him while the scan lasts, and small rings pulse under everyone revealed. 14 s |
+| 2 | SCAN | every enemy within 130 studs is revealed to him through walls (green glow, an eye over their head) for 8 s, and his hits on them do +20%. **Vibration lines** ripple across the ground: five waves roll out one after another, each further and paler, then pairs of wavy rings (near and wide) and jittering dashes round him while the scan lasts, and small rings pulse under everyone revealed. 14 s |
 | 3 | EYE RICOCHET | the eye-ball bounces from enemy to enemy (up to 4), 7 each. 9 s |
 | G | SCAN: GOLDEN SPIN | the eyes find the nearest enemy anywhere within 200 studs. A golden-spinning ball goes **straight through everything** to them: 26 damage, can't be blocked, paralysed 2 s. Anyone in its path takes 10 |
 

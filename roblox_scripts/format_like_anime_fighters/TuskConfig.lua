@@ -205,7 +205,7 @@ TuskConfig.Bounty = {
 	Duration = 300, -- seconds before an accepted bounty runs out
 	MaxPosters = 12,
 	StartingCash = 250, -- every player starts with this (so they can post a bounty or shop straight away)
-	StudioCash = 5000, -- testing in Roblox Studio: start with at least this much
+	StudioCash = 0, -- testing in Roblox Studio: start with at least this much (0 = no extra)
 	-- PUT A PRICE ON THEIR HEAD: pay to raise another player's bounty. Whoever
 	-- takes them down next gets it (contract or not); it's gone when they die.
 	PlaceAmount = 100, PlaceMax = 10000,

@@ -18,6 +18,6 @@ Server: `ArrowService`. Client: `RequiemClient`. Numbers: `TuskConfig.RequiemArr
 - Blessing hooks: `ArrowBlessUntil`, `ArrowDamage` and `ArrowResist` (in CombatAdapter.dealHit), `ArrowUltGain` (in TuskService.addUlt), and the `ArrowBlessing` move modifier.
 
 - **Purple flash:** when an arrow turns up, a purple Highlight shows it through walls for `HighlightTime` (5) seconds, fading over the last second. After that it's unmarked.
-- **Starting Cash:** players start with `Bounty.StartingCash` (250), so they can post straight away. In Studio they get at least `StudioCash` (5000). Pressing POST without enough Cash, or without picking a target, now shows a banner saying why.
+- **Starting Cash:** players start with `Bounty.StartingCash` (250), so they can post straight away. `StudioCash` (now 0) can give extra Cash when testing in Studio. Pressing POST without enough Cash, or without picking a target, now shows a banner saying why.
 
 - **Look (2026-11-26):** like the Stand Arrows in the series. It has an ornate gold leaf-shaped head with barbs and a ridge, with the tip just in the sand. A gold scarab sits at its base (wing cases, legs, a violet gem). The shaft is dark wood with gold bands and a bound grip, topped by three striped feathers, with a little mound of sand and pebbles round it. Nothing glows. ![[requiem_arrow_preview.png]]

@@ -701,8 +701,16 @@ local function onAbility(data)
 			VFXLib.sound(sounds.AwakeningBuild, data.Position, 0.4, 1.6)
 			-- Vibration lines across the ground: a big wave out, then
 			-- smaller ones round him for as long as the scan lasts.
-			vibrationRing(data.Position, math.min(data.Range or 130, 60), GREEN, 1.4, 14)
-			vibrationDashes(data.Position, 14, GREEN)
+			-- Wave after wave of vibration rolling out from him, each a little
+			-- further, the later ones paler.
+			local far = math.min(data.Range or 130, 60)
+			for w = 0, 4 do
+				task.delay(w * 0.22, function()
+					local shade = GREEN:Lerp(Color3.fromRGB(220, 255, 200), w / 5)
+					vibrationRing(data.Position, far * (0.55 + w * 0.12), shade, 1.2 + w * 0.08, 12 + w * 2)
+					vibrationDashes(data.Position, 10 + w * 4, shade)
+				end)
+			end
 			if character then
 				local head = character:FindFirstChild("Head")
 				if head then
@@ -715,7 +723,9 @@ local function onAbility(data)
 						return
 					end
 					nextWave = os.clock() + 0.55
-					vibrationRing(r.Position, 22, GREEN, 1.0, 11)
+					-- Two rings at a time, one close and one wider.
+					vibrationRing(r.Position, 12, GREEN, 0.8, 9)
+					vibrationRing(r.Position, 24, Color3.fromRGB(170, 245, 130), 1.1, 12)
 					if math.random() < 0.6 then
 						vibrationDashes(r.Position, 10, Color3.fromRGB(200, 255, 170))
 					end
