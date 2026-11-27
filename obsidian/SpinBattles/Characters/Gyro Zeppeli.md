@@ -46,4 +46,12 @@ While Gyro holds the corpse's **Eyes**, he puts them to use: one sits in his fac
 | 3 | EYE RICOCHET | the eye-ball bounces from enemy to enemy (up to 4), 7 each. 9 s |
 | G | SCAN: GOLDEN SPIN | the eyes find the nearest enemy anywhere within 200 studs. A golden-spinning ball goes **straight through everything** to them: 26 damage, can't be blocked, paralysed 2 s. Anyone in its path takes 10 |
 
+**Look (polished 2026-11-27):**
+- The eye-ball in his hand has a green spin ring circling it, and the eye "looks" now and then (a thin green beam sweeps out).
+- Combo: the ball whirls on each swing, the 4th hit throws off a spin ring, and the finisher sends out a vibration ring.
+- Scan Shot: spin rings, green afterimages and a lock-on beam to the target. On a hit, spiral ripples, a vibration ring and an eye opening over the target.
+- Scan: a big eye opens over his head, green scan lines sweep his screen, and vibration lines ripple across the ground.
+- Ricochet: a fading green zigzag of its path, with a ripple and a vibration ring at each bounce.
+- Golden Spin: a turning golden rectangle locks onto the target, a gold eye opens over Gyro, a gold spin gathers in his hand and a "SCAN / GOLDEN SPIN" title appears. A golden helix unwinds along the path, and golden rectangles burst out where it hits.
+
 **Shop:** Gyro buying a Steel Ball gets a **Spin boost** for 60 s: +20% damage, +10% speed and abilities recharge 25% faster (`TuskConfig.ShopBalls.GyroBoost`).
