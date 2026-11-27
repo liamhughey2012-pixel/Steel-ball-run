@@ -6,19 +6,21 @@ updated: 2026-11-27
 # ROHAN KISHIBE (HEAVEN'S DOOR)
 A visitor from another world (Part 4). He's last in the character list. Numbers: `TuskConfig.Rohan`. Act 28.
 Server moves: `TuskActs/Rohan`. Outfit: `RohanOutfit`. Visuals: `TuskActVFX/RohanVFX`. Stand model: `TuskActVFX/HeavensDoorStand`. Scripts: `Rohan_Server` + `Rohan_Client`.
-Built from memory of the anime; the user sent no reference images.
+Matched to the reference art the user sent (2026-11-27).
 
 ![[rohan_heavens_door_preview.png]]
 **Rohan:**
-- Dark green hair under a headband with a zigzag, pen-nib top edge, and gold pen-nib earrings.
-- A short cropped light jacket with a high collar and buttons, over a bare midriff (coloured to match the avatar's skin).
-- Dark green trousers with a wide belt, brown shoes, and his G-pen in his right hand.
+- Dark green-black hair swept up into short spikes, under a lime-green headband with a zigzag top edge, and gold pen-nib earrings.
+- A purple shirt with a high mandarin collar and full sleeves, and a long lime-green vest over it, buttoned, with gold pocket flaps, hanging over his hips.
+- Purple trousers, and his slim pen in his right hand.
 - He poses with the pen raised by his face.
 
 **Heaven's Door:**
-- Small, floating at his shoulder: a boyish manga hero.
-- A top hat with a gold band and a feather, a green cape, a cream vest with a pink bow, puffy shorts and tall boots.
-- An open book floating at its side.
+- Small, floating at his shoulder, all white and gold.
+- A pale face with big green eyes and thin gold lines framing it like a mask.
+- A white hat with a wide gold-edged brim and a tall crown made of a gold lattice.
+- A long loose white coat with gold trim and big gold cuffs, white hands, and green-and-orange shoes.
+- A gold aura.
 
 | Input | Move | What it does |
 |---|---|---|
