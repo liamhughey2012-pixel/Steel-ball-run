@@ -34,3 +34,16 @@ The ball bounces off walls up to **3** times (`TuskConfig.Gyro.SteelBallThrow.Ma
 ## Stand: Ball Breaker
 Gyro's Stand is **Ball Breaker** (character card and dropdown say so; not "Steel Balls"). In his ultimate, Ball Breaker rises out of the vortex as in the owner's picture: a green ribbed figure with long arms and legs, a flat round lid head, pink bulbs all over and gold lightning crackling around it, then shatters into green, pink and gold sparks.
 ![[ball_breaker_vs_picture.png]]
+
+## With the Saint's Corpse EYES (Act 29)
+While Gyro holds the corpse's **Eyes**, he puts them to use: one sits in his face just under his right eye (white eyeball, brown iris, stitched socket), and the other is set into his steel ball. His moves change; when he loses the Eyes or goes down, he's back to Act 5. Numbers: `TuskConfig.GyroEyes`. Server: `TuskActs/GyroEyes`, which also watches for the switch. Visuals: `TuskActVFX/GyroEyesVFX`. Both are in Gyro's pack.
+
+| Input | Move | What it does |
+|---|---|---|
+| M1 | STEEL BALL COMBO | as ever |
+| 1 | SCAN SHOT | the eye-ball sees its target and curves after it (the nearest enemy in front, up to 110 studs). 11 damage, and they're revealed to him for 6 s. 7 s |
+| 2 | SCAN | every enemy within 130 studs is revealed to him through walls (green glow, an eye over their head) for 8 s, and his hits on them do +20%. 14 s |
+| 3 | EYE RICOCHET | the eye-ball bounces from enemy to enemy (up to 4), 7 each. 9 s |
+| G | SCAN: GOLDEN SPIN | the eyes find the nearest enemy anywhere within 200 studs. A golden-spinning ball goes **straight through everything** to them: 26 damage, can't be blocked, paralysed 2 s. Anyone in its path takes 10 |
+
+**Shop:** Gyro buying a Steel Ball gets a **Spin boost** for 60 s: +20% damage, +10% speed and abilities recharge 25% faster (`TuskConfig.ShopBalls.GyroBoost`).

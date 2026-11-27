@@ -63,6 +63,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = game:GetService("ReplicatedStorage").SpinShared
 local TuskConfig = require(Shared.TuskConfig)
+local TuskActRegistry = require(Shared.TuskActRegistry)
 local Net = require(Shared.Net)
 local Adapter = require(script.Parent.CombatAdapter)
 
@@ -543,6 +544,10 @@ local function buy(player, id)
 		send(player, "Denied", { Reason = "You can't use that right now." })
 		return
 	end
+	if item.Throwable and character:GetAttribute("HeldThrowable") then
+		send(player, "Denied", { Reason = "You're already carrying a ball: throw it first (X)." })
+		return
+	end
 	if item.Heal and humanoid.Health >= humanoid.MaxHealth then
 		send(player, "Denied", { Reason = "You're not hurt." })
 		return
@@ -595,6 +600,21 @@ local function buy(player, id)
 		character:SetAttribute("ShopUltUntil", t + item.Time)
 	elseif item.Id == "Compass" then
 		character:SetAttribute("CompassUntil", t + item.Time)
+	elseif item.Throwable then
+		-- In your hand until you throw it (X) or die.
+		character:SetAttribute("HeldThrowable", item.Throwable)
+		-- Gyro and a steel ball: the Spin answers him.
+		local act = character:GetAttribute("TuskAct")
+		if item.Throwable == "Steel" and act and TuskActRegistry.characterOf(act) == "Gyro" then
+			local ok, ShopBalls = pcall(function()
+				return require(script.Parent.ShopBalls)
+			end)
+			if ok and ShopBalls then
+				ShopBalls.gyroBoost(character)
+				send(player, "Bought", { Name = item.Name .. " · SPIN BOOST!", Price = price })
+				return
+			end
+		end
 	elseif item.Id == "ClearName" then
 		player:SetAttribute("KillStreak", 0)
 		player:SetAttribute("PlacedBounty", nil)

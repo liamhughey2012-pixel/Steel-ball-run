@@ -47,6 +47,7 @@ local RaceClient = require(script.RaceClient)
 local Cutscenes = require(script.Cutscenes)
 local Cinematic = require(script.Cinematic)
 local RequiemClient = require(script.RequiemClient)
+local ShopBallClient = require(script.ShopBallClient)
 
 SettingsUI.init()
 HitFX.init()
@@ -65,4 +66,5 @@ RaceClient.init()
 Cutscenes.init()
 Cinematic.init()
 RequiemClient.init()
+ShopBallClient.init()
 ```

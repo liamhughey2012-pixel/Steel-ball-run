@@ -1785,7 +1785,7 @@ showStable = function(y, cash)
 end
 
 -- The SHOP: a general store. Items are grouped under wooden section signs
--- (SUPPLIES / TONICS / GEAR / SERVICES); each is a parchment card with a
+-- (SUPPLIES / TONICS / GEAR / THROWABLES / SERVICES); each is a parchment card with a
 -- picture medallion, its name, an effect chip and a duration chip, a
 -- hanging price tag and a BUY button. Things you've bought and that are
 -- still working get a green ACTIVE ribbon and a time-left bar (buy again
@@ -1794,6 +1794,7 @@ local SHOP_SECTIONS = {
 	{ Id = "SUPPLIES", Title = "SUPPLIES", Sub = "patch up and find your way", Color = Color3.fromRGB(70, 140, 80) },
 	{ Id = "TONICS", Title = "TONICS & LUCK", Sub = "a little something for the road", Color = Color3.fromRGB(150, 70, 140) },
 	{ Id = "GEAR", Title = "GEAR", Sub = "for the hunter, and the hunted", Color = Color3.fromRGB(70, 110, 170) },
+	{ Id = "THROWABLES", Title = "THROWABLES", Sub = "one throw each · press X", Color = Color3.fromRGB(80, 150, 70) },
 	{ Id = "SERVICES", Title = "SERVICES", Sub = "the sheriff's office", Color = Color3.fromRGB(150, 60, 40) },
 }
 local shopBars = {} -- { Fill, Text, Until, Time } live time-left bars
@@ -4986,6 +4987,10 @@ local function onMove(data)
 	elseif who == "Dio" and data.Phase == "Drain" and data.Position then
 		-- WRYYY: a blood-red ring pulling in.
 		ring(data.Position, data.Radius or 18, Color3.fromRGB(190, 20, 30), 0.6)
+	elseif who == "Rohan" and data.Phase == "Books" and data.Position then
+		-- OPEN BOOK: a ring of pages.
+		ring(data.Position, data.Radius or 18, Color3.fromRGB(250, 246, 232), 0.5)
+		VFXLib.burst(data.Position + Vector3.new(0, 2, 0), { Count = 16, Color = Color3.fromRGB(250, 246, 232), Speed = 14, Lifetime = 0.6 })
 	elseif who == "Okuyasu" and data.Phase == "Pull" and data.Position then
 		-- SPACE PULL: a dark ring snapping inward.
 		ring(data.Position, data.Radius or 26, Color3.fromRGB(150, 200, 255), 0.4)
@@ -6355,6 +6360,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 5) == "Rohan" then
+		starColor = Color3.fromRGB(240, 236, 210)
 	elseif source:sub(1, 7) == "Okuyasu" then
 		starColor = Color3.fromRGB(150, 200, 255)
 	elseif source:sub(1, 4) == "Kira" then
@@ -8157,6 +8164,282 @@ return SettingsUI
 end
 
 -- ======================================================================
+-- MODULE: ShopBallClient
+-- ======================================================================
+__modules["ShopBallClient"] = function()
+--[[
+	ShopBallClient  (StarterPlayerScripts.SpinClient.ShopBallClient)
+
+	Client side of the bounty board's THROWABLES (server: ShopBalls).
+	  * whoever is holding one (character attribute "HeldThrowable") has the
+	    ball in their right hand: a green Zeppeli steel ball or an orange
+	    wrecking ball, seen by everyone
+	  * your own: a small wooden chip at the bottom of the screen, "STEEL
+	    BALL · PRESS X TO THROW"; X (or R3 on a controller) throws it at the
+	    mouse / where the camera looks
+	  * Gyro's SPIN BOOST: a faint green spiral round him while it lasts
+	  * the wrecking ball's burst: an orange blast ring and debris
+	The ball in flight is the "GyroBall" projectile, drawn by Gyro.lua.
+]]
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local Shared = nil -- (bundled: modules are inlined)
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local Net = __require("Net")
+local VFXLib = __require("VFXLib")
+local CameraFX = __require("CameraFX")
+local TuskVFX = __require("TuskVFX")
+local TuskAnimation = __require("TuskAnimation")
+local Fighters = __require("Fighters")
+local UITheme = __require("UITheme")
+local C = UITheme.C
+
+local ShopBallClient = {}
+local player = Players.LocalPlayer
+local ORANGE = Color3.fromRGB(255, 150, 60)
+local GREEN = Color3.fromRGB(110, 220, 90)
+
+local held = {} -- [character] = { Kind, Model }
+local boosts = {} -- [character] = spiral part
+local chip, chipText
+
+local function aim()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local camera = workspace.CurrentCamera
+	if not root or not camera then
+		return nil
+	end
+	local last = UserInputService:GetLastInputType()
+	if last == Enum.UserInputType.Touch or string.find(last.Name, "Gamepad") then
+		return camera.CFrame.LookVector
+	end
+	local mouse = UserInputService:GetMouseLocation()
+	local ray = camera:ViewportPointToRay(mouse.X, mouse.Y)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character, VFXLib.Folder }
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 600, params)
+	local target = hit and hit.Position or ray.Origin + ray.Direction * 600
+	local dir = target - root.Position
+	return dir.Magnitude > 1 and dir.Unit or root.CFrame.LookVector
+end
+
+local function throw()
+	local c = player.Character
+	if not c or not c:GetAttribute("HeldThrowable") then
+		return
+	end
+	Net.get("TuskRequest"):FireServer("ThrowItem", aim())
+end
+
+---------------------------------------------------------------------------
+-- The chip on your screen
+---------------------------------------------------------------------------
+local function buildChip()
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "ShopBall"
+	gui.ResetOnSpawn = false
+	gui.DisplayOrder = 6
+	chip = Instance.new("TextButton")
+	chip.AnchorPoint = Vector2.new(0.5, 1)
+	chip.Position = UDim2.new(0.5, 0, 1, -150)
+	chip.Size = UDim2.fromOffset(300, 38)
+	chip.BackgroundColor3 = C and C.Wood or Color3.fromRGB(92, 58, 32)
+	chip.AutoButtonColor = true
+	chip.Text = ""
+	chip.Visible = false
+	chip.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = chip
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(40, 24, 12)
+	stroke.Thickness = 2
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = chip
+	chipText = Instance.new("TextLabel")
+	chipText.BackgroundTransparency = 1
+	chipText.Size = UDim2.fromScale(1, 1)
+	chipText.Font = Enum.Font.Bangers
+	chipText.TextScaled = true
+	chipText.TextColor3 = Color3.fromRGB(255, 236, 200)
+	chipText.Parent = chip
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 6)
+	pad.PaddingBottom = UDim.new(0, 6)
+	pad.Parent = chipText
+	-- Tap it to throw (touch screens).
+	chip.Activated:Connect(throw)
+	gui.Parent = player:WaitForChild("PlayerGui")
+end
+
+---------------------------------------------------------------------------
+-- The ball in the hand, and Gyro's boost spiral
+---------------------------------------------------------------------------
+local function handOf(character)
+	return character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+end
+
+local function dropHeld(character)
+	local h = held[character]
+	held[character] = nil
+	if h and h.Model then
+		h.Model:Destroy()
+	end
+end
+
+-- The ball models come with Gyro's pack; without it, a plain ball.
+local models = {}
+local function ballModel(kind)
+	local name = kind == "Wrecking" and "WreckingBallModel" or "SteelBallModel"
+	if models[name] == nil then
+		local ok, mod = pcall(function()
+			if name == "WreckingBallModel" then
+				return __require("WreckingBallModel")
+			end
+			return __require("SteelBallModel")
+		end)
+		models[name] = ok and mod or false
+	end
+	if models[name] then
+		return models[name].build(0.9, false)
+	end
+	local m = Instance.new("Model")
+	local core = Instance.new("Part")
+	core.Name = "Core"
+	core.Shape = Enum.PartType.Ball
+	core.Size = Vector3.new(0.9, 0.9, 0.9)
+	core.Color = kind == "Wrecking" and ORANGE or GREEN
+	core.Material = Enum.Material.Metal
+	core.CanCollide = false
+	core.CanQuery = false
+	core.CanTouch = false
+	core.Massless = true
+	core.Parent = m
+	m.PrimaryPart = core
+	return m
+end
+
+local function showHeld(character, kind)
+	local hand = handOf(character)
+	if not hand then
+		return
+	end
+	dropHeld(character)
+	local model = ballModel(kind)
+	model.Name = "HeldBall"
+	local core = model.PrimaryPart
+	core.Anchored = false
+	model:PivotTo(hand.CFrame * CFrame.new(0, -hand.Size.Y / 2 - 0.35, 0))
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = hand
+	weld.Part1 = core
+	weld.Parent = core
+	model.Parent = VFXLib.Folder
+	held[character] = { Kind = kind, Model = model }
+end
+
+local function step()
+	local t = workspace:GetServerTimeNow()
+	for _, fighter in ipairs(Fighters.list()) do
+		local character = fighter.Character
+		if character then
+			local kind = character:GetAttribute("HeldThrowable")
+			local h = held[character]
+			if kind and (not h or h.Kind ~= kind) then
+				showHeld(character, kind)
+			elseif not kind and h then
+				dropHeld(character)
+			end
+			-- Gyro's Spin boost: a faint green spiral.
+			local boosted = (character:GetAttribute("SpinBoostUntil") or 0) > t
+			local root = character:FindFirstChild("HumanoidRootPart")
+			if boosted and root and not boosts[character] then
+				local ring = VFXLib.part({ Size = Vector3.new(0.2, 4.6, 4.6), Shape = Enum.PartType.Cylinder, Color = GREEN, Material = Enum.Material.ForceField, Transparency = 0.5 })
+				boosts[character] = ring
+			elseif not boosted and boosts[character] then
+				boosts[character]:Destroy()
+				boosts[character] = nil
+			end
+			local ring = boosts[character]
+			if ring and root then
+				ring.CFrame = root.CFrame * CFrame.new(0, -2.2 + (os.clock() * 2 % 4.4), 0) * CFrame.Angles(0, os.clock() * 4, math.pi / 2)
+			end
+		end
+	end
+	for character in pairs(held) do
+		if not character.Parent then
+			dropHeld(character)
+		end
+	end
+	for character, ring in pairs(boosts) do
+		if not character.Parent then
+			ring:Destroy()
+			boosts[character] = nil
+		end
+	end
+	-- Your own chip.
+	local mine = player.Character and player.Character:GetAttribute("HeldThrowable")
+	if chip then
+		chip.Visible = mine ~= nil
+		if mine then
+			chipText.Text = (mine == "Wrecking" and "WRECKING BALL" or "STEEL BALL") .. "  ·  PRESS X TO THROW"
+			chipText.TextColor3 = mine == "Wrecking" and Color3.fromRGB(255, 196, 140) or Color3.fromRGB(200, 255, 180)
+		end
+	end
+end
+
+function ShopBallClient.init()
+	buildChip()
+	local keys = TuskConfig.Keys.ThrowItem or { Keyboard = Enum.KeyCode.X, Gamepad = Enum.KeyCode.ButtonR3 }
+	UserInputService.InputBegan:Connect(function(input, processed)
+		if processed then
+			return
+		end
+		if input.KeyCode == keys.Keyboard or input.KeyCode == keys.Gamepad then
+			throw()
+		end
+	end)
+	Net.get("WorldFX").OnClientEvent:Connect(function(name, data)
+		if name ~= "ShopBall" or typeof(data) ~= "table" then
+			return
+		end
+		if data.Phase == "Throw" and typeof(data.Character) == "Instance" then
+			TuskAnimation.play(data.Character, "JTFlick")
+			dropHeld(data.Character)
+		elseif data.Phase == "Burst" and data.Position then
+			local r = data.Radius or 11
+			TuskVFX.CreateRotationalShockwave(CFrame.new(data.Position), { Radius = r, Layers = 3, Color = ORANGE, Color2 = Color3.fromRGB(255, 220, 120), Particles = 1, Width = 0.6 })
+			VFXLib.burst(data.Position, { Count = 20, Color = ORANGE, Speed = 26, Lifetime = 0.5, Acceleration = Vector3.new(0, -50, 0) })
+			VFXLib.flash(data.Position, Color3.fromRGB(255, 220, 160), r, 20, 0.12)
+			CameraFX.shakeAt(data.Position, 0.8, 60)
+		end
+	end)
+	local timer = 0
+	RunService.Heartbeat:Connect(function(dt)
+		timer = timer + dt
+		local ring
+		for _, r in pairs(boosts) do
+			ring = r
+		end
+		-- (Spirals move every frame; the rest is checked ten times a second.)
+		if timer >= 0.1 or ring then
+			if timer >= 0.1 then
+				timer = 0
+			end
+			step()
+		end
+	end)
+end
+
+return ShopBallClient
+end
+
+-- ======================================================================
 -- MODULE: TuskActCommon
 -- ======================================================================
 __modules["TuskActCommon"] = function()
@@ -8211,6 +8494,8 @@ Common.Palettes = {
 	[17] = { Main = Color3.fromRGB(90, 170, 240), Second = Color3.fromRGB(240, 120, 190), Light = Color3.fromRGB(225, 240, 255) }, -- Jodio (November Rain blue + strap pink)
 	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
 	[24] = { Main = Color3.fromRGB(150, 110, 220), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(230, 220, 255) }, -- Silver Chariot Requiem
+	[28] = { Main = Color3.fromRGB(120, 200, 130), Second = Color3.fromRGB(240, 226, 180), Light = Color3.fromRGB(240, 255, 236) }, -- Rohan (Heaven's Door green + paper)
+	[29] = { Main = Color3.fromRGB(120, 220, 95), Second = Color3.fromRGB(240, 196, 70), Light = Color3.fromRGB(230, 255, 210) }, -- Gyro with the Saint's Eyes (green + gold)
 	[27] = { Main = Color3.fromRGB(100, 140, 230), Second = Color3.fromRGB(236, 190, 70), Light = Color3.fromRGB(220, 236, 255) }, -- Okuyasu (The Hand blue + gold)
 	[26] = { Main = Color3.fromRGB(230, 150, 215), Second = Color3.fromRGB(120, 70, 150), Light = Color3.fromRGB(250, 228, 250) }, -- Kira (Killer Queen pink + dark purple)
 	[25] = { Main = Color3.fromRGB(240, 120, 190), Second = Color3.fromRGB(150, 220, 240), Light = Color3.fromRGB(255, 226, 242) }, -- Josuke (Part 4: Crazy Diamond pink + pale blue)
@@ -8990,6 +9275,39 @@ TuskActRegistry.Acts = {
 		ClientModule = "OkuyasuVFX", -- client visuals (TuskActVFX.OkuyasuVFX)
 		CardTitle = "STAND  ·  THE HAND",
 	},
+	-- GYRO WITH THE SAINT'S EYES (Gyro only: while he holds the corpse's Eyes;
+	-- back to Act 5 when he loses them). Act 28 is Rohan.
+	-- ROHAN KISHIBE: HEAVEN'S DOOR. People become books; he writes in them.
+	[28] = {
+		Name = "HEAVEN'S DOOR",
+		Character = "Rohan",
+		Tagline = "I refuse",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(110, 190, 120), Secondary = Color3.fromRGB(240, 220, 170) },
+		M1 = "PEN & PAGE COMBO",
+		Abilities = { "HEAVEN'S DOOR", "WRITE: CAN'T ATTACK ME", "WRITE: FLY BACKWARDS" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "EVERYONE IS A BOOK",
+		Next = nil,
+		Module = "Rohan", -- server moves
+		ClientModule = "RohanVFX", -- client visuals (TuskActVFX.RohanVFX)
+		CardTitle = "STAND  ·  HEAVEN'S DOOR",
+	},
+	[29] = {
+		Name = "BALL BREAKER: SAINT'S EYES",
+		Character = "Gyro",
+		Tagline = "The eyes see everything",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(120, 220, 95), Secondary = Color3.fromRGB(240, 196, 70) },
+		M1 = "STEEL BALL COMBO",
+		Abilities = { "SCAN SHOT", "SCAN", "EYE RICOCHET" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "SCAN: GOLDEN SPIN",
+		Next = nil,
+		Module = "GyroEyes", -- server moves
+		ClientModule = "GyroEyesVFX", -- client visuals (TuskActVFX.GyroEyesVFX)
+		CardTitle = "STAND  ·  BALL BREAKER (SAINT'S EYES)",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -8999,7 +9317,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -9289,6 +9607,11 @@ TuskAnimation.Poses = {
 	OKStance = { Root = { 0, 8, 0, -0.04 }, Waist = { -4, 6, 0 }, Neck = { 6, -6, 0 }, RightArm = { 10, 0, 22 }, RightElbow = { 30, 0, 0 }, LeftArm = { 10, 0, -22 }, LeftElbow = { 30, 0, 0 }, RightHip = { 6, 0, 6 }, LeftHip = { -4, 0, -6 } },
 	OKSwipeWind = { Root = { 0, 30, 0, 0 }, Waist = { 0, 28, 0 }, Neck = { 0, -20, 0 }, RightArm = { 140, 0, 60 }, RightElbow = { 20, 0, 0 }, LeftArm = { 20, 0, -20 }, LeftElbow = { 30, 0, 0 } },
 	OKSwipe = { Root = { 0, -30, 0, -0.1 }, Waist = { 0, -34, 0 }, Neck = { 0, 20, 0 }, RightArm = { 85, -60, -15 }, RightElbow = { 0, 0, 0 }, LeftArm = { 20, 0, -20 }, LeftElbow = { 30, 0, 0 }, LeftHip = { 16, 0, 0 }, LeftKnee = { -16, 0, 0 } },
+	-- ROHAN: posing with his pen raised by his face; quick writing strokes.
+	RohanStance = { Root = { 0, 12, 0, 0 }, Waist = { 0, 10, 4 }, Neck = { 4, -10, 0 }, RightArm = { 120, 0, 30 }, RightElbow = { 110, 0, 0 }, LeftArm = { 10, 0, -30 }, LeftElbow = { 60, 0, 0 }, RightHip = { 4, 0, 4 }, LeftHip = { -6, 0, -4 } },
+	RohanWrite = { Root = { 0, -10, 0, 0 }, Waist = { 6, -10, 0 }, Neck = { 10, 10, 0 }, RightArm = { 80, 0, 4 }, RightElbow = { 40, 0, 0 }, LeftArm = { 60, 0, -10 }, LeftElbow = { 50, 0, 0 } },
+	RohanWrite2 = { Root = { 0, -14, 0, 0 }, Waist = { 6, -14, 0 }, Neck = { 10, 14, 0 }, RightArm = { 70, 0, -16 }, RightElbow = { 30, 0, 0 }, LeftArm = { 60, 0, -10 }, LeftElbow = { 50, 0, 0 } },
+	RohanCall = { Root = { -4, 0, 0, 0.05 }, Waist = { -8, 0, 0 }, Neck = { -14, 0, 0 }, RightArm = { 150, 0, 40 }, RightElbow = { 10, 0, 0 }, LeftArm = { 100, 0, -50 }, LeftElbow = { 10, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -9547,6 +9870,13 @@ TuskAnimation.Actions = {
 	OKPull = { { 0, "OKStance" }, { 0.2, "OKSwipeWind", "Out" }, { 0.32, "OKSwipe", "Back", 3 }, { 0.55, "OKSwipe", "Linear" }, { 0.8, "OKStance", "Sine" } },
 	OKDash = { { 0, "OKStance" }, { 0.08, "OKSwipeWind", "Out" }, { 0.16, "OKSwipe", "Back", 3 }, { 0.35, "OKSwipe", "Linear" }, { 0.55, "OKStance", "Sine" } },
 	OKUlt = { { 0, "OKStance" }, { 0.25, "OKSwipeWind", "Out" }, { 0.72, "OKSwipe", "Linear" }, { 0.96, "OKSwipeWind", "Linear" }, { 1.20, "OKSwipe", "Linear" }, { 1.44, "OKSwipeWind", "Linear" }, { 1.68, "OKSwipe", "Linear" }, { 1.92, "OKSwipeWind", "Linear" }, { 2.29, "OKStance", "Sine" } },
+	RH_M1_1 = { { 0, "RohanStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "RohanStance", "Sine" } },
+	RH_M1_2 = { { 0, "RohanStance" }, { 0.07, "RohanWrite2", "Back", 4 }, { 0.15, "RohanWrite2", "Linear" }, { 0.3, "RohanStance", "Sine" } },
+	RH_M1_3 = { { 0, "RohanStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "RohanStance", "Sine" } },
+	RH_M1_4 = { { 0, "RohanStance" }, { 0.08, "JTPoint", "Back", 4 }, { 0.3, "JTPoint", "Linear" }, { 0.5, "RohanStance", "Sine" } },
+	RHOpen = { { 0, "RohanStance" }, { 0.12, "JTPoint", "Back", 3 }, { 0.5, "JTPoint", "Linear" }, { 0.7, "RohanStance", "Sine" } },
+	RHWrite = { { 0, "RohanStance" }, { 0.06, "RohanWrite", "Out" }, { 0.14, "RohanWrite2", "Linear" }, { 0.22, "RohanWrite", "Linear" }, { 0.3, "RohanWrite2", "Linear" }, { 0.5, "RohanStance", "Sine" } },
+	RHUlt = { { 0, "RohanStance" }, { 0.2, "RohanCall", "Out" }, { 0.9, "RohanCall", "Linear" }, { 1.1, "RohanWrite", "Back", 3 }, { 1.3, "RohanWrite2", "Linear" }, { 1.6, "RohanStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },
@@ -12774,6 +13104,20 @@ local function iconKind(name)
 		return "clock"
 	elseif has("ORA RUSH") or has("ORA BARRAGE") then
 		return "barrage"
+	elseif has("HEAVEN'S DOOR") or has("EVERYONE IS A BOOK") or has("OPEN BOOK") then
+		return "portal"
+	elseif has("CAN'T ATTACK") then
+		return "spiral"
+	elseif has("FLY BACKWARDS") then
+		return "dash"
+	elseif has("SCAN SHOT") then
+		return "nail"
+	elseif has("EYE RICOCHET") then
+		return "spiral"
+	elseif has("GOLDEN SPIN") then
+		return "clock"
+	elseif has("SCAN") then
+		return "portal"
 	elseif has("SPACE ERASE") or has("GREAT ERASURE") then
 		return "slash"
 	elseif has("ERASE PULL") or has("SPACE PULL") then
@@ -13880,6 +14224,8 @@ local DENY_TEXT = {
 	TooSoon = "TUSK ISN'T READY TO AWAKEN YET",
 	NeedCorpse = "FIND A SAINT'S CORPSE PART FIRST",
 	Silenced = "SILENCED: YOUR SOUND WAS PLUNDERED",
+	NoBook = "NO BOOK TO WRITE IN: OPEN ONE WITH HEAVEN'S DOOR (1)",
+	NoThrowable = "NOTHING TO THROW: BUY A BALL ON THE BOUNTY BOARD",
 }
 
 -- Wobble a card (denied input).
@@ -16618,7 +16964,7 @@ local function __start(name)
 		warn("[Spin] " .. name .. " failed to start: " .. tostring(err))
 	end
 end
-for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient", "CorpseClient", "RaceClient", "Cutscenes", "Cinematic", "RequiemClient" }) do
+for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient", "CorpseClient", "RaceClient", "Cutscenes", "Cinematic", "RequiemClient", "ShopBallClient" }) do
 	__start(name)
 end
 print("[Spin] Client ready")

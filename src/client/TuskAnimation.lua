@@ -270,6 +270,11 @@ TuskAnimation.Poses = {
 	OKStance = { Root = { 0, 8, 0, -0.04 }, Waist = { -4, 6, 0 }, Neck = { 6, -6, 0 }, RightArm = { 10, 0, 22 }, RightElbow = { 30, 0, 0 }, LeftArm = { 10, 0, -22 }, LeftElbow = { 30, 0, 0 }, RightHip = { 6, 0, 6 }, LeftHip = { -4, 0, -6 } },
 	OKSwipeWind = { Root = { 0, 30, 0, 0 }, Waist = { 0, 28, 0 }, Neck = { 0, -20, 0 }, RightArm = { 140, 0, 60 }, RightElbow = { 20, 0, 0 }, LeftArm = { 20, 0, -20 }, LeftElbow = { 30, 0, 0 } },
 	OKSwipe = { Root = { 0, -30, 0, -0.1 }, Waist = { 0, -34, 0 }, Neck = { 0, 20, 0 }, RightArm = { 85, -60, -15 }, RightElbow = { 0, 0, 0 }, LeftArm = { 20, 0, -20 }, LeftElbow = { 30, 0, 0 }, LeftHip = { 16, 0, 0 }, LeftKnee = { -16, 0, 0 } },
+	-- ROHAN: posing with his pen raised by his face; quick writing strokes.
+	RohanStance = { Root = { 0, 12, 0, 0 }, Waist = { 0, 10, 4 }, Neck = { 4, -10, 0 }, RightArm = { 120, 0, 30 }, RightElbow = { 110, 0, 0 }, LeftArm = { 10, 0, -30 }, LeftElbow = { 60, 0, 0 }, RightHip = { 4, 0, 4 }, LeftHip = { -6, 0, -4 } },
+	RohanWrite = { Root = { 0, -10, 0, 0 }, Waist = { 6, -10, 0 }, Neck = { 10, 10, 0 }, RightArm = { 80, 0, 4 }, RightElbow = { 40, 0, 0 }, LeftArm = { 60, 0, -10 }, LeftElbow = { 50, 0, 0 } },
+	RohanWrite2 = { Root = { 0, -14, 0, 0 }, Waist = { 6, -14, 0 }, Neck = { 10, 14, 0 }, RightArm = { 70, 0, -16 }, RightElbow = { 30, 0, 0 }, LeftArm = { 60, 0, -10 }, LeftElbow = { 50, 0, 0 } },
+	RohanCall = { Root = { -4, 0, 0, 0.05 }, Waist = { -8, 0, 0 }, Neck = { -14, 0, 0 }, RightArm = { 150, 0, 40 }, RightElbow = { 10, 0, 0 }, LeftArm = { 100, 0, -50 }, LeftElbow = { 10, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -528,6 +533,13 @@ TuskAnimation.Actions = {
 	OKPull = { { 0, "OKStance" }, { 0.2, "OKSwipeWind", "Out" }, { 0.32, "OKSwipe", "Back", 3 }, { 0.55, "OKSwipe", "Linear" }, { 0.8, "OKStance", "Sine" } },
 	OKDash = { { 0, "OKStance" }, { 0.08, "OKSwipeWind", "Out" }, { 0.16, "OKSwipe", "Back", 3 }, { 0.35, "OKSwipe", "Linear" }, { 0.55, "OKStance", "Sine" } },
 	OKUlt = { { 0, "OKStance" }, { 0.25, "OKSwipeWind", "Out" }, { 0.72, "OKSwipe", "Linear" }, { 0.96, "OKSwipeWind", "Linear" }, { 1.20, "OKSwipe", "Linear" }, { 1.44, "OKSwipeWind", "Linear" }, { 1.68, "OKSwipe", "Linear" }, { 1.92, "OKSwipeWind", "Linear" }, { 2.29, "OKStance", "Sine" } },
+	RH_M1_1 = { { 0, "RohanStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "RohanStance", "Sine" } },
+	RH_M1_2 = { { 0, "RohanStance" }, { 0.07, "RohanWrite2", "Back", 4 }, { 0.15, "RohanWrite2", "Linear" }, { 0.3, "RohanStance", "Sine" } },
+	RH_M1_3 = { { 0, "RohanStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "RohanStance", "Sine" } },
+	RH_M1_4 = { { 0, "RohanStance" }, { 0.08, "JTPoint", "Back", 4 }, { 0.3, "JTPoint", "Linear" }, { 0.5, "RohanStance", "Sine" } },
+	RHOpen = { { 0, "RohanStance" }, { 0.12, "JTPoint", "Back", 3 }, { 0.5, "JTPoint", "Linear" }, { 0.7, "RohanStance", "Sine" } },
+	RHWrite = { { 0, "RohanStance" }, { 0.06, "RohanWrite", "Out" }, { 0.14, "RohanWrite2", "Linear" }, { 0.22, "RohanWrite", "Linear" }, { 0.3, "RohanWrite2", "Linear" }, { 0.5, "RohanStance", "Sine" } },
+	RHUlt = { { 0, "RohanStance" }, { 0.2, "RohanCall", "Out" }, { 0.9, "RohanCall", "Linear" }, { 1.1, "RohanWrite", "Back", 3 }, { 1.3, "RohanWrite2", "Linear" }, { 1.6, "RohanStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },

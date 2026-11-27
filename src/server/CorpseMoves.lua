@@ -25,6 +25,7 @@
 	  DIO          WRYYY: drains everyone round him (he heals)
 	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
 	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
+	  Rohan        OPEN BOOK: everyone round him flaps open like a book for a moment
 	  Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him
 	  Kira         CONTACT DETONATION: Killer Queen blows up the ground round him
 	  Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA!
@@ -477,6 +478,21 @@ USE.Jotaro = function(S, player, state, character, root)
 			end
 		end)
 	end
+end
+
+-- OPEN BOOK: Heaven's Door opens everyone round Rohan like a book for a
+-- moment (stuck, hurt).
+USE.Rohan = function(S, player, state, character, root)
+	local c = TuskConfig.Rohan and TuskConfig.Rohan.CorpseBook or { Radius = 18, Damage = 7, Stun = 1.2 }
+	S.lock(state, 0.4)
+	local hit = {}
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Position = tr.Position, Source = "RohanCorpse", Unblockable = true }) then
+			table.insert(hit, target)
+		end
+	end
+	fx({ Character = character, Who = "Rohan", Phase = "Books", Position = root.Position, Radius = c.Radius, Targets = hit })
 end
 
 -- SPACE PULL: The Hand erases the space round Okuyasu: everyone near is

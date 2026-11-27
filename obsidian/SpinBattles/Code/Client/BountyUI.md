@@ -635,7 +635,7 @@ showStable = function(y, cash)
 end
 
 -- The SHOP: a general store. Items are grouped under wooden section signs
--- (SUPPLIES / TONICS / GEAR / SERVICES); each is a parchment card with a
+-- (SUPPLIES / TONICS / GEAR / THROWABLES / SERVICES); each is a parchment card with a
 -- picture medallion, its name, an effect chip and a duration chip, a
 -- hanging price tag and a BUY button. Things you've bought and that are
 -- still working get a green ACTIVE ribbon and a time-left bar (buy again
@@ -644,6 +644,7 @@ local SHOP_SECTIONS = {
 	{ Id = "SUPPLIES", Title = "SUPPLIES", Sub = "patch up and find your way", Color = Color3.fromRGB(70, 140, 80) },
 	{ Id = "TONICS", Title = "TONICS & LUCK", Sub = "a little something for the road", Color = Color3.fromRGB(150, 70, 140) },
 	{ Id = "GEAR", Title = "GEAR", Sub = "for the hunter, and the hunted", Color = Color3.fromRGB(70, 110, 170) },
+	{ Id = "THROWABLES", Title = "THROWABLES", Sub = "one throw each · press X", Color = Color3.fromRGB(80, 150, 70) },
 	{ Id = "SERVICES", Title = "SERVICES", Sub = "the sheriff's office", Color = Color3.fromRGB(150, 60, 40) },
 }
 local shopBars = {} -- { Fill, Text, Until, Time } live time-left bars

@@ -179,6 +179,20 @@ local function iconKind(name)
 		return "clock"
 	elseif has("ORA RUSH") or has("ORA BARRAGE") then
 		return "barrage"
+	elseif has("HEAVEN'S DOOR") or has("EVERYONE IS A BOOK") or has("OPEN BOOK") then
+		return "portal"
+	elseif has("CAN'T ATTACK") then
+		return "spiral"
+	elseif has("FLY BACKWARDS") then
+		return "dash"
+	elseif has("SCAN SHOT") then
+		return "nail"
+	elseif has("EYE RICOCHET") then
+		return "spiral"
+	elseif has("GOLDEN SPIN") then
+		return "clock"
+	elseif has("SCAN") then
+		return "portal"
 	elseif has("SPACE ERASE") or has("GREAT ERASURE") then
 		return "slash"
 	elseif has("ERASE PULL") or has("SPACE PULL") then
@@ -1285,6 +1299,8 @@ local DENY_TEXT = {
 	TooSoon = "TUSK ISN'T READY TO AWAKEN YET",
 	NeedCorpse = "FIND A SAINT'S CORPSE PART FIRST",
 	Silenced = "SILENCED: YOUR SOUND WAS PLUNDERED",
+	NoBook = "NO BOOK TO WRITE IN: OPEN ONE WITH HEAVEN'S DOOR (1)",
+	NoThrowable = "NOTHING TO THROW: BUY A BALL ON THE BOUNTY BOARD",
 }
 
 -- Wobble a card (denied input).

@@ -485,6 +485,39 @@ TuskActRegistry.Acts = {
 		ClientModule = "OkuyasuVFX", -- client visuals (TuskActVFX.OkuyasuVFX)
 		CardTitle = "STAND  ·  THE HAND",
 	},
+	-- GYRO WITH THE SAINT'S EYES (Gyro only: while he holds the corpse's Eyes;
+	-- back to Act 5 when he loses them). Act 28 is Rohan.
+	-- ROHAN KISHIBE: HEAVEN'S DOOR. People become books; he writes in them.
+	[28] = {
+		Name = "HEAVEN'S DOOR",
+		Character = "Rohan",
+		Tagline = "I refuse",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(110, 190, 120), Secondary = Color3.fromRGB(240, 220, 170) },
+		M1 = "PEN & PAGE COMBO",
+		Abilities = { "HEAVEN'S DOOR", "WRITE: CAN'T ATTACK ME", "WRITE: FLY BACKWARDS" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "EVERYONE IS A BOOK",
+		Next = nil,
+		Module = "Rohan", -- server moves
+		ClientModule = "RohanVFX", -- client visuals (TuskActVFX.RohanVFX)
+		CardTitle = "STAND  ·  HEAVEN'S DOOR",
+	},
+	[29] = {
+		Name = "BALL BREAKER: SAINT'S EYES",
+		Character = "Gyro",
+		Tagline = "The eyes see everything",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(120, 220, 95), Secondary = Color3.fromRGB(240, 196, 70) },
+		M1 = "STEEL BALL COMBO",
+		Abilities = { "SCAN SHOT", "SCAN", "EYE RICOCHET" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "SCAN: GOLDEN SPIN",
+		Next = nil,
+		Module = "GyroEyes", -- server moves
+		ClientModule = "GyroEyesVFX", -- client visuals (TuskActVFX.GyroEyesVFX)
+		CardTitle = "STAND  ·  BALL BREAKER (SAINT'S EYES)",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -494,7 +527,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

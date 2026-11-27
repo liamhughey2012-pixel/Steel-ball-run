@@ -297,6 +297,13 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 			end
 		end
 	end
+	-- HEAVEN'S DOOR: "YOU CAN'T ATTACK KISHIBE ROHAN" written in them.
+	local writer = attackerPlayer and attackerPlayer.Character
+	if writer and targetCharacter and (writer:GetAttribute("CantAttackUntil") or 0) > workspace:GetServerTimeNow()
+		and writer:GetAttribute("CantAttack") ~= nil and writer:GetAttribute("CantAttack") == targetCharacter:GetAttribute("RohanToken") then
+		Adapter.emit("Written", writer, targetCharacter)
+		return false
+	end
 	-- PERFECT DODGE: an attack that would have hit lands during a dash's
 	-- dodge window (once per dash).
 	if attackerPlayer and targetCharacter and targetCharacter ~= attackerPlayer.Character
@@ -381,6 +388,14 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	end
 	if (targetCharacter:GetAttribute("ArrowBlessUntil") or 0) > shopNow then
 		damage = damage * (targetCharacter:GetAttribute("ArrowResist") or 1)
+	end
+	-- Gyro's Spin boost (a Steel Ball bought in the shop).
+	if attackerCharacter and (attackerCharacter:GetAttribute("SpinBoostUntil") or 0) > shopNow then
+		damage = damage * (attackerCharacter:GetAttribute("SpinBoostDamage") or 1)
+	end
+	-- Gyro with the Saint's Eyes: his hits on someone he's scanned.
+	if attackerCharacter and (attackerCharacter:GetAttribute("ScanBonusUntil") or 0) > shopNow and (targetCharacter:GetAttribute("ScannedUntil") or 0) > shopNow then
+		damage = damage * (attackerCharacter:GetAttribute("ScanBonus") or 1)
 	end
 	-- Josuke's rage ("WHAT DID YOU SAY ABOUT MY HAIR?!").
 	if attackerCharacter and (attackerCharacter:GetAttribute("HairRageUntil") or 0) > shopNow then

@@ -48,6 +48,7 @@ TuskConfig.Keys = {
 	Block = { Keyboard = Enum.KeyCode.F, Gamepad = Enum.KeyCode.ButtonL2 }, -- hold
 	Dash = { Keyboard = Enum.KeyCode.Q, Gamepad = Enum.KeyCode.ButtonR2 },
 	CorpseMove = { Keyboard = Enum.KeyCode.V, Gamepad = Enum.KeyCode.DPadRight }, -- needs a corpse part
+	ThrowItem = { Keyboard = Enum.KeyCode.X, Gamepad = Enum.KeyCode.ButtonR3 }, -- a Steel Ball or Wrecking Ball bought in the shop
 	Horse = { Keyboard = Enum.KeyCode.M, Gamepad = Enum.KeyCode.DPadLeft }, -- call / send away your horse
 	Gallop = { Keyboard = Enum.KeyCode.LeftShift, Gamepad = Enum.KeyCode.ButtonL3 }, -- (hold) gallop while racing
 	RaceReturn = { Keyboard = Enum.KeyCode.H, Gamepad = Enum.KeyCode.DPadUp }, -- back to your last gate (racing)
@@ -211,6 +212,7 @@ TuskConfig.Roster = {
 	{ Id = "Josuke4", Name = "JOSUKE HIGASHIKATA (4)", Stand = "CRAZY DIAMOND", Available = true, Color = Color3.fromRGB(236, 120, 190) },
 	{ Id = "Kira", Name = "YOSHIKAGE KIRA", Stand = "KILLER QUEEN", Available = true, Color = Color3.fromRGB(196, 120, 200) },
 	{ Id = "Okuyasu", Name = "OKUYASU NIJIMURA", Stand = "THE HAND", Available = true, Color = Color3.fromRGB(90, 130, 220) },
+	{ Id = "Rohan", Name = "ROHAN KISHIBE", Stand = "HEAVEN'S DOOR", Available = true, Color = Color3.fromRGB(110, 190, 120) },
 }
 
 ---------------------------------------------------------------------------
@@ -274,8 +276,28 @@ TuskConfig.Bounty = {
 		{ Id = "Whiskey", Category = "TONICS", Emoji = "🥃", Tag = "+12% DAMAGE", Name = "RYE WHISKEY", Price = 130, Text = "Hit 12% harder for 90 s", Icon = "W", Damage = 1.12, Time = 90 },
 		{ Id = "Badge", Category = "GEAR", Emoji = "⭐", Tag = "+50% BOUNTY PAY", Name = "PINKERTON BADGE", Price = 160, Text = "Bounties and prices you claim pay 50% more for 3 minutes", Icon = "*", BountyBonus = 1.5, Time = 180 },
 		{ Id = "Smoke", Category = "GEAR", Emoji = "💨", Tag = "HIDE FROM HUNTERS", Name = "SMOKE BOMB", Price = 110, Text = "Hunters lose your trail (no marker, no distance) for 60 s", Icon = "S", Time = 60 },
+		{ Id = "SteelBall", Category = "THROWABLES", Emoji = "🟢", Tag = "ONE THROW", Name = "STEEL BALL", Price = 150, Text = "One Zeppeli steel ball to throw (X). Gyro gets a Spin boost for 60 s too", Icon = "O", Throwable = "Steel" },
+		{ Id = "WreckingBall", Category = "THROWABLES", Emoji = "🟠", Tag = "ONE THROW · BLAST", Name = "WRECKING BALL", Price = 220, Text = "One wrecking ball to throw (X): it bursts and blasts everyone near where it lands", Icon = "W", Throwable = "Wrecking" },
 		{ Id = "ClearName", Category = "SERVICES", Emoji = "📜", Tag = "STREAK + PRICE WIPED", Name = "CLEAR YOUR NAME", Price = 0, Text = "Wipe your kill streak and any price on your head", Icon = "X", BaseCost = 50, PerStreak = 50 },
 	},
+}
+
+---------------------------------------------------------------------------
+-- SHOP THROWABLES: a Steel Ball or a Wrecking Ball bought on the bounty
+-- board. One at a time, thrown once with ThrowItem (X), gone on death.
+---------------------------------------------------------------------------
+TuskConfig.ShopBalls = {
+	Steel = { -- a fast, spinning steel ball: hits the first one it meets
+		Speed = 120, Radius = 1.2, Range = 150,
+		Damage = 14, Stun = 0.7, Knockback = 30,
+	},
+	Wrecking = { -- slower, and it bursts where it lands, blasting everyone near
+		Speed = 85, Radius = 1.3, Range = 130,
+		Damage = 8, -- the direct hit
+		BlastRadius = 11, BlastDamage = 12, BlastKnockback = 45, BlastLaunch = 16, BlastStun = 0.8,
+	},
+	-- Gyro buying a Steel Ball: the Spin answers him for a while.
+	GyroBoost = { Time = 60, Damage = 1.2, Speed = 1.1, Cooldown = 0.75 }, -- +20% damage, +10% speed, abilities recharge 25% faster
 }
 
 ---------------------------------------------------------------------------
@@ -287,7 +309,7 @@ TuskConfig.StandBots = {
 	Count = 20, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph", "Polnareff", "Josuke4", "Kira", "Okuyasu" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph", "Polnareff", "Josuke4", "Kira", "Okuyasu", "Rohan" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -1365,6 +1387,45 @@ TuskConfig.Okuyasu = {
 }
 
 ---------------------------------------------------------------------------
+-- ROHAN KISHIBE (Part 4): HEAVEN'S DOOR (a visitor from another world).
+-- Turns people into BOOKS and writes commands in them.
+---------------------------------------------------------------------------
+TuskConfig.Rohan = {
+	M1 = { -- PEN & PAGE COMBO: ink flicks and Heaven's Door's swipes; the 4th is a page-slash that launches
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.4, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.4, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.9, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7.0, Stun = 0.55, Knockback = 40, Launch = 14, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	OpenBook = { -- 1: HEAVEN'S DOOR: the nearest enemy in front is turned into a BOOK (stuck, pages out) and left readable
+		Cooldown = 10, MissCooldown = 3, Windup = 0.3,
+		Range = 12, Cone = 80,
+		Damage = 6, BookTime = 1.8, -- stuck as a book
+		ReadableTime = 7, -- how long after that he can write in them (moves 2 and 3)
+	},
+	CantAttack = { -- 2: WRITE "YOU CAN'T ATTACK KISHIBE ROHAN" in a book: their hits on him do nothing
+		Cooldown = 12, Range = 40,
+		Time = 7,
+		SilenceTime = 2, -- and their abilities are blank for a moment
+	},
+	FlyBack = { -- 3: WRITE "FLY BACKWARDS AT 70 KM/H" in a book (or straight into someone in front)
+		Cooldown = 9, Range = 40, TouchRange = 8, Windup = 0.2,
+		Damage = 9, Knockback = 110, Launch = 22, Stun = 0.9,
+	},
+	Ultimate = { -- HEAVEN'S DOOR: EVERYONE IS A BOOK: everyone near becomes a book; then "YOU CAN'T ATTACK KISHIBE ROHAN" in all of them
+		Windup = 0.8,
+		Radius = 30,
+		Damage = 10, BookTime = 3,
+		CantAttackTime = 6,
+	},
+	CorpseBook = { Radius = 18, Damage = 7, Stun = 1.2 }, -- corpse move OPEN BOOK: everyone round him flaps open for a moment
+}
+
+---------------------------------------------------------------------------
 -- DIO: THE WORLD (a visitor from another world: Part 3). Not Diego's The
 -- World: a vampire with a golden Stand, knives, and a ROAD ROLLER.
 ---------------------------------------------------------------------------
@@ -1644,7 +1705,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT", Polnareff = "SWORD WHIRL", Josuke4 = "DORA BARRAGE", Kira = "CONTACT DETONATION", Okuyasu = "SPACE PULL",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT", Polnareff = "SWORD WHIRL", Josuke4 = "DORA BARRAGE", Kira = "CONTACT DETONATION", Okuyasu = "SPACE PULL", Rohan = "OPEN BOOK",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }
@@ -1937,6 +1998,38 @@ TuskConfig.Colors = {
 	Star = Color3.fromRGB(255, 196, 60),
 	Heart = Color3.fromRGB(196, 40, 98),
 	Metal = Color3.fromRGB(170, 175, 185),
+}
+
+---------------------------------------------------------------------------
+-- GYRO WITH THE SAINT'S EYES (Act 29): Gyro holding the corpse's EYES puts
+-- them to use: one in his own eye socket, one set into his steel ball. His
+-- moves change while he holds them (back to Act 5 when he loses them).
+---------------------------------------------------------------------------
+TuskConfig.GyroEyes = {
+	M1 = TuskConfig.Gyro.M1, -- the same steel ball combo
+	ScanShot = { -- 1: the eye-ball SEES its target and steers after it; they're left revealed to Gyro
+		Cooldown = 7, Windup = 0.25,
+		LockRange = 110, Cone = 140,
+		Speed = 95, Turn = 6, Life = 2.5, HitRadius = 3,
+		Damage = 11, Stun = 0.6, Knockback = 16,
+		RevealTime = 6,
+	},
+	Scan = { -- 2: the eyes see through everything: every enemy near is revealed (through walls) and takes more from him
+		Cooldown = 14, Range = 130, Time = 8,
+		BonusDamage = 1.2, -- his hits on someone he's scanned
+	},
+	Ricochet = { -- 3: the eye-ball picks its path: it bounces from enemy to enemy
+		Cooldown = 9, Windup = 0.25,
+		FirstRange = 60, Cone = 100, -- the first one in front
+		Range = 40, Bounces = 4, Gap = 0.16, -- then the nearest one it hasn't hit, up to this many times
+		Damage = 7, Stun = 0.5, Knockback = 10,
+	},
+	Ultimate = { -- SCAN: GOLDEN SPIN: the eyes find the nearest enemy anywhere; a golden-spinning ball goes straight through everything to them
+		Windup = 1.0,
+		Range = 200, Width = 4,
+		Damage = 26, Stun = 2.0, Knockback = 30, -- the target (Spin paralysis)
+		PassDamage = 10, -- anyone else in its path
+	},
 }
 
 return TuskConfig

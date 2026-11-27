@@ -564,6 +564,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = nil -- (bundled: modules are inlined)
 local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local TuskActRegistry = __require("TuskActRegistry")
 local Net = __require("Net")
 local Adapter = __require("CombatAdapter")
 
@@ -1044,6 +1045,10 @@ local function buy(player, id)
 		send(player, "Denied", { Reason = "You can't use that right now." })
 		return
 	end
+	if item.Throwable and character:GetAttribute("HeldThrowable") then
+		send(player, "Denied", { Reason = "You're already carrying a ball: throw it first (X)." })
+		return
+	end
 	if item.Heal and humanoid.Health >= humanoid.MaxHealth then
 		send(player, "Denied", { Reason = "You're not hurt." })
 		return
@@ -1096,6 +1101,21 @@ local function buy(player, id)
 		character:SetAttribute("ShopUltUntil", t + item.Time)
 	elseif item.Id == "Compass" then
 		character:SetAttribute("CompassUntil", t + item.Time)
+	elseif item.Throwable then
+		-- In your hand until you throw it (X) or die.
+		character:SetAttribute("HeldThrowable", item.Throwable)
+		-- Gyro and a steel ball: the Spin answers him.
+		local act = character:GetAttribute("TuskAct")
+		if item.Throwable == "Steel" and act and TuskActRegistry.characterOf(act) == "Gyro" then
+			local ok, ShopBalls = pcall(function()
+				return __require("ShopBalls")
+			end)
+			if ok and ShopBalls then
+				ShopBalls.gyroBoost(character)
+				send(player, "Bought", { Name = item.Name .. " · SPIN BOOST!", Price = price })
+				return
+			end
+		end
 	elseif item.Id == "ClearName" then
 		player:SetAttribute("KillStreak", 0)
 		player:SetAttribute("PlacedBounty", nil)
@@ -2075,6 +2095,13 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 			end
 		end
 	end
+	-- HEAVEN'S DOOR: "YOU CAN'T ATTACK KISHIBE ROHAN" written in them.
+	local writer = attackerPlayer and attackerPlayer.Character
+	if writer and targetCharacter and (writer:GetAttribute("CantAttackUntil") or 0) > workspace:GetServerTimeNow()
+		and writer:GetAttribute("CantAttack") ~= nil and writer:GetAttribute("CantAttack") == targetCharacter:GetAttribute("RohanToken") then
+		Adapter.emit("Written", writer, targetCharacter)
+		return false
+	end
 	-- PERFECT DODGE: an attack that would have hit lands during a dash's
 	-- dodge window (once per dash).
 	if attackerPlayer and targetCharacter and targetCharacter ~= attackerPlayer.Character
@@ -2159,6 +2186,14 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	end
 	if (targetCharacter:GetAttribute("ArrowBlessUntil") or 0) > shopNow then
 		damage = damage * (targetCharacter:GetAttribute("ArrowResist") or 1)
+	end
+	-- Gyro's Spin boost (a Steel Ball bought in the shop).
+	if attackerCharacter and (attackerCharacter:GetAttribute("SpinBoostUntil") or 0) > shopNow then
+		damage = damage * (attackerCharacter:GetAttribute("SpinBoostDamage") or 1)
+	end
+	-- Gyro with the Saint's Eyes: his hits on someone he's scanned.
+	if attackerCharacter and (attackerCharacter:GetAttribute("ScanBonusUntil") or 0) > shopNow and (targetCharacter:GetAttribute("ScannedUntil") or 0) > shopNow then
+		damage = damage * (attackerCharacter:GetAttribute("ScanBonus") or 1)
 	end
 	-- Josuke's rage ("WHAT DID YOU SAY ABOUT MY HAIR?!").
 	if attackerCharacter and (attackerCharacter:GetAttribute("HairRageUntil") or 0) > shopNow then
@@ -2290,6 +2325,7 @@ __modules["CorpseMoves"] = function()
 	  DIO          WRYYY: drains everyone round him (he heals)
 	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
 	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
+	  Rohan        OPEN BOOK: everyone round him flaps open like a book for a moment
 	  Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him
 	  Kira         CONTACT DETONATION: Killer Queen blows up the ground round him
 	  Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA!
@@ -2742,6 +2778,21 @@ USE.Jotaro = function(S, player, state, character, root)
 			end
 		end)
 	end
+end
+
+-- OPEN BOOK: Heaven's Door opens everyone round Rohan like a book for a
+-- moment (stuck, hurt).
+USE.Rohan = function(S, player, state, character, root)
+	local c = TuskConfig.Rohan and TuskConfig.Rohan.CorpseBook or { Radius = 18, Damage = 7, Stun = 1.2 }
+	S.lock(state, 0.4)
+	local hit = {}
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Position = tr.Position, Source = "RohanCorpse", Unblockable = true }) then
+			table.insert(hit, target)
+		end
+	end
+	fx({ Character = character, Who = "Rohan", Phase = "Books", Position = root.Position, Radius = c.Radius, Targets = hit })
 end
 
 -- SPACE PULL: The Hand erases the space round Okuyasu: everyone near is
@@ -9776,6 +9827,123 @@ return SBRMapBuilder
 end
 
 -- ======================================================================
+-- MODULE: ShopBalls
+-- ======================================================================
+__modules["ShopBalls"] = function()
+--[[
+	ShopBalls  (ServerScriptService.SpinServer.ShopBalls)
+
+	The bounty board's THROWABLES: a STEEL BALL or a WRECKING BALL. Buying
+	one (BountyService) puts it in your hand (character attribute
+	"HeldThrowable" = "Steel" / "Wrecking"); ThrowItem (X) throws it once.
+	  * Steel Ball: fast and spinning; it hits the first one it meets
+	  * Wrecking Ball: slower; it bursts where it lands and blasts everyone
+	    near it
+	  * Gyro buying a Steel Ball also gets a SPIN BOOST for a while (more
+	    damage, more speed, quicker cooldowns): ShopBalls.gyroBoost
+	One at a time; a ball you're holding is gone when you die.
+	Numbers: TuskConfig.ShopBalls. Visuals: the "GyroBall" projectile (Gyro.lua).
+]]
+
+local Shared = nil -- (bundled: modules are inlined)
+local TuskConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("TuskConfig"))
+local Adapter = __require("CombatAdapter")
+
+local Net = __require("Net")
+
+local ShopBalls = {}
+local cfg = TuskConfig.ShopBalls or {}
+local WorldFX
+
+local function fx(data)
+	WorldFX = WorldFX or Net.get("WorldFX")
+	WorldFX:FireAllClients("ShopBall", data)
+end
+
+local function now()
+	return workspace:GetServerTimeNow()
+end
+
+-- Gyro's Spin boost.
+function ShopBalls.gyroBoost(character)
+	local b = cfg.GyroBoost or {}
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local untilT = now() + (b.Time or 60)
+	character:SetAttribute("SpinBoostUntil", untilT)
+	character:SetAttribute("SpinBoostDamage", b.Damage or 1.2)
+	character:SetAttribute("SpinBoostCooldown", b.Cooldown or 0.75)
+	if humanoid then
+		Adapter.setMoveModifier(humanoid, "SpinBoost", b.Speed or 1.1)
+	end
+	task.delay(b.Time or 60, function()
+		if character.Parent and character:GetAttribute("SpinBoostUntil") == untilT then
+			character:SetAttribute("SpinBoostUntil", nil)
+			if humanoid and humanoid.Parent then
+				Adapter.setMoveModifier(humanoid, "SpinBoost", nil)
+			end
+		end
+	end)
+end
+
+local function throw(S, player, state, aim)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local kind = character and character:GetAttribute("HeldThrowable")
+	if not root or not kind or not cfg[kind] then
+		S.tell(player, "Denied", { Reason = "NoThrowable" })
+		return
+	end
+	if S.isBusy(state) or state.Charging or not Adapter.canAct(player) then
+		return
+	end
+	local c = cfg[kind]
+	character:SetAttribute("HeldThrowable", nil)
+	S.lock(state, 0.3)
+	local dir = S.aim(aim, root)
+	local origin = S.origin(character, root, CFrame.new(1, 1, -1.5))
+	fx({ Phase = "Throw", Character = character, Kind = kind })
+	local hit = {}
+	S.fireBall(player, state, {
+		Origin = origin,
+		Direction = dir,
+		Speed = c.Speed,
+		Radius = c.Radius,
+		Range = c.Range,
+		Style = kind == "Wrecking" and "Wrecking" or "Throw",
+		OnHit = function(target, position)
+			if hit[target] then
+				return
+			end
+			hit[target] = true
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun or 0.5, Knockback = c.Knockback or 20, Direction = dir, Position = position, Source = kind == "Wrecking" and "ShopWrecking" or "ShopSteel" })
+		end,
+		OnEnd = function(position)
+			if kind ~= "Wrecking" then
+				return
+			end
+			-- It bursts: everyone near is blasted away.
+			for _, target in ipairs(S.Hitbox.inRadius(character, position, c.BlastRadius, 10)) do
+				local tr = target:FindFirstChild("HumanoidRootPart")
+				if tr then
+					local away = Vector3.new(tr.Position.X - position.X, 0, tr.Position.Z - position.Z)
+					S.hit(player, target, { Damage = c.BlastDamage, Stun = c.BlastStun, Knockback = c.BlastKnockback, Launch = c.BlastLaunch, Direction = away.Magnitude > 0.1 and away.Unit or dir, Position = tr.Position, Source = "ShopWrecking" })
+				end
+			end
+			fx({ Phase = "Burst", Kind = "Wrecking", Position = position, Radius = c.BlastRadius })
+		end,
+	})
+end
+
+function ShopBalls.init(S)
+	S.ThrowItem = function(player, state, aim)
+		throw(S, player, state, aim)
+	end
+end
+
+return ShopBalls
+end
+
+-- ======================================================================
 -- MODULE: StandAssetLoader
 -- ======================================================================
 __modules["StandAssetLoader"] = function()
@@ -9873,7 +10041,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO, Joseph, Polnareff, Josuke (4), Kira, Okuyasu:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO, Joseph, Polnareff, Josuke (4), Kira, Okuyasu, Rohan:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -9935,6 +10103,7 @@ local LOOKS = {
 	Joseph = { Skin = Color3.fromRGB(226, 186, 150), Torso = Color3.fromRGB(40, 52, 84), Legs = Color3.fromRGB(178, 152, 110) },
 	Dio = { Skin = Color3.fromRGB(240, 210, 180), Torso = Color3.fromRGB(26, 26, 30), Legs = Color3.fromRGB(214, 164, 72) },
 	Jotaro = { Skin = Color3.fromRGB(214, 170, 130), Torso = Color3.fromRGB(36, 36, 42), Legs = Color3.fromRGB(36, 36, 42) },
+	Rohan = { Skin = Color3.fromRGB(240, 210, 184), Torso = Color3.fromRGB(214, 232, 196), Legs = Color3.fromRGB(40, 70, 52) },
 	Okuyasu = { Skin = Color3.fromRGB(226, 184, 150), Torso = Color3.fromRGB(34, 40, 70), Legs = Color3.fromRGB(34, 40, 70) },
 	Kira = { Skin = Color3.fromRGB(236, 206, 176), Torso = Color3.fromRGB(150, 116, 180), Legs = Color3.fromRGB(150, 116, 180) },
 	Josuke4 = { Skin = Color3.fromRGB(226, 186, 150), Torso = Color3.fromRGB(38, 38, 82), Legs = Color3.fromRGB(38, 38, 82) },
@@ -12152,6 +12321,39 @@ TuskActRegistry.Acts = {
 		ClientModule = "OkuyasuVFX", -- client visuals (TuskActVFX.OkuyasuVFX)
 		CardTitle = "STAND  ·  THE HAND",
 	},
+	-- GYRO WITH THE SAINT'S EYES (Gyro only: while he holds the corpse's Eyes;
+	-- back to Act 5 when he loses them). Act 28 is Rohan.
+	-- ROHAN KISHIBE: HEAVEN'S DOOR. People become books; he writes in them.
+	[28] = {
+		Name = "HEAVEN'S DOOR",
+		Character = "Rohan",
+		Tagline = "I refuse",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(110, 190, 120), Secondary = Color3.fromRGB(240, 220, 170) },
+		M1 = "PEN & PAGE COMBO",
+		Abilities = { "HEAVEN'S DOOR", "WRITE: CAN'T ATTACK ME", "WRITE: FLY BACKWARDS" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "EVERYONE IS A BOOK",
+		Next = nil,
+		Module = "Rohan", -- server moves
+		ClientModule = "RohanVFX", -- client visuals (TuskActVFX.RohanVFX)
+		CardTitle = "STAND  ·  HEAVEN'S DOOR",
+	},
+	[29] = {
+		Name = "BALL BREAKER: SAINT'S EYES",
+		Character = "Gyro",
+		Tagline = "The eyes see everything",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(120, 220, 95), Secondary = Color3.fromRGB(240, 196, 70) },
+		M1 = "STEEL BALL COMBO",
+		Abilities = { "SCAN SHOT", "SCAN", "EYE RICOCHET" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "SCAN: GOLDEN SPIN",
+		Next = nil,
+		Module = "GyroEyes", -- server moves
+		ClientModule = "GyroEyesVFX", -- client visuals (TuskActVFX.GyroEyesVFX)
+		CardTitle = "STAND  ·  BALL BREAKER (SAINT'S EYES)",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -12161,7 +12363,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -12705,6 +12907,10 @@ function TuskService.startCooldown(player, state, name, seconds, slot)
 	-- Saint's Corpse (Eyes): abilities recharge faster.
 	local character = player.Character
 	seconds = seconds * (character and character:GetAttribute("CorpseCooldown") or 1)
+	-- Gyro's Spin boost (a Steel Ball bought in the shop).
+	if character and (character:GetAttribute("SpinBoostUntil") or 0) > workspace:GetServerTimeNow() then
+		seconds = seconds * (character:GetAttribute("SpinBoostCooldown") or 1)
+	end
 	Cooldowns.start(player, cooldownKey(state, name), seconds)
 	TuskService.tell(player, "Cooldown", { Slot = slot, Duration = seconds })
 end
@@ -13161,6 +13367,14 @@ local function onRequest(player, action, a, b, c)
 			return
 		end
 		TuskService.select(player, start, true)
+		return
+	end
+	if action == "ThrowItem" then
+		-- A Steel Ball or Wrecking Ball bought in the shop.
+		local st = states[player]
+		if st and TuskService.ThrowItem then
+			TuskService.ThrowItem(player, st, a)
+		end
 		return
 	end
 	if action == "CorpseMove" then
@@ -13902,7 +14116,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit", "Josuke4Outfit", "KiraOutfit", "OkuyasuOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit", "Josuke4Outfit", "KiraOutfit", "OkuyasuOutfit", "RohanOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end
@@ -13930,6 +14144,7 @@ __start("DataService")
 __start("WeatherService")
 __start("CorpseService", TuskService)
 __start("ArrowService", TuskService)
+__start("ShopBalls", TuskService)
 __start("RaceService")
 __start("NPCService")
 __start("TestDummies")

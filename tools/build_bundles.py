@@ -116,7 +116,7 @@ end
 # Tusk Stands, Tusk Sneak) is built into the core so the core always works on
 # its own, and so is the map; every other character is an optional extra script.
 PACKS = [
-    ("Gyro", {"server": ["GyroZeppeli", "GyroOutfit"], "client": ["Gyro", "SteelBallModel", "WreckingBallModel"]},
+    ("Gyro", {"server": ["GyroZeppeli", "GyroOutfit", "GyroEyes"], "client": ["Gyro", "SteelBallModel", "WreckingBallModel", "GyroEyesVFX"]},
      "Gyro Zeppeli: Steel Balls and Ball Breaker."),
     ("Diego", {"server": ["DiegoBrando", "DiegoOutfit"], "client": ["Diego", "RaptorModel"]},
      "Diego Brando: Scary Monsters."),
@@ -160,6 +160,8 @@ PACKS = [
      "Yoshikage Kira (Part 4): Killer Queen."),
     ("Okuyasu", {"server": ["Okuyasu", "OkuyasuOutfit"], "client": ["OkuyasuVFX", "TheHandStand"]},
      "Okuyasu Nijimura (Part 4): The Hand."),
+    ("Rohan", {"server": ["Rohan", "RohanOutfit"], "client": ["RohanVFX", "HeavensDoorStand"]},
+     "Rohan Kishibe (Part 4): Heaven's Door."),
 ]
 
 def deps(code):
@@ -323,7 +325,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit", "Josuke4Outfit", "KiraOutfit", "OkuyasuOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit", "Josuke4Outfit", "KiraOutfit", "OkuyasuOutfit", "RohanOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end
@@ -351,6 +353,7 @@ __start("DataService")
 __start("WeatherService")
 __start("CorpseService", TuskService)
 __start("ArrowService", TuskService)
+__start("ShopBalls", TuskService)
 __start("RaceService")
 __start("NPCService")
 __start("TestDummies")
@@ -472,7 +475,7 @@ local function __start(name)
 		warn("[Spin] " .. name .. " failed to start: " .. tostring(err))
 	end
 end
-for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient", "CorpseClient", "RaceClient", "Cutscenes", "Cinematic", "RequiemClient" }) do
+for _, name in ipairs({ "SettingsUI", "HitFX", "TuskStand", "TuskProjectiles", "TuskSneakController", "TuskController", "WorldClient", "CharacterCard", "CombatUI", "DefenseClient", "BountyUI", "WeatherClient", "CorpseClient", "RaceClient", "Cutscenes", "Cinematic", "RequiemClient", "ShopBallClient" }) do
 	__start(name)
 end
 print("[Spin] Client ready")

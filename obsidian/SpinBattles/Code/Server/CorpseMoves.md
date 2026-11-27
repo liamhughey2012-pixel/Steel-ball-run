@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `CorpseMoves` (capitals matter) |
 
-**What it does:** Every character's CORPSE MOVE (V), unlocked while holding a Saint's Corpse part. One shared cooldown (TuskConfig.Corpse.Move.Cooldown); the ready time is the character attribute CorpseReadyAt (server time) for the HUD. Visuals: CorpseClient, from WorldFX "CorpseMove". Johnny       GOLDEN SPIN NAIL: a huge golden spinning nail Gyro         GOLDEN RECTANGLE: a spinning shockwave straight ahead Diego        DINOSAUR CRASH: leaps to the aim point and slams down Pork Pie     HOOK HARVEST: hooks yank everyone round him in Sandman      SOUND BARRIER: dashes through enemies, then a blast Mountain Tim LASSO CYCLONE: a spinning lasso pulls everyone in Hot Pants    FLESH COCOON: heals and armours herself, then a burst Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse Diego (AU)   REVOLVER: draws a six-shooter, fans six shots where he aims Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is) Ringo        SECOND HAND: everyone round him loses 6 seconds (hit, dazed) Jotaro       ORA BARRAGE: Star Platinum punches everyone round him, then a big ORA! DIO          WRYYY: drains everyone round him (he heals) Joseph       HAMON BEAT: a Hamon ripple through the ground round him Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him Kira         CONTACT DETONATION: Killer Queen blows up the ground round him Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA! With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead (TuskConfig.Corpse.Miracle), and afterwards every part scatters. All damage goes through S.hit (CombatAdapter).
+**What it does:** Every character's CORPSE MOVE (V), unlocked while holding a Saint's Corpse part. One shared cooldown (TuskConfig.Corpse.Move.Cooldown); the ready time is the character attribute CorpseReadyAt (server time) for the HUD. Visuals: CorpseClient, from WorldFX "CorpseMove". Johnny       GOLDEN SPIN NAIL: a huge golden spinning nail Gyro         GOLDEN RECTANGLE: a spinning shockwave straight ahead Diego        DINOSAUR CRASH: leaps to the aim point and slams down Pork Pie     HOOK HARVEST: hooks yank everyone round him in Sandman      SOUND BARRIER: dashes through enemies, then a blast Mountain Tim LASSO CYCLONE: a spinning lasso pulls everyone in Hot Pants    FLESH COCOON: heals and armours herself, then a burst Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse Diego (AU)   REVOLVER: draws a six-shooter, fans six shots where he aims Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is) Ringo        SECOND HAND: everyone round him loses 6 seconds (hit, dazed) Jotaro       ORA BARRAGE: Star Platinum punches everyone round him, then a big ORA! DIO          WRYYY: drains everyone round him (he heals) Joseph       HAMON BEAT: a Hamon ripple through the ground round him Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him Rohan        OPEN BOOK: everyone round him flaps open like a book for a moment Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him Kira         CONTACT DETONATION: Killer Queen blows up the ground round him Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA! With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead (TuskConfig.Corpse.Miracle), and afterwards every part scatters. All damage goes through S.hit (CombatAdapter).
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -51,6 +51,7 @@ Back to [[Where To Put Code]]
 	  DIO          WRYYY: drains everyone round him (he heals)
 	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
 	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
+	  Rohan        OPEN BOOK: everyone round him flaps open like a book for a moment
 	  Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him
 	  Kira         CONTACT DETONATION: Killer Queen blows up the ground round him
 	  Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA!
@@ -503,6 +504,21 @@ USE.Jotaro = function(S, player, state, character, root)
 			end
 		end)
 	end
+end
+
+-- OPEN BOOK: Heaven's Door opens everyone round Rohan like a book for a
+-- moment (stuck, hurt).
+USE.Rohan = function(S, player, state, character, root)
+	local c = TuskConfig.Rohan and TuskConfig.Rohan.CorpseBook or { Radius = 18, Damage = 7, Stun = 1.2 }
+	S.lock(state, 0.4)
+	local hit = {}
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Position = tr.Position, Source = "RohanCorpse", Unblockable = true }) then
+			table.insert(hit, target)
+		end
+	end
+	fx({ Character = character, Who = "Rohan", Phase = "Books", Position = root.Position, Radius = c.Radius, Targets = hit })
 end
 
 -- SPACE PULL: The Hand erases the space round Okuyasu: everyone near is

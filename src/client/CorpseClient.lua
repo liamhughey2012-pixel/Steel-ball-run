@@ -746,6 +746,10 @@ local function onMove(data)
 	elseif who == "Dio" and data.Phase == "Drain" and data.Position then
 		-- WRYYY: a blood-red ring pulling in.
 		ring(data.Position, data.Radius or 18, Color3.fromRGB(190, 20, 30), 0.6)
+	elseif who == "Rohan" and data.Phase == "Books" and data.Position then
+		-- OPEN BOOK: a ring of pages.
+		ring(data.Position, data.Radius or 18, Color3.fromRGB(250, 246, 232), 0.5)
+		VFXLib.burst(data.Position + Vector3.new(0, 2, 0), { Count = 16, Color = Color3.fromRGB(250, 246, 232), Speed = 14, Lifetime = 0.6 })
 	elseif who == "Okuyasu" and data.Phase == "Pull" and data.Position then
 		-- SPACE PULL: a dark ring snapping inward.
 		ring(data.Position, data.Radius or 26, Color3.fromRGB(150, 200, 255), 0.4)

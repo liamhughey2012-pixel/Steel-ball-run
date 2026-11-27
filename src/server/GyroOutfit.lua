@@ -6,6 +6,9 @@
 	  * tan wide-brimmed hat with slots cut round the brim, slits round the
 	    crown, a domed top and two big ridged silver goggles on a strap
 	  * long blond hair with side locks, braids and a fringe
+	With the Saint's Corpse EYES (TuskAct 29) the corpse's eye sits in his
+	face, just under his right eye: a white eyeball with a brown iris in a
+	dark, stitched socket.
 	The player's own clothes stay on. Their own hats/hair are hidden while
 	they play Gyro and come back when they switch. Built on the server so
 	every player sees it.
@@ -15,6 +18,11 @@ local Players = game:GetService("Players")
 
 local GyroOutfit = {}
 GyroOutfit.GyroAct = 5
+GyroOutfit.EyesAct = 29
+
+local function isGyro(act)
+	return act == GyroOutfit.GyroAct or act == GyroOutfit.EyesAct
+end
 
 local C = {
 	Hat = Color3.fromRGB(206, 168, 128),
@@ -140,6 +148,34 @@ function GyroOutfit.apply(character)
 	hair(head, outfit)
 end
 
+-- The corpse's eye in his face (Act 29), just under his right eye.
+local function corpseEye(character)
+	local head = character:FindFirstChild("Head")
+	local outfit = character:FindFirstChild("GyroOutfit")
+	local want = character:GetAttribute("TuskAct") == GyroOutfit.EyesAct
+	local have = outfit and outfit:FindFirstChild("CorpseEye")
+	if not head or not outfit or want == (have ~= nil) then
+		return
+	end
+	if not want then
+		have:Destroy()
+		return
+	end
+	local eye = Instance.new("Model")
+	eye.Name = "CorpseEye"
+	eye.Parent = outfit
+	local s = head.Size.Y / 1.2
+	local at = CFrame.new(0.26 * s, -0.08 * s, -head.Size.Z / 2 - 0.02 * s)
+	piece(head, eye, { Name = "Socket", Size = Vector3.new(0.34, 0.34, 0.08) * s, Color = Color3.fromRGB(70, 40, 30) }, at, true)
+	piece(head, eye, { Name = "Eyeball", Size = Vector3.new(0.28, 0.28, 0.16) * s, Color = Color3.fromRGB(246, 242, 236) }, at * CFrame.new(0, 0, -0.04 * s), true)
+	piece(head, eye, { Name = "Iris", Size = Vector3.new(0.13, 0.13, 0.04) * s, Color = Color3.fromRGB(130, 80, 40) }, at * CFrame.new(-0.03 * s, 0, -0.12 * s), true)
+	piece(head, eye, { Name = "Pupil", Size = Vector3.new(0.06, 0.06, 0.03) * s, Color = Color3.fromRGB(16, 12, 10) }, at * CFrame.new(-0.03 * s, 0, -0.14 * s), true)
+	for k = -1, 1 do
+		piece(head, eye, { Name = "Stitch", Size = Vector3.new(0.03, 0.12, 0.03) * s, Color = Color3.fromRGB(150, 120, 90) }, at * CFrame.new(0.2 * s, k * 0.1 * s, -0.02 * s) * CFrame.Angles(0, 0, 0.6))
+	end
+end
+GyroOutfit.corpseEye = corpseEye
+
 function GyroOutfit.remove(character)
 	local outfit = character:FindFirstChild("GyroOutfit")
 	if outfit then
@@ -159,11 +195,12 @@ end
 
 local function watch(character)
 	local function update()
-		if character:GetAttribute("TuskAct") == GyroOutfit.GyroAct then
+		if isGyro(character:GetAttribute("TuskAct")) then
 			-- Wait for the avatar's clothes/accessories to load before swapping them.
 			task.delay(0.3, function()
-				if character.Parent and character:GetAttribute("TuskAct") == GyroOutfit.GyroAct then
+				if character.Parent and isGyro(character:GetAttribute("TuskAct")) then
 					GyroOutfit.apply(character)
+					corpseEye(character)
 				end
 			end)
 		else

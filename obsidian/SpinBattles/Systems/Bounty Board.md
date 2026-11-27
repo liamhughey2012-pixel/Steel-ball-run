@@ -93,3 +93,10 @@ The SHOP tab is a **GENERAL STORE**:
 - **Buy button:** hover grows it. If you can't afford the item it says **NEED $X MORE**. If the item is already working it says **TOP UP**.
 - **Active items:** a green ACTIVE ribbon and a live time-left bar.
 The stable follows underneath.
+
+## Throwables (shop, 2026-11-27)
+- **STEEL BALL** ($150): one fast spinning steel ball that hits the first one it meets (14 damage).
+- **WRECKING BALL** ($220): slower, it bursts where it lands (8 direct + 12 in an 11-stud blast, launching everyone).
+- You carry one at a time, held in your hand and seen by everyone, with a chip on screen: "PRESS X TO THROW" (X, or R3 on a controller; tap the chip on a phone). It's lost if you die.
+- **Gyro** buying a Steel Ball also gets a **Spin boost** for 60 s.
+- Code: `ShopBalls` (server), `ShopBallClient` (client); numbers in `TuskConfig.ShopBalls`; the flying ball uses the "GyroBall" projectile visuals from Gyro's pack.

@@ -95,6 +95,10 @@ function TuskService.startCooldown(player, state, name, seconds, slot)
 	-- Saint's Corpse (Eyes): abilities recharge faster.
 	local character = player.Character
 	seconds = seconds * (character and character:GetAttribute("CorpseCooldown") or 1)
+	-- Gyro's Spin boost (a Steel Ball bought in the shop).
+	if character and (character:GetAttribute("SpinBoostUntil") or 0) > workspace:GetServerTimeNow() then
+		seconds = seconds * (character:GetAttribute("SpinBoostCooldown") or 1)
+	end
 	Cooldowns.start(player, cooldownKey(state, name), seconds)
 	TuskService.tell(player, "Cooldown", { Slot = slot, Duration = seconds })
 end
@@ -551,6 +555,14 @@ local function onRequest(player, action, a, b, c)
 			return
 		end
 		TuskService.select(player, start, true)
+		return
+	end
+	if action == "ThrowItem" then
+		-- A Steel Ball or Wrecking Ball bought in the shop.
+		local st = states[player]
+		if st and TuskService.ThrowItem then
+			TuskService.ThrowItem(player, st, a)
+		end
 		return
 	end
 	if action == "CorpseMove" then
