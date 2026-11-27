@@ -260,6 +260,12 @@ TuskAnimation.Poses = {
 	JK4Stance = { Root = { 0, 10, 0, -0.04 }, Waist = { -2, 8, 0 }, Neck = { 4, -8, 0 }, RightArm = { 30, 0, 14 }, RightElbow = { 60, 0, 0 }, LeftArm = { 20, 0, -12 }, LeftElbow = { 50, 0, 0 }, RightHip = { 10, 0, 0 }, RightKnee = { -12, 0, 0 }, LeftHip = { -6, 0, 0 } },
 	JK4Comb = { Root = { 0, 0, 0, 0 }, Waist = { 0, 0, 0 }, Neck = { -14, 0, 0 }, RightArm = { 160, 0, 30 }, RightElbow = { 110, 0, 0 }, LeftArm = { 160, 0, -30 }, LeftElbow = { 110, 0, 0 } },
 	JK4Rage = { Root = { -8, 0, 0, -0.1 }, Waist = { -14, 0, 0 }, Neck = { 18, 0, 0 }, RightArm = { 40, 0, 40 }, RightElbow = { 90, 0, 0 }, LeftArm = { 40, 0, -40 }, LeftElbow = { 90, 0, 0 }, RightHip = { 16, 0, 0 }, RightKnee = { -20, 0, 0 }, LeftHip = { 16, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	-- KIRA: calm and composed; the thumb comes up for the "click".
+	KiraStance = { Root = { 0, 6, 0, 0 }, Waist = { 0, 4, 0 }, Neck = { 2, -6, 0 }, RightArm = { 20, 0, 8 }, RightElbow = { 30, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
+	KiraClick = { Root = { 0, -6, 0, 0 }, Waist = { 0, -6, 0 }, Neck = { 4, 4, 0 }, RightArm = { 75, 0, 10 }, RightElbow = { 70, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
+	KiraReach = { Root = { 0, -14, 0, 0 }, Waist = { 4, -12, 0 }, Neck = { 2, 14, 0 }, RightArm = { 88, 0, 4 }, RightElbow = { 6, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
+	KiraSummon = { Root = { 6, 0, 0, -0.05 }, Waist = { 14, 0, 0 }, Neck = { 6, 0, 0 }, RightArm = { 40, 0, 20 }, RightElbow = { 10, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
+	KiraFace = { Root = { 0, 0, 0, 0 }, Waist = { 2, 0, 0 }, Neck = { -12, 0, 0 }, RightArm = { 130, 0, 20 }, RightElbow = { 115, 0, 0 }, LeftArm = { 30, 0, -10 }, LeftElbow = { 60, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -501,6 +507,15 @@ TuskAnimation.Actions = {
 	JK4Fuse = { { 0, "JK4Stance" }, { 0.12, "JTPoint", "Back", 3 }, { 0.5, "JTPoint", "Linear" }, { 0.7, "JK4Stance", "Sine" } },
 	JK4Flick = { { 0, "JK4Stance" }, { 0.1, "JTFlick", "Back", 3 }, { 0.35, "JTFlick", "Linear" }, { 0.55, "JK4Stance", "Sine" } },
 	JK4Snap = { { 0, "JK4Stance" }, { 0.15, "JK4Comb", "Out" }, { 0.55, "JK4Comb", "Linear" }, { 0.75, "JK4Rage", "Back", 3 }, { 1.3, "JK4Rage", "Linear" }, { 1.6, "JK4Stance", "Sine" } },
+	KR_M1_1 = { { 0, "KiraStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "KiraStance", "Sine" } },
+	KR_M1_2 = { { 0, "KiraStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "KiraStance", "Sine" } },
+	KR_M1_3 = { { 0, "KiraStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "KiraStance", "Sine" } },
+	KR_M1_4 = { { 0, "KiraStance" }, { 0.08, "KiraReach", "Back", 4 }, { 0.3, "KiraReach", "Linear" }, { 0.5, "KiraStance", "Sine" } },
+	KRReach = { { 0, "KiraStance" }, { 0.1, "KiraReach", "Back", 3 }, { 0.35, "KiraReach", "Linear" }, { 0.55, "KiraStance", "Sine" } },
+	KRClick = { { 0, "KiraStance" }, { 0.08, "KiraClick", "Out" }, { 0.35, "KiraClick", "Linear" }, { 0.55, "KiraStance", "Sine" } },
+	KRSummon = { { 0, "KiraStance" }, { 0.12, "KiraSummon", "Out" }, { 0.45, "KiraSummon", "Linear" }, { 0.65, "KiraStance", "Sine" } },
+	KRBlow = { { 0, "KiraStance" }, { 0.1, "KiraReach", "Out" }, { 0.4, "KiraReach", "Linear" }, { 0.6, "KiraStance", "Sine" } },
+	KRBTD = { { 0, "KiraStance" }, { 0.2, "KiraFace", "Out" }, { 1.0, "KiraFace", "Linear" }, { 1.3, "KiraClick", "Back", 3 }, { 1.6, "KiraClick", "Linear" }, { 1.9, "KiraStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },

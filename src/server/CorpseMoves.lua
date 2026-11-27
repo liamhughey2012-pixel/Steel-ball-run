@@ -25,6 +25,7 @@
 	  DIO          WRYYY: drains everyone round him (he heals)
 	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
 	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
+	  Kira         CONTACT DETONATION: Killer Queen blows up the ground round him
 	  Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA!
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
@@ -474,6 +475,20 @@ USE.Jotaro = function(S, player, state, character, root)
 				end
 			end
 		end)
+	end
+end
+
+-- CONTACT DETONATION: Killer Queen sets off the ground round Kira.
+USE.Kira = function(S, player, state, character, root)
+	local c = TuskConfig.Kira and TuskConfig.Kira.CorpseBlast or { Radius = 15, Damage = 10, Stun = 0.7, Knockback = 40 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Kira", Phase = "Blast", Position = root.Position, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local away = Vector3.new(tr.Position.X - root.Position.X, 0, tr.Position.Z - root.Position.Z)
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Launch = 12, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "KiraCorpse" })
+		end
 	end
 end
 

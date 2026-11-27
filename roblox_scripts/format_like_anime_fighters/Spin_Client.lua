@@ -4986,6 +4986,10 @@ local function onMove(data)
 	elseif who == "Dio" and data.Phase == "Drain" and data.Position then
 		-- WRYYY: a blood-red ring pulling in.
 		ring(data.Position, data.Radius or 18, Color3.fromRGB(190, 20, 30), 0.6)
+	elseif who == "Kira" and data.Phase == "Blast" and data.Position then
+		-- CONTACT DETONATION: a ring of fire round him.
+		ring(data.Position, data.Radius or 15, Color3.fromRGB(255, 150, 60), 0.5)
+		VFXLib.burst(data.Position + Vector3.new(0, 2, 0), { Count = 18, Color = Color3.fromRGB(255, 150, 60), Speed = 18, Lifetime = 0.6 })
 	elseif who == "Josuke4" and data.Phase == "Barrage" and data.Position then
 		-- DORA BARRAGE: a pink ring of punches spreading out round him.
 		ring(data.Position, data.Radius or 16, Color3.fromRGB(255, 130, 200), data.Time or 0.5)
@@ -6348,6 +6352,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 4) == "Kira" then
+		starColor = Color3.fromRGB(255, 160, 80)
 	elseif source:sub(1, 7) == "Josuke4" then
 		starColor = Color3.fromRGB(255, 130, 200)
 	elseif source:sub(1, 7) == "Requiem" then
@@ -8200,6 +8206,7 @@ Common.Palettes = {
 	[17] = { Main = Color3.fromRGB(90, 170, 240), Second = Color3.fromRGB(240, 120, 190), Light = Color3.fromRGB(225, 240, 255) }, -- Jodio (November Rain blue + strap pink)
 	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
 	[24] = { Main = Color3.fromRGB(150, 110, 220), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(230, 220, 255) }, -- Silver Chariot Requiem
+	[26] = { Main = Color3.fromRGB(230, 150, 215), Second = Color3.fromRGB(120, 70, 150), Light = Color3.fromRGB(250, 228, 250) }, -- Kira (Killer Queen pink + dark purple)
 	[25] = { Main = Color3.fromRGB(240, 120, 190), Second = Color3.fromRGB(150, 220, 240), Light = Color3.fromRGB(255, 226, 242) }, -- Josuke (Part 4: Crazy Diamond pink + pale blue)
 	[23] = { Main = Color3.fromRGB(196, 206, 222), Second = Color3.fromRGB(110, 170, 230), Light = Color3.fromRGB(240, 246, 255) }, -- Polnareff (Silver Chariot)
 	[22] = { Main = Color3.fromRGB(150, 80, 200), Second = Color3.fromRGB(255, 214, 80), Light = Color3.fromRGB(255, 246, 200) }, -- Joseph (Hermit Purple + Hamon gold)
@@ -8945,6 +8952,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "Josuke4VFX", -- client visuals (TuskActVFX.Josuke4VFX)
 		CardTitle = "STAND  ·  CRAZY DIAMOND",
 	},
+	-- YOSHIKAGE KIRA: KILLER QUEEN. Anything it touches becomes a bomb.
+	[26] = {
+		Name = "KILLER QUEEN",
+		Character = "Kira",
+		Tagline = "Killer Queen has already touched it",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 140, 210), Secondary = Color3.fromRGB(90, 50, 110) },
+		M1 = "KILLER QUEEN COMBO",
+		Abilities = { "FIRST BOMB", "SHEER HEART ATTACK", "STRAY CAT AIR BOMBS" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "BITES THE DUST",
+		Next = nil,
+		Module = "Kira", -- server moves
+		ClientModule = "KiraVFX", -- client visuals (TuskActVFX.KiraVFX)
+		CardTitle = "STAND  ·  KILLER QUEEN",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -8954,7 +8977,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -9234,6 +9257,12 @@ TuskAnimation.Poses = {
 	JK4Stance = { Root = { 0, 10, 0, -0.04 }, Waist = { -2, 8, 0 }, Neck = { 4, -8, 0 }, RightArm = { 30, 0, 14 }, RightElbow = { 60, 0, 0 }, LeftArm = { 20, 0, -12 }, LeftElbow = { 50, 0, 0 }, RightHip = { 10, 0, 0 }, RightKnee = { -12, 0, 0 }, LeftHip = { -6, 0, 0 } },
 	JK4Comb = { Root = { 0, 0, 0, 0 }, Waist = { 0, 0, 0 }, Neck = { -14, 0, 0 }, RightArm = { 160, 0, 30 }, RightElbow = { 110, 0, 0 }, LeftArm = { 160, 0, -30 }, LeftElbow = { 110, 0, 0 } },
 	JK4Rage = { Root = { -8, 0, 0, -0.1 }, Waist = { -14, 0, 0 }, Neck = { 18, 0, 0 }, RightArm = { 40, 0, 40 }, RightElbow = { 90, 0, 0 }, LeftArm = { 40, 0, -40 }, LeftElbow = { 90, 0, 0 }, RightHip = { 16, 0, 0 }, RightKnee = { -20, 0, 0 }, LeftHip = { 16, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	-- KIRA: calm and composed; the thumb comes up for the "click".
+	KiraStance = { Root = { 0, 6, 0, 0 }, Waist = { 0, 4, 0 }, Neck = { 2, -6, 0 }, RightArm = { 20, 0, 8 }, RightElbow = { 30, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
+	KiraClick = { Root = { 0, -6, 0, 0 }, Waist = { 0, -6, 0 }, Neck = { 4, 4, 0 }, RightArm = { 75, 0, 10 }, RightElbow = { 70, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
+	KiraReach = { Root = { 0, -14, 0, 0 }, Waist = { 4, -12, 0 }, Neck = { 2, 14, 0 }, RightArm = { 88, 0, 4 }, RightElbow = { 6, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
+	KiraSummon = { Root = { 6, 0, 0, -0.05 }, Waist = { 14, 0, 0 }, Neck = { 6, 0, 0 }, RightArm = { 40, 0, 20 }, RightElbow = { 10, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
+	KiraFace = { Root = { 0, 0, 0, 0 }, Waist = { 2, 0, 0 }, Neck = { -12, 0, 0 }, RightArm = { 130, 0, 20 }, RightElbow = { 115, 0, 0 }, LeftArm = { 30, 0, -10 }, LeftElbow = { 60, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -9475,6 +9504,15 @@ TuskAnimation.Actions = {
 	JK4Fuse = { { 0, "JK4Stance" }, { 0.12, "JTPoint", "Back", 3 }, { 0.5, "JTPoint", "Linear" }, { 0.7, "JK4Stance", "Sine" } },
 	JK4Flick = { { 0, "JK4Stance" }, { 0.1, "JTFlick", "Back", 3 }, { 0.35, "JTFlick", "Linear" }, { 0.55, "JK4Stance", "Sine" } },
 	JK4Snap = { { 0, "JK4Stance" }, { 0.15, "JK4Comb", "Out" }, { 0.55, "JK4Comb", "Linear" }, { 0.75, "JK4Rage", "Back", 3 }, { 1.3, "JK4Rage", "Linear" }, { 1.6, "JK4Stance", "Sine" } },
+	KR_M1_1 = { { 0, "KiraStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "KiraStance", "Sine" } },
+	KR_M1_2 = { { 0, "KiraStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "KiraStance", "Sine" } },
+	KR_M1_3 = { { 0, "KiraStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "KiraStance", "Sine" } },
+	KR_M1_4 = { { 0, "KiraStance" }, { 0.08, "KiraReach", "Back", 4 }, { 0.3, "KiraReach", "Linear" }, { 0.5, "KiraStance", "Sine" } },
+	KRReach = { { 0, "KiraStance" }, { 0.1, "KiraReach", "Back", 3 }, { 0.35, "KiraReach", "Linear" }, { 0.55, "KiraStance", "Sine" } },
+	KRClick = { { 0, "KiraStance" }, { 0.08, "KiraClick", "Out" }, { 0.35, "KiraClick", "Linear" }, { 0.55, "KiraStance", "Sine" } },
+	KRSummon = { { 0, "KiraStance" }, { 0.12, "KiraSummon", "Out" }, { 0.45, "KiraSummon", "Linear" }, { 0.65, "KiraStance", "Sine" } },
+	KRBlow = { { 0, "KiraStance" }, { 0.1, "KiraReach", "Out" }, { 0.4, "KiraReach", "Linear" }, { 0.6, "KiraStance", "Sine" } },
+	KRBTD = { { 0, "KiraStance" }, { 0.2, "KiraFace", "Out" }, { 1.0, "KiraFace", "Linear" }, { 1.3, "KiraClick", "Back", 3 }, { 1.6, "KiraClick", "Linear" }, { 1.9, "KiraStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },
@@ -12702,6 +12740,14 @@ local function iconKind(name)
 		return "clock"
 	elseif has("ORA RUSH") or has("ORA BARRAGE") then
 		return "barrage"
+	elseif has("FIRST BOMB") or has("CONTACT DETONATION") then
+		return "spiral"
+	elseif has("SHEER HEART") then
+		return "portal"
+	elseif has("STRAY CAT") then
+		return "bubble"
+	elseif has("BITES THE DUST") then
+		return "clock"
 	elseif has("DORARARA") or has("DORA BARRAGE") then
 		return "barrage"
 	elseif has("BREAK & RESTORE") then

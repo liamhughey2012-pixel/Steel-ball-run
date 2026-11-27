@@ -746,6 +746,10 @@ local function onMove(data)
 	elseif who == "Dio" and data.Phase == "Drain" and data.Position then
 		-- WRYYY: a blood-red ring pulling in.
 		ring(data.Position, data.Radius or 18, Color3.fromRGB(190, 20, 30), 0.6)
+	elseif who == "Kira" and data.Phase == "Blast" and data.Position then
+		-- CONTACT DETONATION: a ring of fire round him.
+		ring(data.Position, data.Radius or 15, Color3.fromRGB(255, 150, 60), 0.5)
+		VFXLib.burst(data.Position + Vector3.new(0, 2, 0), { Count = 18, Color = Color3.fromRGB(255, 150, 60), Speed = 18, Lifetime = 0.6 })
 	elseif who == "Josuke4" and data.Phase == "Barrage" and data.Position then
 		-- DORA BARRAGE: a pink ring of punches spreading out round him.
 		ring(data.Position, data.Radius or 16, Color3.fromRGB(255, 130, 200), data.Time or 0.5)

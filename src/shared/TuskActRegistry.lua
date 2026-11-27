@@ -427,6 +427,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "Josuke4VFX", -- client visuals (TuskActVFX.Josuke4VFX)
 		CardTitle = "STAND  ·  CRAZY DIAMOND",
 	},
+	-- YOSHIKAGE KIRA: KILLER QUEEN. Anything it touches becomes a bomb.
+	[26] = {
+		Name = "KILLER QUEEN",
+		Character = "Kira",
+		Tagline = "Killer Queen has already touched it",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 140, 210), Secondary = Color3.fromRGB(90, 50, 110) },
+		M1 = "KILLER QUEEN COMBO",
+		Abilities = { "FIRST BOMB", "SHEER HEART ATTACK", "STRAY CAT AIR BOMBS" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "BITES THE DUST",
+		Next = nil,
+		Module = "Kira", -- server moves
+		ClientModule = "KiraVFX", -- client visuals (TuskActVFX.KiraVFX)
+		CardTitle = "STAND  ·  KILLER QUEEN",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -436,7 +452,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

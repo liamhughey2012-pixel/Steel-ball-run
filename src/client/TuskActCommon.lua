@@ -49,6 +49,7 @@ Common.Palettes = {
 	[17] = { Main = Color3.fromRGB(90, 170, 240), Second = Color3.fromRGB(240, 120, 190), Light = Color3.fromRGB(225, 240, 255) }, -- Jodio (November Rain blue + strap pink)
 	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
 	[24] = { Main = Color3.fromRGB(150, 110, 220), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(230, 220, 255) }, -- Silver Chariot Requiem
+	[26] = { Main = Color3.fromRGB(230, 150, 215), Second = Color3.fromRGB(120, 70, 150), Light = Color3.fromRGB(250, 228, 250) }, -- Kira (Killer Queen pink + dark purple)
 	[25] = { Main = Color3.fromRGB(240, 120, 190), Second = Color3.fromRGB(150, 220, 240), Light = Color3.fromRGB(255, 226, 242) }, -- Josuke (Part 4: Crazy Diamond pink + pale blue)
 	[23] = { Main = Color3.fromRGB(196, 206, 222), Second = Color3.fromRGB(110, 170, 230), Light = Color3.fromRGB(240, 246, 255) }, -- Polnareff (Silver Chariot)
 	[22] = { Main = Color3.fromRGB(150, 80, 200), Second = Color3.fromRGB(255, 214, 80), Light = Color3.fromRGB(255, 246, 200) }, -- Joseph (Hermit Purple + Hamon gold)

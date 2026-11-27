@@ -2290,6 +2290,7 @@ __modules["CorpseMoves"] = function()
 	  DIO          WRYYY: drains everyone round him (he heals)
 	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
 	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
+	  Kira         CONTACT DETONATION: Killer Queen blows up the ground round him
 	  Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA!
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
@@ -2739,6 +2740,20 @@ USE.Jotaro = function(S, player, state, character, root)
 				end
 			end
 		end)
+	end
+end
+
+-- CONTACT DETONATION: Killer Queen sets off the ground round Kira.
+USE.Kira = function(S, player, state, character, root)
+	local c = TuskConfig.Kira and TuskConfig.Kira.CorpseBlast or { Radius = 15, Damage = 10, Stun = 0.7, Knockback = 40 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Kira", Phase = "Blast", Position = root.Position, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local away = Vector3.new(tr.Position.X - root.Position.X, 0, tr.Position.Z - root.Position.Z)
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Launch = 12, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "KiraCorpse" })
+		end
 	end
 end
 
@@ -9840,7 +9855,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO, Joseph, Polnareff, Josuke (4):
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO, Joseph, Polnareff, Josuke (4), Kira:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -9902,6 +9917,7 @@ local LOOKS = {
 	Joseph = { Skin = Color3.fromRGB(226, 186, 150), Torso = Color3.fromRGB(40, 52, 84), Legs = Color3.fromRGB(178, 152, 110) },
 	Dio = { Skin = Color3.fromRGB(240, 210, 180), Torso = Color3.fromRGB(26, 26, 30), Legs = Color3.fromRGB(214, 164, 72) },
 	Jotaro = { Skin = Color3.fromRGB(214, 170, 130), Torso = Color3.fromRGB(36, 36, 42), Legs = Color3.fromRGB(36, 36, 42) },
+	Kira = { Skin = Color3.fromRGB(236, 206, 176), Torso = Color3.fromRGB(150, 116, 180), Legs = Color3.fromRGB(150, 116, 180) },
 	Josuke4 = { Skin = Color3.fromRGB(226, 186, 150), Torso = Color3.fromRGB(38, 38, 82), Legs = Color3.fromRGB(38, 38, 82) },
 	Ringo = { Skin = Color3.fromRGB(206, 146, 100), Torso = Color3.fromRGB(240, 240, 244), Legs = Color3.fromRGB(240, 240, 244) },
 	JohnRod = { Skin = Color3.fromRGB(226, 190, 160), Torso = Color3.fromRGB(90, 96, 110), Legs = Color3.fromRGB(52, 54, 64) },
@@ -12085,6 +12101,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "Josuke4VFX", -- client visuals (TuskActVFX.Josuke4VFX)
 		CardTitle = "STAND  ·  CRAZY DIAMOND",
 	},
+	-- YOSHIKAGE KIRA: KILLER QUEEN. Anything it touches becomes a bomb.
+	[26] = {
+		Name = "KILLER QUEEN",
+		Character = "Kira",
+		Tagline = "Killer Queen has already touched it",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 140, 210), Secondary = Color3.fromRGB(90, 50, 110) },
+		M1 = "KILLER QUEEN COMBO",
+		Abilities = { "FIRST BOMB", "SHEER HEART ATTACK", "STRAY CAT AIR BOMBS" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "BITES THE DUST",
+		Next = nil,
+		Module = "Kira", -- server moves
+		ClientModule = "KiraVFX", -- client visuals (TuskActVFX.KiraVFX)
+		CardTitle = "STAND  ·  KILLER QUEEN",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -12094,7 +12126,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -13835,7 +13867,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit", "Josuke4Outfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit", "Josuke4Outfit", "KiraOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

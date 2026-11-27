@@ -184,6 +184,7 @@ TuskConfig.Roster = {
 	{ Id = "Joseph", Name = "JOSEPH JOESTAR", Stand = "HERMIT PURPLE", Available = true, Color = Color3.fromRGB(150, 80, 200) },
 	{ Id = "Polnareff", Name = "JEAN PIERRE POLNAREFF", Stand = "SILVER CHARIOT", Available = true, Color = Color3.fromRGB(196, 206, 222) },
 	{ Id = "Josuke4", Name = "JOSUKE HIGASHIKATA (4)", Stand = "CRAZY DIAMOND", Available = true, Color = Color3.fromRGB(236, 120, 190) },
+	{ Id = "Kira", Name = "YOSHIKAGE KIRA", Stand = "KILLER QUEEN", Available = true, Color = Color3.fromRGB(196, 120, 200) },
 }
 
 ---------------------------------------------------------------------------
@@ -260,7 +261,7 @@ TuskConfig.StandBots = {
 	Count = 20, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph", "Polnareff", "Josuke4" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph", "Polnareff", "Josuke4", "Kira" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -1253,6 +1254,51 @@ TuskConfig.Josuke4 = {
 }
 
 ---------------------------------------------------------------------------
+-- YOSHIKAGE KIRA (Part 4): KILLER QUEEN (a visitor from another world).
+-- Anything Killer Queen touches becomes a bomb.
+---------------------------------------------------------------------------
+TuskConfig.Kira = {
+	M1 = { -- KILLER QUEEN COMBO: Killer Queen strikes with him; the 4th is a chop that launches
+		Interval = 0.26, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.07,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.6, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.6, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4.0, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7.0, Stun = 0.55, Knockback = 40, Launch = 14, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	FirstBomb = { -- 1: touch the nearest enemy in front: they're a bomb. Press 1 again to detonate (click)
+		Windup = 0.2, Range = 8, Cone = 80,
+		TouchDamage = 3, TouchStun = 0.3,
+		PrimeTime = 8, -- seconds to press it again before the bomb fizzles
+		Damage = 15, Knockback = 50, Launch = 14, Stun = 0.8, -- the bomb going off
+		SplashRadius = 7, SplashDamage = 5, -- anyone standing next to them
+		Cooldown = 12, -- after it goes off
+		MissCooldown = 2, FizzleCooldown = 5,
+	},
+	SheerHeartAttack = { -- 2: a little tank that rolls out after the nearest enemy and explodes ("LOOK HERE!")
+		Cooldown = 16, Windup = 0.3,
+		Speed = 24, SeekRange = 70, Life = 8,
+		HitRadius = 3.5, ExplodeRadius = 9,
+		Damage = 12, Knockback = 40, Launch = 12, Stun = 0.7,
+	},
+	StrayCat = { -- 3: three air bubbles (Stray Cat's air bombs) drift out in a fan; they burst on whoever they touch
+		Cooldown = 9, Windup = 0.25,
+		Count = 3, Spread = 14, Speed = 18, Life = 3,
+		HitRadius = 3, ExplodeRadius = 6,
+		Damage = 7, Knockback = 25, Stun = 0.5,
+	},
+	Ultimate = { -- BITES THE DUST: everyone near is marked; they blow up; then time rewinds for Kira (his health and where he stood)
+		Windup = 0.8,
+		Range = 45, Delay = 3,
+		Damage = 18, Knockback = 30, Launch = 10, Stun = 1.0,
+		RewindHealth = true, RewindPosition = true,
+	},
+	CorpseBlast = { Radius = 15, Damage = 10, Stun = 0.7, Knockback = 40 }, -- corpse move CONTACT DETONATION: an explosion round him
+}
+
+---------------------------------------------------------------------------
 -- DIO: THE WORLD (a visitor from another world: Part 3). Not Diego's The
 -- World: a vampire with a golden Stand, knives, and a ROAD ROLLER.
 ---------------------------------------------------------------------------
@@ -1532,7 +1578,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT", Polnareff = "SWORD WHIRL", Josuke4 = "DORA BARRAGE",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT", Polnareff = "SWORD WHIRL", Josuke4 = "DORA BARRAGE", Kira = "CONTACT DETONATION",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }

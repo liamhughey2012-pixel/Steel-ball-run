@@ -179,6 +179,14 @@ local function iconKind(name)
 		return "clock"
 	elseif has("ORA RUSH") or has("ORA BARRAGE") then
 		return "barrage"
+	elseif has("FIRST BOMB") or has("CONTACT DETONATION") then
+		return "spiral"
+	elseif has("SHEER HEART") then
+		return "portal"
+	elseif has("STRAY CAT") then
+		return "bubble"
+	elseif has("BITES THE DUST") then
+		return "clock"
 	elseif has("DORARARA") or has("DORA BARRAGE") then
 		return "barrage"
 	elseif has("BREAK & RESTORE") then
