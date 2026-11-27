@@ -394,7 +394,12 @@ end
 ---------------------------------------------------------------------------
 -- Horses gallop, riders sit astride
 ---------------------------------------------------------------------------
-local LEG_PHASE = { LegFL = 0, LegFR = 0.25, LegBL = 0.5, LegBR = 0.75 }
+-- Where each leg is in the stride. Slow: a TROT (diagonal pairs together).
+-- Fast: a GALLOP (each pair nearly together, the back pair half a stride
+-- behind the front), blended by speed.
+local TROT_PHASE = { LegFL = 0, LegBR = 0.02, LegFR = 0.5, LegBL = 0.52 }
+local GALLOP_PHASE = { LegFL = 0, LegFR = 0.12, LegBL = 0.5, LegBR = 0.62 }
+local LEG_PHASE = GALLOP_PHASE
 local horses = setmetatable({}, { __mode = "k" }) -- [horse] = { Phase, Joints, Weld, Base }
 local riders = setmetatable({}, { __mode = "k" }) -- [character] = previous hold
 
@@ -403,18 +408,35 @@ local function horseState(horse)
 	if h then
 		return h
 	end
-	h = { Phase = math.random(), Joints = {} }
+	h = { Phase = math.random(), Joints = {}, Legs = 0 }
+	horses[horse] = h
+	return h
+end
+
+-- Find the horse's jointed parts (legs, neck, tail). Done again until all
+-- four legs are found: online, a horse can show up before its legs have
+-- finished loading, and caching an empty list left it frozen mid-stride.
+local function findJoints(horse, h)
+	if h.Legs >= 4 and h.Weld and h.Weld.Parent then
+		return
+	end
+	if h.NextScan and os.clock() < h.NextScan then
+		return
+	end
+	h.NextScan = os.clock() + 0.5
+	h.Joints, h.Legs = {}, 0
 	for _, p in ipairs(horse:GetChildren()) do
 		local joint = p:IsA("BasePart") and p:GetAttribute("Joint")
 		local w = joint and p:FindFirstChildOfClass("Weld")
 		if w then
 			table.insert(h.Joints, { Part = p, Weld = w, Joint = joint, Drop = p:GetAttribute("Drop") or 0, Rest = p:GetAttribute("Rest") or 0 })
+			if LEG_PHASE[p.Name] then
+				h.Legs = h.Legs + 1
+			end
 		end
 	end
 	local body = horse.PrimaryPart or horse:FindFirstChild("Body")
 	h.Weld = body and body:FindFirstChild("HorseWeld")
-	horses[horse] = h
-	return h
 end
 
 local function clearPlates()
@@ -438,21 +460,58 @@ local function stepHorses(dt)
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		if root and horse.Parent then
 			local h = horseState(horse)
+			findJoints(horse, h)
 			local v = root.AssemblyLinearVelocity
 			local speed = Vector3.new(v.X, 0, v.Z).Magnitude
-			local amp = math.clamp(speed / 40, 0, 1)
-			h.Phase = (h.Phase + dt * (0.6 + speed * 0.045)) % 1
+			-- Smoothed, so the legs ease in and out of a stride.
+			h.Speed = (h.Speed or 0) + (speed - (h.Speed or 0)) * math.min(1, dt * 6)
+			local s = h.Speed
+			local amp = math.clamp(s / 30, 0, 1)
+			local gallop = math.clamp((s - 18) / 14, 0, 1) -- 0 = trotting, 1 = full gallop
+			-- Faster strides the faster it goes (about 2.3 a second at a full gallop).
+			h.Phase = (h.Phase + dt * (s > 1 and (1.1 + s * 0.028) or 0)) % 1
+			local swing = (0.45 + 0.4 * gallop) * amp
 			for _, j in ipairs(h.Joints) do
 				local a = j.Rest
+				local drop = j.Drop
 				local name = j.Part.Name
 				if LEG_PHASE[name] then
-					a = a + math.sin((h.Phase + LEG_PHASE[name]) * math.pi * 2) * 0.75 * amp
+					local ph = TROT_PHASE[name] + (GALLOP_PHASE[name] - TROT_PHASE[name]) * gallop
+					local c = (h.Phase + ph) * math.pi * 2
+					-- Reach forward, sweep back; the leg tucks up as it swings forward.
+					a = a + math.sin(c) * swing
+					drop = drop - math.max(0, math.cos(c)) * 0.35 * amp
 				elseif name == "Neck" then
-					a = a + math.sin(h.Phase * math.pi * 4) * 0.1 * amp
+					-- The head pumps with the stride (harder at a gallop).
+					a = a + math.sin(h.Phase * math.pi * 2 + 0.6) * (0.05 + 0.12 * gallop) * amp
 				elseif name == "Tail" then
-					a = a - 0.6 * amp + math.sin(os.clock() * 3 + h.Phase) * 0.12
+					a = a - 0.7 * amp + math.sin(os.clock() * (3 + s * 0.15) + h.Phase) * (0.12 + 0.1 * amp)
 				end
-				j.Weld.C0 = CFrame.new(j.Joint) * CFrame.Angles(a, 0, 0) * CFrame.new(0, -j.Drop, 0)
+				j.Weld.C0 = CFrame.new(j.Joint) * CFrame.Angles(a, 0, 0) * CFrame.new(0, -drop, 0)
+			end
+			-- Hoofbeats kick up a little sand when it really runs.
+			if s > 22 then
+				local beat = math.floor(h.Phase * 2)
+				if beat ~= h.LastBeat then
+					h.LastBeat = beat
+					local back = -Vector3.new(v.X, 0, v.Z).Unit
+					local at = root.Position - Vector3.new(0, 2.8, 0) + back * (beat == 0 and 1.8 or 0.4)
+					local puff = Instance.new("Part")
+					puff.Anchored = true
+					puff.CanCollide = false
+					puff.CanQuery = false
+					puff.CanTouch = false
+					puff.CastShadow = false
+					puff.Shape = Enum.PartType.Ball
+					puff.Material = Enum.Material.SmoothPlastic
+					puff.Color = Color3.fromRGB(222, 192, 140)
+					puff.Size = Vector3.new(0.8, 0.8, 0.8)
+					puff.Transparency = 0.4
+					puff.CFrame = CFrame.new(at)
+					puff.Parent = VFXLib.Folder
+					TweenService:Create(puff, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.new(2.2, 1.6, 2.2), Transparency = 1, CFrame = CFrame.new(at + back * 1.5 + Vector3.new(0, 0.8, 0)) }):Play()
+					game:GetService("Debris"):AddItem(puff, 0.6)
+				end
 			end
 			-- Its name, over its head.
 			local name = horse:GetAttribute("HorseName")
@@ -509,7 +568,12 @@ local function stepHorses(dt)
 			-- never from last frame's position (so it can't creep).
 			local bodyY = horse:GetAttribute("BodyY")
 			if h.Weld and bodyY then
-				h.Weld.C0 = CFrame.new(0, bodyY, -0.4) * CFrame.new(0, math.abs(math.sin(h.Phase * math.pi * 2)) * 0.25 * amp, 0) * CFrame.Angles(math.sin(h.Phase * math.pi * 2) * 0.04 * amp, 0, 0)
+				-- Bobs twice a stride trotting; at a gallop one big bound, rocking nose-up then nose-down.
+				local c = h.Phase * math.pi * 2
+				local gallopK = math.clamp(((h.Speed or 0) - 18) / 14, 0, 1)
+				local bob = (math.abs(math.sin(c)) * (1 - gallopK) + (0.5 + 0.5 * math.sin(c)) * gallopK) * (0.18 + 0.2 * gallopK) * amp
+				local rock = math.sin(c + 0.4) * (0.03 + 0.07 * gallopK) * amp
+				h.Weld.C0 = CFrame.new(0, bodyY, -0.4) * CFrame.new(0, bob, 0) * CFrame.Angles(rock, 0, 0)
 			end
 		end
 	end

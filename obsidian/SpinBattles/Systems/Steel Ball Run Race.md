@@ -219,3 +219,11 @@ If you're playing **Sandman**, the race doesn't give you a horse: you run every 
 - Sand kicks up behind him as he runs (RaceClient `stepRunners`).
 - When the race ends he goes back to his normal speed (he doesn't keep a horse).
 - Server: `runsOnFoot` / `footSpeed` in RaceService. Attribute `RaceOnFoot` on the character. Turn it off with `Race.SandmanOnFoot = false`.
+
+## Horse gallop (2026-11-27)
+- **Two gaits:** slow horses **trot** (diagonal pairs of legs together) and fast ones **gallop** (each pair nearly together, the back pair half a stride behind), blending with speed.
+- **Stride:** strides quicken with speed. Each leg reaches forward and sweeps back, tucking up as it swings forward.
+- **Body:** the head pumps with the stride. The body bobs twice a stride at a trot, and at a gallop makes one big bound, rocking nose-up then nose-down.
+- **Tail and dust:** the tail streams back and swishes. Hoofbeats kick up sand above about 22 studs/s.
+- **Fix:** the leg joints are looked for again until all four are found. Online, a horse could appear before its legs loaded, and the client cached an empty list, which left that horse frozen.
+- Code: `RaceClient` (stepHorses). It works for race horses and your own horse (M), since both carry the "SpinHorse" tag.
