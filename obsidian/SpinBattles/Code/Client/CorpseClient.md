@@ -763,6 +763,31 @@ local function onMove(data)
 		end
 	elseif who == "Jodio" then
 		-- (November Rain's cloud and crush are drawn by JodioVFX.)
+	elseif who == "Polnareff" and data.Phase == "Whirl" and data.Position then
+		-- SWORD WHIRL: a silver ring of blade.
+		ring(data.Position, data.Radius or 14, Color3.fromRGB(220, 230, 250), 0.4)
+	elseif who == "Joseph" and data.Phase == "Hamon" and data.Position then
+		-- HAMON BEAT: a golden ripple across the ground.
+		ring(data.Position, data.Radius or 16, Color3.fromRGB(255, 214, 80), 0.5)
+	elseif who == "Dio" and data.Phase == "Drain" and data.Position then
+		-- WRYYY: a blood-red ring pulling in.
+		ring(data.Position, data.Radius or 18, Color3.fromRGB(190, 20, 30), 0.6)
+	elseif who == "Okuyasu" and data.Phase == "Pull" and data.Position then
+		-- SPACE PULL: a dark ring snapping inward.
+		ring(data.Position, data.Radius or 26, Color3.fromRGB(150, 200, 255), 0.4)
+	elseif who == "Kira" and data.Phase == "Blast" and data.Position then
+		-- CONTACT DETONATION: a ring of fire round him.
+		ring(data.Position, data.Radius or 15, Color3.fromRGB(255, 150, 60), 0.5)
+		VFXLib.burst(data.Position + Vector3.new(0, 2, 0), { Count = 18, Color = Color3.fromRGB(255, 150, 60), Speed = 18, Lifetime = 0.6 })
+	elseif who == "Josuke4" and data.Phase == "Barrage" and data.Position then
+		-- DORA BARRAGE: a pink ring of punches spreading out round him.
+		ring(data.Position, data.Radius or 16, Color3.fromRGB(255, 130, 200), data.Time or 0.5)
+	elseif who == "Jotaro" and data.Phase == "Barrage" and data.Position then
+		-- ORA BARRAGE: a violet ring of punches spreading out round him.
+		ring(data.Position, data.Radius or 16, Color3.fromRGB(150, 120, 255), data.Time or 0.5)
+	elseif who == "Ringo" and data.Phase == "Rewind" and data.Position then
+		-- SECOND HAND: a pink ring sweeps out; everyone in it loses 6 seconds.
+		ring(data.Position, data.Radius or 20, Color3.fromRGB(240, 130, 180), 0.6)
 	elseif who == "Tooru" and data.Phase == "Calamity" and data.Position then
 		-- A dark maroon ring sweeps out: misfortune finds everyone in it.
 		ring(data.Position, data.Radius or 24, Color3.fromRGB(150, 40, 50), 0.6)

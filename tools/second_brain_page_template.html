@@ -1,0 +1,234 @@
+<title>Spin Battlegrounds Brain</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a sticky wooden top bar, a note list down the left, one readable note column. */
+:root{
+  --bg:#f3ecdf; --panel:#fbf7ef; --ink:#271c11; --muted:#76664f; --line:#e1d4bd;
+  --wood:#6b4426; --wood-ink:#fff4e2; --accent:#3c8020; --accent-soft:#e4efd8;
+  --code:#efe6d5; --mark:#f6dc8a;
+  --display:"Space Grotesk",system-ui,sans-serif; --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace; --brand:"Bangers","Impact",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#17120c; --panel:#1f1811; --ink:#f1e6d3; --muted:#ab9a80; --line:#3a2e20;
+    --wood:#3b2614; --wood-ink:#ffeed2; --accent:#86cc55; --accent-soft:#23331a;
+    --code:#271f16; --mark:#6a5418; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#17120c; --panel:#1f1811; --ink:#f1e6d3; --muted:#ab9a80; --line:#3a2e20;
+  --wood:#3b2614; --wood-ink:#ffeed2; --accent:#86cc55; --accent-soft:#23331a;
+  --code:#271f16; --mark:#6a5418; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 var(--body)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--wood)}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--wood);color:var(--wood-ink);
+  padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.brand{font-family:var(--brand);font-size:26px;letter-spacing:.04em;line-height:1;white-space:nowrap}
+.brand small{display:block;font-family:var(--body);font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-top:3px}
+.bar .grow{flex:1 1 200px;min-width:0}
+#q{width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.18);color:var(--wood-ink);font:inherit}
+#q::placeholder{color:var(--wood-ink);opacity:.6}
+.btn{border:1px solid rgba(255,255,255,.3);background:transparent;color:var(--wood-ink);border-radius:8px;padding:7px 12px;font:500 13px var(--body);cursor:pointer}
+.btn:hover{background:rgba(255,255,255,.1)}
+#navToggle{display:none}
+
+.wrap{display:grid;grid-template-columns:270px minmax(0,1fr);min-height:calc(100vh - 60px)}
+nav{border-right:1px solid var(--line);background:var(--panel);padding-block:14px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:12px;
+  position:sticky;top:calc(env(safe-area-inset-top,0px) + 58px);height:calc(100vh - 58px - env(safe-area-inset-top,0px));overflow:auto}
+.group{margin-bottom:6px}
+.ghead{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:0;color:var(--muted);
+  font:600 11px var(--body);letter-spacing:.1em;text-transform:uppercase;padding:8px 8px 4px;cursor:pointer}
+.ghead .n{font-variant-numeric:tabular-nums;letter-spacing:0}
+.sub{font:500 11px var(--mono);color:var(--muted);padding:6px 10px 2px}
+nav a{display:block;padding:4px 10px;border-radius:6px;color:var(--ink);text-decoration:none;font-size:14px;line-height:1.35}
+nav a:hover{background:var(--code)}
+nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.group.shut .items{display:none}
+.hit-none{color:var(--muted);font-size:13px;padding:8px 10px}
+
+main{min-width:0;padding-block:28px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+article{max-width:74ch;margin:0 auto}
+.eyebrow{font:600 11px var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{font:700 clamp(26px,4vw,36px)/1.15 var(--display);margin:6px 0 8px;text-wrap:balance}
+.meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:13px;margin-bottom:20px}
+.chip{background:var(--code);border-radius:999px;padding:2px 9px;font:500 12px var(--mono)}
+.note h2{font:600 22px/1.25 var(--display);margin:30px 0 10px;text-wrap:balance}
+.note h3{font:600 17px/1.3 var(--display);margin:22px 0 8px}
+.note p,.note li{max-width:70ch}
+.note ul,.note ol{padding-left:22px}
+.note li{margin:3px 0}
+.note code{font:13px var(--mono);background:var(--code);padding:1px 5px;border-radius:4px}
+.note pre{background:var(--code);border-radius:8px;padding:14px;overflow-x:auto;font:12.5px/1.5 var(--mono)}
+.note pre code{background:none;padding:0}
+.tablebox{overflow-x:auto;margin:14px 0}
+.note table{border-collapse:collapse;width:100%;font-size:14px}
+.note th,.note td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.note th{font:600 12px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.note img.shot{display:block;max-width:100%;height:auto;border-radius:8px;border:1px solid var(--line);margin:14px 0;background:#eef1f6}
+.wl{font-weight:500}
+.wl.missing{color:var(--muted);border-bottom:1px dashed var(--line)}
+.backlinks{margin-top:40px;padding-top:16px;border-top:1px solid var(--line)}
+.backlinks h4{font:600 11px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.backlinks div{display:flex;flex-wrap:wrap;gap:6px}
+.backlinks a{background:var(--code);border-radius:6px;padding:3px 9px;font-size:13px;text-decoration:none}
+.status{color:var(--muted);font-size:13px}
+
+@media (max-width:820px){
+  .wrap{grid-template-columns:minmax(0,1fr)}
+  #navToggle{display:inline-block}
+  nav{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 106px);bottom:0;height:auto;z-index:4;border-right:0;border-top:1px solid var(--line);
+    padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .bar .grow{order:3;flex-basis:100%}
+}
+@media (prefers-reduced-motion:no-preference){ nav a{transition:background .12s} }
+</style>
+
+<header class="bar">
+  <div class="brand">SPIN BATTLEGROUNDS<small>Second Brain · __COUNT__ notes</small></div>
+  <div class="grow"><input id="q" type="search" placeholder="Search notes, moves, scripts…" aria-label="Search notes"></div>
+  <button class="btn" id="navToggle" aria-expanded="false" aria-controls="nav">Notes</button>
+  <button class="btn" id="theme" aria-label="Switch light or dark">Light / dark</button>
+</header>
+<div class="wrap">
+  <nav id="nav" aria-label="Notes"></nav>
+  <main>
+    <article id="view">
+      <div class="eyebrow">Home</div>
+      <h1>SpinBattles: Spin Battlegrounds Second Brain</h1>
+      <div class="meta"><span>Updated __HOME_UPDATED__</span></div>
+      <div class="note">__HOME_HTML__</div>
+    </article>
+  </main>
+</div>
+
+<script>
+(function(){
+  var NAV = __NAV__;
+  var HOME = "__HOME_ID__";
+  var notes = null, byId = {};
+  NAV.forEach(function(n){ byId[n.id] = n; });
+  var nav = document.getElementById("nav"), view = document.getElementById("view"), q = document.getElementById("q");
+  var shut = {};
+  try { shut = JSON.parse(localStorage.getItem("brain-shut") || '{"Code":true}'); } catch (e) { shut = { Code: true }; }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]; }); }
+
+  function renderNav(filter){
+    var groups = [], cur = null, term = (filter || "").trim().toLowerCase(), shown = 0;
+    NAV.forEach(function(n){
+      if (term) {
+        var full = notes && notes[n.id];
+        var hay = (n.title + " " + (full ? full.text : "")).toLowerCase();
+        if (hay.indexOf(term) === -1) return;
+      }
+      if (!cur || cur.name !== n.folder) { cur = { name: n.folder, items: [] }; groups.push(cur); }
+      cur.items.push(n); shown++;
+    });
+    var html = "";
+    groups.forEach(function(g){
+      var closed = !term && shut[g.name];
+      html += '<div class="group' + (closed ? " shut" : "") + '"><button class="ghead" data-g="' + esc(g.name) + '" aria-expanded="' + !closed + '">' + esc(g.name) + ' <span class="n">' + g.items.length + '</span></button><div class="items">';
+      var lastSub = "";
+      g.items.forEach(function(n){
+        if (n.sub && n.sub !== lastSub) { html += '<div class="sub">' + esc(n.sub) + '</div>'; lastSub = n.sub; }
+        html += '<a href="#' + n.id + '" data-id="' + n.id + '">' + esc(n.title) + '</a>';
+      });
+      html += "</div></div>";
+    });
+    if (!shown) html = '<div class="hit-none">No notes match “' + esc(filter) + '”.' + (notes ? "" : " Still loading the full text…") + "</div>";
+    nav.innerHTML = html;
+    mark();
+  }
+
+  function mark(){
+    var id = current();
+    [].forEach.call(nav.querySelectorAll("a"), function(a){ a.classList.toggle("on", a.getAttribute("data-id") === id); });
+  }
+
+  function current(){ var h = location.hash.replace(/^#/, ""); return byId[h] ? h : HOME; }
+
+  function wrapTables(root){
+    [].forEach.call(root.querySelectorAll("table"), function(t){
+      if (t.parentNode.classList.contains("tablebox")) return;
+      var box = document.createElement("div"); box.className = "tablebox";
+      t.parentNode.insertBefore(box, t); box.appendChild(t);
+    });
+  }
+
+  function show(){
+    var id = current();
+    var n = notes && notes[id];
+    if (!n) {
+      if (id === HOME) { wrapTables(view); mark(); return; }
+      view.innerHTML = '<div class="eyebrow">' + esc(byId[id].folder) + '</div><h1>' + esc(byId[id].title) + '</h1><p class="status">Loading this note…</p>';
+      mark(); return;
+    }
+    var meta = [];
+    if (n.updated) meta.push("<span>Updated " + esc(n.updated) + "</span>");
+    (n.tags || "").split(",").forEach(function(t){ t = t.trim(); if (t) meta.push('<span class="chip">' + esc(t) + "</span>"); });
+    var back = "";
+    if (n.from && n.from.length) {
+      back = '<section class="backlinks"><h4>Linked from</h4><div>' + n.from.map(function(f){ return byId[f] ? '<a href="#' + f + '">' + esc(byId[f].title) + "</a>" : ""; }).join("") + "</div></section>";
+    }
+    view.innerHTML = '<div class="eyebrow">' + esc(n.folder + (n.sub ? " · " + n.sub : "")) + '</div><h1>' + esc(n.title) + '</h1><div class="meta">' + meta.join("") + '</div><div class="note">' + n.html + "</div>" + back;
+    wrapTables(view);
+    mark();
+  }
+
+  nav.addEventListener("click", function(e){
+    var g = e.target.closest(".ghead");
+    if (g) {
+      var name = g.getAttribute("data-g");
+      shut[name] = !g.parentNode.classList.contains("shut");
+      g.parentNode.classList.toggle("shut", shut[name]);
+      g.setAttribute("aria-expanded", String(!shut[name]));
+      try { localStorage.setItem("brain-shut", JSON.stringify(shut)); } catch (err) {}
+      return;
+    }
+    if (e.target.closest("a") && innerWidth <= 820) setNav(false);
+  });
+
+  function setNav(open){
+    nav.hidden = !open;
+    document.getElementById("navToggle").setAttribute("aria-expanded", String(open));
+  }
+  document.getElementById("navToggle").addEventListener("click", function(){ setNav(nav.hidden); });
+  function fitNav(){ if (innerWidth > 820) nav.hidden = false; else if (!nav.dataset.init) setNav(false); nav.dataset.init = "1"; }
+  addEventListener("resize", fitNav);
+
+  q.addEventListener("input", function(){
+    renderNav(q.value);
+    if (q.value && innerWidth <= 820) setNav(true);
+  });
+
+  addEventListener("hashchange", function(){ show(); scrollTo(0, 0); });
+
+  document.getElementById("theme").addEventListener("click", function(){
+    var root = document.documentElement;
+    var dark = root.getAttribute("data-theme") ? root.getAttribute("data-theme") === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    root.setAttribute("data-theme", dark ? "light" : "dark");
+  });
+
+  renderNav("");
+  fitNav();
+  show();
+  fetch("notes.json").then(function(r){ return r.json(); }).then(function(list){
+    notes = {};
+    list.forEach(function(n){ notes[n.id] = n; });
+    if (q.value) renderNav(q.value);
+    show();
+  }).catch(function(){
+    if (current() !== HOME) view.querySelector(".status") && (view.querySelector(".status").textContent = "This note couldn't load. Reload the page to try again.");
+  });
+})();
+</script>

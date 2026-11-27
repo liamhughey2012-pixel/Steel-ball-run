@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `CorpseMoves` (capitals matter) |
 
-**What it does:** Every character's CORPSE MOVE (V), unlocked while holding a Saint's Corpse part. One shared cooldown (TuskConfig.Corpse.Move.Cooldown); the ready time is the character attribute CorpseReadyAt (server time) for the HUD. Visuals: CorpseClient, from WorldFX "CorpseMove". Johnny       GOLDEN SPIN NAIL: a huge golden spinning nail Gyro         GOLDEN RECTANGLE: a spinning shockwave straight ahead Diego        DINOSAUR CRASH: leaps to the aim point and slams down Pork Pie     HOOK HARVEST: hooks yank everyone round him in Sandman      SOUND BARRIER: dashes through enemies, then a blast Mountain Tim LASSO CYCLONE: a spinning lasso pulls everyone in Hot Pants    FLESH COCOON: heals and armours herself, then a burst Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse Diego (AU)   REVOLVER: draws a six-shooter, fans six shots where he aims Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is) With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead (TuskConfig.Corpse.Miracle), and afterwards every part scatters. All damage goes through S.hit (CombatAdapter).
+**What it does:** Every character's CORPSE MOVE (V), unlocked while holding a Saint's Corpse part. One shared cooldown (TuskConfig.Corpse.Move.Cooldown); the ready time is the character attribute CorpseReadyAt (server time) for the HUD. Visuals: CorpseClient, from WorldFX "CorpseMove". Johnny       GOLDEN SPIN NAIL: a huge golden spinning nail Gyro         GOLDEN RECTANGLE: a spinning shockwave straight ahead Diego        DINOSAUR CRASH: leaps to the aim point and slams down Pork Pie     HOOK HARVEST: hooks yank everyone round him in Sandman      SOUND BARRIER: dashes through enemies, then a blast Mountain Tim LASSO CYCLONE: a spinning lasso pulls everyone in Hot Pants    FLESH COCOON: heals and armours herself, then a burst Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse Diego (AU)   REVOLVER: draws a six-shooter, fans six shots where he aims Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is) Ringo        SECOND HAND: everyone round him loses 6 seconds (hit, dazed) Jotaro       ORA BARRAGE: Star Platinum punches everyone round him, then a big ORA! DIO          WRYYY: drains everyone round him (he heals) Joseph       HAMON BEAT: a Hamon ripple through the ground round him Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him Kira         CONTACT DETONATION: Killer Queen blows up the ground round him Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA! With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead (TuskConfig.Corpse.Miracle), and afterwards every part scatters. All damage goes through S.hit (CombatAdapter).
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -46,6 +46,14 @@ Back to [[Where To Put Code]]
 	  Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him
 	  Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him
 	  John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is)
+	  Ringo        SECOND HAND: everyone round him loses 6 seconds (hit, dazed)
+	  Jotaro       ORA BARRAGE: Star Platinum punches everyone round him, then a big ORA!
+	  DIO          WRYYY: drains everyone round him (he heals)
+	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
+	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
+	  Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him
+	  Kira         CONTACT DETONATION: Killer Queen blows up the ground round him
+	  Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA!
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
 	(TuskConfig.Corpse.Miracle), and afterwards every part scatters.
 	All damage goes through S.hit (CombatAdapter).
@@ -419,6 +427,153 @@ USE.JohnRod = function(S, player, state, character, root)
 		if tr then
 			local away = Vector3.new(tr.Position.X - center.X, 0, tr.Position.Z - center.Z)
 			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 18, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JohnRodSnap" })
+		end
+	end
+end
+
+-- SWORD WHIRL: Silver Chariot spins its rapier round Polnareff.
+USE.Polnareff = function(S, player, state, character, root)
+	local c = TuskConfig.Polnareff and TuskConfig.Polnareff.CorpseWhirl or { Radius = 14, Damage = 9, Stun = 0.7 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Polnareff", Phase = "Whirl", Position = root.Position, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local away = Vector3.new(tr.Position.X - root.Position.X, 0, tr.Position.Z - root.Position.Z)
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 20, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "PolnareffCorpse" })
+		end
+	end
+end
+
+-- HAMON BEAT: Joseph slaps the ground and a Hamon ripple runs out.
+USE.Joseph = function(S, player, state, character, root)
+	local c = TuskConfig.Joseph and TuskConfig.Joseph.CorpseHamon or { Radius = 16, Damage = 8, Stun = 1.0 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Joseph", Phase = "Hamon", Position = root.Position, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 8, Direction = Vector3.new(0, 1, 0), Position = tr.Position, Source = "JosephCorpse" })
+		end
+	end
+end
+
+-- WRYYY: DIO drains everyone round him at once; he heals from it.
+USE.Dio = function(S, player, state, character, root)
+	local c = TuskConfig.Dio and TuskConfig.Dio.CorpseDrain or { Radius = 18, Damage = 7, Stun = 0.6, HealPerDamage = 0.6 }
+	S.lock(state, 0.5)
+	fx({ Character = character, Who = "Dio", Phase = "Drain", Position = root.Position, Radius = c.Radius })
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local healed = 0
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		local hum = target:FindFirstChildOfClass("Humanoid")
+		if tr and hum then
+			local before = hum.Health
+			if S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Direction = Vector3.new(0, 1, 0), Position = tr.Position, Source = "DioCorpse" }) then
+				healed = healed + math.max(0, before - hum.Health) * c.HealPerDamage
+			end
+		end
+	end
+	if humanoid and healed > 0 then
+		humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + healed)
+	end
+end
+
+-- ORA BARRAGE: Star Platinum spins round Jotaro punching everyone near,
+-- then one big ORA! sends them flying.
+USE.Jotaro = function(S, player, state, character, root)
+	local c = TuskConfig.Jotaro and TuskConfig.Jotaro.CorpseOra or { Radius = 16, Hits = 6, Gap = 0.08, Damage = 2, FinalDamage = 6, Stun = 0.6 }
+	S.lock(state, c.Hits * c.Gap + 0.3)
+	fx({ Character = character, Who = "Jotaro", Phase = "Barrage", Position = root.Position, Radius = c.Radius, Time = c.Hits * c.Gap })
+	for i = 1, c.Hits do
+		task.delay((i - 1) * c.Gap, function()
+			local char = player.Character
+			local r = char and char:FindFirstChild("HumanoidRootPart")
+			if not r then
+				return
+			end
+			local last = i == c.Hits
+			for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, c.Radius, 10)) do
+				local tr = target:FindFirstChild("HumanoidRootPart")
+				if tr then
+					local away = Vector3.new(tr.Position.X - r.Position.X, 0, tr.Position.Z - r.Position.Z)
+					S.hit(player, target, { Damage = last and c.FinalDamage or c.Damage, Stun = c.Stun, Knockback = last and 40 or 0, Launch = last and 12 or nil, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "JotaroCorpse" })
+				end
+			end
+		end)
+	end
+end
+
+-- SPACE PULL: The Hand erases the space round Okuyasu: everyone near is
+-- yanked in next to him, hurt and dazed.
+USE.Okuyasu = function(S, player, state, character, root)
+	local c = TuskConfig.Okuyasu and TuskConfig.Okuyasu.CorpsePull or { Radius = 26, Damage = 6, Stun = 0.8 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Okuyasu", Phase = "Pull", Position = root.Position, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and not tr.Anchored then
+			local off = Vector3.new(tr.Position.X - root.Position.X, 0, tr.Position.Z - root.Position.Z)
+			local to = root.Position + (off.Magnitude > 0.1 and off.Unit or Vector3.new(0, 0, -1)) * 4
+			target:PivotTo(CFrame.lookAt(to, Vector3.new(root.Position.X, to.Y, root.Position.Z)))
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Position = to, Source = "OkuyasuCorpse" })
+		end
+	end
+end
+
+-- CONTACT DETONATION: Killer Queen sets off the ground round Kira.
+USE.Kira = function(S, player, state, character, root)
+	local c = TuskConfig.Kira and TuskConfig.Kira.CorpseBlast or { Radius = 15, Damage = 10, Stun = 0.7, Knockback = 40 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Kira", Phase = "Blast", Position = root.Position, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local away = Vector3.new(tr.Position.X - root.Position.X, 0, tr.Position.Z - root.Position.Z)
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Launch = 12, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "KiraCorpse" })
+		end
+	end
+end
+
+-- DORA BARRAGE: Crazy Diamond spins round Josuke (Part 4) punching
+-- everyone near, then one big DORA! sends them flying.
+USE.Josuke4 = function(S, player, state, character, root)
+	local c = TuskConfig.Josuke4 and TuskConfig.Josuke4.CorpseDora or { Radius = 16, Hits = 6, Gap = 0.08, Damage = 2, FinalDamage = 6, Stun = 0.6 }
+	S.lock(state, c.Hits * c.Gap + 0.3)
+	fx({ Character = character, Who = "Josuke4", Phase = "Barrage", Position = root.Position, Radius = c.Radius, Time = c.Hits * c.Gap })
+	for i = 1, c.Hits do
+		task.delay((i - 1) * c.Gap, function()
+			local char = player.Character
+			local r = char and char:FindFirstChild("HumanoidRootPart")
+			if not r then
+				return
+			end
+			local last = i == c.Hits
+			for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, c.Radius, 10)) do
+				local tr = target:FindFirstChild("HumanoidRootPart")
+				if tr then
+					local away = Vector3.new(tr.Position.X - r.Position.X, 0, tr.Position.Z - r.Position.Z)
+					S.hit(player, target, { Damage = last and c.FinalDamage or c.Damage, Stun = c.Stun, Knockback = last and 40 or 0, Launch = last and 12 or nil, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "Josuke4Corpse" })
+				end
+			end
+		end)
+	end
+end
+
+-- SECOND HAND: Mandom turns everyone round Ringo back 6 seconds: they're
+-- hit and dazed (Ringo remembers; they don't).
+USE.Ringo = function(S, player, state, character, root)
+	local c = TuskConfig.Ringo and TuskConfig.Ringo.CorpseRewind or { Radius = 20, Damage = 7, Stun = 1.2 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Ringo", Phase = "Rewind", Position = root.Position, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			local away = Vector3.new(tr.Position.X - root.Position.X, 0, tr.Position.Z - root.Position.Z)
+			if S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 6, Direction = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1), Position = tr.Position, Source = "RingoSecondHand" }) then
+				target:SetAttribute("MandomDazedUntil", workspace:GetServerTimeNow() + c.Stun)
+			end
 		end
 	end
 end

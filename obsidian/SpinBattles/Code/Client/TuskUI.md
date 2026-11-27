@@ -175,6 +175,70 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("SOUL SWAP") or has("SOUL REVERSAL") then
+		return "ghost"
+	elseif has("REQUIEM'S SLEEP") then
+		return "spiral"
+	elseif has("SHADOW STEP") then
+		return "dash"
+	elseif has("HORA HORA") then
+		return "barrage"
+	elseif has("ARMOR OFF") then
+		return "dash"
+	elseif has("RAPIER SHOT") or has("SWORD WHIRL") then
+		return "slash"
+	elseif has("AFTERIMAGE STORM") then
+		return "spiral"
+	elseif has("HERMIT GRAB") then
+		return "lasso"
+	elseif has("HAMON VINES") or has("HERMIT WEB") or has("HAMON BEAT") then
+		return "spiral"
+	elseif has("NIGERUNDAYO") then
+		return "dash"
+	elseif has("VAMPIRE DRAIN") or has("WRYYY") then
+		return "grab"
+	elseif has("STINGY EYES") then
+		return "dash"
+	elseif has("KNIFE VOLLEY") then
+		return "knife"
+	elseif has("ZA WARUDO") then
+		return "clock"
+	elseif has("ORA RUSH") or has("ORA BARRAGE") then
+		return "barrage"
+	elseif has("SPACE ERASE") or has("GREAT ERASURE") then
+		return "slash"
+	elseif has("ERASE PULL") or has("SPACE PULL") then
+		return "lasso"
+	elseif has("ERASE DASH") then
+		return "dash"
+	elseif has("FIRST BOMB") or has("CONTACT DETONATION") then
+		return "spiral"
+	elseif has("SHEER HEART") then
+		return "portal"
+	elseif has("STRAY CAT") then
+		return "bubble"
+	elseif has("BITES THE DUST") then
+		return "clock"
+	elseif has("DORARARA") or has("DORA BARRAGE") then
+		return "barrage"
+	elseif has("BREAK & RESTORE") then
+		return "grab"
+	elseif has("HOMING SHARD") then
+		return "nail"
+	elseif has("ABOUT MY HAIR") then
+		return "spiral"
+	elseif has("STAR FINGER") then
+		return "dash"
+	elseif has("BEARING SHOT") then
+		return "nail"
+	elseif has("STAR PLATINUM: THE WORLD") then
+		return "clock"
+	elseif has("SIX SECONDS") or has("PATH OF JUSTICE") then
+		return "clock"
+	elseif has("QUICK DRAW") then
+		return "nail"
+	elseif has("MANDOM COUNTER") then
+		return "portal"
 	elseif has("REMOTE CONTROL") then
 		return "portal"
 	elseif has("ROD LASH") then

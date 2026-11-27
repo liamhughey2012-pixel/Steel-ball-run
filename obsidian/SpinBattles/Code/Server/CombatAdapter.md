@@ -367,6 +367,25 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 		end
 	end
 	damage = damage * (targetCharacter:GetAttribute("CorpseResist") or 1)
+	-- Bounty-board shop: Rye Whiskey (hit harder), Leather Duster (take less).
+	local shopNow = workspace:GetServerTimeNow()
+	if attackerCharacter and (attackerCharacter:GetAttribute("ShopDamageUntil") or 0) > shopNow then
+		damage = damage * (attackerCharacter:GetAttribute("ShopDamage") or 1)
+	end
+	if (targetCharacter:GetAttribute("ShopResistUntil") or 0) > shopNow then
+		damage = damage * (targetCharacter:GetAttribute("ShopResist") or 1)
+	end
+	-- The Requiem Arrow's blessing.
+	if attackerCharacter and (attackerCharacter:GetAttribute("ArrowBlessUntil") or 0) > shopNow then
+		damage = damage * (attackerCharacter:GetAttribute("ArrowDamage") or 1)
+	end
+	if (targetCharacter:GetAttribute("ArrowBlessUntil") or 0) > shopNow then
+		damage = damage * (targetCharacter:GetAttribute("ArrowResist") or 1)
+	end
+	-- Josuke's rage ("WHAT DID YOU SAY ABOUT MY HAIR?!").
+	if attackerCharacter and (attackerCharacter:GetAttribute("HairRageUntil") or 0) > shopNow then
+		damage = damage * (attackerCharacter:GetAttribute("HairRageDamage") or 1)
+	end
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
 
 	-- Who hit them last (kill credit for bounties and kill streaks).

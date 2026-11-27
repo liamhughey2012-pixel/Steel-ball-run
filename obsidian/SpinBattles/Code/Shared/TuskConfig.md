@@ -172,6 +172,21 @@ TuskConfig.Cutscenes = {
 	CorpseComplete = true, -- a golden orbit when you complete the Saint's Corpse
 }
 
+-- CINEMATIC: the film look over the whole game (client; scaled by the VFX
+-- setting: Low = grade + cards only, Medium = + vignette, High = + depth of
+-- field and drifting dust).
+TuskConfig.Cinematic = {
+	Enabled = true,
+	Grade = true, Contrast = 0.08, Saturation = 0.06, Tint = Color3.fromRGB(255, 247, 234),
+	DepthOfField = true, FarBlur = 0.12,
+	Vignette = true, VignetteStrength = 0.45,
+	Dust = true, DustRate = 14,
+	LowHealth = 0.3, -- below this much health the edges pulse red and colour drains
+	KOCam = true, KOHold = 1.5, KOCooldown = 2.5, KillCredit = 6, -- "TAKEN DOWN" when you finish someone
+	DeathCam = true, -- "YOU WERE TAKEN DOWN · BY ..." until you respawn
+	TitleCards = true, -- big moments (bounties) get a letterboxed title card
+}
+
 TuskConfig.Roster = {
 	{ Id = "Johnny", Name = "JOHNNY JOESTAR", Stand = "TUSK", Available = true, Color = Color3.fromRGB(90, 230, 255) },
 	{ Id = "Gyro", Name = "GYRO ZEPPELI", Stand = "BALL BREAKER", Available = true, Color = Color3.fromRGB(110, 210, 90) },
@@ -182,12 +197,20 @@ TuskConfig.Roster = {
 	{ Id = "HotPants", Name = "HOT PANTS", Stand = "CREAM STARTER", Available = true, Color = Color3.fromRGB(242, 140, 172) },
 	{ Id = "Blackmore", Name = "BLACKMORE", Stand = "CATCH THE RAINBOW", Available = true, Color = Color3.fromRGB(110, 180, 255) },
 	{ Id = "Axl", Name = "AXL RO", Stand = "CIVIL WAR", Available = true, Color = Color3.fromRGB(214, 60, 70) },
+	{ Id = "Ringo", Name = "RINGO ROADAGAIN", Stand = "MANDOM", Available = true, Color = Color3.fromRGB(214, 120, 160) },
 	{ Id = "Valentine", Name = "FUNNY VALENTINE", Stand = "D4C", Available = true, Color = Color3.fromRGB(120, 170, 255) },
 	{ Id = "DiegoAU", Name = "DIEGO BRANDO (AU)", Stand = "THE WORLD", Available = true, Color = Color3.fromRGB(236, 196, 70) },
 	{ Id = "Josuke", Name = "JOSUKE HIGASHIKATA (8)", Stand = "SOFT & WET", Available = true, Color = Color3.fromRGB(120, 190, 240) },
 	{ Id = "Tooru", Name = "TOORU", Stand = "WONDER OF U", Available = true, Color = Color3.fromRGB(150, 70, 190) },
 	{ Id = "JohnRod", Name = "JOHN ROD", Stand = "JOHN ROD", Available = true, Color = Color3.fromRGB(200, 215, 235) },
 	{ Id = "Jodio", Name = "JODIO JOESTAR", Stand = "NOVEMBER RAIN", Available = true, Color = Color3.fromRGB(90, 170, 240) },
+	{ Id = "Jotaro", Name = "JOTARO KUJO", Stand = "STAR PLATINUM", Available = true, Color = Color3.fromRGB(130, 110, 220) },
+	{ Id = "Dio", Name = "DIO", Stand = "THE WORLD", Available = true, Color = Color3.fromRGB(240, 196, 50) },
+	{ Id = "Joseph", Name = "JOSEPH JOESTAR", Stand = "HERMIT PURPLE", Available = true, Color = Color3.fromRGB(150, 80, 200) },
+	{ Id = "Polnareff", Name = "JEAN PIERRE POLNAREFF", Stand = "SILVER CHARIOT", Available = true, Color = Color3.fromRGB(196, 206, 222) },
+	{ Id = "Josuke4", Name = "JOSUKE HIGASHIKATA (4)", Stand = "CRAZY DIAMOND", Available = true, Color = Color3.fromRGB(236, 120, 190) },
+	{ Id = "Kira", Name = "YOSHIKAGE KIRA", Stand = "KILLER QUEEN", Available = true, Color = Color3.fromRGB(196, 120, 200) },
+	{ Id = "Okuyasu", Name = "OKUYASU NIJIMURA", Stand = "THE HAND", Available = true, Color = Color3.fromRGB(90, 130, 220) },
 }
 
 ---------------------------------------------------------------------------
@@ -204,10 +227,25 @@ TuskConfig.Bounty = {
 	KillCreditTime = 6, -- seconds: your hit must be this recent for the kill to count
 	Duration = 300, -- seconds before an accepted bounty runs out
 	MaxPosters = 12,
-	StartingCash = 0,
+	StartingCash = 250, -- every player starts with this (so they can post a bounty or shop straight away)
+	StudioCash = 5000, -- testing in Roblox Studio: start with at least this much
 	-- PUT A PRICE ON THEIR HEAD: pay to raise another player's bounty. Whoever
 	-- takes them down next gets it (contract or not); it's gone when they die.
-	PlaceAmount = 100, PlaceMax = 2000,
+	PlaceAmount = 100, PlaceMax = 10000,
+	-- POST A BOUNTY (the POST tab): put your own Cash on anyone in the server
+	-- (yourself too), any Stand-user NPC, or any Saint's Corpse part, for as
+	-- much as you like. Whoever takes them down (or takes the part) is paid
+	-- it, contract or not. A price on a player stays on until someone takes
+	-- them down (dying any other way doesn't clear it). If the target leaves
+	-- or an NPC vanishes without being taken down, everyone who posted gets
+	-- their Cash back.
+	Post = {
+		Min = 25, -- smallest post
+		Max = 5000, -- biggest single post
+		Cap = 10000, -- most that can be on one target at once
+		Quick = { 25, 100, 500 }, -- the +$ buttons
+		Announce = true, -- tell the whole server when a bounty's posted
+	},
 	-- JOBS: a few paid tasks on the board, the same for everyone, swapped for
 	-- new ones every RefreshEvery seconds. Progress counts on its own (no
 	-- need to accept); you're paid the moment one's done.
@@ -224,12 +262,19 @@ TuskConfig.Bounty = {
 		},
 	},
 	-- SHOP: spend Cash. Effects last until they run out or you die.
+	-- Category groups them on the shop page; Emoji is the picture on the card;
+	-- Tag is the short effect chip.
 	Shop = {
-		{ Id = "Bandages", Name = "BANDAGES", Price = 60, Text = "Heal 40 health right now", Icon = "+", Heal = 40 },
-		{ Id = "Tonic", Name = "SNAKE-OIL TONIC", Price = 90, Text = "+15% speed for 2 minutes", Icon = "~", Speed = 1.15, Time = 120 },
-		{ Id = "Horseshoe", Name = "LUCKY HORSESHOE", Price = 120, Text = "+25% ultimate charge for 2 minutes", Icon = "U", UltGain = 1.25, Time = 120 },
-		{ Id = "Compass", Name = "CORPSE COMPASS", Price = 100, Text = "Points you to the nearest Saint's Corpse part for 60 s", Icon = "N", Time = 60 },
-		{ Id = "ClearName", Name = "CLEAR YOUR NAME", Price = 0, Text = "Wipe your kill streak and any price on your head", Icon = "X", BaseCost = 50, PerStreak = 50 },
+		{ Id = "Bandages", Category = "SUPPLIES", Emoji = "🩹", Tag = "+40 HP", Name = "BANDAGES", Price = 60, Text = "Heal 40 health right now", Icon = "+", Heal = 40 },
+		{ Id = "Tonic", Category = "TONICS", Emoji = "🧪", Tag = "+15% SPEED", Name = "SNAKE-OIL TONIC", Price = 90, Text = "+15% speed for 2 minutes", Icon = "~", Speed = 1.15, Time = 120 },
+		{ Id = "Horseshoe", Category = "TONICS", Emoji = "🍀", Tag = "+25% ULT", Name = "LUCKY HORSESHOE", Price = 120, Text = "+25% ultimate charge for 2 minutes", Icon = "U", UltGain = 1.25, Time = 120 },
+		{ Id = "Compass", Category = "SUPPLIES", Emoji = "🧭", Tag = "CORPSE FINDER", Name = "CORPSE COMPASS", Price = 100, Text = "Points you to the nearest Saint's Corpse part for 60 s", Icon = "N", Time = 60 },
+		{ Id = "Canteen", Category = "SUPPLIES", Emoji = "🥤", Tag = "+3 HP/S", Name = "TIN CANTEEN", Price = 80, Text = "Heal 3 health a second for 20 s", Icon = "C", Regen = 3, Time = 20 },
+		{ Id = "Duster", Category = "GEAR", Emoji = "🧥", Tag = "-15% DAMAGE TAKEN", Name = "LEATHER DUSTER", Price = 140, Text = "Take 15% less damage for 2 minutes", Icon = "D", Resist = 0.85, Time = 120 },
+		{ Id = "Whiskey", Category = "TONICS", Emoji = "🥃", Tag = "+12% DAMAGE", Name = "RYE WHISKEY", Price = 130, Text = "Hit 12% harder for 90 s", Icon = "W", Damage = 1.12, Time = 90 },
+		{ Id = "Badge", Category = "GEAR", Emoji = "⭐", Tag = "+50% BOUNTY PAY", Name = "PINKERTON BADGE", Price = 160, Text = "Bounties and prices you claim pay 50% more for 3 minutes", Icon = "*", BountyBonus = 1.5, Time = 180 },
+		{ Id = "Smoke", Category = "GEAR", Emoji = "💨", Tag = "HIDE FROM HUNTERS", Name = "SMOKE BOMB", Price = 110, Text = "Hunters lose your trail (no marker, no distance) for 60 s", Icon = "S", Time = 60 },
+		{ Id = "ClearName", Category = "SERVICES", Emoji = "📜", Tag = "STREAK + PRICE WIPED", Name = "CLEAR YOUR NAME", Price = 0, Text = "Wipe your kill streak and any price on your head", Icon = "X", BaseCost = 50, PerStreak = 50 },
 	},
 }
 
@@ -239,10 +284,10 @@ TuskConfig.Bounty = {
 ---------------------------------------------------------------------------
 TuskConfig.StandBots = {
 	Enabled = true,
-	Count = 15, -- how many at once (each takes a free spot below)
+	Count = 20, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph", "Polnareff", "Josuke4", "Kira", "Okuyasu" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -276,6 +321,11 @@ TuskConfig.StandBots = {
 		Vector3.new(-190, 0, -380), -- far south-west
 		Vector3.new(110, 0, 380), -- far north
 		Vector3.new(380, 0, 290), -- north-east edge
+		Vector3.new(400, 0, -380), -- south-east corner
+		Vector3.new(400, 0, 130), -- east edge
+		Vector3.new(20, 0, 410), -- far north, beyond the river
+		Vector3.new(-60, 0, -420), -- far south
+		Vector3.new(420, 0, -120), -- east edge, south
 	},
 	Distance = 70, -- (no map) studs from the spawn to their camp
 	Spacing = 14, -- (no map) studs between them at the camp
@@ -357,7 +407,7 @@ TuskConfig.Act1 = {
 	},
 	NailShot = {
 		Cooldown = 4,
-		Startup = 0.18,
+		Startup = 0.35, -- hand up, fingers up, nails whirling... then he levels it and fires
 		Damage = 8,
 		Speed = 150,
 		Radius = 0.7,
@@ -367,7 +417,7 @@ TuskConfig.Act1 = {
 	},
 	NailBarrage = {
 		Cooldown = 9,
-		Startup = 0.15,
+		Startup = 0.3,
 		Count = 5,
 		Interval = 0.09,
 		SpreadDegrees = 7,
@@ -420,7 +470,7 @@ TuskConfig.Act2 = {
 			{ Damage = 7, Stun = 0.5, Knockback = 45, Launch = 14, Portal = true, ShockwaveRadius = 8 },
 		},
 	},
-	WormholeNail = { Cooldown = 6, Startup = 0.16, Damage = 8, ExitDamage = 7, Speed = 160, Radius = 0.75, Range = 170, ExitDelay = 0.4, ExitSearch = 12, Stun = 0.4, Knockback = 14 },
+	WormholeNail = { Cooldown = 6, Startup = 0.35, Damage = 8, ExitDamage = 7, Speed = 160, Radius = 0.75, Range = 170, ExitDelay = 0.4, ExitSearch = 12, Stun = 0.4, Knockback = 14 },
 	UndergroundPursuit = { Cooldown = 11, Range = 45, ConeDegrees = 100, BurrowTime = 0.55, WarningTime = 0.35, Damage = 11, Stun = 0.55, Knockback = 20, Launch = 30, HitRadius = 7 },
 	NailDimension = { Cooldown = 13, Range = 70, ConeDegrees = 50, Portals = 3, PortalRadius = 11, OpenTime = 0.4, Damage = 5, Speed = 140, Stun = 0.35, Knockback = 8, FinalRadius = 9, FinalDamage = 6 },
 	Ultimate = { -- DIMENSIONAL STORM -> evolves to Act 3
@@ -465,7 +515,7 @@ TuskConfig.Act4 = {
 			{ Damage = 10, Stun = 0.55, Knockback = 60, Launch = 22, ShockwaveRadius = 13, AoeRadius = 9 },
 		},
 	},
-	GoldenSpinNail = { Cooldown = 7, Startup = 0.3, Damage = 16, Speed = 175, Radius = 1.4, Range = 210, Stun = 0.5, Knockback = 40, ImpactRadius = 6, ImpactDamage = 5 },
+	GoldenSpinNail = { Cooldown = 7, Startup = 0.4, Damage = 16, Speed = 175, Radius = 1.4, Range = 210, Stun = 0.5, Knockback = 40, ImpactRadius = 6, ImpactDamage = 5 },
 	InfiniteRotation = {
 		Cooldown = 15, WalkSpeedMultiplier = 0.4, MaxHold = 3.5,
 		Stages = { 0.6, 1.3, 2.0 }, -- seconds of charge for stage 1 / 2 / 3
@@ -1087,6 +1137,427 @@ TuskConfig.JohnRod = {
 	CorpseSnap = { Radius = 18, Damage = 8, Stun = 0.7 }, -- corpse move ROD SNAP: lashes everyone round John Rod
 }
 
+---------------------------------------------------------------------------
+-- RINGO ROADAGAIN: MANDOM. Turning his watch rewinds time by exactly 6
+-- seconds; only he remembers what happened.
+---------------------------------------------------------------------------
+TuskConfig.Ringo = {
+	Rewind = 6, -- seconds Mandom turns back ("not a second more, not a second less")
+	M1 = { -- REVOLVER COMBO: three blows and a point-blank shot
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7.5, Stun = 0.5, Knockback = 34, Launch = 8, ShockwaveRadius = 6 },
+		},
+	},
+	SixSeconds = { -- 1: rewind 6 seconds: back where you were, with the health you had
+		Cooldown = 18,
+		Windup = 0.35, -- turning the watch
+		MaxDistance = 140, -- never takes you further than this (a safety net)
+		DazeRadius = 25, -- enemies this close lose the 6 seconds too:
+		DazeTime = 0.9, -- snapped back to where they were and dazed
+		EnemyMaxDistance = 60, -- (an enemy is only snapped back if that's this close)
+	},
+	QuickDraw = { -- 2: a revolver shot (instant)
+		Cooldown = 5, Windup = 0.22,
+		Range = 90, Width = 3,
+		Damage = 9, Stun = 0.55, Knockback = 10,
+	},
+	Counter = { -- 3: MANDOM COUNTER: hit him while he's waiting and time rewinds:
+		-- the hit never lands, he steps behind you and shoots
+		Cooldown = 12, Window = 1.0,
+		Behind = 4, Damage = 10, Stun = 0.9, Knockback = 24,
+		WhiffLag = 0.35, -- if nobody hits him
+	},
+	Ultimate = { -- THE PATH OF JUSTICE: 6 seconds that happen twice. When they
+		-- end, time rewinds: his health goes back to where it was, and every hit
+		-- he landed in them lands AGAIN.
+		Windup = 0.6, Duration = 6,
+		EchoMultiplier = 1.0, MaxEchoes = 14, EchoGap = 0.08,
+		EchoDazeTime = 0.6,
+		Speed = 1.15, -- he moves a little faster while it runs
+	},
+	CorpseRewind = { Radius = 20, Damage = 7, Stun = 1.2 }, -- corpse move SECOND HAND: everyone round him loses 6 seconds (dazed)
+}
+
+---------------------------------------------------------------------------
+-- JOTARO KUJO: STAR PLATINUM (a visitor from another world: Part 3).
+-- Close-range power, precision and speed; stops time for a few seconds.
+---------------------------------------------------------------------------
+TuskConfig.Jotaro = {
+	M1 = { -- ORA COMBO: Star Platinum punches with him; the 4th is a straight that launches
+		Interval = 0.26, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.07,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.8, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.8, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4.2, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7.5, Stun = 0.55, Knockback = 42, Launch = 14, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	OraRush = { -- 1: ORA ORA ORA: a storm of punches in front of him, dragging them along
+		Cooldown = 11, Windup = 0.15,
+		Duration = 1.5, Tick = 0.09,
+		Damage = 0.95, Stun = 0.35, Knockback = 0,
+		HitboxSize = Vector3.new(6, 6, 7), HitboxForward = 4, MaxTargets = 4,
+		Drag = 6,
+		WalkMultiplier = 0.55,
+		FinalDamage = 8, FinalKnockback = 70, FinalLaunch = 14, FinalStun = 0.7, -- "ORA!"
+		ShockwaveRadius = 8, ShockwaveDamage = 3,
+	},
+	StarFinger = { -- 2: Star Platinum's fingers shoot out in a long, fast line
+		Cooldown = 7, Windup = 0.2,
+		Length = 22, Width = 3.5,
+		Damage = 9, Stun = 0.7, Knockback = 14,
+	},
+	BearingShot = { -- 3: a ball bearing flicked like a bullet (instant)
+		Cooldown = 6, Windup = 0.18,
+		Range = 100, Width = 3,
+		Damage = 7, Stun = 0.5, Knockback = 8,
+	},
+	Ultimate = { -- STAR PLATINUM: THE WORLD: time stops round him; only he moves
+		Windup = 0.7,
+		Duration = 5, BotDuration = 3.5,
+		Range = 55,
+		SpeedMultiplier = 1.15,
+		ResetCooldowns = { "OraRush", "StarFinger" }, -- ready the moment time stops
+	},
+	CorpseOra = { Radius = 16, Hits = 6, Gap = 0.08, Damage = 2, FinalDamage = 6, Stun = 0.6 }, -- corpse move ORA BARRAGE: a 360 rush
+}
+
+---------------------------------------------------------------------------
+-- JOSUKE HIGASHIKATA (Part 4): CRAZY DIAMOND (a visitor from another world:
+-- Diamond is Unbreakable; not the JoJolion Josuke). Breaks things, and
+-- "restores" them: into rock, or back to where they came from.
+---------------------------------------------------------------------------
+TuskConfig.Josuke4 = {
+	M1 = { -- DORA COMBO: Crazy Diamond punches with him; the 4th is a heavy straight that launches
+		Interval = 0.26, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.07,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.7, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.7, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4.2, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7.5, Stun = 0.55, Knockback = 42, Launch = 14, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	DoraRush = { -- 1: DORARARA: a storm of punches in front of him, dragging them along
+		Cooldown = 11, Windup = 0.15,
+		Duration = 1.4, Tick = 0.09,
+		Damage = 0.95, Stun = 0.35, Knockback = 0,
+		HitboxSize = Vector3.new(6, 6, 7), HitboxForward = 4, MaxTargets = 4,
+		Drag = 6,
+		WalkMultiplier = 0.55,
+		FinalDamage = 8, FinalKnockback = 70, FinalLaunch = 12, FinalStun = 0.7, -- "DORA!"
+		ShockwaveRadius = 8, ShockwaveDamage = 3,
+	},
+	RockFusion = { -- 2: BREAK & RESTORE: punch the nearest enemy in front, then "fix" them into a lump of rock
+		Cooldown = 13, MissCooldown = 3, Windup = 0.25,
+		Range = 9, Cone = 80,
+		Damage = 7, -- the punch
+		EncaseTime = 2.2, -- stuck in the rock (can't move or act)
+		BurstDamage = 7, BurstKnockback = 40, BurstLaunch = 10, -- the rock breaks off
+	},
+	HomingShard = { -- 3: a bloodied glass shard; Crazy Diamond restores it, so it flies back to the blood (the nearest enemy)
+		Cooldown = 8, Windup = 0.25,
+		LockRange = 90, Cone = 120, -- picks the nearest enemy in front this close
+		Speed = 75, Turn = 7, -- studs/s, how hard it steers
+		Life = 2.2, HitRadius = 3,
+		Damage = 8, Stun = 0.6, Knockback = 10,
+	},
+	Ultimate = { -- "WHAT DID YOU SAY ABOUT MY HAIR?!": he snaps. Hits harder, moves faster, rush and fusion ready at once
+		Windup = 0.9,
+		Duration = 10, BotDuration = 7,
+		DamageMultiplier = 1.3,
+		SpeedMultiplier = 1.2,
+		ShoutRadius = 14, ShoutDamage = 6, ShoutKnockback = 45, -- the outburst blows people back
+		ResetCooldowns = { "DoraRush", "RockFusion" },
+	},
+	CorpseDora = { Radius = 16, Hits = 6, Gap = 0.08, Damage = 2, FinalDamage = 6, Stun = 0.6 }, -- corpse move DORA BARRAGE: a 360 rush
+}
+
+---------------------------------------------------------------------------
+-- YOSHIKAGE KIRA (Part 4): KILLER QUEEN (a visitor from another world).
+-- Anything Killer Queen touches becomes a bomb.
+---------------------------------------------------------------------------
+TuskConfig.Kira = {
+	M1 = { -- KILLER QUEEN COMBO: Killer Queen strikes with him; the 4th is a chop that launches
+		Interval = 0.26, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.07,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.6, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.6, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4.0, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7.0, Stun = 0.55, Knockback = 40, Launch = 14, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	FirstBomb = { -- 1: touch the nearest enemy in front: they're a bomb. Press 1 again to detonate (click)
+		Windup = 0.2, Range = 8, Cone = 80,
+		TouchDamage = 3, TouchStun = 0.3,
+		PrimeTime = 8, -- seconds to press it again before the bomb fizzles
+		Damage = 15, Knockback = 50, Launch = 14, Stun = 0.8, -- the bomb going off
+		SplashRadius = 7, SplashDamage = 5, -- anyone standing next to them
+		Cooldown = 12, -- after it goes off
+		MissCooldown = 2, FizzleCooldown = 5,
+	},
+	SheerHeartAttack = { -- 2: a little tank that rolls out after the nearest enemy and explodes ("LOOK HERE!")
+		Cooldown = 16, Windup = 0.3,
+		Speed = 24, SeekRange = 70, Life = 8,
+		HitRadius = 3.5, ExplodeRadius = 9,
+		Damage = 12, Knockback = 40, Launch = 12, Stun = 0.7,
+	},
+	StrayCat = { -- 3: three air bubbles (Stray Cat's air bombs) drift out in a fan; they burst on whoever they touch
+		Cooldown = 9, Windup = 0.25,
+		Count = 3, Spread = 14, Speed = 18, Life = 3,
+		HitRadius = 3, ExplodeRadius = 6,
+		Damage = 7, Knockback = 25, Stun = 0.5,
+	},
+	Ultimate = { -- BITES THE DUST: everyone near is marked; they blow up; then time rewinds for Kira (his health and where he stood)
+		Windup = 0.8,
+		Range = 45, Delay = 3,
+		Damage = 18, Knockback = 30, Launch = 10, Stun = 1.0,
+		RewindHealth = true, RewindPosition = true,
+	},
+	CorpseBlast = { Radius = 15, Damage = 10, Stun = 0.7, Knockback = 40 }, -- corpse move CONTACT DETONATION: an explosion round him
+}
+
+---------------------------------------------------------------------------
+-- OKUYASU NIJIMURA (Part 4): THE HAND (a visitor from another world). Its
+-- right palm ERASES whatever it swipes through, space included ("GAOON").
+---------------------------------------------------------------------------
+TuskConfig.Okuyasu = {
+	M1 = { -- HAND COMBO: The Hand swings with him; the 4th is a heavy backhand that launches
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.08,
+		HitboxSize = Vector3.new(5.5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.9, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.9, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4.3, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7.8, Stun = 0.6, Knockback = 44, Launch = 14, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	Erase = { -- 1: SPACE ERASE: a swipe of the right palm erases everything in front ("GAOON"); can't be blocked
+		Cooldown = 10, Windup = 0.35,
+		HitboxSize = Vector3.new(8, 6, 7), HitboxForward = 4, MaxTargets = 4,
+		Damage = 13, Stun = 0.7, Knockback = 6,
+	},
+	ErasePull = { -- 2: erase the space between him and someone far off: they're yanked right up to him
+		Cooldown = 11, MissCooldown = 3, Windup = 0.3,
+		Range = 40, Cone = 50,
+		Damage = 4, Stun = 0.9, -- landing in front of him, dazed
+		PullTo = 4, -- studs in front of him
+	},
+	EraseDash = { -- 3: erase the space in front of himself: he's suddenly further along
+		Cooldown = 7, Windup = 0.12,
+		Distance = 26, IFrames = 0.3,
+	},
+	Ultimate = { -- ZA HANDO: GREAT ERASURE: The Hand swipes again and again, pulling everyone in front in, then one huge erase
+		Windup = 0.6,
+		Swipes = 6, Gap = 0.24,
+		HitboxSize = Vector3.new(14, 7, 14), HitboxForward = 6, MaxTargets = 6,
+		Damage = 4, Stun = 0.5, Pull = 0.6, -- each swipe drags them this fraction of the way to him
+		FinalDamage = 18, FinalKnockback = 60, FinalLaunch = 16,
+	},
+	CorpsePull = { Radius = 26, Damage = 6, Stun = 0.8 }, -- corpse move SPACE PULL: everyone near is yanked in
+}
+
+---------------------------------------------------------------------------
+-- DIO: THE WORLD (a visitor from another world: Part 3). Not Diego's The
+-- World: a vampire with a golden Stand, knives, and a ROAD ROLLER.
+---------------------------------------------------------------------------
+TuskConfig.Dio = {
+	M1 = { -- MUDA COMBO: The World punches with him; the 4th is a heavy hook that launches
+		Interval = 0.26, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.07,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.6, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.6, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4.2, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7.5, Stun = 0.55, Knockback = 38, Launch = 18, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	VampireDrain = { -- 1: grab the nearest enemy in front and drink their blood: they're held and hurt, he heals
+		Cooldown = 12, MissCooldown = 3, Windup = 0.2,
+		Range = 9, Cone = 80,
+		Time = 1.5, Tick = 0.3, TickDamage = 3, HealPerDamage = 0.8,
+		EndKnockback = 30, EndStun = 0.6,
+	},
+	StingyEyes = { -- 2: SPACE RIPPER STINGY EYES: two thin beams of fluid from his eyes, long and fast
+		Cooldown = 9, Windup = 0.35,
+		Length = 70, Width = 2.5,
+		Damage = 10, Stun = 0.6, Knockback = 6,
+	},
+	Knives = { -- 3: a fan of knives; thrown in stopped time they hang in the air until it moves again
+		Cooldown = 7, Windup = 0.15,
+		Count = 5, Spread = 7, -- degrees between knives
+		StoppedCount = 10, StoppedSpread = 9, StoppedCooldown = 2, -- in his own stopped time: a wall of knives, quick
+		Speed = 150, Radius = 0.7, Range = 110,
+		Damage = 4, Stun = 0.35, Knockback = 5,
+	},
+	Ultimate = { -- ZA WARUDO: time stops round him... and a ROAD ROLLER comes down
+		Windup = 0.8,
+		Duration = 5, BotDuration = 3.5,
+		Range = 55,
+		SpeedMultiplier = 1.2,
+		ResetCooldowns = { "Knives", "StingyEyes" },
+		RollerAt = 1.3, -- seconds before time moves again: ROAD ROLLER DA!
+		RollerRange = 40, -- on the nearest frozen enemy this close (else wherever he's facing)
+		RollerRadius = 9, RollerDamage = 22, RollerStun = 1.2, RollerKnockback = 30,
+	},
+	CorpseDrain = { Radius = 18, Damage = 7, Stun = 0.6, HealPerDamage = 0.6 }, -- corpse move WRYYY: drains everyone round him
+}
+
+---------------------------------------------------------------------------
+-- JOSEPH JOESTAR: HERMIT PURPLE (a visitor from another world: Part 3).
+-- Thorny purple vines, Hamon through them, and running away.
+---------------------------------------------------------------------------
+TuskConfig.Joseph = {
+	M1 = { -- HAMON COMBO: Hamon-charged punches; the 4th is a SUNLIGHT YELLOW OVERDRIVE
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.08,
+		HitboxSize = Vector3.new(5, 5, 6), HitboxForward = 3.4, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.6, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.6, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4, Stun = 0.45, Knockback = 5 },
+			{ Damage = 8, Stun = 0.6, Knockback = 36, Launch = 12, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	HermitGrab = { -- 1: vines shoot out, snag the first enemy in line, drag them to him, Hamon shock
+		Cooldown = 9, MissCooldown = 3, Windup = 0.2,
+		Range = 38, Width = 3.5,
+		Damage = 6, Stun = 1.0, PullTime = 0.35, StopDistance = 3.5,
+		ShockDamage = 4, -- the Hamon jolt when they arrive
+	},
+	HamonVines = { -- 2: a fan of vines in front; Hamon surges through them into everyone they touch
+		Cooldown = 10, Windup = 0.3,
+		Range = 22, Cone = 70,
+		Damage = 9, Stun = 0.9, Knockback = 14,
+	},
+	Nigerundayo = { -- 3: "NIGERUNDAYO!": run away! a burst of speed and a moment you can't be hit
+		Cooldown = 14, Time = 3.5, Speed = 1.7, IFrames = 0.5,
+	},
+	Ultimate = { -- HERMIT WEB OVERDRIVE: vines burst up and bind everyone near; Hamon pulses; then a blast
+		Windup = 0.6, Radius = 24,
+		BindTime = 2.4, Tick = 0.4, TickDamage = 2.5,
+		BlastDamage = 15, BlastStun = 1.2, BlastKnockback = 40, BlastLaunch = 16,
+	},
+	CorpseHamon = { Radius = 16, Damage = 8, Stun = 1.0 }, -- corpse move HAMON BEAT: a ripple through the ground round him
+}
+
+---------------------------------------------------------------------------
+-- JEAN PIERRE POLNAREFF: SILVER CHARIOT (a visitor from another world:
+-- Part 3). A knight with a rapier; faster still with its armour off.
+---------------------------------------------------------------------------
+TuskConfig.Polnareff = {
+	M1 = { -- RAPIER COMBO: quick thrusts; the 4th is a lunge that sends them back
+		Interval = 0.24, ResetAfter = 1.1, EndLag = 0.8, Windup = 0.06,
+		HitboxSize = Vector3.new(4, 5, 8), HitboxForward = 4.2, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.4, Stun = 0.4, Knockback = 3 },
+			{ Damage = 3.4, Stun = 0.4, Knockback = 3 },
+			{ Damage = 3.8, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7, Stun = 0.55, Knockback = 40, Launch = 8, ShockwaveRadius = 6, AoeRadius = 6 },
+		},
+	},
+	M1ArmorOff = { -- the same, faster, while the armour's off
+		Interval = 0.16, ResetAfter = 1.0, EndLag = 0.55, Windup = 0.04,
+		HitboxSize = Vector3.new(4, 5, 8), HitboxForward = 4.2, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.2, Stun = 0.35, Knockback = 3 },
+			{ Damage = 3.2, Stun = 0.35, Knockback = 3 },
+			{ Damage = 3.6, Stun = 0.4, Knockback = 5 },
+			{ Damage = 6.5, Stun = 0.5, Knockback = 40, Launch = 8, ShockwaveRadius = 6, AoeRadius = 6 },
+		},
+	},
+	HoraRush = { -- 1: a storm of rapier thrusts in front of him, holding them in place
+		Cooldown = 11, Windup = 0.12,
+		Duration = 1.4, Tick = 0.08,
+		Damage = 0.9, Stun = 0.3, Knockback = 0,
+		HitboxSize = Vector3.new(5, 6, 8), HitboxForward = 4.5, MaxTargets = 4,
+		Drag = 6, WalkMultiplier = 0.6,
+		FinalDamage = 7, FinalKnockback = 55, FinalLaunch = 10, FinalStun = 0.6,
+		ShockwaveRadius = 7, ShockwaveDamage = 3,
+	},
+	ArmorOff = { -- 2: Silver Chariot sheds its armour: faster thrusts, faster feet
+		Cooldown = 20, Time = 8, Speed = 1.35,
+	},
+	RapierShot = { -- 3: the Chariot fires its blade like a bullet (instant)
+		Cooldown = 7, Windup = 0.25,
+		Range = 85, Width = 3,
+		Damage = 11, Stun = 0.6, Knockback = 18,
+	},
+	Ultimate = { -- AFTERIMAGE STORM: the Chariot splits into afterimages round the nearest enemy
+		Windup = 0.5, Range = 30, Cone = 140, -- who it surrounds (else a spot in front)
+		Radius = 10, Images = 7,
+		Duration = 2.2, Tick = 0.15, TickDamage = 1.4, TickStun = 0.25,
+		FinalDamage = 12, FinalStun = 1.0, FinalKnockback = 45, FinalLaunch = 14,
+	},
+	CorpseWhirl = { Radius = 14, Damage = 9, Stun = 0.7 }, -- corpse move SWORD WHIRL: the rapier spins round him
+}
+
+---------------------------------------------------------------------------
+-- THE REQUIEM ARROW: one turns up somewhere in the desert every 5 minutes.
+-- It isn't marked anywhere (no glow, no beam, no map marker): everyone is
+-- told it's out there, and the bounty board posts a contract for it.
+-- Take it (hold E next to it):
+--   * playing POLNAREFF: Silver Chariot is pierced and becomes SILVER
+--     CHARIOT REQUIEM (Act 24) until you go down
+--   * anyone else: THE ARROW'S BLESSING for a while
+---------------------------------------------------------------------------
+TuskConfig.RequiemArrow = {
+	Enabled = true,
+	Every = 300, -- seconds between arrows (an untaken one vanishes and a new one turns up elsewhere)
+	FirstAfter = 60, -- the first one, this long after the server starts
+	HoldTime = 1.5, -- hold E this long to take it
+	HighlightTime = 5, -- seconds a purple highlight shows it (through walls) when it turns up; 0 = never
+	Radius = 360, -- how far from the map's centre it can turn up
+	MaxHeight = 10, -- never on high ground (studs above the map's base)
+	Blessing = {
+		Time = 90,
+		Damage = 1.2, -- you hit 20% harder
+		Resist = 0.8, -- you take 20% less
+		Speed = 1.15,
+		UltGain = 1.5,
+	},
+	Bounty = 250, -- the bounty board pays this to whoever takes it (with the contract)
+}
+
+---------------------------------------------------------------------------
+-- SILVER CHARIOT REQUIEM (Polnareff, Act 24): what the Requiem Arrow makes
+-- of Silver Chariot. Lasts until Polnareff goes down.
+---------------------------------------------------------------------------
+TuskConfig.Requiem = {
+	M1 = { -- REQUIEM STRIKES: slow, heavy, long-reaching blows
+		Interval = 0.34, ResetAfter = 1.2, EndLag = 0.95, Windup = 0.1,
+		HitboxSize = Vector3.new(7, 6, 9), HitboxForward = 4.6, MaxTargets = 4,
+		Hits = {
+			{ Damage = 5, Stun = 0.55, Knockback = 6 },
+			{ Damage = 5, Stun = 0.55, Knockback = 6 },
+			{ Damage = 5.5, Stun = 0.6, Knockback = 8 },
+			{ Damage = 10, Stun = 0.7, Knockback = 50, Launch = 14, ShockwaveRadius = 9, AoeRadius = 8 },
+		},
+	},
+	SoulSwap = { -- 1: you and the nearest enemy in front swap places (and they're left reeling)
+		Cooldown = 10, Windup = 0.35, Range = 45, Cone = 100,
+		Damage = 8, Stun = 1.4,
+	},
+	Sleep = { -- 2: everyone round you falls asleep
+		Cooldown = 16, Windup = 0.5, Radius = 26,
+		Damage = 4, Time = 2.2,
+	},
+	ShadowStep = { -- 3: you slip forward like a shadow (you can't be hit for a moment)
+		Cooldown = 6, Distance = 24, IFrames = 0.45,
+	},
+	Ultimate = { -- SOUL REVERSAL: everyone near: souls pulled out, held, then slammed back
+		Windup = 0.8, Radius = 35,
+		HoldTime = 2.2, Tick = 0.3, TickDamage = 2.5,
+		FinalDamage = 18, FinalStun = 1.4,
+	},
+}
+
 TuskConfig.Gyro = {
 	M1 = {
 		Interval = 0.3, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.1,
@@ -1173,7 +1644,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT", Polnareff = "SWORD WHIRL", Josuke4 = "DORA BARRAGE", Kira = "CONTACT DETONATION", Okuyasu = "SPACE PULL",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }
@@ -1267,6 +1738,7 @@ TuskConfig.Race = {
 	},
 	-- NPC JOCKEYS ride too (they find their way round with pathfinding).
 	NPCRacers = 7,
+	SandmanOnFoot = true, -- Sandman runs the race on his own legs (no horse), exactly as fast as a horse
 	NPCNames = { "Dusty Pete", "Sandstorm Sally", "Iron Hoof Ike", "Lucky Lou", "Prairie Pat", "Cactus Jack", "Two-Spur Tom", "Rattlesnake Rosa", "Big Sky Hank", "Whiskey Jim" },
 	NPCSkill = { 0.88, 1.0 }, -- their horse speed is HorseSpeed times this (random per jockey): never faster than yours
 	NPCHealth = 120,

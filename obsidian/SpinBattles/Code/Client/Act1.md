@@ -45,6 +45,7 @@ local CameraFX = require(script.Parent.Parent.CameraFX)
 local TuskVFX = require(script.Parent.Parent.TuskVFX)
 local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
 local TuskStand = require(script.Parent.Parent.TuskStand)
+local Common = require(script.Parent.Parent.TuskActCommon)
 
 local Act1 = {}
 local colors = TuskConfig.Colors
@@ -121,25 +122,28 @@ local function onAbility(data)
 	if data.Move == "NailShot" and data.Phase == "Startup" then
 		TuskAnimation.play(character, "NailShot")
 		TuskStand.action(character, "Lunge", { Target = CFrame.new(1.4, 0.8, -1.2), Duration = data.Startup + 0.25 })
-		-- Anticipation: a small spinning charge at the fingertip.
-		local charge = TuskVFX.CreateEnergyCharge({
-			Follow = function()
-				return root.Parent and root.CFrame * CFrame.new(0.9, 0.55, -1.6) or nil
-			end,
-			Color = colors.Cyan,
-			Color2 = colors.Ice,
-			MaxRadius = 0.5,
-			Duration = data.Startup,
-			Rings = 1,
-			Particles = 0.5,
-		})
+		-- Anticipation: hand up, fingers up, blue whirls spinning round his
+		-- fingertips; they shoot out with the nail.
+		local whirl = Common.fingerWhirl(character, data.Startup)
 		task.delay(data.Startup, function()
-			charge:Release(data.Direction)
+			whirl:Release(data.Direction)
 		end)
 	elseif data.Move == "NailBarrage" and data.Phase == "Startup" then
 		TuskAnimation.play(character, "NailBarrage")
 		TuskStand.action(character, "Lunge", { Target = CFrame.new(1.6, 1.2, -1), Duration = data.Startup + data.Count * data.Interval + 0.2 })
-		VFXLib.burst((root.CFrame * CFrame.new(0.9, 0.55, -1.6)).Position, { Count = 10, Color = colors.Cyan, Speed = 6, Lifetime = 0.2 })
+		-- Whirls spin up while his hand is raised, then burst out with each nail.
+		local whirl = Common.fingerWhirl(character, data.Startup)
+		task.delay(data.Startup, function()
+			whirl:Release(data.Direction)
+		end)
+		for i = 1, (data.Count or 5) - 1 do
+			task.delay(data.Startup + i * (data.Interval or 0.09) - 0.06, function()
+				local puff = Common.fingerWhirl(character, 0.06)
+				task.delay(0.06, function()
+					puff:Release(data.Direction)
+				end)
+			end)
+		end
 	elseif data.Move == "SpinningNail" then
 		if data.Phase == "Release" then
 			TuskAnimation.stopHold(character, "ChargeNail")

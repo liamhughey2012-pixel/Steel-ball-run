@@ -71,9 +71,12 @@ local function onAbility(data)
 		TuskAnimation.play(character, "GoldenSpinNail")
 		TuskStand.action(character, "Lunge", { Target = CFrame.new(1.6, 1.2, -1.6), Duration = data.Startup + 0.3 })
 		local charge = golden(root, CFrame.new(0.9, 0.6, -2), data.Startup, 1)
+		-- Gold-tinged whirls round his raised fingertips.
+		local whirl = Common.fingerWhirl(character, data.Startup, { Color = Color3.fromRGB(255, 214, 110), Light = Color3.fromRGB(150, 210, 255) })
 		VFXLib.sound(sounds.ChargeFull, root, 0.5, 0.8)
 		task.delay(data.Startup, function()
 			charge:Release(data.Direction)
+			whirl:Release(data.Direction)
 		end)
 	elseif data.Move == "InfiniteRotation" then
 		if data.Phase == "Release" then

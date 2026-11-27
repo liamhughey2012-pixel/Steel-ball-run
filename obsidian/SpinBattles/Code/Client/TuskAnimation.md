@@ -103,6 +103,9 @@ TuskAnimation.Poses = {
 	FlickR = { Root = { 0, -18, 0, -0.05, 0.2 }, RightArm = { 96, -8, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { 38, 0, -22 }, LeftElbow = { 40, 0, 0 }, Waist = { 0, -22, 0 }, Neck = { 0, 16, 0 }, RightHip = { 18, 0, 0 }, RightKnee = { -16, 0, 0 }, LeftHip = { -10, 0, 0 } },
 	FlickRFollow = { Root = { -2, -22, 0, -0.08, 0.15 }, RightArm = { 84, -14, 2 }, RightElbow = { 12, 0, 0 }, LeftArm = { 34, 0, -24 }, LeftElbow = { 40, 0, 0 }, Waist = { -4, -26, 0 }, Neck = { 0, 18, 0 }, RightHip = { 14, 0, 0 }, RightKnee = { -14, 0, 0 } },
 	FingerGun = { Root = { 0, -14, 0, -0.08 }, RightArm = { 95, 0, 5 }, LeftArm = { 62, 0, -38 }, LeftElbow = { 50, 0, 0 }, Waist = { 0, -22, 0 }, Neck = { 0, 16, 0 }, RightHip = { 12, 0, 0 }, RightKnee = { -14, 0, 0 }, LeftHip = { -10, 0, 0 }, LeftKnee = { -6, 0, 0 } },
+	-- NAIL SHOT start-up (Johnny): his right hand comes up in front of him,
+	-- fingers pointing up, the nails spinning (then he levels it and fires).
+	NailRaise = { Root = { 0, -16, 0, -0.06 }, Waist = { -2, -18, 0 }, Neck = { 4, 14, 0 }, RightArm = { 118, 0, 10 }, RightElbow = { 62, 0, 0 }, LeftArm = { 40, 0, -26 }, LeftElbow = { 60, 0, 0 }, RightHip = { 10, 0, 0 }, RightKnee = { -12, 0, 0 }, LeftHip = { -8, 0, 0 } },
 	FingerGunRecoil = { Root = { 8, -10, 0, -0.04, -0.15 }, RightArm = { 120, 0, 6 }, RightElbow = { 14, 0, 0 }, LeftArm = { 56, 0, -36 }, LeftElbow = { 50, 0, 0 }, Waist = { 8, -16, 0 }, Neck = { 6, 12, 0 }, RightHip = { 8, 0, 0 }, RightKnee = { -10, 0, 0 } },
 	SlamWindup = { Root = { 10, 16, 0, -0.1 }, RightArm = { 168, 0, 12 }, RightElbow = { 30, 0, 0 }, LeftArm = { 42, 0, -32 }, Waist = { 14, 18, 0 }, Neck = { 8, -8, 0 }, LeftHip = { 24, 0, 0 }, LeftKnee = { -28, 0, 0 } },
 	Slam = { Root = { -16, -12, 0, -0.4, 0.4 }, RightArm = { 52, 0, 0 }, RightElbow = { 0, 0, 0 }, LeftArm = { 18, 0, -24 }, Waist = { -24, -12, 0 }, Neck = { -6, 10, 0 }, RightHip = { 36, 0, 0 }, RightKnee = { -46, 0, 0 }, LeftHip = { -14, 0, 0 }, LeftKnee = { -20, 0, 0 } },
@@ -254,6 +257,45 @@ TuskAnimation.Poses = {
 	JRStance = { Root = { 0, 0, 0, 0 }, Waist = { -2, 0, 0 }, Neck = { 2, 0, 0 }, RightArm = { -14, 0, 42 }, RightElbow = { 80, 0, 0 }, LeftArm = { -14, 0, -42 }, LeftElbow = { 80, 0, 0 } },
 	JRFocus = { Root = { 0, -6, 0, 0 }, Waist = { 2, -6, 0 }, Neck = { 8, 8, -4 }, RightArm = { 100, 0, 30 }, RightElbow = { 135, 0, 0 }, LeftArm = { -6, 0, -14 }, LeftElbow = { 20, 0, 0 } },
 	JRFling = { Root = { 0, -18, 0, -0.03 }, Waist = { 0, -18, 0 }, Neck = { 4, 18, 0 }, RightArm = { 92, 0, 10 }, RightElbow = { 0, 0, 0 }, LeftArm = { -14, 0, -42 }, LeftElbow = { 80, 0, 0 } },
+	-- RINGO ROADAGAIN: a gunslinger's ease, right hand by the holster; looking at his watch; the shot.
+	RGStance = { Root = { 0, 4, 0, 0 }, Waist = { -2, 4, 0 }, Neck = { 4, -6, 0 }, RightArm = { -8, 0, 16 }, RightElbow = { 34, 0, 0 }, LeftArm = { -6, 0, -10 }, LeftElbow = { 22, 0, 0 } },
+	RGShoot = { Root = { 0, -20, 0, -0.02 }, Waist = { 0, -16, 0 }, Neck = { 2, 20, 0 }, RightArm = { 90, 0, 6 }, RightElbow = { 0, 0, 0 }, LeftArm = { -10, 0, -12 }, LeftElbow = { 20, 0, 0 } },
+	RGWatch = { Root = { 0, 0, 0, 0 }, Waist = { 4, 0, 0 }, Neck = { 22, -12, 0 }, RightArm = { 70, 0, -36 }, RightElbow = { 70, 0, 0 }, LeftArm = { 74, 0, 40 }, LeftElbow = { 80, 0, 0 } },
+	-- JOTARO: tall, a hand in his pocket; pointing; a tug at his cap brim; a flick.
+	-- DIO: leaning back, one hand at his chest, the other held out; feeding; eyes; knives; ZA WARUDO.
+	-- JOSEPH: easy and ready, a finger raised ("your next line is..."); the grab; the lash; the web.
+	-- POLNAREFF: a fencer's guard; pointing; arms flung out (armour off).
+	PNStance = { Root = { 0, -14, 0, -0.04 }, Waist = { 0, -12, 0 }, Neck = { 2, 12, 0 }, RightArm = { 60, 0, 10 }, RightElbow = { 40, 0, 0 }, LeftArm = { 20, 0, -40 }, LeftElbow = { 90, 0, 0 }, RightHip = { 14, 0, 0 }, RightKnee = { -16, 0, 0 }, LeftHip = { -12, 0, 0 }, LeftKnee = { -10, 0, 0 } },
+	PNPointPose = { Root = { 0, -18, 0, -0.04 }, Waist = { 0, -14, 0 }, Neck = { 2, 18, 0 }, RightArm = { 92, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 20, 0, -40 }, LeftElbow = { 90, 0, 0 }, RightHip = { 16, 0, 0 }, RightKnee = { -18, 0, 0 } },
+	PNThrustPose = { Root = { -8, -24, 0, -0.1, 0.5 }, Waist = { -8, -18, 0 }, Neck = { 6, 22, 0 }, RightArm = { 95, 0, 2 }, RightElbow = { 0, 0, 0 }, LeftArm = { -20, 0, -40 }, LeftElbow = { 20, 0, 0 }, RightHip = { 40, 0, 0 }, RightKnee = { -40, 0, 0 }, LeftHip = { -20, 0, 0 } },
+	PNSpreadPose = { Root = { 6, 0, 0, 0 }, Waist = { 10, 0, 0 }, Neck = { -12, 0, 0 }, RightArm = { 40, 0, 80 }, RightElbow = { 10, 0, 0 }, LeftArm = { 40, 0, -80 }, LeftElbow = { 10, 0, 0 } },
+	JOStance = { Root = { 0, 8, 0, 0 }, Waist = { -2, 8, 0 }, Neck = { 4, -8, 0 }, RightArm = { 50, 0, 18 }, RightElbow = { 80, 0, 0 }, LeftArm = { -8, 0, -12 }, LeftElbow = { 26, 0, 0 }, RightHip = { 8, 0, 0 }, LeftHip = { -6, 0, 0 } },
+	JOGrabPose = { Root = { -8, -18, 0, -0.06 }, Waist = { -10, -18, 0 }, Neck = { 4, 18, 0 }, RightArm = { 95, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 30, 0, -30 }, LeftElbow = { 60, 0, 0 } },
+	JOLashPose = { Root = { -4, 24, 0, -0.04 }, Waist = { -6, 28, 0 }, Neck = { 2, -24, 0 }, RightArm = { 85, 0, 60 }, RightElbow = { 10, 0, 0 }, LeftArm = { 20, 0, -30 }, LeftElbow = { 40, 0, 0 } },
+	JOWebPose = { Root = { -16, 0, 0, -0.5 }, Waist = { -20, 0, 0 }, Neck = { 14, 0, 0 }, RightArm = { 40, 0, 30 }, RightElbow = { 20, 0, 0 }, LeftArm = { 40, 0, -30 }, LeftElbow = { 20, 0, 0 }, RightHip = { 40, 0, 0 }, RightKnee = { -60, 0, 0 }, LeftHip = { 20, 0, 0 }, LeftKnee = { -40, 0, 0 } },
+	DIOStance = { Root = { 8, 18, 0, 0 }, Waist = { 10, 16, 0 }, Neck = { -12, -12, 4 }, RightArm = { 62, 0, -32 }, RightElbow = { 105, 0, 0 }, LeftArm = { 28, 0, -58 }, LeftElbow = { 30, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { -6, 0, 0 }, LeftKnee = { -8, 0, 0 } },
+	DIODrainPose = { Root = { -10, -14, 0, -0.06 }, Waist = { -14, -14, 0 }, Neck = { 6, 14, 0 }, RightArm = { 92, 0, 6 }, RightElbow = { 22, 0, 0 }, LeftArm = { 40, 0, -40 }, LeftElbow = { 70, 0, 0 } },
+	DIOEyesPose = { Root = { -6, 0, 0, 0 }, Waist = { -8, 0, 0 }, Neck = { 10, 0, 0 }, RightArm = { 140, 0, 18 }, RightElbow = { 120, 0, 0 }, LeftArm = { 140, 0, -18 }, LeftElbow = { 120, 0, 0 } },
+	DIOThrowPose = { Root = { 0, -18, 0, 0 }, Waist = { 0, -20, 0 }, Neck = { 0, 18, 0 }, RightArm = { 80, 0, 48 }, RightElbow = { 10, 0, 0 }, LeftArm = { 80, 0, -48 }, LeftElbow = { 10, 0, 0 } },
+	DIOWorldPose = { Root = { 10, 0, 0, 0 }, Waist = { 14, 0, 0 }, Neck = { -18, 0, 0 }, RightArm = { 150, 0, 60 }, RightElbow = { 20, 0, 0 }, LeftArm = { 150, 0, -60 }, LeftElbow = { 20, 0, 0 } },
+	JTStance = { Root = { 2, 6, 0, 0 }, Waist = { 2, 4, 0 }, Neck = { 4, -6, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 }, RightArm = { -4, 0, 8 }, RightElbow = { 12, 0, 0 }, RightHip = { 6, 0, 0 }, LeftHip = { -4, 0, 0 } },
+	JTPoint = { Root = { 0, -16, 0, 0 }, Waist = { 0, -12, 0 }, Neck = { 2, 16, 0 }, RightArm = { 90, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 } },
+	JTCap = { Root = { 0, 0, 0, 0 }, Waist = { 0, 0, 0 }, Neck = { -10, -8, 0 }, RightArm = { 150, 0, 26 }, RightElbow = { 125, 0, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 } },
+	JTFlick = { Root = { 0, -14, 0, 0 }, Waist = { 0, -10, 0 }, Neck = { 0, 14, 0 }, RightArm = { 84, 0, 10 }, RightElbow = { 24, 0, 0 }, LeftArm = { -12, 0, -10 }, LeftElbow = { 34, 0, 0 } },
+	-- JOSUKE (Part 4): fists up and loose; both hands to his pompadour when it's insulted.
+	JK4Stance = { Root = { 0, 10, 0, -0.04 }, Waist = { -2, 8, 0 }, Neck = { 4, -8, 0 }, RightArm = { 30, 0, 14 }, RightElbow = { 60, 0, 0 }, LeftArm = { 20, 0, -12 }, LeftElbow = { 50, 0, 0 }, RightHip = { 10, 0, 0 }, RightKnee = { -12, 0, 0 }, LeftHip = { -6, 0, 0 } },
+	JK4Comb = { Root = { 0, 0, 0, 0 }, Waist = { 0, 0, 0 }, Neck = { -14, 0, 0 }, RightArm = { 160, 0, 30 }, RightElbow = { 110, 0, 0 }, LeftArm = { 160, 0, -30 }, LeftElbow = { 110, 0, 0 } },
+	JK4Rage = { Root = { -8, 0, 0, -0.1 }, Waist = { -14, 0, 0 }, Neck = { 18, 0, 0 }, RightArm = { 40, 0, 40 }, RightElbow = { 90, 0, 0 }, LeftArm = { 40, 0, -40 }, LeftElbow = { 90, 0, 0 }, RightHip = { 16, 0, 0 }, RightKnee = { -20, 0, 0 }, LeftHip = { 16, 0, 0 }, LeftKnee = { -20, 0, 0 } },
+	-- KIRA: calm and composed; the thumb comes up for the "click".
+	KiraStance = { Root = { 0, 6, 0, 0 }, Waist = { 0, 4, 0 }, Neck = { 2, -6, 0 }, RightArm = { 20, 0, 8 }, RightElbow = { 30, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
+	KiraClick = { Root = { 0, -6, 0, 0 }, Waist = { 0, -6, 0 }, Neck = { 4, 4, 0 }, RightArm = { 75, 0, 10 }, RightElbow = { 70, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
+	KiraReach = { Root = { 0, -14, 0, 0 }, Waist = { 4, -12, 0 }, Neck = { 2, 14, 0 }, RightArm = { 88, 0, 4 }, RightElbow = { 6, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
+	KiraSummon = { Root = { 6, 0, 0, -0.05 }, Waist = { 14, 0, 0 }, Neck = { 6, 0, 0 }, RightArm = { 40, 0, 20 }, RightElbow = { 10, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
+	KiraFace = { Root = { 0, 0, 0, 0 }, Waist = { 2, 0, 0 }, Neck = { -12, 0, 0 }, RightArm = { 130, 0, 20 }, RightElbow = { 115, 0, 0 }, LeftArm = { 30, 0, -10 }, LeftElbow = { 60, 0, 0 } },
+	-- OKUYASU: a tough slouch; big swipes of the right arm (The Hand erasing).
+	OKStance = { Root = { 0, 8, 0, -0.04 }, Waist = { -4, 6, 0 }, Neck = { 6, -6, 0 }, RightArm = { 10, 0, 22 }, RightElbow = { 30, 0, 0 }, LeftArm = { 10, 0, -22 }, LeftElbow = { 30, 0, 0 }, RightHip = { 6, 0, 6 }, LeftHip = { -4, 0, -6 } },
+	OKSwipeWind = { Root = { 0, 30, 0, 0 }, Waist = { 0, 28, 0 }, Neck = { 0, -20, 0 }, RightArm = { 140, 0, 60 }, RightElbow = { 20, 0, 0 }, LeftArm = { 20, 0, -20 }, LeftElbow = { 30, 0, 0 } },
+	OKSwipe = { Root = { 0, -30, 0, -0.1 }, Waist = { 0, -34, 0 }, Neck = { 0, 20, 0 }, RightArm = { 85, -60, -15 }, RightElbow = { 0, 0, 0 }, LeftArm = { 20, 0, -20 }, LeftElbow = { 30, 0, 0 }, LeftHip = { 16, 0, 0 }, LeftKnee = { -16, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -339,10 +381,10 @@ TuskAnimation.Actions = {
 	M1_2 = { { 0, "FlickRFollow" }, { 0.07, "FlickLCoil", "In" }, { 0.12, "FlickLStrike", "Back", 4 }, { 0.17, "FlickLStrike", "Linear" }, { 0.3, "FlickLFollow", "Sine" } },
 	M1_3 = { { 0, "Rest" }, { 0.06, "FlickRCoil", "In" }, { 0.1, "FingerGun", "Snap" }, { 0.14, "FingerGunRecoil", "Snap", 4 }, { 0.2, "FingerGun", "Out" }, { 0.24, "FingerGunRecoil", "Snap", 3 }, { 0.36, "FingerGun", "Sine" } },
 	M1_4 = { { 0, "Rest" }, { 0.08, "SlamWindup", "In" }, { 0.16, "SlamLeap", "Out" }, { 0.24, "Slam", "Snap", 8 }, { 0.3, "Slam", "Linear" }, { 0.48, "SlamFollow", "Sine" }, { 0.6, "SlamFollow" } },
-	NailShot = { { 0, "Rest" }, { 0.12, "FingerGun", "Sine" }, { 0.2, "FingerGunRecoil", "Snap", 5 }, { 0.45, "FingerGun", "Back" } },
+	NailShot = { { 0, "Rest" }, { 0.12, "NailRaise", "Out" }, { 0.31, "NailRaise", "Linear" }, { 0.36, "FingerGun", "Snap" }, { 0.42, "FingerGunRecoil", "Snap", 5 }, { 0.7, "FingerGun", "Back" } },
 	NailBarrage = {
-		{ 0, "Rest" }, { 0.08, "FlickRWind", "In" }, { 0.12, "FlickR", "Snap", 2 }, { 0.2, "FlickL", "Snap", 2 }, { 0.28, "FlickR", "Snap", 2 },
-		{ 0.36, "FlickL", "Snap", 2 }, { 0.44, "FlickR", "Snap", 2 }, { 0.52, "FlickL", "Snap", 2 }, { 0.62, "FingerGunRecoil", "Snap", 4 }, { 0.82, "FingerGun", "Sine" },
+		{ 0, "Rest" }, { 0.12, "NailRaise", "Out" }, { 0.28, "NailRaise", "Linear" }, { 0.31, "FlickR", "Snap", 2 }, { 0.4, "FlickL", "Snap", 2 }, { 0.49, "FlickR", "Snap", 2 },
+		{ 0.58, "FlickL", "Snap", 2 }, { 0.67, "FlickR", "Snap", 2 }, { 0.78, "FingerGunRecoil", "Snap", 4 }, { 0.98, "FingerGun", "Sine" },
 	},
 	SpinChargeLoop = { { 0, "SpinChargeA" }, { 0.12, "SpinChargeB", "Sine" }, { 0.24, "SpinChargeA", "Sine" } },
 	UndergroundDive = { { 0, "Rest" }, { 0.1, "SpreadWind", "In" }, { 0.22, "Dive", "Snap" }, { 0.55, "Dive" } },
@@ -350,7 +392,7 @@ TuskAnimation.Actions = {
 	DimensionalStep = { { 0, "Rest" }, { 0.06, "FlickRWind", "In" }, { 0.12, "LungeStep", "Snap", 2 }, { 0.38, "LungeStep", "Sine" } },
 	SpatialPursuit = { { 0, "Rest" }, { 0.08, "FlickR", "Snap", 2 }, { 0.22, "SpreadWind", "In" }, { 0.32, "Spread", "Back", 3 }, { 0.6, "Spread" } },
 	DimensionalBreak = { { 0, "Rest" }, { 0.25, "AwakenCrouch", "In" }, { 0.72, "AwakenCrouch", "Linear", 2 }, { 0.82, "PushTwo", "Snap", 6 }, { 1.2, "PushTwo", "Sine" } },
-	GoldenSpinNail = { { 0, "Rest" }, { 0.16, "WindSpin", "In" }, { 0.28, "FingerGunRecoil", "Snap", 6 }, { 0.6, "FingerGun", "Back" } },
+	GoldenSpinNail = { { 0, "Rest" }, { 0.12, "NailRaise", "Out" }, { 0.3, "WindSpin", "In" }, { 0.41, "FingerGunRecoil", "Snap", 6 }, { 0.72, "FingerGun", "Back" } },
 	GoldenPursuit = { { 0, "Rest" }, { 0.12, "SlamWindup", "In" }, { 0.24, "DashPunch", "Snap", 5 }, { 0.7, "DashPunch", "Sine" } },
 
 	-- GYRO
@@ -450,6 +492,68 @@ TuskAnimation.Actions = {
 	JDTorrent = { { 0, "JDStance" }, { 0.25, "JDRaise", "Out" }, { 1.0, "JDRaise", "Linear", 1 }, { 1.3, "JDStance", "Sine" } },
 	JRFlick = { { 0, "JRStance" }, { 0.08, "JRFling", "Back", 3 }, { 0.3, "JRStance", "Sine" } },
 	JRCage = { { 0, "JRStance" }, { 0.2, "JRFling", "Back", 3 }, { 0.8, "JRFling", "Linear" }, { 1.0, "JRStance", "Sine" } },
+	RG_M1_1 = { { 0, "RGStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "RGStance", "Sine" } },
+	RG_M1_2 = { { 0, "RGStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "RGStance", "Sine" } },
+	RG_M1_3 = { { 0, "RGStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "RGStance", "Sine" } },
+	RG_M1_4 = { { 0, "RGStance" }, { 0.08, "RGShoot", "Back", 3 }, { 0.3, "RGShoot", "Linear" }, { 0.5, "RGStance", "Sine" } },
+	RGDraw = { { 0, "RGStance" }, { 0.12, "RGShoot", "Back", 3 }, { 0.45, "RGShoot", "Linear" }, { 0.65, "RGStance", "Sine" } },
+	RGWatchTurn = { { 0, "RGStance" }, { 0.15, "RGWatch", "Out" }, { 0.55, "RGWatch", "Linear" }, { 0.8, "RGStance", "Sine" } },
+	RGCounter = { { 0, "RGStance" }, { 0.1, "RGWatch", "Out" }, { 1.0, "RGWatch", "Linear" }, { 1.2, "RGStance", "Sine" } },
+	PN_M1_1 = { { 0, "PNStance" }, { 0.05, "PNThrustPose", "Snap", 3 }, { 0.12, "PNThrustPose", "Linear" }, { 0.26, "PNStance", "Sine" } },
+	PN_M1_2 = { { 0, "PNStance" }, { 0.05, "PNPointPose", "Snap", 3 }, { 0.12, "PNPointPose", "Linear" }, { 0.26, "PNStance", "Sine" } },
+	PN_M1_3 = { { 0, "PNStance" }, { 0.05, "PNThrustPose", "Snap", 3 }, { 0.12, "PNThrustPose", "Linear" }, { 0.26, "PNStance", "Sine" } },
+	PN_M1_4 = { { 0, "PNStance" }, { 0.08, "PNThrustPose", "Back", 5 }, { 0.32, "PNThrustPose", "Linear" }, { 0.5, "PNStance", "Sine" } },
+	PNRush = { { 0, "PNStance" }, { 0.1, "PNPointPose", "Out" }, { 1.4, "PNPointPose", "Linear", 1 }, { 1.65, "PNStance", "Sine" } },
+	PNPoint = { { 0, "PNStance" }, { 0.12, "PNPointPose", "Back", 3 }, { 0.5, "PNPointPose", "Linear" }, { 0.7, "PNStance", "Sine" } },
+	PNArmorOff = { { 0, "PNStance" }, { 0.15, "PNSpreadPose", "Back", 4 }, { 0.55, "PNSpreadPose", "Linear" }, { 0.8, "PNStance", "Sine" } },
+	JO_M1_1 = { { 0, "JOStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JOStance", "Sine" } },
+	JO_M1_2 = { { 0, "JOStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "JOStance", "Sine" } },
+	JO_M1_3 = { { 0, "JOStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JOStance", "Sine" } },
+	JO_M1_4 = { { 0, "JOStance" }, { 0.08, "JOGrabPose", "Back", 5 }, { 0.32, "JOGrabPose", "Linear" }, { 0.52, "JOStance", "Sine" } },
+	JOGrab = { { 0, "JOStance" }, { 0.12, "JOGrabPose", "Back", 3 }, { 0.6, "JOGrabPose", "Linear" }, { 0.8, "JOStance", "Sine" } },
+	JOLash = { { 0, "JOStance" }, { 0.18, "JOLashPose", "Out" }, { 0.4, "JOLashPose", "Linear", 2 }, { 0.65, "JOStance", "Sine" } },
+	JOWeb = { { 0, "JOStance" }, { 0.3, "JOWebPose", "Out" }, { 1.0, "JOWebPose", "Linear", 3 }, { 1.3, "JOStance", "Sine" } },
+	DIO_M1_1 = { { 0, "DIOStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DIOStance", "Sine" } },
+	DIO_M1_2 = { { 0, "DIOStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DIOStance", "Sine" } },
+	DIO_M1_3 = { { 0, "DIOStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DIOStance", "Sine" } },
+	DIO_M1_4 = { { 0, "DIOStance" }, { 0.08, "DIOThrowPose", "Back", 4 }, { 0.3, "DIOThrowPose", "Linear" }, { 0.5, "DIOStance", "Sine" } },
+	DIODrain = { { 0, "DIOStance" }, { 0.15, "DIODrainPose", "Back", 3 }, { 1.5, "DIODrainPose", "Linear" }, { 1.8, "DIOStance", "Sine" } },
+	DIOEyes = { { 0, "DIOStance" }, { 0.2, "DIOEyesPose", "Out" }, { 0.6, "DIOEyesPose", "Linear", 2 }, { 0.85, "DIOStance", "Sine" } },
+	DIOThrow = { { 0, "DIOStance" }, { 0.1, "DIOThrowPose", "Back", 3 }, { 0.4, "DIOThrowPose", "Linear" }, { 0.6, "DIOStance", "Sine" } },
+	DIOZaWarudo = { { 0, "DIOStance" }, { 0.25, "DIOWorldPose", "Out" }, { 1.1, "DIOWorldPose", "Linear" }, { 1.4, "DIOStance", "Sine" } },
+	JT_M1_1 = { { 0, "JTStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JTStance", "Sine" } },
+	JT_M1_2 = { { 0, "JTStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "JTStance", "Sine" } },
+	JT_M1_3 = { { 0, "JTStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JTStance", "Sine" } },
+	JT_M1_4 = { { 0, "JTStance" }, { 0.08, "JTPoint", "Back", 4 }, { 0.3, "JTPoint", "Linear" }, { 0.5, "JTStance", "Sine" } },
+	JTRush = { { 0, "JTStance" }, { 0.12, "JTPoint", "Out" }, { 1.5, "JTPoint", "Linear" }, { 1.75, "JTStance", "Sine" } },
+	JTPoint = { { 0, "JTStance" }, { 0.12, "JTPoint", "Back", 3 }, { 0.5, "JTPoint", "Linear" }, { 0.7, "JTStance", "Sine" } },
+	JTCap = { { 0, "JTStance" }, { 0.2, "JTCap", "Out" }, { 1.1, "JTCap", "Linear" }, { 1.4, "JTStance", "Sine" } },
+	JTFlick = { { 0, "JTStance" }, { 0.1, "JTFlick", "Back", 3 }, { 0.35, "JTFlick", "Linear" }, { 0.55, "JTStance", "Sine" } },
+	JK4_M1_1 = { { 0, "JK4Stance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JK4Stance", "Sine" } },
+	JK4_M1_2 = { { 0, "JK4Stance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "JK4Stance", "Sine" } },
+	JK4_M1_3 = { { 0, "JK4Stance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "JK4Stance", "Sine" } },
+	JK4_M1_4 = { { 0, "JK4Stance" }, { 0.08, "JTPoint", "Back", 4 }, { 0.3, "JTPoint", "Linear" }, { 0.5, "JK4Stance", "Sine" } },
+	JK4Rush = { { 0, "JK4Stance" }, { 0.12, "JTPoint", "Out" }, { 1.4, "JTPoint", "Linear" }, { 1.65, "JK4Stance", "Sine" } },
+	JK4Fuse = { { 0, "JK4Stance" }, { 0.12, "JTPoint", "Back", 3 }, { 0.5, "JTPoint", "Linear" }, { 0.7, "JK4Stance", "Sine" } },
+	JK4Flick = { { 0, "JK4Stance" }, { 0.1, "JTFlick", "Back", 3 }, { 0.35, "JTFlick", "Linear" }, { 0.55, "JK4Stance", "Sine" } },
+	JK4Snap = { { 0, "JK4Stance" }, { 0.15, "JK4Comb", "Out" }, { 0.55, "JK4Comb", "Linear" }, { 0.75, "JK4Rage", "Back", 3 }, { 1.3, "JK4Rage", "Linear" }, { 1.6, "JK4Stance", "Sine" } },
+	KR_M1_1 = { { 0, "KiraStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "KiraStance", "Sine" } },
+	KR_M1_2 = { { 0, "KiraStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "KiraStance", "Sine" } },
+	KR_M1_3 = { { 0, "KiraStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "KiraStance", "Sine" } },
+	KR_M1_4 = { { 0, "KiraStance" }, { 0.08, "KiraReach", "Back", 4 }, { 0.3, "KiraReach", "Linear" }, { 0.5, "KiraStance", "Sine" } },
+	KRReach = { { 0, "KiraStance" }, { 0.1, "KiraReach", "Back", 3 }, { 0.35, "KiraReach", "Linear" }, { 0.55, "KiraStance", "Sine" } },
+	KRClick = { { 0, "KiraStance" }, { 0.08, "KiraClick", "Out" }, { 0.35, "KiraClick", "Linear" }, { 0.55, "KiraStance", "Sine" } },
+	KRSummon = { { 0, "KiraStance" }, { 0.12, "KiraSummon", "Out" }, { 0.45, "KiraSummon", "Linear" }, { 0.65, "KiraStance", "Sine" } },
+	KRBlow = { { 0, "KiraStance" }, { 0.1, "KiraReach", "Out" }, { 0.4, "KiraReach", "Linear" }, { 0.6, "KiraStance", "Sine" } },
+	KRBTD = { { 0, "KiraStance" }, { 0.2, "KiraFace", "Out" }, { 1.0, "KiraFace", "Linear" }, { 1.3, "KiraClick", "Back", 3 }, { 1.6, "KiraClick", "Linear" }, { 1.9, "KiraStance", "Sine" } },
+	OK_M1_1 = { { 0, "OKStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "OKStance", "Sine" } },
+	OK_M1_2 = { { 0, "OKStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "OKStance", "Sine" } },
+	OK_M1_3 = { { 0, "OKStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "OKStance", "Sine" } },
+	OK_M1_4 = { { 0, "OKStance" }, { 0.06, "OKSwipeWind", "Out" }, { 0.16, "OKSwipe", "Back", 4 }, { 0.32, "OKSwipe", "Linear" }, { 0.5, "OKStance", "Sine" } },
+	OKErase = { { 0, "OKStance" }, { 0.25, "OKSwipeWind", "Out" }, { 0.38, "OKSwipe", "Back", 4 }, { 0.6, "OKSwipe", "Linear" }, { 0.85, "OKStance", "Sine" } },
+	OKPull = { { 0, "OKStance" }, { 0.2, "OKSwipeWind", "Out" }, { 0.32, "OKSwipe", "Back", 3 }, { 0.55, "OKSwipe", "Linear" }, { 0.8, "OKStance", "Sine" } },
+	OKDash = { { 0, "OKStance" }, { 0.08, "OKSwipeWind", "Out" }, { 0.16, "OKSwipe", "Back", 3 }, { 0.35, "OKSwipe", "Linear" }, { 0.55, "OKStance", "Sine" } },
+	OKUlt = { { 0, "OKStance" }, { 0.25, "OKSwipeWind", "Out" }, { 0.72, "OKSwipe", "Linear" }, { 0.96, "OKSwipeWind", "Linear" }, { 1.20, "OKSwipe", "Linear" }, { 1.44, "OKSwipeWind", "Linear" }, { 1.68, "OKSwipe", "Linear" }, { 1.92, "OKSwipeWind", "Linear" }, { 2.29, "OKStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },
@@ -673,7 +777,7 @@ local function startIdle(character, s)
 	local motors = motorsOf(character)
 	local seed = math.random() * 10
 	s.Idle = VFXLib.animate(1e6, function()
-		if s.Action or not s.Hold or os.clock() < s.SettleUntil then
+		if s.Action or not s.Hold or os.clock() < s.SettleUntil or s.Sprinting then
 			return
 		end
 		local pose = resolvePose(s.Hold)
@@ -807,6 +911,147 @@ function TuskAnimation.hold(character, poseName)
 		blendTo(character, resolvePose(poseName), 0.25)
 	end
 	startIdle(character, s)
+end
+
+---------------------------------------------------------------------------
+-- SPRINT: a full-speed running cycle drawn on the joints every frame (no
+-- uploads needed), for characters who run like athletes (Sandman). It
+-- takes over from the walk/run animation whenever they're moving fast on
+-- their own legs: a hard forward lean, high knees, heels kicking up
+-- behind, arms pumping from hip to chin with bent elbows, a head that
+-- stays level, and a bounce each stride. The stride rate follows how fast
+-- they're actually going. Moves (M1s, abilities) still play on top: the
+-- cycle steps aside while one runs. Blends in and out smoothly.
+---------------------------------------------------------------------------
+local sprinters = setmetatable({}, { __mode = "k" }) -- [character] = { Enabled, K, Phase, Job }
+
+local function mixValue(a, b, k)
+	a = a or {}
+	b = b or {}
+	local out = {}
+	for i = 1, 5 do
+		out[i] = (a[i] or 0) * (1 - k) + (b[i] or 0) * k
+	end
+	return out
+end
+
+-- The sprint pose at stride phase p (radians); `lean` 0..1 = how hard.
+local function sprintPose(p, lean, airborne)
+	local sp = math.sin(p)
+	local kick = 0.5 - 0.5 * math.sin(p + 0.6) -- 1 when that heel is up behind
+	local kickL = 0.5 - 0.5 * math.sin(p + math.pi + 0.6)
+	local bounce = math.abs(math.cos(p))
+	if airborne then
+		-- In the air: knees tucked, arms held mid-swing.
+		return {
+			Root = { -10 * lean, 0, 0, 0 },
+			Waist = { -8 * lean, 0, 0 },
+			Neck = { 12 * lean, 0, 0 },
+			RightArm = { -30, 0, 10 }, RightElbow = { 90, 0, 0 },
+			LeftArm = { 40, 0, -10 }, LeftElbow = { 90, 0, 0 },
+			RightHip = { 55, 0, 0 }, RightKnee = { -70, 0, 0 },
+			LeftHip = { -15, 0, 0 }, LeftKnee = { -90, 0, 0 },
+		}
+	end
+	return {
+		Root = { -16 * lean, sp * 6, 0, -0.12 + bounce * 0.28 },
+		Waist = { -10 * lean, sp * 9, 0 },
+		Neck = { 22 * lean, -sp * 7, 0 }, -- eyes up the track
+		-- Arms pump opposite the legs, elbows ~90 degrees, a little across the body.
+		RightArm = { -sp * 72 + 8, 0, 10 - sp * 4 },
+		LeftArm = { sp * 72 + 8, 0, -10 - sp * 4 },
+		RightElbow = { 95 + math.max(0, sp) * 25, 0, 0 },
+		LeftElbow = { 95 + math.max(0, -sp) * 25, 0, 0 },
+		-- High knees in front, heels kicking right up behind.
+		RightHip = { sp * 68 + 14, 0, 0 },
+		LeftHip = { -sp * 68 + 14, 0, 0 },
+		RightKnee = { -(18 + 105 * kick), 0, 0 },
+		LeftKnee = { -(18 + 105 * kickL), 0, 0 },
+	}
+end
+TuskAnimation.sprintPose = sprintPose
+
+function TuskAnimation.sprint(character, enabled)
+	if not character then
+		return
+	end
+	local sp = sprinters[character]
+	if not sp then
+		if not enabled then
+			return
+		end
+		sp = { Enabled = true, K = 0, Phase = 0 }
+		sprinters[character] = sp
+	end
+	sp.Enabled = enabled
+	if sp.Job then
+		return
+	end
+	local s = getState(character)
+	local motors = motorsOf(character)
+	local last = os.clock()
+	sp.Job = VFXLib.animate(1e6, function()
+		local now = os.clock()
+		local dt = math.min(now - last, 0.1)
+		last = now
+		local root = character:FindFirstChild("HumanoidRootPart")
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if not character.Parent or not root or not humanoid then
+			VFXLib.cancel(sp.Job)
+			sp.Job = nil
+			sprinters[character] = nil
+			s.Sprinting = nil
+			return
+		end
+		local v = root.AssemblyLinearVelocity
+		local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+		local riding = character:FindFirstChild("RaceHorse") ~= nil or humanoid.Sit
+		local airborne = humanoid.FloorMaterial == Enum.Material.Air
+		local want = (sp.Enabled and not riding and speed > 14 and humanoid.Health > 0) and 1 or 0
+		sp.K = sp.K + (want - sp.K) * math.min(1, dt * (want > sp.K and 7 or 9))
+		-- Stride rate follows the real speed.
+		local rate = math.clamp(speed / 13, 1.1, 3.6)
+		if not airborne then
+			sp.Phase = (sp.Phase + dt * rate * math.pi * 2) % (math.pi * 2)
+		end
+		if sp.K < 0.01 and want == 0 then
+			if s.Sprinting then
+				s.Sprinting = nil
+				if not s.Action then
+					blendTo(character, resolvePose(s.Hold), 0.15)
+				end
+			end
+			if not sp.Enabled then
+				VFXLib.cancel(sp.Job)
+				sp.Job = nil
+				sprinters[character] = nil
+			end
+			return
+		end
+		s.Sprinting = true
+		if s.Action then
+			return -- a move is playing: it gets the joints
+		end
+		local lean = math.clamp((speed - 14) / 30, 0.4, 1)
+		local pose = sprintPose(sp.Phase, lean, airborne)
+		local hold = resolvePose(s.Hold)
+		for name, motor in pairs(motors) do
+			if motor.Parent then
+				JointCache.write(motor, poseC0(motor, mixValue(hold[name], pose[name], sp.K)))
+			end
+		end
+		-- Mute the default walk/run animation underneath.
+		if sp.K > 0.5 then
+			local a = animator(character)
+			if a then
+				for _, track in ipairs(a:GetPlayingAnimationTracks()) do
+					if track.Priority == Enum.AnimationPriority.Core or track.Priority == Enum.AnimationPriority.Idle or track.Priority == Enum.AnimationPriority.Movement then
+						track:AdjustWeight(0.001, 0)
+					end
+				end
+			end
+		end
+	end)
 end
 
 -- Lift a character's whole body (e.g. onto a horse's saddle); nil / 0 to stop.

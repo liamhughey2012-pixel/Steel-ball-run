@@ -174,6 +174,10 @@ function TuskService.addUlt(player, amount)
 	-- Saint's Corpse (Ears): the ultimate charges faster.
 	local character = player.Character
 	amount = amount * (character and character:GetAttribute("CorpseUltGain") or 1)
+	-- The Requiem Arrow's blessing.
+	if character and (character:GetAttribute("ArrowBlessUntil") or 0) > workspace:GetServerTimeNow() then
+		amount = amount * (character:GetAttribute("ArrowUltGain") or 1)
+	end
 	-- Bounty board shop (Lucky Horseshoe).
 	if character and (character:GetAttribute("ShopUltUntil") or 0) > workspace:GetServerTimeNow() then
 		amount = amount * (character:GetAttribute("ShopUltGain") or 1)
@@ -323,6 +327,21 @@ end
 function TuskService.fireKnife(player, state, spec)
 	return Projectiles.fire(player, {
 		Kind = "WorldKnife",
+		Origin = spec.Origin,
+		Direction = spec.Direction,
+		Speed = spec.Speed,
+		Radius = spec.Radius,
+		Range = spec.Range,
+		Visual = { Style = spec.Style or "Knife" },
+		OnHit = spec.OnHit,
+		OnEnd = spec.OnEnd,
+	})
+end
+
+-- Server projectile with a silver dinner-knife visual (DIO: The World).
+function TuskService.fireDioKnife(player, state, spec)
+	return Projectiles.fire(player, {
+		Kind = "DioKnife",
 		Origin = spec.Origin,
 		Direction = spec.Direction,
 		Speed = spec.Speed,

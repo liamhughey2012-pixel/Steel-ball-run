@@ -74,7 +74,116 @@ Common.Palettes = {
 	[16] = { Main = Color3.fromRGB(150, 40, 50), Second = Color3.fromRGB(240, 196, 60), Light = Color3.fromRGB(255, 236, 200) }, -- Tooru (Wonder of U maroon + scarf gold)
 	[17] = { Main = Color3.fromRGB(90, 170, 240), Second = Color3.fromRGB(240, 120, 190), Light = Color3.fromRGB(225, 240, 255) }, -- Jodio (November Rain blue + strap pink)
 	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
+	[24] = { Main = Color3.fromRGB(150, 110, 220), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(230, 220, 255) }, -- Silver Chariot Requiem
+	[27] = { Main = Color3.fromRGB(100, 140, 230), Second = Color3.fromRGB(236, 190, 70), Light = Color3.fromRGB(220, 236, 255) }, -- Okuyasu (The Hand blue + gold)
+	[26] = { Main = Color3.fromRGB(230, 150, 215), Second = Color3.fromRGB(120, 70, 150), Light = Color3.fromRGB(250, 228, 250) }, -- Kira (Killer Queen pink + dark purple)
+	[25] = { Main = Color3.fromRGB(240, 120, 190), Second = Color3.fromRGB(150, 220, 240), Light = Color3.fromRGB(255, 226, 242) }, -- Josuke (Part 4: Crazy Diamond pink + pale blue)
+	[23] = { Main = Color3.fromRGB(196, 206, 222), Second = Color3.fromRGB(110, 170, 230), Light = Color3.fromRGB(240, 246, 255) }, -- Polnareff (Silver Chariot)
+	[22] = { Main = Color3.fromRGB(150, 80, 200), Second = Color3.fromRGB(255, 214, 80), Light = Color3.fromRGB(255, 246, 200) }, -- Joseph (Hermit Purple + Hamon gold)
+	[21] = { Main = Color3.fromRGB(240, 196, 50), Second = Color3.fromRGB(60, 160, 110), Light = Color3.fromRGB(255, 244, 200) }, -- DIO (The World gold + green)
+	[20] = { Main = Color3.fromRGB(130, 110, 220), Second = Color3.fromRGB(240, 196, 70), Light = Color3.fromRGB(230, 225, 255) }, -- Jotaro (Star Platinum violet + gold)
+	[19] = { Main = Color3.fromRGB(230, 120, 170), Second = Color3.fromRGB(246, 204, 40), Light = Color3.fromRGB(255, 236, 220) }, -- Ringo (Mandom pink + watch-hand gold)
 }
+
+---------------------------------------------------------------------------
+-- FINGER WHIRLS (Johnny's nail shots, from the art): blue rings spinning
+-- round his fingertips while his hand is up, following the hand; on
+-- Release(direction) they shoot out along the shot, spreading and fading.
+---------------------------------------------------------------------------
+local WHIRL = Color3.fromRGB(120, 200, 255)
+local WHIRL_LIGHT = Color3.fromRGB(200, 236, 255)
+
+-- Where his fingertips are, and the way they point (a CFrame whose
+-- UpVector runs along the fingers).
+local function fingertips(character)
+	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if hand then
+		local down = -hand.CFrame.UpVector
+		local tip = (hand.CFrame * CFrame.new(0, -hand.Size.Y / 2 - 0.15, 0)).Position
+		return CFrame.lookAt(tip, tip + down) * CFrame.Angles(-math.pi / 2, 0, 0)
+	elseif root then
+		local tip = (root.CFrame * CFrame.new(0.9, 0.55, -1.6)).Position
+		return CFrame.lookAt(tip, tip + root.CFrame.LookVector) * CFrame.Angles(-math.pi / 2, 0, 0)
+	end
+	return nil
+end
+Common.fingertips = fingertips
+
+function Common.fingerWhirl(character, duration, opts)
+	opts = opts or {}
+	local color, light = opts.Color or WHIRL, opts.Light or WHIRL_LIGHT
+	local rings = {}
+	local spec = { { 0.32, 0, 9 }, { 0.55, 0.14, -7 }, { 0.8, 0.28, 5 } } -- radius, along the fingers, spin speed
+	for i, sp in ipairs(spec) do
+		local ring = VFXLib.ring({ Radius = 0.05, Width = i == 1 and 0.12 or 0.09, Color = i % 2 == 1 and color or light, Transparency = 0.1, Segments = 14 })
+		rings[i] = { Ring = ring, Radius = sp[1], Along = sp[2], Spin = sp[3], Angle = math.random() * math.pi * 2 }
+	end
+	local glow = VFXLib.part({ Shape = Enum.PartType.Ball, Size = Vector3.new(0.3, 0.3, 0.3), Color = light, Transparency = 0.3 })
+	local handle = { Released = false }
+	local start = os.clock()
+	local last = start
+	local job = VFXLib.animate(math.max(duration, 0.05) + 0.6, function()
+		if handle.Released then
+			return
+		end
+		local now = os.clock()
+		local dt = now - last
+		last = now
+		local cf = character.Parent and fingertips(character)
+		if not cf then
+			return
+		end
+		local grow = math.min((now - start) / 0.15, 1)
+		for i, r in ipairs(rings) do
+			r.Angle = r.Angle + r.Spin * dt
+			local wobble = math.sin(now * 11 + i) * 0.08
+			local radius = r.Radius * grow * (1 + math.sin(now * 14 + i * 2) * 0.1)
+			r.Ring:SetRadius(radius)
+			r.Ring:SetCFrame(cf * CFrame.new(0, r.Along, 0) * CFrame.Angles(wobble, r.Angle, -wobble))
+		end
+		glow.CFrame = cf
+		local pulse = 0.3 + math.abs(math.sin(now * 18)) * 0.25
+		glow.Size = Vector3.new(pulse, pulse, pulse) * (1 + grow * 0.5)
+	end)
+	function handle:Release(direction)
+		if self.Released then
+			return
+		end
+		self.Released = true
+		VFXLib.cancel(job)
+		local cf = character.Parent and fingertips(character)
+		glow:Destroy()
+		if not cf then
+			for _, r in ipairs(rings) do
+				r.Ring:Destroy()
+			end
+			return
+		end
+		local dir = (direction and direction.Magnitude > 1e-3) and direction.Unit or cf.UpVector
+		local from = cf.Position
+		local axis = CFrame.lookAt(from, from + dir) * CFrame.Angles(-math.pi / 2, 0, 0)
+		-- The whirls fly out along the shot, spinning, spreading and fading.
+		for i, r in ipairs(rings) do
+			local base = r.Radius
+			VFXLib.animate(0.32, function(a)
+				r.Angle = r.Angle + r.Spin * 0.03
+				r.Ring:SetRadius(base * (1 + a * (1.5 + i * 0.4)))
+				r.Ring:SetCFrame(axis * CFrame.new(0, a * (2.5 + i * 1.6), 0) * CFrame.Angles(0, r.Angle, 0))
+				r.Ring:SetTransparency(0.1 + 0.9 * a)
+			end, function()
+				r.Ring:Destroy()
+			end)
+		end
+		VFXLib.flash(from, color, 4, 10, 0.1)
+		VFXLib.burst(from, { Count = 8, Color = light, Speed = 12, Lifetime = 0.25 })
+	end
+	-- Never left behind if nobody releases it.
+	task.delay(math.max(duration, 0.05) + 0.6, function()
+		handle:Release(nil)
+	end)
+	return handle
+end
 
 function Common.palette(act)
 	return Common.Palettes[act] or Common.Palettes[1]

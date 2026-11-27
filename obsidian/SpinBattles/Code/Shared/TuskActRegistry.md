@@ -339,6 +339,152 @@ TuskActRegistry.Acts = {
 		ClientModule = "JohnRodVFX", -- client visuals (TuskActVFX.JohnRodVFX)
 		CardTitle = "STAND  ·  JOHN ROD",
 	},
+	-- RINGO ROADAGAIN: MANDOM. Turning his watch rewinds time by exactly 6
+	-- seconds, and only he remembers.
+	[19] = {
+		Name = "MANDOM",
+		Character = "Ringo",
+		Tagline = "Six seconds back",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 120, 160), Secondary = Color3.fromRGB(240, 200, 70) },
+		M1 = "REVOLVER COMBO",
+		Abilities = { "SIX SECONDS", "QUICK DRAW", "MANDOM COUNTER" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "THE PATH OF JUSTICE",
+		Next = nil,
+		Module = "Ringo", -- server moves
+		ClientModule = "RingoVFX", -- client visuals (TuskActVFX.RingoVFX)
+		CardTitle = "STAND  ·  MANDOM",
+	},
+	-- JOTARO KUJO: STAR PLATINUM. Precision, speed and power; stops time.
+	[20] = {
+		Name = "STAR PLATINUM",
+		Character = "Jotaro",
+		Tagline = "Ora ora ora",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(130, 110, 220), Secondary = Color3.fromRGB(240, 196, 70) },
+		M1 = "ORA COMBO",
+		Abilities = { "ORA RUSH", "STAR FINGER", "BEARING SHOT" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "STAR PLATINUM: THE WORLD",
+		Next = nil,
+		Module = "Jotaro", -- server moves
+		ClientModule = "JotaroVFX", -- client visuals (TuskActVFX.JotaroVFX)
+		CardTitle = "STAND  ·  STAR PLATINUM",
+	},
+	-- DIO: THE WORLD (Part 3; not Diego's). A vampire; knives; a road roller.
+	[21] = {
+		Name = "THE WORLD",
+		Character = "Dio",
+		Tagline = "Muda muda muda",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(240, 196, 50), Secondary = Color3.fromRGB(60, 160, 110) },
+		M1 = "MUDA COMBO",
+		Abilities = { "VAMPIRE DRAIN", "SPACE RIPPER STINGY EYES", "KNIFE VOLLEY" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "ZA WARUDO: ROAD ROLLER",
+		Next = nil,
+		Module = "Dio", -- server moves
+		ClientModule = "DioVFX", -- client visuals (TuskActVFX.DioVFX)
+		CardTitle = "STAND  ·  THE WORLD",
+	},
+	-- JOSEPH JOESTAR: HERMIT PURPLE. Thorny vines, Hamon through them, and running away.
+	[22] = {
+		Name = "HERMIT PURPLE",
+		Character = "Joseph",
+		Tagline = "Your next line is...",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(150, 80, 200), Secondary = Color3.fromRGB(255, 214, 80) },
+		M1 = "HAMON COMBO",
+		Abilities = { "HERMIT GRAB", "HAMON VINES", "NIGERUNDAYO!" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "HERMIT WEB OVERDRIVE",
+		Next = nil,
+		Module = "Joseph", -- server moves
+		ClientModule = "JosephVFX", -- client visuals (TuskActVFX.JosephVFX)
+		CardTitle = "STAND  ·  HERMIT PURPLE",
+	},
+	-- JEAN PIERRE POLNAREFF: SILVER CHARIOT. A knight with a rapier.
+	[23] = {
+		Name = "SILVER CHARIOT",
+		Character = "Polnareff",
+		Tagline = "Hora hora hora",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(196, 206, 222), Secondary = Color3.fromRGB(110, 170, 230) },
+		M1 = "RAPIER COMBO",
+		Abilities = { "HORA HORA RUSH", "ARMOR OFF", "RAPIER SHOT" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "AFTERIMAGE STORM",
+		Next = nil,
+		Module = "Polnareff", -- server moves
+		ClientModule = "PolnareffVFX", -- client visuals (TuskActVFX.PolnareffVFX)
+		CardTitle = "STAND  ·  SILVER CHARIOT",
+	},
+	-- SILVER CHARIOT REQUIEM: Silver Chariot pierced by the Requiem Arrow
+	-- (Polnareff only, from the arrow; back to Act 23 when he goes down).
+	[24] = {
+		Name = "SILVER CHARIOT REQUIEM",
+		Character = "Polnareff",
+		Tagline = "Requiem",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(150, 110, 220), Secondary = Color3.fromRGB(240, 200, 90) },
+		M1 = "REQUIEM STRIKES",
+		Abilities = { "SOUL SWAP", "REQUIEM'S SLEEP", "SHADOW STEP" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "SOUL REVERSAL",
+		Next = nil,
+		Module = "ChariotRequiem", -- server moves
+		ClientModule = "ChariotRequiemVFX", -- client visuals (TuskActVFX.ChariotRequiemVFX)
+		CardTitle = "STAND  ·  SILVER CHARIOT REQUIEM",
+	},
+	-- JOSUKE HIGASHIKATA (Part 4): CRAZY DIAMOND. Breaks things and restores them.
+	[25] = {
+		Name = "CRAZY DIAMOND",
+		Character = "Josuke4",
+		Tagline = "Dorarara",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(236, 120, 190), Secondary = Color3.fromRGB(150, 220, 240) },
+		M1 = "DORA COMBO",
+		Abilities = { "DORARARA RUSH", "BREAK & RESTORE", "HOMING SHARD" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "WHAT DID YOU SAY ABOUT MY HAIR?!",
+		Next = nil,
+		Module = "Josuke4", -- server moves
+		ClientModule = "Josuke4VFX", -- client visuals (TuskActVFX.Josuke4VFX)
+		CardTitle = "STAND  ·  CRAZY DIAMOND",
+	},
+	-- YOSHIKAGE KIRA: KILLER QUEEN. Anything it touches becomes a bomb.
+	[26] = {
+		Name = "KILLER QUEEN",
+		Character = "Kira",
+		Tagline = "Killer Queen has already touched it",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(214, 140, 210), Secondary = Color3.fromRGB(90, 50, 110) },
+		M1 = "KILLER QUEEN COMBO",
+		Abilities = { "FIRST BOMB", "SHEER HEART ATTACK", "STRAY CAT AIR BOMBS" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "BITES THE DUST",
+		Next = nil,
+		Module = "Kira", -- server moves
+		ClientModule = "KiraVFX", -- client visuals (TuskActVFX.KiraVFX)
+		CardTitle = "STAND  ·  KILLER QUEEN",
+	},
+	-- OKUYASU NIJIMURA: THE HAND. Its right palm erases space.
+	[27] = {
+		Name = "THE HAND",
+		Character = "Okuyasu",
+		Tagline = "Za Hando!",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(90, 130, 220), Secondary = Color3.fromRGB(236, 190, 70) },
+		M1 = "HAND COMBO",
+		Abilities = { "SPACE ERASE", "ERASE PULL", "ERASE DASH" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "ZA HANDO: GREAT ERASURE",
+		Next = nil,
+		Module = "Okuyasu", -- server moves
+		ClientModule = "OkuyasuVFX", -- client visuals (TuskActVFX.OkuyasuVFX)
+		CardTitle = "STAND  ·  THE HAND",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -348,7 +494,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

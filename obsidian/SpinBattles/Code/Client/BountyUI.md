@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
 | **Exact name** | `BountyUI` (capitals matter) |
 
-**What it does:** The bounty board screen (owner's design): a framed wooden board (grain, nails, metal corner brackets, a hanging title sign) that drops in from the top; a header strip with your Cash, ALL / PLAYERS / NPCS / CORPSE tabs and your current bounty CORPSE: "RETRIEVE" contracts, one per Saint's Corpse part: paid when you take that part; the photo is the relic (or the face of whoever holds it) aged parchment WANTED posters with a red pin: face (avatar headshot, or the NPC's face), name, Stand, "DEAD OR ALIVE", danger pips, a red reward ribbon and a kill-streak badge HOVER a poster: it straightens, lifts, grows, glows gold, "CLICK TO HUNT" CLICK it: a BOUNTY CONTRACT card with ACCEPT / DECLINE; accepting thumps an ACCEPTED stamp on it ACCEPT: the board closes and a bounty tracker appears on the left (target, reward, distance, time left, abandon button), plus a red TARGET marker over their head that only you can see claiming it: a big "BOUNTY CLAIMED! +$350" banner Remote: Net "Bounty" (server: BountyService).
+**What it does:** The bounty board screen (owner's design): a framed wooden board (grain, nails, metal corner brackets, a hanging title sign) that drops in from the top; a header strip with your Cash, ALL / PLAYERS / NPCS / CORPSE tabs and your current bounty CORPSE: "RETRIEVE" contracts, one per Saint's Corpse part: paid when you take that part; the photo is the relic (or the face of whoever holds it) aged parchment WANTED posters with a red pin: face (avatar headshot, or the NPC's face), name, Stand, "DEAD OR ALIVE", danger pips, a red reward ribbon and a kill-streak badge HOVER a poster: it straightens, lifts, grows, glows gold, "CLICK TO HUNT" CLICK it: a BOUNTY CONTRACT card with ACCEPT / DECLINE; accepting thumps an ACCEPTED stamp on it ACCEPT: the board closes and a bounty tracker appears on the left (target, reward, distance, time left, abandon button), plus a red TARGET marker over their head that only you can see claiming it: a big "BOUNTY CLAIMED! +$350" banner POST tab: post your own bounty. Pick who it's on (yourself, any player, any Stand-user NPC or any Saint's Corpse part), type how much (or tap +$25 / +$100 / +$500 / MAX) and POST it. The whole server sees a banner Remote: Net "Bounty" (server: BountyService).
 
 ## How to add it
 1. In Studio's Explorer, find **UI** (StarterPlayer › StarterPlayerScripts › SpinClient › UI).
@@ -43,6 +43,10 @@ Back to [[Where To Put Code]]
 	    (target, reward, distance, time left, abandon button), plus a red
 	    TARGET marker over their head that only you can see
 	  * claiming it: a big "BOUNTY CLAIMED! +$350" banner
+	  * POST tab: post your own bounty. Pick who it's on (yourself, any
+	    player, any Stand-user NPC or any Saint's Corpse part), type how
+	    much (or tap +$25 / +$100 / +$500 / MAX) and POST it. The whole
+	    server sees a banner
 	Remote: Net "Bounty" (server: BountyService).
 ]]
 
@@ -54,6 +58,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SpinShared")
 local Net = require(Shared.Net)
 local Registry = require(Shared.TuskActRegistry)
 local TuskConfig = require(Shared.TuskConfig)
+local Cinematic = require(script.Parent.Parent.Cinematic)
 local okHorse, HorseModel = pcall(function()
 	return require(Shared.HorseModel)
 end)
@@ -185,6 +190,13 @@ end
 
 local function photoFor(entry, parent)
 	local photo = new("ImageLabel", { Name = "Photo", BackgroundColor3 = PAPER_DARK, BorderSizePixel = 0, ImageColor3 = Color3.fromRGB(240, 220, 190), ClipsDescendants = true }, parent)
+	if entry.Kind == "Arrow" then
+		-- The Requiem Arrow: a sketch of an arrow on a dark backdrop (no photo: nobody knows where it is).
+		photo.BackgroundColor3 = Color3.fromRGB(60, 44, 70)
+		label(photo, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.48), Size = UDim2.fromScale(0.8, 0.8), Rotation = -35, Text = "➶", Font = Enum.Font.GothamBlack, TextColor3 = GOLD })
+		label(photo, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -2), Size = UDim2.new(1, -6, 0, 14), Text = "?", Font = Enum.Font.Bangers, TextColor3 = PAPER })
+		return photo
+	end
 	if entry.Kind == "Corpse" then
 		-- The relic on a gold backdrop, or the face of whoever carries it.
 		photo.BackgroundColor3 = Color3.fromRGB(214, 178, 96)
@@ -242,8 +254,14 @@ local lastJobs, lastShop, jobsUntil = {}, {}, 0
 local lastStable = { Coats = {}, Blankets = {} }
 local stablePreview -- { Camera, Angle } spinning horse in the STABLE
 local showStable -- (below)
+local fillGrid -- (below)
 local placeAmount = 100
 local placeButton -- "PUT $100 ON THEIR HEAD" on a player's contract
+local lastTargets = {} -- who you can post a bounty on (POST tab)
+local postCfg = { Min = 25, Max = 5000, Cap = 10000, Quick = { 25, 100, 500 } }
+local postPick -- the Key of the target picked in the POST tab
+local postAmount = 100
+local showBanner -- (defined further down)
 local jobsTimer -- "NEW JOBS IN m:ss"
 local filter = "ALL"
 local tabs = {}
@@ -318,7 +336,7 @@ local function showConfirm(entry)
 	new("UIStroke", { Color = WOOD_DARK, Thickness = 4 }, photo)
 	body:FindFirstChild("Who").Text = string.upper(entry.Name)
 	local stand = standOf(entry.Act)
-	if entry.Kind == "Corpse" then
+	if entry.Kind == "Corpse" or entry.Kind == "Arrow" then
 		body:FindFirstChild("Stand").Text = "GIVES: " .. string.upper(entry.Boost or "")
 		body:FindFirstChild("Stand").TextColor3 = Color3.fromRGB(150, 100, 20)
 	else
@@ -332,6 +350,7 @@ local function showConfirm(entry)
 	end
 	local minutes = math.floor((TuskConfig.Bounty and TuskConfig.Bounty.Duration or 300) / 60)
 	body:FindFirstChild("Note").Text = (current and current.Key ~= entry.Key) and ("This replaces your bounty on " .. current.Name .. ".")
+		or (entry.Kind == "Arrow" and "Nobody knows where it is: somewhere out in the desert. Find it and take it. Paid the moment you do.")
 		or (entry.Kind == "Corpse" and (entry.HeldBy and (entry.HeldBy .. " is carrying it: take them down, then take the part. Paid the moment you take it.") or "It's lying out in the desert under a pillar of light. Paid the moment you take it."))
 		or (entry.Corpse and ("Carrying the Saint's Corpse: " .. entry.Corpse .. ". Take them down and the parts drop."))
 		or (minutes .. " minutes to find them. Land the final hit to claim the reward.")
@@ -341,7 +360,7 @@ local function showConfirm(entry)
 		placeButton:FindFirstChild("Top").Text = "+$" .. placeAmount
 	end
 	if entry.Placed then
-		body:FindFirstChild("Note").Text = "Includes a $" .. entry.Placed .. " price on their head. " .. body:FindFirstChild("Note").Text
+		body:FindFirstChild("Note").Text = (entry.Kind == "Arrow" and ("Includes $" .. entry.Placed .. " players posted on it. ") or ("Includes a $" .. entry.Placed .. " price on their head. ")) .. body:FindFirstChild("Note").Text
 	end
 	confirmEntry = entry
 	local scale = confirm:FindFirstChildOfClass("UIScale")
@@ -369,15 +388,18 @@ local function makePoster(entry, index)
 	corner(pin, 99)
 	new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.4, Size = UDim2.fromOffset(4, 4), Position = UDim2.fromOffset(3, 3), ZIndex = 3 }, pin)
 	local isCorpse = entry.Kind == "Corpse"
-	label(paper, { Position = UDim2.fromScale(0.06, 0.06), Size = UDim2.fromScale(0.88, 0.13), Text = isCorpse and "RETRIEVE" or "WANTED", Font = Enum.Font.Bangers, TextColor3 = isCorpse and Color3.fromRGB(150, 100, 20) or INK })
-	label(paper, { Position = UDim2.fromScale(0.1, 0.185), Size = UDim2.fromScale(0.8, 0.05), Text = isCorpse and "SAINT'S CORPSE" or "DEAD OR ALIVE", Font = Enum.Font.GothamBold, TextColor3 = INK:Lerp(PAPER, 0.25) })
+	local isArrow = entry.Kind == "Arrow"
+	label(paper, { Position = UDim2.fromScale(0.06, 0.06), Size = UDim2.fromScale(0.88, 0.13), Text = isArrow and "FIND IT" or (isCorpse and "RETRIEVE" or "WANTED"), Font = Enum.Font.Bangers, TextColor3 = isArrow and Color3.fromRGB(110, 60, 140) or (isCorpse and Color3.fromRGB(150, 100, 20) or INK) })
+	label(paper, { Position = UDim2.fromScale(0.1, 0.185), Size = UDim2.fromScale(0.8, 0.05), Text = isArrow and "LOCATION UNKNOWN" or (isCorpse and "SAINT'S CORPSE" or "DEAD OR ALIVE"), Font = Enum.Font.GothamBold, TextColor3 = INK:Lerp(PAPER, 0.25) })
 	local photo = photoFor(entry, paper)
 	photo.Position = UDim2.fromScale(0.15, 0.25)
 	photo.Size = UDim2.fromScale(0.7, 0.36)
 	new("UIStroke", { Color = INK, Thickness = 2 }, photo)
 	label(paper, { Position = UDim2.fromScale(0.05, 0.63), Size = UDim2.fromScale(0.9, 0.08), Text = isCorpse and string.upper((entry.Name:gsub("^SAINT'S CORPSE: ", ""))) or string.upper(entry.Name), TextTruncate = Enum.TextTruncate.AtEnd })
 	local stand = standOf(entry.Act)
-	if isCorpse then
+	if isArrow then
+		label(paper, { Position = UDim2.fromScale(0.05, 0.71), Size = UDim2.fromScale(0.9, 0.05), Text = "SOMEWHERE IN THE DESERT", Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(110, 60, 140) })
+	elseif isCorpse then
 		label(paper, { Position = UDim2.fromScale(0.05, 0.71), Size = UDim2.fromScale(0.9, 0.05), Text = entry.HeldBy and ("HELD BY " .. string.upper(entry.HeldBy)) or "LYING IN THE DESERT", Font = Enum.Font.GothamBold, TextColor3 = entry.HeldBy and RED or INK:Lerp(PAPER, 0.3) })
 	elseif stand then
 		label(paper, { Position = UDim2.fromScale(0.05, 0.71), Size = UDim2.fromScale(0.9, 0.05), Text = "STAND: " .. stand, Font = Enum.Font.GothamBold, TextColor3 = themeOf(entry.Act):Lerp(INK, 0.5) })
@@ -612,67 +634,324 @@ showStable = function(y, cash)
 	return math.max(rowY, y + 300)
 end
 
+-- The SHOP: a general store. Items are grouped under wooden section signs
+-- (SUPPLIES / TONICS / GEAR / SERVICES); each is a parchment card with a
+-- picture medallion, its name, an effect chip and a duration chip, a
+-- hanging price tag and a BUY button. Things you've bought and that are
+-- still working get a green ACTIVE ribbon and a time-left bar (buy again
+-- to top it up); things you can't afford say how much more you need.
+local SHOP_SECTIONS = {
+	{ Id = "SUPPLIES", Title = "SUPPLIES", Sub = "patch up and find your way", Color = Color3.fromRGB(70, 140, 80) },
+	{ Id = "TONICS", Title = "TONICS & LUCK", Sub = "a little something for the road", Color = Color3.fromRGB(150, 70, 140) },
+	{ Id = "GEAR", Title = "GEAR", Sub = "for the hunter, and the hunted", Color = Color3.fromRGB(70, 110, 170) },
+	{ Id = "SERVICES", Title = "SERVICES", Sub = "the sheriff's office", Color = Color3.fromRGB(150, 60, 40) },
+}
+local shopBars = {} -- { Fill, Text, Until, Time } live time-left bars
+
+local function sectionSign(y, sec)
+	local sign = new("Frame", { Position = UDim2.fromOffset(14, y), Size = UDim2.new(1, -40, 0, 34), BackgroundColor3 = WOOD_DARK }, grid)
+	corner(sign, 6)
+	new("UIStroke", { Color = Color3.fromRGB(40, 24, 12), Thickness = 2 }, sign)
+	new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, WOOD_LIGHT), ColorSequenceKeypoint.new(1, WOOD_DARK) }), Rotation = 90 }, sign)
+	local stripe = new("Frame", { Position = UDim2.fromOffset(0, 0), Size = UDim2.new(0, 8, 1, 0), BackgroundColor3 = sec.Color, BorderSizePixel = 0 }, sign)
+	corner(stripe, 6)
+	for _, x in ipairs({ 0, 1 }) do
+		local nail = new("Frame", { AnchorPoint = Vector2.new(x, 0.5), Position = UDim2.new(x, x == 0 and 16 or -10, 0.5, 0), Size = UDim2.fromOffset(6, 6), BackgroundColor3 = NAIL }, sign)
+		corner(nail, 99)
+	end
+	label(sign, { Position = UDim2.fromOffset(28, 2), Size = UDim2.new(0.5, 0, 1, -4), Text = sec.Title, Font = Enum.Font.Bangers, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Left, TextStrokeTransparency = 0.5 })
+	label(sign, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -22, 0, 9), Size = UDim2.new(0.45, 0, 0, 16), Text = string.upper(sec.Sub), Font = Enum.Font.GothamBold, TextColor3 = PAPER_DARK, TextXAlignment = Enum.TextXAlignment.Right })
+	return y + 44
+end
+
+local function chip(parent, x, y, text, color, textColor)
+	local w = math.clamp(#text * 7 + 16, 44, 150)
+	local c = new("Frame", { Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(w, 18), BackgroundColor3 = color }, parent)
+	corner(c, 9)
+	label(c, { Size = UDim2.fromScale(1, 1), Text = text, Font = Enum.Font.GothamBlack, TextColor3 = textColor or PAPER })
+	return c, w
+end
+
+local function shopCard(item, x, y, cash, secColor)
+	local card = paperCard(grid, UDim2.fromOffset(x, y), UDim2.fromOffset(300, 140), ((#item.Name * 7) % 5 - 2) * 0.25)
+	-- A coloured band down the left edge (its section).
+	local band = new("Frame", { Position = UDim2.fromOffset(0, 0), Size = UDim2.new(0, 6, 1, 0), BackgroundColor3 = secColor, BorderSizePixel = 0 }, card)
+	corner(band, 4)
+	-- Picture medallion: a gold-rimmed disc with the item's picture.
+	local medal = new("Frame", { Position = UDim2.fromOffset(16, 16), Size = UDim2.fromOffset(62, 62), BackgroundColor3 = secColor:Lerp(WOOD_DARK, 0.45) }, card)
+	corner(medal, 99)
+	new("UIStroke", { Color = GOLD, Thickness = 3 }, medal)
+	new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)), ColorSequenceKeypoint.new(1, Color3.fromRGB(170, 170, 170)) }), Rotation = 90 }, medal)
+	label(medal, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), Size = UDim2.fromScale(0.72, 0.72), Text = item.Emoji or item.Icon or "?", Font = Enum.Font.GothamBlack, TextColor3 = GOLD })
+	-- Name, effect.
+	local name = label(card, { Position = UDim2.fromOffset(88, 12), Size = UDim2.new(1, -170, 0, 24), Text = item.Name, Font = Enum.Font.Bangers, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
+	new("UITextSizeConstraint", { MaxTextSize = 22, MinTextSize = 10 }, name)
+	local desc = label(card, { Position = UDim2.fromOffset(88, 38), Size = UDim2.new(1, -100, 0, 30), Text = item.Text, Font = Enum.Font.GothamMedium, TextWrapped = true, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
+	new("UITextSizeConstraint", { MaxTextSize = 13, MinTextSize = 8 }, desc)
+	-- Chips: what it does, how long.
+	local cx = 88
+	if item.Tag then
+		local _, w = chip(card, cx, 72, item.Tag, secColor:Lerp(INK, 0.15))
+		cx = cx + w + 6
+	end
+	local t = item.Time
+	chip(card, cx, 72, t and (t >= 60 and string.format("%d:%02d", math.floor(t / 60), t % 60) or (t .. " S")) or "INSTANT", WOOD_DARK)
+	-- The price tag, hanging from a string at the top right.
+	local clean = item.Clean
+	local price = item.Price or 0
+	new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(1, -40, 0, -4), Size = UDim2.fromOffset(2, 12), BackgroundColor3 = BURNT, BorderSizePixel = 0 }, card)
+	local tag = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(1, -40, 0, 6), Size = UDim2.fromOffset(62, 26), Rotation = 6, BackgroundColor3 = Color3.fromRGB(250, 238, 210) }, card)
+	corner(tag, 5)
+	new("UIStroke", { Color = BURNT, Thickness = 2 }, tag)
+	label(tag, { Size = UDim2.fromScale(1, 1), Text = clean and "FREE" or ("$" .. price), Font = Enum.Font.Bangers, TextColor3 = (cash >= price or clean) and INK or RED })
+	-- Buy button: green if you can, grey with how much more you need if not.
+	local afford = cash >= price and not clean
+	local activeUntil = item.Active
+	local text = clean and "ALREADY CLEAN" or (afford and ((activeUntil and "TOP UP  $" or "BUY  $") .. price) or ("NEED $" .. (price - cash) .. " MORE"))
+	local buy = new("TextButton", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -12, 1, -10), Size = UDim2.fromOffset(140, 34), BackgroundColor3 = afford and GREEN or Color3.fromRGB(130, 120, 110), Text = text, Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), AutoButtonColor = afford }, card)
+	corner(buy, 8)
+	new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6) }, buy)
+	new("UIStroke", { Color = (afford and GREEN or INK):Lerp(Color3.new(0, 0, 0), 0.4), Thickness = 2 }, buy)
+	local scale = new("UIScale", { Scale = 1 }, buy)
+	if afford then
+		buy.MouseEnter:Connect(function()
+			TweenService:Create(scale, FAST, { Scale = 1.07 }):Play()
+		end)
+		buy.MouseLeave:Connect(function()
+			TweenService:Create(scale, SOFT, { Scale = 1 }):Play()
+		end)
+	end
+	buy.Activated:Connect(function()
+		if clean or not afford then
+			return
+		end
+		scale.Scale = 0.88
+		TweenService:Create(scale, FAST, { Scale = 1 }):Play()
+		Remote:FireServer("Buy", item.Id)
+	end)
+	-- Working right now: a green ribbon and a time-left bar.
+	if activeUntil and activeUntil > workspace:GetServerTimeNow() then
+		local ribbon = new("Frame", { Position = UDim2.fromOffset(10, 84), Size = UDim2.fromOffset(72, 18), Rotation = -6, BackgroundColor3 = GREEN }, card)
+		corner(ribbon, 4)
+		label(ribbon, { Size = UDim2.fromScale(1, 1), Text = "ACTIVE", Font = Enum.Font.GothamBlack, TextColor3 = Color3.new(1, 1, 1) })
+		local bar = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 14, 1, -12), Size = UDim2.new(1, -176, 0, 14), BackgroundColor3 = PAPER_DARK }, card)
+		corner(bar, 7)
+		new("UIStroke", { Color = INK, Thickness = 1, Transparency = 0.5 }, bar)
+		local fill = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = GREEN }, bar)
+		corner(fill, 7)
+		local tl = label(bar, { Size = UDim2.fromScale(1, 1), Text = "", Font = Enum.Font.GothamBlack, TextColor3 = INK })
+		table.insert(shopBars, { Fill = fill, Text = tl, Until = activeUntil, Time = item.Time or 60 })
+	end
+	return card
+end
+
+local function stepShopBars()
+	local now = workspace:GetServerTimeNow()
+	for i = #shopBars, 1, -1 do
+		local b = shopBars[i]
+		if not b.Fill.Parent then
+			table.remove(shopBars, i)
+		else
+			local left = math.max(0, b.Until - now)
+			b.Fill.Size = UDim2.fromScale(math.clamp(left / math.max(b.Time, 1), 0, 1), 1)
+			b.Text.Text = left > 0 and string.format("%d:%02d LEFT", math.floor(left / 60), math.floor(left % 60)) or "USED UP"
+		end
+	end
+end
+
 local function showShop()
 	local cash = 0
 	local ls = player:FindFirstChild("leaderstats")
 	local cv = ls and ls:FindFirstChild("Cash")
 	cash = cv and cv.Value or 0
-	for i, item in ipairs(lastShop) do
-		local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
-		local card = paperCard(grid, UDim2.fromOffset(14 + col * 316, 16 + row * 134), UDim2.fromOffset(300, 122), ((i * 53) % 5 - 2) * 0.5)
-		local badge = new("Frame", { Position = UDim2.fromOffset(12, 14), Size = UDim2.fromOffset(54, 54), BackgroundColor3 = item.Id == "ClearName" and INK or WOOD_DARK }, card)
-		corner(badge, 99)
-		new("UIStroke", { Color = GOLD, Thickness = 2 }, badge)
-		label(badge, { Size = UDim2.fromScale(1, 1), Text = item.Icon or "?", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextScaled = true })
-		local name = label(card, { Position = UDim2.fromOffset(76, 10), Size = UDim2.new(1, -86, 0, 22), Text = item.Name, Font = Enum.Font.Bangers, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
-		new("UITextSizeConstraint", { MaxTextSize = 20, MinTextSize = 10 }, name)
-		local desc = label(card, { Position = UDim2.fromOffset(76, 34), Size = UDim2.new(1, -86, 0, 36), Text = item.Text, Font = Enum.Font.GothamMedium, TextWrapped = true, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
-		new("UITextSizeConstraint", { MaxTextSize = 13, MinTextSize = 8 }, desc)
-		local clean = item.Clean
-		local price = item.Price or 0
-		local afford = cash >= price and not clean
-		local buy = new("TextButton", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -12, 1, -10), Size = UDim2.fromOffset(150, 36), BackgroundColor3 = afford and GREEN or Color3.fromRGB(130, 120, 110), Text = clean and "ALREADY CLEAN" or ("BUY  $" .. price), Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), AutoButtonColor = afford }, card)
-		corner(buy, 8)
-		new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, buy)
-		new("UIStroke", { Color = (afford and GREEN or INK):Lerp(Color3.new(0, 0, 0), 0.4), Thickness = 2 }, buy)
-		if item.Active then
-			local left = math.max(0, item.Active - workspace:GetServerTimeNow())
-			label(card, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, -12), Size = UDim2.fromOffset(120, 18), Text = string.format("ACTIVE %d:%02d", math.floor(left / 60), math.floor(left % 60)), Font = Enum.Font.GothamBlack, TextColor3 = GREEN, TextXAlignment = Enum.TextXAlignment.Left })
-		end
-		buy.Activated:Connect(function()
-			if clean then
-				return
-			end
-			local s = buy:FindFirstChildOfClass("UIScale") or new("UIScale", { Scale = 1 }, buy)
-			s.Scale = 0.9
-			TweenService:Create(s, FAST, { Scale = 1 }):Play()
-			Remote:FireServer("Buy", item.Id)
-		end)
+	shopBars = {}
+	-- The store sign.
+	local head = new("Frame", { Position = UDim2.fromOffset(14, 12), Size = UDim2.new(1, -40, 0, 58), BackgroundColor3 = Color3.fromRGB(60, 38, 22) }, grid)
+	corner(head, 8)
+	new("UIStroke", { Color = GOLD, Thickness = 2, Transparency = 0.3 }, head)
+	label(head, { Position = UDim2.fromOffset(16, 4), Size = UDim2.new(0.6, 0, 0, 34), Text = "GENERAL STORE", Font = Enum.Font.Bangers, TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Left, TextStrokeTransparency = 0.4 })
+	label(head, { Position = UDim2.fromOffset(16, 36), Size = UDim2.new(0.6, 0, 0, 14), Text = "EFFECTS LAST UNTIL THEY RUN OUT OR YOU GO DOWN", Font = Enum.Font.GothamBold, TextColor3 = PAPER_DARK, TextXAlignment = Enum.TextXAlignment.Left })
+	local purse = new("Frame", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(150, 38), BackgroundColor3 = GOLD }, head)
+	corner(purse, 8)
+	new("UIStroke", { Color = WOOD_DARK, Thickness = 2 }, purse)
+	label(purse, { Position = UDim2.fromOffset(6, 0), Size = UDim2.fromOffset(34, 38), Text = "💰", Font = Enum.Font.GothamBlack })
+	label(purse, { Position = UDim2.fromOffset(40, 2), Size = UDim2.new(1, -46, 1, -4), Text = "$" .. cash, Font = Enum.Font.Bangers, TextColor3 = INK })
+	local y = 84
+	-- Group the items under their section signs (anything uncategorised last).
+	local placed = {}
+	local sections = {}
+	for _, sec in ipairs(SHOP_SECTIONS) do
+		table.insert(sections, sec)
 	end
-	local y = 16 + math.ceil(#lastShop / 2) * 134 + 6
-	y = showStable(y, cash)
+	table.insert(sections, { Id = "_", Title = "MORE", Sub = "odds and ends", Color = WOOD })
+	for _, sec in ipairs(sections) do
+		local items = {}
+		for _, item in ipairs(lastShop) do
+			if not placed[item] and (item.Category == sec.Id or (sec.Id == "_" and true)) then
+				table.insert(items, item)
+				placed[item] = true
+			end
+		end
+		if #items > 0 then
+			y = sectionSign(y, sec)
+			for i, item in ipairs(items) do
+				local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
+				shopCard(item, 14 + col * 316, y + row * 152, cash, sec.Color)
+			end
+			y = y + math.ceil(#items / 2) * 152 + 4
+		end
+	end
+	y = showStable(y + 6, cash)
 	grid.CanvasSize = UDim2.fromOffset(0, y + 20)
 	return #lastShop
 end
 
-local function fillGrid()
+-- POST: put your own Cash on someone (or something).
+local function cashNow()
+	local ls = player:FindFirstChild("leaderstats")
+	local cv = ls and ls:FindFirstChild("Cash")
+	return cv and cv.Value or 0
+end
+
+local function showPost()
+	local picked
+	for _, t in ipairs(lastTargets) do
+		if t.Key == postPick then
+			picked = t
+		end
+	end
+	if not picked then
+		postPick = nil
+	end
+	local cash = cashNow()
+	-- The form.
+	local card = paperCard(grid, UDim2.fromOffset(14, 16), UDim2.new(1, -40, 0, 176), -0.4)
+	label(card, { Position = UDim2.fromOffset(16, 8), Size = UDim2.fromOffset(260, 30), Text = "POST A BOUNTY", Font = Enum.Font.Bangers, TextColor3 = RED, TextXAlignment = Enum.TextXAlignment.Left })
+	local photoBox = new("Frame", { Position = UDim2.fromOffset(16, 46), Size = UDim2.fromOffset(100, 100), BackgroundColor3 = PAPER_DARK }, card)
+	corner(photoBox, 6)
+	new("UIStroke", { Color = WOOD_DARK, Thickness = 3 }, photoBox)
+	if picked then
+		local photo = photoFor(picked, photoBox)
+		photo.Size = UDim2.fromScale(1, 1)
+		corner(photo, 6)
+	else
+		label(photoBox, { Size = UDim2.fromScale(1, 1), Text = "?", Font = Enum.Font.Bangers, TextColor3 = WOOD_DARK })
+	end
+	local who = label(card, { Position = UDim2.fromOffset(128, 44), Size = UDim2.new(1, -144, 0, 26), Text = picked and string.upper((picked.Self and "YOURSELF: " or "ON: ") .. picked.Name) or "PICK WHO IT'S ON BELOW", TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
+	new("UITextSizeConstraint", { MaxTextSize = 22, MinTextSize = 10 }, who)
+	label(card, { Position = UDim2.fromOffset(128, 70), Size = UDim2.new(1, -144, 0, 16), Text = picked and ((picked.Posted or 0) > 0 and ((picked.Kind == "Arrow" and "ALREADY ON IT: $" or "ALREADY ON THEM: $") .. picked.Posted) or (picked.Kind == "Arrow" and "NOTHING ON IT YET" or "NOTHING ON THEM YET")) or "", Font = Enum.Font.GothamBold, TextColor3 = (picked and (picked.Posted or 0) > 0) and RED or INK, TextXAlignment = Enum.TextXAlignment.Left })
+	-- Amount: type it, or tap the chips.
+	local box = new("TextBox", { Position = UDim2.fromOffset(128, 94), Size = UDim2.fromOffset(120, 38), BackgroundColor3 = Color3.fromRGB(250, 236, 205), Text = tostring(postAmount), PlaceholderText = "$", ClearTextOnFocus = false, Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = INK }, card)
+	corner(box, 6)
+	new("UIStroke", { Color = WOOD_DARK, Thickness = 2 }, box)
+	new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, box)
+	label(card, { Position = UDim2.fromOffset(112, 94), Size = UDim2.fromOffset(16, 38), Text = "$", Font = Enum.Font.Bangers, TextColor3 = INK })
+	local postButton
+	local function refreshButton()
+		local ok = picked ~= nil and postAmount >= (postCfg.Min or 25) and postAmount <= cash
+		postButton.Text = "POST  $" .. postAmount
+		postButton.BackgroundColor3 = ok and GREEN or Color3.fromRGB(130, 120, 110)
+		postButton.AutoButtonColor = ok
+		box.Text = tostring(postAmount)
+	end
+	local function setAmount(v)
+		v = math.floor(tonumber(v) or postAmount)
+		postAmount = math.clamp(v, postCfg.Min or 25, postCfg.Max or 5000)
+		refreshButton()
+	end
+	box.FocusLost:Connect(function()
+		setAmount((box.Text or ""):gsub("[^%d]", ""))
+	end)
+	local chips = {}
+	for _, q in ipairs(postCfg.Quick or { 25, 100, 500 }) do
+		table.insert(chips, { "+$" .. q, function()
+			setAmount(postAmount + q)
+		end })
+	end
+	table.insert(chips, { "MAX", function()
+		setAmount(math.min(cash, postCfg.Max or 5000))
+	end })
+	table.insert(chips, { "RESET", function()
+		setAmount(postCfg.Min or 25)
+	end })
+	for i, c in ipairs(chips) do
+		local chip = new("TextButton", { Position = UDim2.fromOffset(256 + (i - 1) * 54, 98), Size = UDim2.fromOffset(50, 30), BackgroundColor3 = i > #chips - 2 and WOOD_DARK or GOLD, Text = c[1], Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = i > #chips - 2 and PAPER or INK }, card)
+		corner(chip, 6)
+		new("UIPadding", { PaddingTop = UDim.new(0, 7), PaddingBottom = UDim.new(0, 7) }, chip)
+		chip.Activated:Connect(c[2])
+	end
+	postButton = new("TextButton", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -14, 1, -10), Size = UDim2.fromOffset(170, 40), BackgroundColor3 = GREEN, Text = "", Font = Enum.Font.Bangers, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }, card)
+	corner(postButton, 8)
+	new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, postButton)
+	new("UIStroke", { Color = Color3.fromRGB(30, 70, 34), Thickness = 2 }, postButton)
+	local have = label(card, { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -14, 1, -54), Size = UDim2.fromOffset(170, 16), Text = "YOU HAVE $" .. cash, Font = Enum.Font.GothamBlack, TextColor3 = cash >= (postCfg.Min or 25) and GREEN or RED, TextXAlignment = Enum.TextXAlignment.Right })
+	have.Name = "YouHave"
+	local note = label(card, { Position = UDim2.fromOffset(16, 150), Size = UDim2.new(1, -210, 0, 18), Text = picked and picked.Self and "Bold. Whoever takes YOU down gets it." or (picked and picked.Kind == "Arrow" and (picked.Out and "Whoever takes the arrow gets it." or "No arrow out yet: it goes on the next one, to whoever takes it.") or "Whoever takes them down (or takes the part) gets it. Cash back if they leave."), Font = Enum.Font.GothamMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
+	new("UITextSizeConstraint", { MaxTextSize = 13, MinTextSize = 8 }, note)
+	refreshButton()
+	postButton.Activated:Connect(function()
+		-- Always say why nothing happened.
+		if not picked then
+			showBanner("PICK WHO (OR WHAT) IT'S ON FIRST", Color3.fromRGB(255, 160, 140))
+			return
+		end
+		if postAmount > cashNow() then
+			showBanner("NOT ENOUGH CASH: YOU HAVE $" .. cashNow() .. " (DO JOBS OR CLAIM BOUNTIES)", Color3.fromRGB(255, 160, 140))
+			return
+		end
+		local sc = postButton:FindFirstChildOfClass("UIScale") or new("UIScale", { Scale = 1 }, postButton)
+		sc.Scale = 0.9
+		TweenService:Create(sc, FAST, { Scale = 1 }):Play()
+		Remote:FireServer("Post", { Key = picked.Key, Amount = postAmount })
+	end)
+	-- Who it can be on.
+	label(grid, { Position = UDim2.fromOffset(14, 200), Size = UDim2.new(1, -40, 0, 22), Text = "PICK WHO IT'S ON", Font = Enum.Font.Bangers, TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Left }).Name = "PostHeader"
+	local w = 196
+	for i, t in ipairs(lastTargets) do
+		local col, row = (i - 1) % 3, math.floor((i - 1) / 3)
+		local tc = new("TextButton", { Position = UDim2.fromOffset(14 + col * (w + 8), 228 + row * 80), Size = UDim2.fromOffset(w, 70), BackgroundColor3 = t.Key == postPick and Color3.fromRGB(255, 232, 170) or PAPER, Text = "", AutoButtonColor = true }, grid)
+		-- (A Frame-like card so fillGrid clears it.)
+		tc.Name = "PostTarget"
+		corner(tc, 6)
+		new("UIStroke", { Color = t.Key == postPick and GOLD or BURNT, Thickness = t.Key == postPick and 4 or 2 }, tc)
+		local ph = photoFor(t, tc)
+		ph.Position = UDim2.fromOffset(8, 8)
+		ph.Size = UDim2.fromOffset(54, 54)
+		corner(ph, 4)
+		local nm = label(tc, { Position = UDim2.fromOffset(68, 6), Size = UDim2.new(1, -74, 0, 22), Text = string.upper((t.Name or ""):gsub("^SAINT'S CORPSE: ", "")), TextXAlignment = Enum.TextXAlignment.Left, TextScaled = true })
+		new("UITextSizeConstraint", { MaxTextSize = 16, MinTextSize = 8 }, nm)
+		local kindText = t.Self and "YOU" or (t.Kind == "Arrow" and (t.Out and "ARROW · OUT NOW" or "ARROW · NEXT ONE") or (t.Kind == "Corpse" and "CORPSE PART" or (t.Kind == "NPC" and "NPC" or "PLAYER")))
+		local chip = new("Frame", { Position = UDim2.fromOffset(68, 30), Size = UDim2.fromOffset(t.Kind == "Arrow" and 110 or (t.Kind == "Corpse" and 84 or 52), 16), BackgroundColor3 = t.Self and GOLD or (t.Kind == "Arrow" and Color3.fromRGB(110, 60, 140) or (t.Kind == "Corpse" and Color3.fromRGB(214, 178, 96) or (t.Kind == "NPC" and WOOD_DARK or GREEN))) }, tc)
+		corner(chip, 4)
+		label(chip, { Size = UDim2.fromScale(1, 1), Text = kindText, Font = Enum.Font.GothamBlack, TextColor3 = (t.Self or t.Kind == "Corpse") and INK or PAPER })
+		label(tc, { Position = UDim2.fromOffset(68, 48), Size = UDim2.new(1, -74, 0, 16), Text = (t.Posted or 0) > 0 and ("$" .. t.Posted .. (t.Kind == "Arrow" and " ON IT" or " ON THEM")) or "", Font = Enum.Font.GothamBlack, TextColor3 = RED, TextXAlignment = Enum.TextXAlignment.Left })
+		tc.Activated:Connect(function()
+			postPick = t.Key
+			fillGrid()
+		end)
+	end
+	grid.CanvasSize = UDim2.fromOffset(0, 240 + math.ceil(#lastTargets / 3) * 80)
+	return #lastTargets
+end
+
+function fillGrid()
 	for _, c in ipairs(grid:GetChildren()) do
-		if c:IsA("Frame") then
+		if c:IsA("Frame") or c.Name == "PostTarget" or c.Name == "PostHeader" then
 			c:Destroy()
 		end
 	end
 	jobsTimer = nil
-	if filter == "JOBS" or filter == "SHOP" then
-		local n = filter == "JOBS" and showJobs() or showShop()
+	if filter == "JOBS" or filter == "SHOP" or filter == "POST" then
+		local n = filter == "JOBS" and showJobs() or (filter == "POST" and showPost() or showShop())
 		local empty = grid:FindFirstChild("Empty")
 		empty.Visible = n == 0
-		empty.Text = filter == "JOBS" and "No jobs right now." or "The shop is closed."
+		empty.Text = filter == "JOBS" and "No jobs right now." or (filter == "POST" and "Nobody to post a bounty on." or "The shop is closed.")
 		for name, tab in pairs(tabs) do
 			local on = name == filter
 			tab.BackgroundColor3 = on and GOLD or WOOD_DARK
 			tab.TextColor3 = on and INK or PAPER
 		end
-		countLabel.Text = filter == "JOBS" and "PAID TASKS" or "SPEND YOUR CASH"
+		countLabel.Text = filter == "JOBS" and "PAID TASKS" or (filter == "POST" and "YOUR CASH ON ANYONE" or "SPEND YOUR CASH")
 		return
 	end
 	local shown = {}
@@ -719,17 +998,19 @@ local function fillGrid()
 		tab.BackgroundColor3 = on and GOLD or WOOD_DARK
 		tab.TextColor3 = on and INK or PAPER
 	end
-	local players, npcs, parts = 0, 0, 0
+	local players, npcs, parts, arrowOut = 0, 0, 0, false
 	for _, e in ipairs(lastList) do
 		if e.Kind == "Player" then
 			players = players + 1
 		elseif e.Kind == "Corpse" then
 			parts = parts + 1
+		elseif e.Kind == "Arrow" then
+			arrowOut = true
 		else
 			npcs = npcs + 1
 		end
 	end
-	countLabel.Text = players .. " PLAYERS · " .. npcs .. " NPCS · " .. parts .. " PARTS"
+	countLabel.Text = players .. " PLAYERS · " .. npcs .. " NPCS · " .. parts .. " PARTS" .. (arrowOut and " · THE ARROW" or "")
 end
 
 local function openBoard(data)
@@ -739,6 +1020,8 @@ local function openBoard(data)
 	lastJobs, lastShop, jobsUntil = data.Jobs or {}, data.Shop or {}, data.JobsUntil or 0
 	lastStable = data.Stable or lastStable
 	placeAmount = data.PlaceAmount or placeAmount
+	lastTargets = data.Targets or lastTargets
+	postCfg = data.Post or postCfg
 	cashLabel.Text = cashText()
 	huntingLabel.Text = current and ("HUNTING: " .. string.upper(current.Name)) or "NO ACTIVE BOUNTY"
 	fillGrid()
@@ -807,9 +1090,9 @@ local function buildBoard()
 	local cashChip = new("Frame", { Position = UDim2.fromOffset(6, 4), Size = UDim2.fromOffset(86, 26), BackgroundColor3 = GOLD, ZIndex = 4 }, strip)
 	corner(cashChip, 6)
 	cashLabel = label(cashChip, { Size = UDim2.fromScale(1, 1), Text = "$0", Font = Enum.Font.Bangers, ZIndex = 4 })
-	for i, name in ipairs({ "ALL", "PLAYERS", "NPCS", "CORPSE", "JOBS", "SHOP" }) do
-		local x = 98 + (i - 1) * 60 + (i >= 5 and 8 or 0) -- a little gap before JOBS / SHOP
-		local tab = new("TextButton", { Position = UDim2.fromOffset(x, 4), Size = UDim2.fromOffset(56, 26), BackgroundColor3 = WOOD_DARK, Text = name, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = PAPER, ZIndex = 4 }, strip)
+	for i, name in ipairs({ "ALL", "PLAYERS", "NPCS", "CORPSE", "JOBS", "SHOP", "POST" }) do
+		local x = 98 + (i - 1) * 53 + (i >= 5 and 6 or 0) -- a little gap before JOBS / SHOP / POST
+		local tab = new("TextButton", { Position = UDim2.fromOffset(x, 4), Size = UDim2.fromOffset(50, 26), BackgroundColor3 = WOOD_DARK, Text = name, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = PAPER, ZIndex = 4 }, strip)
 		corner(tab, 6)
 		new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, tab)
 		tab.Activated:Connect(function()
@@ -818,8 +1101,8 @@ local function buildBoard()
 		end)
 		tabs[name] = tab
 	end
-	huntingLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 2), Size = UDim2.fromOffset(170, 16), Text = "", TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
-	countLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 18), Size = UDim2.fromOffset(170, 12), Text = "", Font = Enum.Font.GothamBold, TextColor3 = PAPER_DARK, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+	huntingLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 2), Size = UDim2.fromOffset(150, 16), Text = "", TextColor3 = PAPER, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+	countLabel = label(strip, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 18), Size = UDim2.fromOffset(150, 12), Text = "", Font = Enum.Font.GothamBold, TextColor3 = PAPER_DARK, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
 	grid = new("ScrollingFrame", { Name = "Grid", BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(22, 118), Size = UDim2.new(1, -44, 1, -136), ScrollBarThickness = 6, ScrollBarImageColor3 = PAPER_DARK, CanvasSize = UDim2.new(), ZIndex = 4 }, board)
 	label(grid, { Name = "Empty", Position = UDim2.fromScale(0.08, 0.32), Size = UDim2.fromScale(0.84, 0.14), Text = "", TextColor3 = PAPER, Visible = false, ZIndex = 4 })
 
@@ -928,6 +1211,9 @@ local function targetModel()
 	if current.Kind == "Corpse" then
 		return corpseHolder(current.Part) or corpseRelic(current.Part)
 	end
+	if current.Kind == "Arrow" then
+		return nil
+	end
 	return current.Model
 end
 
@@ -992,7 +1278,7 @@ local function clearActive()
 	marker.Enabled = false
 end
 
-local function showBanner(text, color)
+function showBanner(text, color)
 	banner.Text = text
 	banner.TextColor3 = color
 	banner.Visible = true
@@ -1011,6 +1297,9 @@ function BountyUI.step()
 		stablePreview.Angle = stablePreview.Angle + 0.01
 		local a = stablePreview.Angle
 		stablePreview.Camera.CFrame = CFrame.lookAt(Vector3.new(math.sin(a) * 13, 2, math.cos(a) * 13), Vector3.new(0, 0.2, -0.6))
+	end
+	if #shopBars > 0 then
+		stepShopBars()
 	end
 	if jobsTimer and jobsTimer.Parent then
 		local left = math.max(0, jobsUntil - workspace:GetServerTimeNow())
@@ -1034,6 +1323,16 @@ function BountyUI.step()
 		where = "HIDDEN"
 		marker.Enabled = false
 	end
+	-- The Requiem Arrow: never a marker or a distance.
+	if current.Kind == "Arrow" then
+		where = "SOMEWHERE IN THE DESERT"
+		marker.Enabled = false
+	end
+	-- Smoke bomb (bounty-board shop): no marker, no distance while it lasts.
+	if model and (model:GetAttribute("SmokedUntil") or 0) > workspace:GetServerTimeNow() then
+		where = "LOST IN SMOKE"
+		marker.Enabled = false
+	end
 	tracker:FindFirstChild("Info").Text = string.format("%s  ·  %d:%02d", where, math.floor(left / 60), math.floor(left % 60))
 	if marker.Enabled then
 		marker:FindFirstChild("Arrow").Position = UDim2.new(0.5, 0, 0, 26 + math.sin(os.clock() * 5) * 4)
@@ -1052,15 +1351,21 @@ function BountyUI.init()
 		elseif kind == "Active" then
 			showActive(data)
 			showBanner("BOUNTY ACCEPTED: " .. string.upper(data.Name or ""), PAPER)
+			Cinematic.title("THE HUNT BEGINS", data.Name or "", GOLD, "$" .. tostring(data.Reward or 0) .. " · DEAD OR ALIVE")
 		elseif kind == "Complete" and data.Price then
-			showBanner("PRICE ON THEIR HEAD!  +$" .. tostring(data.Reward), GOLD)
+			showBanner((data.Arrow and "THE ARROW'S BOUNTY!  +$" or "PRICE ON THEIR HEAD!  +$") .. tostring(data.Reward), GOLD)
+		elseif kind == "ArrowBounty" then
+			-- A new Requiem Arrow: there's a bounty on it (not where it is).
+			showBanner("NEW BOUNTY: THE REQUIEM ARROW · $" .. tostring(data.Reward) .. " · CHECK THE BOARD", Color3.fromRGB(214, 180, 255))
 		elseif kind == "Complete" then
 			clearActive()
 			showBanner("BOUNTY CLAIMED!  +$" .. tostring(data.Reward), GOLD)
+			Cinematic.title("BOUNTY CLAIMED", "+$" .. tostring(data.Reward), GOLD, data.Name or "")
 		elseif kind == "Refresh" then
 			lastList = data.Bounties or lastList
 			lastJobs, lastShop, jobsUntil = data.Jobs or lastJobs, data.Shop or lastShop, data.JobsUntil or jobsUntil
 			lastStable = data.Stable or lastStable
+			lastTargets = data.Targets or lastTargets
 			cashLabel.Text = cashText()
 			if dim.Visible then
 				fillGrid()
@@ -1073,6 +1378,19 @@ function BountyUI.init()
 			showBanner("$" .. tostring(data.Total) .. " ON " .. string.upper(tostring(data.Name)) .. "'S HEAD", GOLD)
 		elseif kind == "Warned" then
 			showBanner(string.upper(tostring(data.By)) .. " PUT A PRICE ON YOUR HEAD!  ($" .. tostring(data.Total) .. ")", Color3.fromRGB(255, 140, 120))
+		elseif kind == "Posted" then
+			local amount, name = tostring(data.Amount), string.upper(tostring(data.Name))
+			if data.Mine then
+				showBanner((data.Self and "YOU PUT $" .. amount .. " ON YOUR OWN HEAD!") or ("BOUNTY POSTED: $" .. amount .. " ON " .. name), GOLD)
+			elseif data.You then
+				showBanner(string.upper(tostring(data.By)) .. " POSTED $" .. amount .. " ON YOUR HEAD!", Color3.fromRGB(255, 140, 120))
+			elseif data.Self then
+				showBanner(string.upper(tostring(data.By)) .. " PUT $" .. amount .. " ON THEIR OWN HEAD!", GOLD)
+			else
+				showBanner(string.upper(tostring(data.By)) .. " POSTED $" .. amount .. " ON " .. name, PAPER)
+			end
+		elseif kind == "Refunded" then
+			showBanner("$" .. tostring(data.Amount) .. " REFUNDED (" .. string.upper(tostring(data.Name)) .. " IS GONE)", PAPER)
 		elseif kind == "Denied" then
 			showBanner(string.upper(tostring(data.Reason or "CAN'T DO THAT")), Color3.fromRGB(255, 160, 140))
 		elseif kind == "Lost" then

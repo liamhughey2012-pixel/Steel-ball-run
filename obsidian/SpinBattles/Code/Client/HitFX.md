@@ -71,6 +71,24 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 7) == "Okuyasu" then
+		starColor = Color3.fromRGB(150, 200, 255)
+	elseif source:sub(1, 4) == "Kira" then
+		starColor = Color3.fromRGB(255, 160, 80)
+	elseif source:sub(1, 7) == "Josuke4" then
+		starColor = Color3.fromRGB(255, 130, 200)
+	elseif source:sub(1, 7) == "Requiem" then
+		starColor = Color3.fromRGB(190, 160, 255)
+	elseif source:sub(1, 9) == "Polnareff" then
+		starColor = Color3.fromRGB(220, 232, 250)
+	elseif source:sub(1, 6) == "Joseph" then
+		starColor = Color3.fromRGB(255, 214, 80)
+	elseif source:sub(1, 3) == "Dio" then
+		starColor = Color3.fromRGB(255, 210, 70)
+	elseif source:sub(1, 6) == "Jotaro" then
+		starColor = Color3.fromRGB(170, 150, 255)
+	elseif source:sub(1, 5) == "Ringo" then
+		starColor = Color3.fromRGB(246, 204, 40)
 	elseif source:sub(1, 7) == "JohnRod" then
 		starColor = Color3.fromRGB(220, 230, 250)
 	elseif source:sub(1, 5) == "Jodio" then
