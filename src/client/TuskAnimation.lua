@@ -266,6 +266,10 @@ TuskAnimation.Poses = {
 	KiraReach = { Root = { 0, -14, 0, 0 }, Waist = { 4, -12, 0 }, Neck = { 2, 14, 0 }, RightArm = { 88, 0, 4 }, RightElbow = { 6, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
 	KiraSummon = { Root = { 6, 0, 0, -0.05 }, Waist = { 14, 0, 0 }, Neck = { 6, 0, 0 }, RightArm = { 40, 0, 20 }, RightElbow = { 10, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
 	KiraFace = { Root = { 0, 0, 0, 0 }, Waist = { 2, 0, 0 }, Neck = { -12, 0, 0 }, RightArm = { 130, 0, 20 }, RightElbow = { 115, 0, 0 }, LeftArm = { 30, 0, -10 }, LeftElbow = { 60, 0, 0 } },
+	-- OKUYASU: a tough slouch; big swipes of the right arm (The Hand erasing).
+	OKStance = { Root = { 0, 8, 0, -0.04 }, Waist = { -4, 6, 0 }, Neck = { 6, -6, 0 }, RightArm = { 10, 0, 22 }, RightElbow = { 30, 0, 0 }, LeftArm = { 10, 0, -22 }, LeftElbow = { 30, 0, 0 }, RightHip = { 6, 0, 6 }, LeftHip = { -4, 0, -6 } },
+	OKSwipeWind = { Root = { 0, 30, 0, 0 }, Waist = { 0, 28, 0 }, Neck = { 0, -20, 0 }, RightArm = { 140, 0, 60 }, RightElbow = { 20, 0, 0 }, LeftArm = { 20, 0, -20 }, LeftElbow = { 30, 0, 0 } },
+	OKSwipe = { Root = { 0, -30, 0, -0.1 }, Waist = { 0, -34, 0 }, Neck = { 0, 20, 0 }, RightArm = { 85, -60, -15 }, RightElbow = { 0, 0, 0 }, LeftArm = { 20, 0, -20 }, LeftElbow = { 30, 0, 0 }, LeftHip = { 16, 0, 0 }, LeftKnee = { -16, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -516,6 +520,14 @@ TuskAnimation.Actions = {
 	KRSummon = { { 0, "KiraStance" }, { 0.12, "KiraSummon", "Out" }, { 0.45, "KiraSummon", "Linear" }, { 0.65, "KiraStance", "Sine" } },
 	KRBlow = { { 0, "KiraStance" }, { 0.1, "KiraReach", "Out" }, { 0.4, "KiraReach", "Linear" }, { 0.6, "KiraStance", "Sine" } },
 	KRBTD = { { 0, "KiraStance" }, { 0.2, "KiraFace", "Out" }, { 1.0, "KiraFace", "Linear" }, { 1.3, "KiraClick", "Back", 3 }, { 1.6, "KiraClick", "Linear" }, { 1.9, "KiraStance", "Sine" } },
+	OK_M1_1 = { { 0, "OKStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "OKStance", "Sine" } },
+	OK_M1_2 = { { 0, "OKStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "OKStance", "Sine" } },
+	OK_M1_3 = { { 0, "OKStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "OKStance", "Sine" } },
+	OK_M1_4 = { { 0, "OKStance" }, { 0.06, "OKSwipeWind", "Out" }, { 0.16, "OKSwipe", "Back", 4 }, { 0.32, "OKSwipe", "Linear" }, { 0.5, "OKStance", "Sine" } },
+	OKErase = { { 0, "OKStance" }, { 0.25, "OKSwipeWind", "Out" }, { 0.38, "OKSwipe", "Back", 4 }, { 0.6, "OKSwipe", "Linear" }, { 0.85, "OKStance", "Sine" } },
+	OKPull = { { 0, "OKStance" }, { 0.2, "OKSwipeWind", "Out" }, { 0.32, "OKSwipe", "Back", 3 }, { 0.55, "OKSwipe", "Linear" }, { 0.8, "OKStance", "Sine" } },
+	OKDash = { { 0, "OKStance" }, { 0.08, "OKSwipeWind", "Out" }, { 0.16, "OKSwipe", "Back", 3 }, { 0.35, "OKSwipe", "Linear" }, { 0.55, "OKStance", "Sine" } },
+	OKUlt = { { 0, "OKStance" }, { 0.25, "OKSwipeWind", "Out" }, { 0.72, "OKSwipe", "Linear" }, { 0.96, "OKSwipeWind", "Linear" }, { 1.20, "OKSwipe", "Linear" }, { 1.44, "OKSwipeWind", "Linear" }, { 1.68, "OKSwipe", "Linear" }, { 1.92, "OKSwipeWind", "Linear" }, { 2.29, "OKStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },

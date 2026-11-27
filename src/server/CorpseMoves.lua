@@ -25,6 +25,7 @@
 	  DIO          WRYYY: drains everyone round him (he heals)
 	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
 	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
+	  Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him
 	  Kira         CONTACT DETONATION: Killer Queen blows up the ground round him
 	  Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA!
 	With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead
@@ -475,6 +476,23 @@ USE.Jotaro = function(S, player, state, character, root)
 				end
 			end
 		end)
+	end
+end
+
+-- SPACE PULL: The Hand erases the space round Okuyasu: everyone near is
+-- yanked in next to him, hurt and dazed.
+USE.Okuyasu = function(S, player, state, character, root)
+	local c = TuskConfig.Okuyasu and TuskConfig.Okuyasu.CorpsePull or { Radius = 26, Damage = 6, Stun = 0.8 }
+	S.lock(state, 0.4)
+	fx({ Character = character, Who = "Okuyasu", Phase = "Pull", Position = root.Position, Radius = c.Radius })
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and not tr.Anchored then
+			local off = Vector3.new(tr.Position.X - root.Position.X, 0, tr.Position.Z - root.Position.Z)
+			local to = root.Position + (off.Magnitude > 0.1 and off.Unit or Vector3.new(0, 0, -1)) * 4
+			target:PivotTo(CFrame.lookAt(to, Vector3.new(root.Position.X, to.Y, root.Position.Z)))
+			S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Position = to, Source = "OkuyasuCorpse" })
+		end
 	end
 end
 

@@ -4986,6 +4986,9 @@ local function onMove(data)
 	elseif who == "Dio" and data.Phase == "Drain" and data.Position then
 		-- WRYYY: a blood-red ring pulling in.
 		ring(data.Position, data.Radius or 18, Color3.fromRGB(190, 20, 30), 0.6)
+	elseif who == "Okuyasu" and data.Phase == "Pull" and data.Position then
+		-- SPACE PULL: a dark ring snapping inward.
+		ring(data.Position, data.Radius or 26, Color3.fromRGB(150, 200, 255), 0.4)
 	elseif who == "Kira" and data.Phase == "Blast" and data.Position then
 		-- CONTACT DETONATION: a ring of fire round him.
 		ring(data.Position, data.Radius or 15, Color3.fromRGB(255, 150, 60), 0.5)
@@ -6352,6 +6355,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 7) == "Okuyasu" then
+		starColor = Color3.fromRGB(150, 200, 255)
 	elseif source:sub(1, 4) == "Kira" then
 		starColor = Color3.fromRGB(255, 160, 80)
 	elseif source:sub(1, 7) == "Josuke4" then
@@ -8206,6 +8211,7 @@ Common.Palettes = {
 	[17] = { Main = Color3.fromRGB(90, 170, 240), Second = Color3.fromRGB(240, 120, 190), Light = Color3.fromRGB(225, 240, 255) }, -- Jodio (November Rain blue + strap pink)
 	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
 	[24] = { Main = Color3.fromRGB(150, 110, 220), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(230, 220, 255) }, -- Silver Chariot Requiem
+	[27] = { Main = Color3.fromRGB(100, 140, 230), Second = Color3.fromRGB(236, 190, 70), Light = Color3.fromRGB(220, 236, 255) }, -- Okuyasu (The Hand blue + gold)
 	[26] = { Main = Color3.fromRGB(230, 150, 215), Second = Color3.fromRGB(120, 70, 150), Light = Color3.fromRGB(250, 228, 250) }, -- Kira (Killer Queen pink + dark purple)
 	[25] = { Main = Color3.fromRGB(240, 120, 190), Second = Color3.fromRGB(150, 220, 240), Light = Color3.fromRGB(255, 226, 242) }, -- Josuke (Part 4: Crazy Diamond pink + pale blue)
 	[23] = { Main = Color3.fromRGB(196, 206, 222), Second = Color3.fromRGB(110, 170, 230), Light = Color3.fromRGB(240, 246, 255) }, -- Polnareff (Silver Chariot)
@@ -8968,6 +8974,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "KiraVFX", -- client visuals (TuskActVFX.KiraVFX)
 		CardTitle = "STAND  ·  KILLER QUEEN",
 	},
+	-- OKUYASU NIJIMURA: THE HAND. Its right palm erases space.
+	[27] = {
+		Name = "THE HAND",
+		Character = "Okuyasu",
+		Tagline = "Za Hando!",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(90, 130, 220), Secondary = Color3.fromRGB(236, 190, 70) },
+		M1 = "HAND COMBO",
+		Abilities = { "SPACE ERASE", "ERASE PULL", "ERASE DASH" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "ZA HANDO: GREAT ERASURE",
+		Next = nil,
+		Module = "Okuyasu", -- server moves
+		ClientModule = "OkuyasuVFX", -- client visuals (TuskActVFX.OkuyasuVFX)
+		CardTitle = "STAND  ·  THE HAND",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -8977,7 +8999,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -9263,6 +9285,10 @@ TuskAnimation.Poses = {
 	KiraReach = { Root = { 0, -14, 0, 0 }, Waist = { 4, -12, 0 }, Neck = { 2, 14, 0 }, RightArm = { 88, 0, 4 }, RightElbow = { 6, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
 	KiraSummon = { Root = { 6, 0, 0, -0.05 }, Waist = { 14, 0, 0 }, Neck = { 6, 0, 0 }, RightArm = { 40, 0, 20 }, RightElbow = { 10, 0, 0 }, LeftArm = { 6, 0, -6 }, LeftElbow = { 20, 0, 0 } },
 	KiraFace = { Root = { 0, 0, 0, 0 }, Waist = { 2, 0, 0 }, Neck = { -12, 0, 0 }, RightArm = { 130, 0, 20 }, RightElbow = { 115, 0, 0 }, LeftArm = { 30, 0, -10 }, LeftElbow = { 60, 0, 0 } },
+	-- OKUYASU: a tough slouch; big swipes of the right arm (The Hand erasing).
+	OKStance = { Root = { 0, 8, 0, -0.04 }, Waist = { -4, 6, 0 }, Neck = { 6, -6, 0 }, RightArm = { 10, 0, 22 }, RightElbow = { 30, 0, 0 }, LeftArm = { 10, 0, -22 }, LeftElbow = { 30, 0, 0 }, RightHip = { 6, 0, 6 }, LeftHip = { -4, 0, -6 } },
+	OKSwipeWind = { Root = { 0, 30, 0, 0 }, Waist = { 0, 28, 0 }, Neck = { 0, -20, 0 }, RightArm = { 140, 0, 60 }, RightElbow = { 20, 0, 0 }, LeftArm = { 20, 0, -20 }, LeftElbow = { 30, 0, 0 } },
+	OKSwipe = { Root = { 0, -30, 0, -0.1 }, Waist = { 0, -34, 0 }, Neck = { 0, 20, 0 }, RightArm = { 85, -60, -15 }, RightElbow = { 0, 0, 0 }, LeftArm = { 20, 0, -20 }, LeftElbow = { 30, 0, 0 }, LeftHip = { 16, 0, 0 }, LeftKnee = { -16, 0, 0 } },
 	-- RIDING a horse: astride (legs out round its sides, not through it), leaning in, hands on the reins.
 	Ride = { Root = { 0, 0, 0, 0 }, Waist = { -10, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 25, 0, 50 }, RightKnee = { -40, 0, 0 }, LeftHip = { 25, 0, -50 }, LeftKnee = { -40, 0, 0 }, RightArm = { 50, 0, 8 }, RightElbow = { 55, 0, 0 }, LeftArm = { 50, 0, -8 }, LeftElbow = { 55, 0, 0 } },
 	-- AXL RO: slouched and mocking; Civil War does the fighting.
@@ -9513,6 +9539,14 @@ TuskAnimation.Actions = {
 	KRSummon = { { 0, "KiraStance" }, { 0.12, "KiraSummon", "Out" }, { 0.45, "KiraSummon", "Linear" }, { 0.65, "KiraStance", "Sine" } },
 	KRBlow = { { 0, "KiraStance" }, { 0.1, "KiraReach", "Out" }, { 0.4, "KiraReach", "Linear" }, { 0.6, "KiraStance", "Sine" } },
 	KRBTD = { { 0, "KiraStance" }, { 0.2, "KiraFace", "Out" }, { 1.0, "KiraFace", "Linear" }, { 1.3, "KiraClick", "Back", 3 }, { 1.6, "KiraClick", "Linear" }, { 1.9, "KiraStance", "Sine" } },
+	OK_M1_1 = { { 0, "OKStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "OKStance", "Sine" } },
+	OK_M1_2 = { { 0, "OKStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "OKStance", "Sine" } },
+	OK_M1_3 = { { 0, "OKStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "OKStance", "Sine" } },
+	OK_M1_4 = { { 0, "OKStance" }, { 0.06, "OKSwipeWind", "Out" }, { 0.16, "OKSwipe", "Back", 4 }, { 0.32, "OKSwipe", "Linear" }, { 0.5, "OKStance", "Sine" } },
+	OKErase = { { 0, "OKStance" }, { 0.25, "OKSwipeWind", "Out" }, { 0.38, "OKSwipe", "Back", 4 }, { 0.6, "OKSwipe", "Linear" }, { 0.85, "OKStance", "Sine" } },
+	OKPull = { { 0, "OKStance" }, { 0.2, "OKSwipeWind", "Out" }, { 0.32, "OKSwipe", "Back", 3 }, { 0.55, "OKSwipe", "Linear" }, { 0.8, "OKStance", "Sine" } },
+	OKDash = { { 0, "OKStance" }, { 0.08, "OKSwipeWind", "Out" }, { 0.16, "OKSwipe", "Back", 3 }, { 0.35, "OKSwipe", "Linear" }, { 0.55, "OKStance", "Sine" } },
+	OKUlt = { { 0, "OKStance" }, { 0.25, "OKSwipeWind", "Out" }, { 0.72, "OKSwipe", "Linear" }, { 0.96, "OKSwipeWind", "Linear" }, { 1.20, "OKSwipe", "Linear" }, { 1.44, "OKSwipeWind", "Linear" }, { 1.68, "OKSwipe", "Linear" }, { 1.92, "OKSwipeWind", "Linear" }, { 2.29, "OKStance", "Sine" } },
 	DW_M1_1 = { { 0, "DWStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_2 = { { 0, "DWStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DWStance", "Sine" } },
 	DW_M1_3 = { { 0, "DWStance" }, { 0.07, "KickChamber", "In" }, { 0.13, "FrontKick", "Back", 5 }, { 0.18, "FrontKick", "Linear" }, { 0.32, "DWStance", "Sine" } },
@@ -12740,6 +12774,12 @@ local function iconKind(name)
 		return "clock"
 	elseif has("ORA RUSH") or has("ORA BARRAGE") then
 		return "barrage"
+	elseif has("SPACE ERASE") or has("GREAT ERASURE") then
+		return "slash"
+	elseif has("ERASE PULL") or has("SPACE PULL") then
+		return "lasso"
+	elseif has("ERASE DASH") then
+		return "dash"
 	elseif has("FIRST BOMB") or has("CONTACT DETONATION") then
 		return "spiral"
 	elseif has("SHEER HEART") then

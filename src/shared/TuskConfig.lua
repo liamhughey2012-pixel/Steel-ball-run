@@ -184,6 +184,7 @@ TuskConfig.Roster = {
 	{ Id = "Polnareff", Name = "JEAN PIERRE POLNAREFF", Stand = "SILVER CHARIOT", Available = true, Color = Color3.fromRGB(196, 206, 222) },
 	{ Id = "Josuke4", Name = "JOSUKE HIGASHIKATA (4)", Stand = "CRAZY DIAMOND", Available = true, Color = Color3.fromRGB(236, 120, 190) },
 	{ Id = "Kira", Name = "YOSHIKAGE KIRA", Stand = "KILLER QUEEN", Available = true, Color = Color3.fromRGB(196, 120, 200) },
+	{ Id = "Okuyasu", Name = "OKUYASU NIJIMURA", Stand = "THE HAND", Available = true, Color = Color3.fromRGB(90, 130, 220) },
 }
 
 ---------------------------------------------------------------------------
@@ -260,7 +261,7 @@ TuskConfig.StandBots = {
 	Count = 20, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph", "Polnareff", "Josuke4", "Kira" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph", "Polnareff", "Josuke4", "Kira", "Okuyasu" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -1298,6 +1299,46 @@ TuskConfig.Kira = {
 }
 
 ---------------------------------------------------------------------------
+-- OKUYASU NIJIMURA (Part 4): THE HAND (a visitor from another world). Its
+-- right palm ERASES whatever it swipes through, space included ("GAOON").
+---------------------------------------------------------------------------
+TuskConfig.Okuyasu = {
+	M1 = { -- HAND COMBO: The Hand swings with him; the 4th is a heavy backhand that launches
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.08,
+		HitboxSize = Vector3.new(5.5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.9, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.9, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4.3, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7.8, Stun = 0.6, Knockback = 44, Launch = 14, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	Erase = { -- 1: SPACE ERASE: a swipe of the right palm erases everything in front ("GAOON"); can't be blocked
+		Cooldown = 10, Windup = 0.35,
+		HitboxSize = Vector3.new(8, 6, 7), HitboxForward = 4, MaxTargets = 4,
+		Damage = 13, Stun = 0.7, Knockback = 6,
+	},
+	ErasePull = { -- 2: erase the space between him and someone far off: they're yanked right up to him
+		Cooldown = 11, MissCooldown = 3, Windup = 0.3,
+		Range = 40, Cone = 50,
+		Damage = 4, Stun = 0.9, -- landing in front of him, dazed
+		PullTo = 4, -- studs in front of him
+	},
+	EraseDash = { -- 3: erase the space in front of himself: he's suddenly further along
+		Cooldown = 7, Windup = 0.12,
+		Distance = 26, IFrames = 0.3,
+	},
+	Ultimate = { -- ZA HANDO: GREAT ERASURE: The Hand swipes again and again, pulling everyone in front in, then one huge erase
+		Windup = 0.6,
+		Swipes = 6, Gap = 0.24,
+		HitboxSize = Vector3.new(14, 7, 14), HitboxForward = 6, MaxTargets = 6,
+		Damage = 4, Stun = 0.5, Pull = 0.6, -- each swipe drags them this fraction of the way to him
+		FinalDamage = 18, FinalKnockback = 60, FinalLaunch = 16,
+	},
+	CorpsePull = { Radius = 26, Damage = 6, Stun = 0.8 }, -- corpse move SPACE PULL: everyone near is yanked in
+}
+
+---------------------------------------------------------------------------
 -- DIO: THE WORLD (a visitor from another world: Part 3). Not Diego's The
 -- World: a vampire with a golden Stand, knives, and a ROAD ROLLER.
 ---------------------------------------------------------------------------
@@ -1577,7 +1618,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT", Polnareff = "SWORD WHIRL", Josuke4 = "DORA BARRAGE", Kira = "CONTACT DETONATION",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT", Polnareff = "SWORD WHIRL", Josuke4 = "DORA BARRAGE", Kira = "CONTACT DETONATION", Okuyasu = "SPACE PULL",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }

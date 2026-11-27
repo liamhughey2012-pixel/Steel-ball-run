@@ -746,6 +746,9 @@ local function onMove(data)
 	elseif who == "Dio" and data.Phase == "Drain" and data.Position then
 		-- WRYYY: a blood-red ring pulling in.
 		ring(data.Position, data.Radius or 18, Color3.fromRGB(190, 20, 30), 0.6)
+	elseif who == "Okuyasu" and data.Phase == "Pull" and data.Position then
+		-- SPACE PULL: a dark ring snapping inward.
+		ring(data.Position, data.Radius or 26, Color3.fromRGB(150, 200, 255), 0.4)
 	elseif who == "Kira" and data.Phase == "Blast" and data.Position then
 		-- CONTACT DETONATION: a ring of fire round him.
 		ring(data.Position, data.Radius or 15, Color3.fromRGB(255, 150, 60), 0.5)

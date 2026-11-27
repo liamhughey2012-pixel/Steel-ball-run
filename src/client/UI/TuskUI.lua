@@ -179,6 +179,12 @@ local function iconKind(name)
 		return "clock"
 	elseif has("ORA RUSH") or has("ORA BARRAGE") then
 		return "barrage"
+	elseif has("SPACE ERASE") or has("GREAT ERASURE") then
+		return "slash"
+	elseif has("ERASE PULL") or has("SPACE PULL") then
+		return "lasso"
+	elseif has("ERASE DASH") then
+		return "dash"
 	elseif has("FIRST BOMB") or has("CONTACT DETONATION") then
 		return "spiral"
 	elseif has("SHEER HEART") then
