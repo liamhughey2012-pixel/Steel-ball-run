@@ -21,9 +21,10 @@ __modules["GyroEyes"] = function()
 	eye socket, one set into his steel ball. While he holds them his moves
 	change; when he loses them (or goes down) he's back to Act 5.
 	  M1        STEEL BALL COMBO (the same as ever)
-	  Ability 1 SCAN SHOT: the eye-ball sees its target and steers after it
-	            (the nearest enemy in front); whoever it hits is left
-	            revealed to him for a while
+	  Ability 1 SCAN SHOT: he tosses the eye-ball up, throws a second ball
+	            into it at the top, and knocks it DOWN onto the nearest enemy in
+	            front (it comes from above, so it goes over cover), steering
+	            after them; whoever it hits is left revealed to him for a while
 	  Ability 2 SCAN: the eyes see through everything: every enemy near is
 	            revealed to him (through walls) and takes more damage from him
 	            for a while
@@ -82,7 +83,7 @@ function GyroEyes.M1(S, player, state, aim)
 end
 
 ---------------------------------------------------------------------------
--- 1: SCAN SHOT (homing)
+-- 1: SCAN SHOT (toss one ball up, knock it down onto them with another)
 ---------------------------------------------------------------------------
 local function scanShot(S, player, state, aim)
 	local c = cfg.ScanShot
@@ -90,63 +91,87 @@ local function scanShot(S, player, state, aim)
 		return
 	end
 	S.startCooldown(player, state, "ScanShot", c.Cooldown, 1)
-	S.lock(state, c.Windup + 0.2)
-	local character = alive(S, player)
+	S.lock(state, c.TossTime + c.StrikeTime + 0.15)
+	local character, _, root = alive(S, player)
 	local life = state.Life
-	S.fx("Ability", { Character = character, Act = ACT, Move = "ScanShot", Phase = "Wind", Windup = c.Windup })
-	task.delay(c.Windup, function()
+	local look = Moves.flat(S.aim(aim, root))
+	-- The eye-ball goes up above him.
+	local hand = S.origin(character, root, Moves.HAND)
+	local apex = root.Position + look * c.TossForward + Vector3.new(0, c.TossHeight, 0)
+	local id = tostring({})
+	S.fx("Ability", { Character = character, Act = ACT, Move = "ScanShot", Phase = "Toss", Id = id, From = hand, Apex = apex, Time = c.TossTime })
+	-- At the top, the second ball meets it.
+	task.delay(c.TossTime, function()
 		if not S.stillValid(player, state, life) then
+			S.fx("Ability", { Act = ACT, Move = "ScanShot", Phase = "End", Id = id, Position = apex, Hit = false })
 			return
 		end
 		local char, _, r = alive(S, player)
-		local dir = S.aim(aim, r)
-		local target = Moves.findTarget(S, char, r, c.LockRange, c.Cone, dir)
-		local pos = S.origin(char, r, Moves.HAND)
-		local vel = dir * c.Speed
-		local id = tostring({})
-		S.fx("Ability", { Character = char, Act = ACT, Move = "ScanShot", Phase = "Fly", Id = id, From = pos, Direction = dir, Target = target, Speed = c.Speed, Turn = c.Turn, Life = c.Life })
-		local params = RaycastParams.new()
-		params.FilterType = Enum.RaycastFilterType.Exclude
-		params.FilterDescendantsInstances = { char }
-		local t, step = 0, 1 / 30
-		local function tick()
-			t = t + step
-			local tr = target and aliveModel(target) and target:FindFirstChild("HumanoidRootPart")
-			if tr then
-				local want = (tr.Position - pos).Unit * c.Speed
-				vel = (vel + (want - vel) * math.min(1, c.Turn * step)).Unit * c.Speed
-			end
-			local move = vel * step
-			local wall = workspace:Raycast(pos, move, params)
-			if wall and not (wall.Instance.Parent and wall.Instance.Parent:FindFirstChildOfClass("Humanoid")) then
-				S.fx("Ability", { Act = ACT, Move = "ScanShot", Phase = "End", Id = id, Position = wall.Position, Hit = false })
+		local from = S.origin(char, r, Moves.HAND)
+		S.fx("Ability", { Character = char, Act = ACT, Move = "ScanShot", Phase = "Strike", Id = id, From = from, Apex = apex, Time = c.StrikeTime })
+		task.delay(c.StrikeTime, function()
+			if not S.stillValid(player, state, life) then
+				S.fx("Ability", { Act = ACT, Move = "ScanShot", Phase = "End", Id = id, Position = apex, Hit = false })
 				return
 			end
-			pos = pos + move
-			local victim
-			if tr and (tr.Position - pos).Magnitude <= c.HitRadius then
-				victim = target
-			else
-				for _, other in ipairs(S.Hitbox.inRadius(char, pos, c.HitRadius, 1)) do
-					victim = other
+			-- The eye picks its target, and the first ball dives down at them.
+			local target = Moves.findTarget(S, char, r, c.LockRange, c.Cone, look)
+			local tr = target and target:FindFirstChild("HumanoidRootPart")
+			local aimAt = tr and tr.Position or Moves.groundBelow(r.Position + look * 40, { char })
+			local pos = apex
+			local vel = (aimAt - pos).Unit * c.Speed
+			S.fx("Ability", { Character = char, Act = ACT, Move = "ScanShot", Phase = "Dive", Id = id, From = pos, Direction = vel.Unit, Target = target, Speed = c.Speed, Turn = c.Turn, Life = c.Life, Aim = aimAt })
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Exclude
+			params.FilterDescendantsInstances = { char }
+			local t, step = 0, 1 / 30
+			local function landed(at, victim)
+				local hitIt = false
+				if victim then
+					local vr = victim:FindFirstChild("HumanoidRootPart")
+					hitIt = S.hit(player, victim, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Launch = c.Launch, Direction = Moves.flat(vel), Position = vr and vr.Position or at, Source = "GyroEyesShot" })
+					if hitIt then
+						scan(char, victim, c.RevealTime)
+					end
 				end
+				-- The ground where it lands takes a hit too.
+				Moves.aoe(S, player, at, c.SplashRadius, { Damage = c.SplashDamage, Stun = 0.3, Knockback = 12, Source = "GyroEyesShot" }, 6, victim and { [victim] = true } or nil)
+				S.fx("Ability", { Character = char, Act = ACT, Move = "ScanShot", Phase = "End", Id = id, Position = at, Hit = hitIt, Target = hitIt and victim or nil, Reveal = c.RevealTime, Radius = c.SplashRadius })
 			end
-			if victim then
-				local vr = victim:FindFirstChild("HumanoidRootPart")
-				local landed = S.hit(player, victim, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = vel.Unit, Position = vr and vr.Position or pos, Source = "GyroEyesShot" })
-				if landed then
-					scan(char, victim, c.RevealTime)
+			local function tick()
+				t = t + step
+				local ttr = target and aliveModel(target) and target:FindFirstChild("HumanoidRootPart")
+				if ttr then
+					local want = (ttr.Position - pos).Unit * c.Speed
+					vel = (vel + (want - vel) * math.min(1, c.Turn * step)).Unit * c.Speed
 				end
-				S.fx("Ability", { Character = char, Act = ACT, Move = "ScanShot", Phase = "End", Id = id, Position = pos, Hit = landed, Target = landed and victim or nil, Reveal = c.RevealTime })
-				return
-			end
-			if t >= c.Life then
-				S.fx("Ability", { Act = ACT, Move = "ScanShot", Phase = "End", Id = id, Position = pos, Hit = false })
-				return
+				local move = vel * step
+				local wall = workspace:Raycast(pos, move, params)
+				if wall and not (wall.Instance.Parent and wall.Instance.Parent:FindFirstChildOfClass("Humanoid")) then
+					landed(wall.Position, nil)
+					return
+				end
+				pos = pos + move
+				local victim
+				if ttr and (ttr.Position - pos).Magnitude <= c.HitRadius then
+					victim = target
+				else
+					for _, other in ipairs(S.Hitbox.inRadius(char, pos, c.HitRadius, 1)) do
+						victim = other
+					end
+				end
+				if victim then
+					landed(pos, victim)
+					return
+				end
+				if t >= c.Life then
+					landed(pos, nil)
+					return
+				end
+				task.delay(step, tick)
 			end
 			task.delay(step, tick)
-		end
-		task.delay(step, tick)
+		end)
 	end)
 end
 

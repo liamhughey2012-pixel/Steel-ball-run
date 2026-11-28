@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
 | **Exact name** | `GyroEyesVFX` (capitals matter) |
 
-**What it does:** Client visuals for GYRO WITH THE SAINT'S EYES (Act 29). Blocky. his steel ball now has the corpse's EYE set into it (a white eyeball, brown iris), spinning in his hand; the other eye is in his face (GyroOutfit) the eye-ball in his hand has a thin green Spin ring circling it, and every few seconds the eye "looks": a thin green beam sweeps out from it STEEL BALL COMBO: green swipes; the eye-ball whirls with each swing, the 4th throws off a spin ring, the finisher sends a vibration ring out SCAN SHOT: the eye-ball flies out with spin rings round it, green afterimages and a thin lock-on beam to its target, curving after them; the hit drills spiral ripples and a vibration ring, and an eye opens over them; they glow for him (seen through walls) SCAN: a big eye opens over his head; green scan lines sweep down his screen; a green ring sweeps out; VIBRATION LINES ripple across the ground (a big wave, then wavy rings and jittering dashes round him for as long as it lasts); for him the world dims and every enemy in range glows green through walls, an eye over its head and small vibration rings pulsing under its feet EYE RICOCHET: the eye-ball bounces from enemy to enemy with spin rings round it, leaving a fading green zigzag of its path; a spark, a spin ripple and a vibration ring at each one SCAN: GOLDEN SPIN: a turning GOLDEN RECTANGLE (nested golden-ratio frames) locks onto the target, a gold eye opens over Gyro and a gold spin gathers in his hand ("SCAN / GOLDEN SPIN" title for him); the ball streaks straight through everything, a golden helix unwinding along its path; golden rectangles burst out where it hits, a gold vibration ring, and golden spirals hold them paralysed
+**What it does:** Client visuals for GYRO WITH THE SAINT'S EYES (Act 29). Blocky. his steel ball now has the corpse's EYE set into it, matched to the art: a green ball with darker streaks, a big white eyeball bulging out, a gold-brown iris ringed with dark flecks, ORANGE SPIN ARCS whirling round it and gold-white sparkles shedding off it; the other eye is in his face (GyroOutfit) the eye-ball in his hand has a thin green Spin ring circling it, and every few seconds the eye "looks": a thin green beam sweeps out from it STEEL BALL COMBO: green swipes; the eye-ball whirls with each swing, the 4th throws off a spin ring, the finisher sends a vibration ring out SCAN SHOT: he tosses the eye-ball straight up; it spins at the top, the eye looking down; he throws a second steel ball into it (CRACK: an orange star and spin ring, the second ball glancing off and falling away) and the eye-ball streaks down onto the target with green afterimages and a lock-on beam, steering after them; it lands in cracked ground, an orange spin ring and thrown-up sand; the hit drills spiral ripples and a vibration ring, and an eye opens over them; they glow for him (seen through walls) SCAN: a big eye opens over his head; green scan lines sweep down his screen; a green ring sweeps out; VIBRATION LINES ripple across the ground (a big wave, then wavy rings and jittering dashes round him for as long as it lasts); for him the world dims and every enemy in range glows green through walls, an eye over its head and small vibration rings pulsing under its feet EYE RICOCHET: the eye-ball bounces from enemy to enemy with spin rings round it, leaving a fading green zigzag of its path; a spark, a spin ripple and a vibration ring at each one SCAN: GOLDEN SPIN: a turning GOLDEN RECTANGLE (nested golden-ratio frames) locks onto the target, a gold eye opens over Gyro and a gold spin gathers in his hand ("SCAN / GOLDEN SPIN" title for him); the ball streaks straight through everything, a golden helix unwinding along its path; golden rectangles burst out where it hits, a gold vibration ring, and golden spirals hold them paralysed
 
 ## How to add it
 1. In Studio's Explorer, find **TuskActVFX** (StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX).
@@ -28,16 +28,21 @@ Back to [[Where To Put Code]]
 	TuskActVFX.GyroEyesVFX  (StarterPlayerScripts.SpinClient.TuskActVFX.GyroEyesVFX)
 
 	Client visuals for GYRO WITH THE SAINT'S EYES (Act 29). Blocky.
-	  * his steel ball now has the corpse's EYE set into it (a white eyeball,
-	    brown iris), spinning in his hand; the other eye is in his face
-	    (GyroOutfit)
+	  * his steel ball now has the corpse's EYE set into it, matched to the
+	    art: a green ball with darker streaks, a big white eyeball bulging
+	    out, a gold-brown iris ringed with dark flecks, ORANGE SPIN ARCS
+	    whirling round it and gold-white sparkles shedding off it; the
+	    other eye is in his face (GyroOutfit)
 	  * the eye-ball in his hand has a thin green Spin ring circling it, and
 	    every few seconds the eye "looks": a thin green beam sweeps out from it
 	  * STEEL BALL COMBO: green swipes; the eye-ball whirls with each swing,
 	    the 4th throws off a spin ring, the finisher sends a vibration ring out
-	  * SCAN SHOT: the eye-ball flies out with spin rings round it, green
-	    afterimages and a thin lock-on beam to its target, curving after
-	    them; the hit drills spiral ripples and a vibration ring, and an eye
+	  * SCAN SHOT: he tosses the eye-ball straight up; it spins at the top,
+	    the eye looking down; he throws a second steel ball into it (CRACK:
+	    an orange star and spin ring, the second ball glancing off and
+	    falling away) and the eye-ball streaks down onto the target with
+	    green afterimages and a lock-on beam, steering after them; it lands
+	    in cracked ground, an orange spin ring and thrown-up sand; the hit drills spiral ripples and a vibration ring, and an eye
 	    opens over them; they glow for him (seen through walls)
 	  * SCAN: a big eye opens over his head; green scan lines sweep down his
 	    screen; a green ring sweeps out; VIBRATION LINES ripple across the
@@ -114,10 +119,92 @@ local function eyeBall(size)
 		w.Parent = p
 		p.Parent = ball
 	end
-	add("Eyeball", Vector3.new(0.55, 0.55, 0.3) * size, CFrame.new(0, 0, -0.42 * size), WHITE)
-	add("Iris", Vector3.new(0.26, 0.26, 0.08) * size, CFrame.new(0, 0, -0.56 * size), IRIS)
-	add("Pupil", Vector3.new(0.12, 0.12, 0.05) * size, CFrame.new(0, 0, -0.6 * size), Color3.fromRGB(16, 12, 10))
+	-- Darker green streaks across the ball (the art's swirled steel).
+	for k = 0, 2 do
+		local a = k * 2.1
+		add("Streak", Vector3.new(0.1, 0.42, 0.03) * size, CFrame.Angles(0, a, 0.5 + k * 0.3) * CFrame.new(0, 0, 0.495 * size), Color3.fromRGB(50, 110, 40))
+	end
+	-- The eye: a big white eyeball bulging out of the ball, a gold-brown iris
+	-- ringed with little dark flecks, a dark pupil.
+	add("Eyeball", Vector3.new(0.66, 0.66, 0.42) * size, CFrame.new(0, 0, -0.4 * size), WHITE)
+	add("EyeShade", Vector3.new(0.68, 0.68, 0.3) * size, CFrame.new(0, -0.02 * size, -0.36 * size), Color3.fromRGB(200, 196, 188))
+	add("Iris", Vector3.new(0.34, 0.34, 0.1) * size, CFrame.new(0, 0, -0.6 * size), IRIS)
+	add("IrisRing", Vector3.new(0.38, 0.38, 0.08) * size, CFrame.new(0, 0, -0.585 * size), Color3.fromRGB(90, 56, 26))
+	for k = 0, 5 do
+		local a = k / 6 * math.pi * 2
+		add("Fleck", Vector3.new(0.04, 0.04, 0.03) * size, CFrame.new(math.cos(a) * 0.1 * size, math.sin(a) * 0.1 * size, -0.655 * size), Color3.fromRGB(60, 36, 18))
+	end
+	add("Pupil", Vector3.new(0.11, 0.11, 0.05) * size, CFrame.new(0, 0, -0.665 * size), Color3.fromRGB(16, 12, 10))
+	add("Glint", Vector3.new(0.05, 0.05, 0.03) * size, CFrame.new(0.06 * size, 0.06 * size, -0.68 * size), WHITE)
+	-- Gold-white sparkles shedding off it.
+	local q = VFXQuality.get()
+	local at = Instance.new("Attachment")
+	at.Parent = core
+	local e = Instance.new("ParticleEmitter")
+	e.Name = "Sparkles"
+	e.Color = ColorSequence.new(Color3.fromRGB(255, 240, 180), Color3.fromRGB(255, 200, 90))
+	e.LightEmission = 1
+	e.Size = NumberSequence.new(0.12 * size, 0)
+	e.Transparency = NumberSequence.new(0, 1)
+	e.Lifetime = NumberRange.new(0.3, 0.6)
+	e.Speed = NumberRange.new(1, 4)
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.Rate = 22 * ((q and q.Particles) or 1)
+	e.Parent = at
 	return ball
+end
+
+---------------------------------------------------------------------------
+-- The ORANGE SPIN ARCS (as in the art): broken orange rings whirling round
+-- a ball. arcsOn(core, size) adds them; stepArcs() moves them every frame;
+-- they go when the ball does.
+---------------------------------------------------------------------------
+local ORANGE = Color3.fromRGB(255, 150, 40)
+local ORANGE_LIGHT = Color3.fromRGB(255, 210, 110)
+local arcs = {} -- [core] = { Parts, Size, Tilts }
+
+local function arcsOn(core, size, count)
+	if not core or arcs[core] then
+		return
+	end
+	local list = {}
+	for i = 1, count or 3 do
+		local segs = {}
+		for k = 1, 6 do
+			segs[k] = VFXLib.part({ Size = Vector3.new(0.09, 0.09, 0.3), Color = i % 2 == 0 and ORANGE_LIGHT or ORANGE, Transparency = 0.05 })
+		end
+		table.insert(list, { Segs = segs, Tilt = (i - 1) * 0.7 + math.random() * 0.3, Speed = 9 + i * 2.5, Phase = math.random() * 6, Radius = size * (0.62 + i * 0.07) })
+	end
+	arcs[core] = { Arcs = list, Size = size }
+end
+
+local function stepArcs()
+	local t = os.clock()
+	for core, entry in pairs(arcs) do
+		-- (Gone once its ball model is destroyed or taken out of the world.)
+		local alive = core.Parent ~= nil and core.Parent.Parent ~= nil
+		local hidden = alive and (core.LocalTransparencyModifier or 0) >= 1
+		for _, arc in ipairs(entry.Arcs) do
+			local base = alive and core.CFrame * CFrame.Angles(arc.Tilt, arc.Tilt * 0.6, 0) or nil
+			for k, seg in ipairs(arc.Segs) do
+				if not alive then
+					seg:Destroy()
+				else
+					-- Each arc covers about a third of the circle, spinning round.
+					local a0 = arc.Phase + t * arc.Speed + (k - 1) * 0.36
+					local a1 = a0 + 0.36
+					local p0 = (base * CFrame.new(math.cos(a0) * arc.Radius, 0, math.sin(a0) * arc.Radius)).Position
+					local p1 = (base * CFrame.new(math.cos(a1) * arc.Radius, 0, math.sin(a1) * arc.Radius)).Position
+					seg.Size = Vector3.new(0.09, 0.09, (p1 - p0).Magnitude + 0.04)
+					seg.CFrame = CFrame.lookAt((p0 + p1) / 2, p1)
+					seg.Transparency = hidden and 1 or (0.05 + (k - 1) * 0.12)
+				end
+			end
+		end
+		if not alive then
+			arcs[core] = nil
+		end
+	end
 end
 
 local function handOf(character)
@@ -172,9 +259,9 @@ local function updateHeld(dt)
 					weld.C0 = grip
 					weld.Parent = core
 					ball.Parent = VFXLib.Folder
-					-- A thin green Spin ring circling the ball.
-					local ring = VFXLib.part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.06, 1.5, 1.5), Color = GREEN, Material = Enum.Material.ForceField, Transparency = 0.35 })
-					entry = { Ball = ball, Weld = weld, Grip = grip, Angle = 0, Character = character, Ring = ring, NextLook = os.clock() + 2, Spin = 0 }
+					-- Orange Spin arcs whirling round it.
+					arcsOn(core, 0.95, 3)
+					entry = { Ball = ball, Weld = weld, Grip = grip, Angle = 0, Character = character, NextLook = os.clock() + 2, Spin = 0 }
 					held[character] = entry
 					TuskAnimation.hold(character, "GyroIdle")
 				end
@@ -584,19 +671,25 @@ end
 ---------------------------------------------------------------------------
 -- Moves
 ---------------------------------------------------------------------------
-local function flyShot(data)
-	local model = eyeBall(1.1)
+local function newShotBall(id)
+	local model = eyeBall(1.2)
 	model.PrimaryPart.Anchored = true
 	model.Parent = VFXLib.Folder
 	trails(model.PrimaryPart, GREEN)
+	arcsOn(model.PrimaryPart, 1.2, 3)
 	local job = { Model = model }
-	shots[data.Id] = job
+	shots[id] = job
+	return job
+end
+
+local function flyShot(data)
+	-- (The ball he tossed up dives; a fresh one if this client missed the toss.)
+	local job = shots[data.Id] or newShotBall(data.Id)
+	job.Tossing = false
+	local model = job.Model
 	local pos, vel = data.From, (data.Direction or Vector3.new(0, 0, -1)) * (data.Speed or 95)
 	local turn, target = data.Turn or 6, data.Target
-	-- Spin rings round it, and a thin lock-on beam from the eye to its target.
-	orbitRings(function()
-		return shots[data.Id] == job and model.PrimaryPart and model.PrimaryPart.CFrame or nil
-	end, GREEN, data.Life or 2.5, 2.4)
+	-- A thin lock-on beam from the eye to its target (the orange arcs ride along).
 	local beam = VFXLib.part({ Size = Vector3.new(0.05, 0.05, 1), Color = GREEN, Transparency = 0.5 })
 	local nextGhost = 0
 	VFXLib.animate(data.Life or 2.5, function(_, dt)
@@ -645,13 +738,70 @@ local function onAbility(data)
 	local root = Common.rootOf(character)
 	local move, phase = data.Move, data.Phase
 	if move == "ScanShot" then
-		if phase == "Wind" and character and root then
-			TuskAnimation.play(character, "GyroThrow")
-		elseif phase == "Fly" and data.From then
+		if phase == "Toss" and data.From and data.Apex then
+			-- He tosses the eye-ball straight up; it spins at the top, the eye looking down.
 			if character then
-				hideHeld(character, 1.0)
+				TuskAnimation.play(character, "GyroBowl")
+				hideHeld(character, (data.Time or 0.5) + 0.5)
 			end
+			local job = newShotBall(data.Id)
+			job.Tossing = true
+			local from, apex, time = data.From, data.Apex, data.Time or 0.5
+			VFXLib.animate(time + 0.2, function(a)
+				if shots[data.Id] ~= job or not job.Tossing then
+					return
+				end
+				local k = math.min(1, a * (time + 0.2) / time)
+				local p = from:Lerp(apex, 1 - (1 - k) ^ 2.2) + Vector3.new(0, math.sin(k * math.pi) * 1.5, 0)
+				job.Model:PivotTo(CFrame.new(p) * CFrame.Angles(-math.pi / 2 * k, os.clock() * 6, 0))
+			end)
+			VFXLib.sound(sounds.Swing, from, 0.4, 1.4)
+		elseif phase == "Strike" and data.From and data.Apex then
+			-- A second steel ball, thrown hard straight into the first.
+			if character then
+				TuskAnimation.play(character, "GyroThrow")
+			end
+			local second = SteelBallModel.build(1.0, VFXQuality.get().Grooves)
+			second.PrimaryPart.Anchored = true
+			second.Parent = VFXLib.Folder
+			trails(second.PrimaryPart, GREEN)
+			arcsOn(second.PrimaryPart, 1.0, 2)
+			local from, apex, time = data.From, data.Apex, data.Time or 0.14
+			VFXLib.animate(time, function(a)
+				local p = from:Lerp(apex, a)
+				second:PivotTo(CFrame.lookAt(p, apex) * CFrame.Angles(0, 0, a * 30))
+			end, function()
+				-- CRACK: they meet. The second ball glances off and falls away.
+				TuskVFX.CreateImpactStar(apex, { Size = 3.4, Rays = 8, Color = ORANGE, Color2 = WHITE, Duration = 0.18 })
+				TuskVFX.CreateRotationalShockwave(CFrame.lookAt(apex, apex + (apex - from)) * CFrame.Angles(math.pi / 2, 0, 0), { Radius = 4, Layers = 2, Color = ORANGE, Color2 = GREEN, Particles = 1, Width = 0.3, Duration = 0.3, Spin = 10 })
+				VFXLib.flash(apex, ORANGE_LIGHT, 6, 18, 0.12)
+				VFXLib.burst(apex, { Count = 16, Color = ORANGE_LIGHT, Speed = 20, Lifetime = 0.4 })
+				VFXLib.sound(sounds.NailImpact, apex, 0.7, 0.75)
+				local away = (apex - from)
+				away = Vector3.new(away.X, 0, away.Z).Magnitude > 0.1 and Vector3.new(away.X, 0, away.Z).Unit or Vector3.new(1, 0, 0)
+				local side = away:Cross(Vector3.new(0, 1, 0))
+				VFXLib.animate(0.6, function(a)
+					local t2 = a * 0.6
+					local p = apex + (side * 10 + Vector3.new(0, 8, 0)) * t2 + Vector3.new(0, -40 * t2 * t2, 0)
+					second:PivotTo(CFrame.new(p) * CFrame.Angles(a * 12, a * 8, 0))
+				end, function()
+					second:Destroy()
+				end)
+				if Common.isLocal(character) then
+					CameraFX.shakeAt(apex, 0.4, 40)
+				end
+			end)
+		elseif phase == "Dive" and data.From then
+			-- Knocked down onto them: a streak from the top, the eye fixed on its target.
 			flyShot(data)
+			local streakLen = 6
+			local dir = data.Direction or Vector3.new(0, -1, 0)
+			local line = VFXLib.part({ Size = Vector3.new(0.3, 0.3, streakLen), CFrame = CFrame.lookAt(data.From + dir * streakLen / 2, data.From + dir * streakLen), Color = ORANGE_LIGHT, Transparency = 0.2 })
+			VFXLib.animate(0.3, function(a)
+				line.Transparency = 0.2 + 0.8 * a
+			end, function()
+				line:Destroy()
+			end)
 		elseif phase == "End" then
 			local job = data.Id and shots[data.Id]
 			if job then
@@ -675,6 +825,11 @@ local function onAbility(data)
 				else
 					VFXLib.burst(data.Position, { Count = 8, Color = GREEN, Speed = 12, Lifetime = 0.3 })
 				end
+				-- Where it comes down: cracked ground, an orange spin ring, sand thrown up.
+				local ground = groundAt(data.Position + Vector3.new(0, 1, 0))
+				TuskVFX.CreateGroundCracks(ground, { Radius = data.Radius or 6, Count = 6, Color = GREEN, Duration = 1.4 })
+				TuskVFX.CreateRotationalShockwave(CFrame.new(ground + Vector3.new(0, 0.2, 0)), { Radius = data.Radius or 6, Layers = 2, Color = ORANGE, Color2 = GREEN, Particles = 1, Width = 0.4, Duration = 0.4, Spin = 6 })
+				VFXLib.burst(ground, { Count = 14, Color = Color3.fromRGB(220, 190, 140), Speed = 16, Lifetime = 0.5, Acceleration = Vector3.new(0, -40, 0) })
 			end
 			if data.Hit and data.Target and isMe(character) then
 				reveal(data.Target, data.Reveal or 6, GREEN)
@@ -760,6 +915,7 @@ local function onAbility(data)
 			model.PrimaryPart.Anchored = true
 			model.Parent = VFXLib.Folder
 			trails(model.PrimaryPart, GREEN)
+			arcsOn(model.PrimaryPart, 1.0, 3)
 			local pts, gap = data.Points, data.Gap or 0.16
 			local legs = #pts - 1
 			local alive = true
@@ -854,6 +1010,7 @@ local function onUltimate(data)
 		ball.PrimaryPart.Anchored = true
 		ball.Parent = VFXLib.Folder
 		trails(ball.PrimaryPart, GOLD)
+		arcsOn(ball.PrimaryPart, 1.4, 4)
 		local len = (to - from).Magnitude
 		local beam = VFXLib.part({ Size = Vector3.new(0.5, 0.5, len), CFrame = CFrame.lookAt((from + to) / 2, to), Color = GOLD, Transparency = 0.3 })
 		local alive = true
@@ -963,12 +1120,16 @@ local slow = 0
 function GyroEyesVFX.step(dt)
 	dt = dt or 1 / 60
 	updateHeld(dt)
+	stepArcs()
 	slow = slow + dt
 	if slow > 0.2 then
 		slow = 0
 		stepReveals()
 	end
 end
+
+-- (For previews and tests.)
+GyroEyesVFX.Preview = { eyeBall = eyeBall, arcsOn = arcsOn, stepArcs = stepArcs }
 
 return GyroEyesVFX
 ```

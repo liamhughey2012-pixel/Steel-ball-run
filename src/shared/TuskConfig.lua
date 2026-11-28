@@ -1981,11 +1981,14 @@ TuskConfig.Colors = {
 ---------------------------------------------------------------------------
 TuskConfig.GyroEyes = {
 	M1 = TuskConfig.Gyro.M1, -- the same steel ball combo
-	ScanShot = { -- 1: the eye-ball SEES its target and steers after it; they're left revealed to Gyro
-		Cooldown = 7, Windup = 0.25,
-		LockRange = 110, Cone = 140,
-		Speed = 95, Turn = 6, Life = 2.5, HitRadius = 3,
-		Damage = 11, Stun = 0.6, Knockback = 16,
+	ScanShot = { -- 1: he tosses the eye-ball up, throws a second ball into it, and knocks it DOWN onto his target (over cover); they're left revealed
+		Cooldown = 7,
+		LockRange = 110, Cone = 160, -- the eye picks the nearest enemy in front this close
+		TossHeight = 14, TossForward = 3, TossTime = 0.5, -- the first ball goes up...
+		StrikeTime = 0.14, -- ...the second ball meets it at the top...
+		Speed = 130, Turn = 9, Life = 2, HitRadius = 3.5, -- ...and it dives down onto them, steering
+		Damage = 13, Stun = 0.7, Knockback = 18, Launch = 6,
+		SplashRadius = 6, SplashDamage = 5, -- where it lands
 		RevealTime = 6,
 	},
 	Scan = { -- 2: the eyes see through everything: every enemy near is revealed (through walls) and takes more from him
