@@ -198,9 +198,16 @@ local function restoreMouseLock(run)
 	-- Shift lock was on: turn it back on (the camera scripts' own toggle).
 	if run.WasLocked and run.MouseLock then
 		task.defer(function()
+			-- (Only if Roblox's PlayerModule is there: a custom camera setup may
+			-- not have one, and require(nil) stops Studio's debugger.)
+			local scripts = player:FindFirstChild("PlayerScripts")
+			local module = scripts and scripts:FindFirstChild("PlayerModule")
+			if not module or not module:IsA("ModuleScript") then
+				return
+			end
 			pcall(function()
-				local pm = require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule", 2))
-				local cams = pm:GetCameras()
+				local pm = require(module)
+				local cams = pm.GetCameras and pm:GetCameras()
 				local mlc = cams and cams.activeMouseLockController
 				if mlc and mlc.GetIsMouseLocked and not mlc:GetIsMouseLocked() and mlc.OnMouseLockToggled then
 					mlc:OnMouseLockToggled()

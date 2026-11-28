@@ -11,3 +11,4 @@ updated: 2026-11-22
 - The default stun uses WalkSpeed multipliers; use `Hooks.ApplyStun` if your game has sprint.
 - The Obsidian vault can't sync automatically: copy the updated folder over after each session.
 - Move animations are made by moving joints in code. They now work with both Motor6D joints and the newer AnimationConstraint joints. If none are found, the Output says "[Spin] No animatable joints found…" — send that line if you see it.
+- Fixed (2026-11-28): Spin_Client could stop with "Attempted to call require with invalid argument(s)" when restoring the mouse lock after a cutscene, because the PlayerModule wasn't there yet. It now checks the PlayerModule exists before requiring it, and skips the step if it doesn't.

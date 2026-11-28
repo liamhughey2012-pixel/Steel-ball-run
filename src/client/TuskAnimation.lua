@@ -98,6 +98,7 @@ TuskAnimation.Poses = {
 	GyroIdle = { RightArm = { 55, 0, 14 }, RightElbow = { 45, 0, 0 }, LeftArm = { 12, 0, -10 }, Waist = { 0, -6, 0 }, Neck = { 0, 4, 0 } },
 	-- Gyro kneeling in the sand, the Saint's eye in his open palm, head bowed over it.
 	GyroKneel = { Root = { -6, 0, 0, -1.15, 0.1 }, Waist = { -22, 0, 0 }, Neck = { -26, 0, 0 }, RightArm = { 62, 0, 8 }, RightElbow = { 70, 0, 0 }, LeftArm = { 30, 0, -24 }, LeftElbow = { 40, 0, 0 }, RightHip = { 92, 0, 0 }, RightKnee = { -95, 0, 0 }, LeftHip = { -12, 0, 0 }, LeftKnee = { -100, 0, 0 } },
+	GyroKneelLook = { Root = { -6, 0, 0, -1.15, 0.1 }, Waist = { -14, 0, 0 }, Neck = { 6, 0, 0 }, RightArm = { 40, 0, 8 }, RightElbow = { 50, 0, 0 }, LeftArm = { 30, 0, -24 }, LeftElbow = { 40, 0, 0 }, RightHip = { 92, 0, 0 }, RightKnee = { -95, 0, 0 }, LeftHip = { -12, 0, 0 }, LeftKnee = { -100, 0, 0 } },
 	GyroGrin = { Root = { 0, 4, 0, 0 }, Waist = { 4, 0, 0 }, Neck = { 12, -6, 0 }, RightArm = { 55, 0, 14 }, RightElbow = { 45, 0, 0 }, LeftArm = { 12, 0, -10 } },
 	JabWind = { Root = { 0, 12, 0 }, Waist = { 0, 14, 0 }, RightArm = { 38, 0, 18 }, RightElbow = { 80, 0, 0 }, LeftArm = { 48, 0, -24 }, LeftElbow = { 60, 0, 0 }, Neck = { 0, -8, 0 }, RightKnee = { -10, 0, 0 } },
 	Jab = { Root = { 0, -20, 0, -0.05, 0.35 }, RightArm = { 90, 0, 12 }, RightElbow = { 0, 0, 0 }, Waist = { 0, -30, 0 }, Neck = { 0, 22, 0 }, LeftArm = { 32, 0, -20 }, LeftElbow = { 70, 0, 0 }, LeftHip = { 22, 0, 0 }, LeftKnee = { -18, 0, 0 }, RightHip = { -12, 0, 0 } },
@@ -528,7 +529,7 @@ TuskAnimation.Actions = {
 	KRSummon = { { 0, "KiraStance" }, { 0.12, "KiraSummon", "Out" }, { 0.45, "KiraSummon", "Linear" }, { 0.65, "KiraStance", "Sine" } },
 	KRBlow = { { 0, "KiraStance" }, { 0.1, "KiraReach", "Out" }, { 0.4, "KiraReach", "Linear" }, { 0.6, "KiraStance", "Sine" } },
 	KRBTD = { { 0, "KiraStance" }, { 0.2, "KiraFace", "Out" }, { 1.0, "KiraFace", "Linear" }, { 1.3, "KiraClick", "Back", 3 }, { 1.6, "KiraClick", "Linear" }, { 1.9, "KiraStance", "Sine" } },
-	GyroEyesKneel = { { 0, "GyroIdle" }, { 0.25, "GyroKneel", "Out" }, { 3.9, "GyroKneel", "Linear" }, { 4.4, "GyroGrin", "Sine" }, { 6.2, "GyroGrin", "Linear" }, { 6.6, "GyroIdle", "Sine" } },
+	GyroEyesKneel = { { 0, "GyroIdle" }, { 0.2, "GyroKneel", "Out" }, { 5.6, "GyroKneel", "Linear" }, { 6.6, "GyroKneelLook", "Sine" }, { 8.2, "GyroKneelLook", "Linear" }, { 8.6, "GyroGrin", "Sine" }, { 10.6, "GyroGrin", "Linear" }, { 11.0, "GyroIdle", "Sine" } },
 	OK_M1_1 = { { 0, "OKStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "OKStance", "Sine" } },
 	OK_M1_2 = { { 0, "OKStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "OKStance", "Sine" } },
 	OK_M1_3 = { { 0, "OKStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "OKStance", "Sine" } },

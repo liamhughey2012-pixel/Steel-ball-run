@@ -2481,7 +2481,8 @@ local function palmEye(character)
 	return holder
 end
 
--- The eye in his cheek (Gyro's right cheek, just under his eye), with a dark rim.
+-- The eye in his cheek (Gyro's right cheek, just under his eye): a dark,
+-- stitched rim, a big eyeball, a violet-blue iris that darts about.
 local function cheekEye(character)
 	local head = character:FindFirstChild("Head")
 	if not head then
@@ -2490,17 +2491,162 @@ local function cheekEye(character)
 	local s = head.Size.Y / 1.2
 	local holder = Instance.new("Model")
 	holder.Name = "SaintsEyeCheek"
-	local at = CFrame.new(0.27 * s, -0.17 * s, -head.Size.Z / 2 - 0.01 * s)
-	weldTo(head, holder, "Rim", Vector3.new(0.36, 0.36, 0.1) * s, Color3.fromRGB(70, 46, 60), at)
-	weldTo(head, holder, "Eyeball", Vector3.new(0.3, 0.3, 0.18) * s, WHITE, at * CFrame.new(0, 0, -0.04 * s))
-	weldTo(head, holder, "Iris", Vector3.new(0.15, 0.15, 0.05) * s, Color3.fromRGB(110, 110, 190), at * CFrame.new(-0.02 * s, 0, -0.13 * s))
-	weldTo(head, holder, "Pupil", Vector3.new(0.07, 0.07, 0.03) * s, Color3.fromRGB(16, 12, 20), at * CFrame.new(-0.02 * s, 0, -0.15 * s))
+	local at = CFrame.new(0.26 * s, -0.17 * s, -head.Size.Z / 2 - 0.01 * s)
+	weldTo(head, holder, "Rim", Vector3.new(0.4, 0.4, 0.1) * s, Color3.fromRGB(64, 44, 70), at)
+	weldTo(head, holder, "RimShade", Vector3.new(0.44, 0.2, 0.08) * s, Color3.fromRGB(90, 70, 110), at * CFrame.new(0, -0.14 * s, 0.01 * s))
+	weldTo(head, holder, "Eyeball", Vector3.new(0.33, 0.33, 0.2) * s, WHITE, at * CFrame.new(0, 0, -0.05 * s))
+	local iris = weldTo(head, holder, "Iris", Vector3.new(0.17, 0.17, 0.05) * s, Color3.fromRGB(110, 110, 200), at * CFrame.new(0, 0, -0.15 * s))
+	local pupil = weldTo(head, holder, "Pupil", Vector3.new(0.07, 0.07, 0.03) * s, Color3.fromRGB(16, 12, 24), at * CFrame.new(0, 0, -0.17 * s))
+	weldTo(head, holder, "Glint", Vector3.new(0.03, 0.03, 0.02) * s, Color3.new(1, 1, 1), at * CFrame.new(0.03 * s, 0.03 * s, -0.18 * s), Enum.Material.Neon)
+	for k = -1, 1 do
+		weldTo(head, holder, "Stitch", Vector3.new(0.12, 0.025, 0.02) * s, Color3.fromRGB(200, 190, 210), at * CFrame.new(0.2 * s, k * 0.09 * s, -0.02 * s) * CFrame.Angles(0, 0, 0.5))
+	end
+	holder.Parent = VFXLib.Folder
+	-- The iris darts about, then fixes on the camera.
+	local base = at
+	local darts = { { 0, 0 }, { -0.04, 0.01 }, { 0.04, -0.01 }, { 0.02, 0.03 }, { 0, 0 } }
+	local step, nextAt = 0, os.clock()
+	VFXLib.animate(3.5, function()
+		if not holder.Parent or not head.Parent or os.clock() < nextAt then
+			return
+		end
+		step = step + 1
+		nextAt = os.clock() + (step < 8 and 0.18 or 0.4)
+		local pick = darts[(step % #darts) + 1]
+		local d = { X = pick[1] * s, Y = pick[2] * s }
+		for _, part in ipairs({ iris, pupil }) do
+			local w = part:FindFirstChildOfClass("WeldConstraint")
+			if w then
+				w.Enabled = false
+				part.CFrame = head.CFrame * base * CFrame.new(d.X, d.Y, part == iris and -0.15 * s or -0.17 * s)
+				w.Enabled = true
+			end
+		end
+	end)
+	return holder
+end
+
+-- His grin for the last shot: teal-green lips, a row of gold teeth.
+local function grinMouth(character)
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return nil
+	end
+	local s = head.Size.Y / 1.2
+	local holder = Instance.new("Model")
+	holder.Name = "SaintsEyeGrin"
+	local f = -head.Size.Z / 2 - 0.015 * s
+	local lip = Color3.fromRGB(70, 200, 170)
+	local function bar(name, size, cf, color, material)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.Color = color
+		p.Material = material or Enum.Material.SmoothPlastic
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Massless = true
+		p.CastShadow = false
+		p.CFrame = head.CFrame * cf
+		local w = Instance.new("WeldConstraint")
+		w.Part0 = head
+		w.Part1 = p
+		w.Parent = p
+		p.Parent = holder
+		return p
+	end
+	bar("Mouth", Vector3.new(0.48, 0.13, 0.03) * s, CFrame.new(0, -0.33 * s, f), Color3.fromRGB(40, 30, 30))
+	bar("Teeth", Vector3.new(0.42, 0.09, 0.035) * s, CFrame.new(0, -0.33 * s, f - 0.005 * s), Color3.fromRGB(236, 196, 80), Enum.Material.Metal)
+	for k = -3, 3 do
+		bar("ToothLine", Vector3.new(0.01, 0.09, 0.04) * s, CFrame.new(k * 0.06 * s, -0.33 * s, f - 0.008 * s), Color3.fromRGB(120, 90, 30))
+	end
+	bar("UpperLip", Vector3.new(0.52, 0.05, 0.04) * s, CFrame.new(0, -0.27 * s, f - 0.01 * s) * CFrame.Angles(0, 0, 0), lip)
+	bar("LowerLip", Vector3.new(0.46, 0.06, 0.04) * s, CFrame.new(0, -0.395 * s, f - 0.01 * s), lip)
+	for _, side in ipairs({ -1, 1 }) do
+		bar("LipCorner", Vector3.new(0.08, 0.05, 0.04) * s, CFrame.new(side * 0.27 * s, -0.3 * s, f - 0.01 * s) * CFrame.Angles(0, 0, side * 0.5), lip)
+	end
 	holder.Parent = VFXLib.Folder
 	return holder
 end
 
--- Three slanted manga panels flash across the screen: an eye, a slit green
--- eye, a wide lashed eye.
+-- Water dripping from the eye in his palm.
+local function drips(character, duration)
+	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	if not hand then
+		return
+	end
+	local nextAt = 0
+	VFXLib.animate(duration, function()
+		if not hand.Parent or os.clock() < nextAt then
+			return
+		end
+		nextAt = os.clock() + 0.07
+		do
+			local from = (hand.CFrame * CFrame.new((math.random() - 0.5) * 0.25, -hand.Size.Y / 2 - 0.25, -0.15)).Position
+			local drop = VFXLib.part({ Shape = Enum.PartType.Ball, Size = Vector3.new(0.09, 0.14, 0.09), CFrame = CFrame.new(from), Color = Color3.fromRGB(200, 245, 255), Material = Enum.Material.Glass, Transparency = 0.2 })
+			local trail = VFXLib.part({ Size = Vector3.new(0.03, 0.4, 0.03), CFrame = CFrame.new(from - Vector3.new(0, 0.2, 0)), Color = Color3.fromRGB(220, 250, 255), Transparency = 0.5 })
+			VFXLib.animate(0.5, function(a)
+				local t = a * 0.5
+				local p = from + Vector3.new(0, -9 * t * t, 0)
+				drop.CFrame = CFrame.new(p)
+				trail.CFrame = CFrame.new(p + Vector3.new(0, 0.22, 0))
+				drop.Transparency = 0.2 + 0.6 * a
+				trail.Transparency = 0.5 + 0.5 * a
+			end, function()
+				drop:Destroy()
+				trail:Destroy()
+			end)
+		end
+	end)
+end
+
+-- The desert wind: pale streaks and sand blowing past him.
+local function wind(character, duration)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	local nextAt = 0
+	VFXLib.animate(duration, function()
+		if not root.Parent or os.clock() < nextAt then
+			return
+		end
+		nextAt = os.clock() + 0.04
+		do
+			local across = root.CFrame.RightVector
+			local start = root.Position - across * 14 + Vector3.new((math.random() - 0.5) * 4, (math.random() - 0.3) * 5, 0) + root.CFrame.LookVector * ((math.random() - 0.5) * 10)
+			local len = 2 + math.random() * 3
+			local streak = VFXLib.part({ Size = Vector3.new(0.06, 0.06, len), CFrame = CFrame.lookAt(start, start + across), Color = Color3.fromRGB(220, 255, 250), Transparency = 0.45 })
+			VFXLib.animate(0.6, function(a)
+				local p = start + across * (28 * a)
+				streak.CFrame = CFrame.lookAt(p, p + across)
+				streak.Transparency = 0.45 + 0.55 * math.abs(a - 0.5) * 2
+			end, function()
+				streak:Destroy()
+			end)
+			if math.random() < 0.35 then
+				VFXLib.burst(root.Position - Vector3.new(0, 2.6, 0) - across * 2, { Count = 3, Color = Color3.fromRGB(200, 236, 230), Speed = 8, Direction = across, Spread = 30, Lifetime = 0.5 })
+			end
+		end
+	end)
+end
+
+-- The anime's colour: cyan-teal for the desert, then a pale, washed-out blue
+-- for the grin.
+local function grade()
+	local cc = Instance.new("ColorCorrectionEffect")
+	cc.Name = "SaintsEyesGrade"
+	cc.TintColor = Color3.fromRGB(205, 245, 245)
+	cc.Saturation = 0.25
+	cc.Contrast = 0.12
+	cc.Parent = game:GetService("Lighting")
+	return cc
+end
+
+-- Three slanted manga panels slam in one after another over the scene: his
+-- eye (green hair at the edge), a slit green eye, a wide lashed eye; halftone
+-- dots, white borders, a green "DO DO DO".
 local function mangaFlash(duration)
 	local pg = localPlayer and localPlayer:FindFirstChild("PlayerGui")
 	if not pg then
@@ -2510,41 +2656,89 @@ local function mangaFlash(duration)
 	gui.Name = "SaintsEyesPanels"
 	gui.IgnoreGuiInset = true
 	gui.DisplayOrder = 40
+	local root = Instance.new("Frame")
+	root.Size = UDim2.fromScale(1, 1)
+	root.BackgroundTransparency = 1
+	root.Parent = gui
+	-- Order of appearance: right, left, middle (as in the clip).
 	local looks = {
-		{ Bg = Color3.fromRGB(150, 220, 230), Iris = Color3.fromRGB(70, 160, 230), Slit = false, Lashes = false },
-		{ Bg = Color3.fromRGB(40, 170, 200), Iris = Color3.fromRGB(170, 230, 40), Slit = true, Lashes = false },
-		{ Bg = Color3.fromRGB(120, 210, 230), Iris = Color3.fromRGB(40, 140, 220), Slit = false, Lashes = true },
+		{ X = 0.83, Bg = Color3.fromRGB(190, 240, 225), Iris = Color3.fromRGB(70, 180, 220), Hair = true },
+		{ X = 0.17, Bg = Color3.fromRGB(40, 200, 220), Iris = Color3.fromRGB(180, 240, 40), Slit = true },
+		{ X = 0.5, Bg = Color3.fromRGB(90, 220, 240), Iris = Color3.fromRGB(30, 150, 230), Lashes = true },
 	}
 	local panels = {}
 	for i, l in ipairs(looks) do
 		local panel = Instance.new("Frame")
 		panel.AnchorPoint = Vector2.new(0.5, 0.5)
-		panel.Size = UDim2.fromScale(0.36, 1.4)
-		panel.Position = UDim2.fromScale((i - 0.5) / 3, -0.8)
-		panel.Rotation = 12
+		panel.Size = UDim2.fromScale(0.34, 1.5)
+		panel.Position = UDim2.fromScale(l.X, 0.5)
+		panel.Rotation = 10
 		panel.BackgroundColor3 = l.Bg
 		panel.BorderSizePixel = 0
 		panel.ClipsDescendants = true
-		panel.Parent = gui
+		panel.Visible = false
+		panel.Parent = root
 		local stroke = Instance.new("UIStroke")
 		stroke.Color = Color3.new(1, 1, 1)
-		stroke.Thickness = 6
+		stroke.Thickness = 8
 		stroke.Parent = panel
+		local inner = Instance.new("UIStroke")
+		inner.Color = Color3.fromRGB(10, 14, 20)
+		inner.Thickness = 2
+		local ink = Instance.new("Frame")
+		ink.Size = UDim2.fromScale(1, 1)
+		ink.BackgroundTransparency = 1
+		ink.Parent = panel
+		inner.Parent = ink
+		-- Halftone dots.
+		for gx = 0, 6 do
+			for gy = 0, 10 do
+				local dot = Instance.new("Frame")
+				dot.AnchorPoint = Vector2.new(0.5, 0.5)
+				dot.Position = UDim2.fromScale((gx + (gy % 2) * 0.5) / 6, gy / 10)
+				dot.Size = UDim2.fromOffset(5, 5)
+				dot.BackgroundColor3 = l.Bg:Lerp(Color3.new(0, 0, 0), 0.25)
+				dot.BackgroundTransparency = 0.5
+				dot.BorderSizePixel = 0
+				dot.Parent = panel
+				roundCorner(dot)
+			end
+		end
+		if l.Hair then
+			for k = 0, 4 do
+				local strand = Instance.new("Frame")
+				strand.Position = UDim2.fromScale(0.68 + k * 0.06, -0.1)
+				strand.Size = UDim2.fromScale(0.05, 0.9)
+				strand.Rotation = -8 - k * 3
+				strand.BackgroundColor3 = k % 2 == 0 and Color3.fromRGB(150, 230, 60) or Color3.fromRGB(90, 190, 60)
+				strand.BorderSizePixel = 0
+				strand.Parent = panel
+			end
+		end
 		local white = Instance.new("Frame")
 		white.AnchorPoint = Vector2.new(0.5, 0.5)
-		white.Position = UDim2.fromScale(0.5, 0.5)
-		white.Size = UDim2.fromScale(0.9, 0.16)
-		white.Rotation = -12
+		white.Position = UDim2.fromScale(0.45, 0.5)
+		white.Size = UDim2.fromScale(0.85, 0.15)
+		white.Rotation = -10
 		white.BackgroundColor3 = WHITE
+		white.ClipsDescendants = true
 		white.Parent = panel
 		roundCorner(white)
+		local outline = Instance.new("UIStroke")
+		outline.Color = Color3.fromRGB(10, 14, 20)
+		outline.Thickness = 4
+		outline.Parent = white
 		local iris = Instance.new("Frame")
 		iris.AnchorPoint = Vector2.new(0.5, 0.5)
 		iris.Position = UDim2.fromScale(0.5, 0.5)
-		iris.Size = l.Slit and UDim2.fromScale(0.45, 1.2) or UDim2.fromScale(0.34, 1.05)
+		iris.Size = l.Slit and UDim2.fromScale(0.5, 1.3) or UDim2.fromScale(0.36, 1.1)
 		iris.BackgroundColor3 = l.Iris
 		iris.Parent = white
 		roundCorner(iris)
+		local irisRing = Instance.new("UIStroke")
+		irisRing.Color = Color3.fromRGB(10, 14, 20)
+		irisRing.Thickness = 3
+		irisRing.Parent = iris
 		local pupil = Instance.new("Frame")
 		pupil.AnchorPoint = Vector2.new(0.5, 0.5)
 		pupil.Position = UDim2.fromScale(0.5, 0.5)
@@ -2553,29 +2747,64 @@ local function mangaFlash(duration)
 		pupil.Parent = iris
 		if not l.Slit then
 			roundCorner(pupil)
+			local glint = Instance.new("Frame")
+			glint.Position = UDim2.fromScale(0.58, 0.18)
+			glint.Size = UDim2.fromScale(0.22, 0.22)
+			glint.BackgroundColor3 = Color3.new(1, 1, 1)
+			glint.Parent = iris
+			roundCorner(glint)
 		end
 		if l.Lashes then
-			for k = -3, 3 do
+			for k = -4, 4 do
 				local lash = Instance.new("Frame")
 				lash.AnchorPoint = Vector2.new(0.5, 1)
-				lash.Position = UDim2.fromScale(0.5 + k * 0.11, 0.05)
-				lash.Size = UDim2.fromOffset(5, 26)
-				lash.Rotation = k * 10
+				lash.Position = UDim2.fromScale(0.5 + k * 0.1, 0.08)
+				lash.Size = UDim2.fromOffset(6, 30)
+				lash.Rotation = k * 11
 				lash.BackgroundColor3 = Color3.fromRGB(10, 14, 20)
 				lash.BorderSizePixel = 0
-				lash.Parent = white
+				lash.Parent = panel
 			end
 		end
 		panels[i] = panel
 	end
+	-- "DO DO DO" in green down the side.
+	local sfx = Instance.new("TextLabel")
+	sfx.BackgroundTransparency = 1
+	sfx.AnchorPoint = Vector2.new(1, 0.5)
+	sfx.Position = UDim2.fromScale(0.99, 0.5)
+	sfx.Size = UDim2.fromScale(0.12, 0.8)
+	sfx.Font = Enum.Font.Bangers
+	sfx.TextScaled = true
+	sfx.Text = "ド\nド\nド"
+	sfx.TextColor3 = Color3.fromRGB(150, 240, 60)
+	sfx.TextStrokeColor3 = Color3.fromRGB(10, 30, 10)
+	sfx.TextStrokeTransparency = 0
+	sfx.TextTransparency = 1
+	sfx.Parent = root
 	gui.Parent = pg
-	duration = duration or 0.8
+	duration = duration or 1.3
 	VFXLib.animate(duration, function(a)
+		local t = a * duration
 		for i, panel in ipairs(panels) do
-			-- Slam in one after another, hold, then slide away.
-			local k = math.clamp((a * duration - (i - 1) * 0.06) / 0.12, 0, 1)
-			local out = math.clamp((a - 0.75) / 0.25, 0, 1)
-			panel.Position = UDim2.fromScale((i - 0.5) / 3, -0.8 + 1.3 * VFXLib.easeOut(k) + out * 1.4)
+			local start = (i - 1) * 0.3
+			if t >= start then
+				panel.Visible = true
+				-- Slam: in from above with a little overshoot.
+				local k = math.clamp((t - start) / 0.12, 0, 1)
+				local y = -1 + 1.5 * VFXLib.easeOut(k) + (k >= 1 and math.sin(math.min(1, (t - start - 0.12) / 0.15) * math.pi) * -0.02 or 0)
+				panel.Position = UDim2.fromScale(looks[i].X, y)
+			end
+		end
+		sfx.TextTransparency = t > 0.2 and math.max(0, (a - 0.85) / 0.15) or 1
+		-- The panels shake a touch on each slam.
+		local shake = (t % 0.3) < 0.08 and 6 or 0
+		root.Position = UDim2.fromOffset((math.random() - 0.5) * shake, (math.random() - 0.5) * shake)
+		if a > 0.9 then
+			local f = (a - 0.9) / 0.1
+			for _, panel in ipairs(panels) do
+				panel.BackgroundTransparency = f
+			end
 		end
 	end, function()
 		gui:Destroy()
@@ -2598,7 +2827,7 @@ local function playEyesCutscene(character)
 	lastEyesCutscene = os.clock()
 	TuskAnimation.play(character, "GyroEyesKneel")
 	local palm = palmEye(character)
-	local cheek
+	local cheek, mouth, look
 	local ended = false
 	local function headAt()
 		return head.Parent and head.Position or root.Position + Vector3.new(0, 1.5, 0)
@@ -2606,73 +2835,141 @@ local function playEyesCutscene(character)
 	local function rel(x, y, z)
 		return (root.CFrame * CFrame.new(x, y, z)).Position
 	end
+	local fwd = function()
+		return root.CFrame.LookVector
+	end
+	local right = function()
+		return root.CFrame.RightVector
+	end
+	local up = Vector3.new(0, 1, 0)
+	local cheekAt = function()
+		return (head.CFrame * CFrame.new(0.26, -0.17, -head.Size.Z / 2)).Position
+	end
+	-- Shot times (seconds), as in the clip.
+	local T = { 0.8, 1.3, 1.3, 2.0, 1.5, 1.3, 2.6 }
 	local shots = {
-		-- Kneeling in the desert.
+		-- 1. Wide: kneeling in the blowing sand.
 		{ From = function()
-			return root.Parent and CFrame.lookAt(rel(7, 1.5, -9), rel(0, -0.8, 0)) or nil
+			return root.Parent and CFrame.lookAt(rel(6, 0.4, -10), rel(0, -0.6, 0)) or nil
 		end, To = function()
-			return root.Parent and CFrame.lookAt(rel(4, 0.6, -6.5), rel(0, -0.6, 0)) or nil
-		end, Time = 1.3, FOV = { 60, 50 }, Title = "THE SAINT'S EYES", Subtitle = "GYRO ZEPPELI", Color = Color3.fromRGB(150, 220, 255) },
-		-- Close on the eye in his palm.
+			return root.Parent and CFrame.lookAt(rel(5, 0.2, -8.5), rel(0, -0.6, 0)) or nil
+		end, Time = T[1], FOV = { 55, 52 }, Title = "THE SAINT'S EYES", Subtitle = "GYRO ZEPPELI", Color = Color3.fromRGB(170, 240, 240) },
+		-- 2. The eye in his palm, water running off it.
 		{ From = function()
-			return hand.Parent and CFrame.lookAt(hand.Position + root.CFrame:VectorToWorldSpace(Vector3.new(1.4, 0.4, -2.6)), hand.Position) or nil
+			return hand.Parent and CFrame.lookAt(hand.Position + right() * 1.2 + up * 0.5 - fwd() * -2.2, hand.Position - up * 0.2) or nil
 		end, To = function()
-			return hand.Parent and CFrame.lookAt(hand.Position + root.CFrame:VectorToWorldSpace(Vector3.new(0.8, 0.5, -1.7)), hand.Position) or nil
-		end, Time = 1.2, FOV = { 40, 32 } },
-		-- Straight down on his hat, then tilting down over the brim and goggles to his face.
-		{ From = function()
-			local h = headAt()
-			return root.Parent and CFrame.lookAt(h + Vector3.new(0, 6, 0), h, root.CFrame.LookVector) or nil
-		end, To = function()
-			local h = headAt()
-			return root.Parent and CFrame.lookAt(h + root.CFrame.LookVector * 2.4 + Vector3.new(0, 0.6, 0), h - Vector3.new(0, 0.1, 0)) or nil
-		end, Time = 1.5, FOV = { 50, 40 } },
-		-- His face: the eye is in his cheek.
+			return hand.Parent and CFrame.lookAt(hand.Position + right() * 0.8 + up * 0.35 + fwd() * 1.6, hand.Position - up * 0.25) or nil
+		end, Time = T[2], FOV = { 34, 28 } },
+		-- 3. From in front and above: his bowed head, the top of his hat.
 		{ From = function()
 			local h = headAt()
-			return root.Parent and CFrame.lookAt(h + root.CFrame.LookVector * 2.6 + root.CFrame.RightVector * 0.3, h) or nil
+			return root.Parent and CFrame.lookAt(h + fwd() * 4.2 + up * 2.4, h + up * 0.2) or nil
 		end, To = function()
 			local h = headAt()
-			return root.Parent and CFrame.lookAt(h + root.CFrame.LookVector * 1.8 + root.CFrame.RightVector * 0.4 - Vector3.new(0, 0.1, 0), h - Vector3.new(0, 0.12, 0)) or nil
-		end, Time = 0.9, FOV = { 40, 34 } },
-		-- The grin.
+			return root.Parent and CFrame.lookAt(h + fwd() * 3.4 + up * 1.9, h + up * 0.2) or nil
+		end, Time = T[3], FOV = { 46, 42 } },
+		-- 4. Right on the goggles, sliding slowly down the hat.
 		{ From = function()
 			local h = headAt()
-			return root.Parent and CFrame.lookAt(h + root.CFrame.LookVector * 2.2 - root.CFrame.RightVector * 0.5, h) or nil
+			return root.Parent and CFrame.lookAt(h + fwd() * 1.9 + up * 1.4, h + up * 0.75) or nil
 		end, To = function()
 			local h = headAt()
-			return root.Parent and CFrame.lookAt(h + root.CFrame.LookVector * 2.6 - root.CFrame.RightVector * 0.8 + Vector3.new(0, 0.2, 0), h) or nil
-		end, Time = 1.6, FOV = { 36, 40 }, Title = "GO! GO! ZEPPELI", Subtitle = "THE EYES SEE EVERYTHING", Color = Color3.fromRGB(150, 230, 120) },
+			return root.Parent and CFrame.lookAt(h + fwd() * 1.7 + up * 0.45, h + up * 0.25) or nil
+		end, Time = T[4], FOV = { 38, 34 }, Linear = true },
+		-- 5. Under the brim: his eyes come into view, and the eye in his cheek.
+		{ From = function()
+			local h = headAt()
+			return root.Parent and CFrame.lookAt(h + fwd() * 1.6 + up * 0.2, h + up * 0.12) or nil
+		end, To = function()
+			local h = headAt()
+			return root.Parent and CFrame.lookAt(h + fwd() * 1.35 + right() * 0.15 - up * 0.02, cheekAt() + up * 0.08) or nil
+		end, Time = T[5], FOV = { 34, 30 } },
+		-- 6. Panels slam over it.
+		{ From = function()
+			return root.Parent and CFrame.lookAt(headAt() + fwd() * 1.35 + right() * 0.15 - up * 0.02, cheekAt() + up * 0.08) or nil
+		end, Time = T[6], FOV = { 30, 30 } },
+		-- 7. The grin, washed out pale.
+		{ From = function()
+			local h = headAt()
+			return root.Parent and CFrame.lookAt(h + fwd() * 1.9 - right() * 0.25 + up * 0.05, h - up * 0.1) or nil
+		end, To = function()
+			local h = headAt()
+			return root.Parent and CFrame.lookAt(h + fwd() * 2.3 - right() * 0.5 + up * 0.15, h - up * 0.08) or nil
+		end, Time = T[7], FOV = { 32, 36 }, Title = "GO! GO! ZEPPELI", Subtitle = "THE EYES SEE EVERYTHING", Color = Color3.fromRGB(200, 240, 255) },
 	}
+	local starts = {}
+	local acc = 0
+	for i, d in ipairs(T) do
+		starts[i] = acc
+		acc = acc + d
+	end
 	local function cleanup()
 		ended = true
-		if palm then
-			palm:Destroy()
-			palm = nil
+		-- (Each one separately: any of them may already be gone.)
+		local things = { palm, cheek, mouth, look }
+		for k = 1, 4 do
+			local thing = things[k]
+			if thing and thing.Parent then
+				thing:Destroy()
+			end
 		end
-		if cheek then
-			cheek:Destroy()
-			cheek = nil
-		end
+		palm, cheek, mouth, look = nil, nil, nil, nil
 	end
+	look = grade()
 	local started = Cutscenes.play(shots, { Priority = 3, Skippable = true, OnEnd = cleanup })
 	if not started then
 		cleanup()
 		return
 	end
-	-- The reveal, as the camera reaches his face.
-	task.delay(4.0, function()
-		if ended then
-			return
-		end
+	VFXLib.sound(sounds.AwakeningBuild, root, 0.5, 0.8)
+	wind(character, starts[4] + T[4])
+	drips(character, starts[3])
+	local function at(time, fn)
+		task.delay(time, function()
+			if not ended then
+				fn()
+			end
+		end)
+	end
+	-- The eye goes where it belongs while the hat hides his face.
+	at(starts[4], function()
 		if palm then
 			palm:Destroy()
 			palm = nil
 		end
 		cheek = cheekEye(character)
-		mangaFlash(0.9)
-		CameraFX.impactFrame(Color3.fromRGB(200, 240, 255))
-		VFXLib.sound(sounds.AwakeningBurst or sounds.Swing, root, 0.6, 1.2)
+	end)
+	-- Under the brim: a held breath; the hat lifts.
+	at(starts[5] + 0.3, function()
+		CameraFX.fovPunch(-4, 0.3)
+	end)
+	-- The panels.
+	at(starts[6], function()
+		mangaFlash(T[6])
+		CameraFX.impactFrame(Color3.fromRGB(200, 250, 255))
+		VFXLib.sound(sounds.AwakeningBurst or sounds.Swing, root, 0.7, 1.15)
+	end)
+	-- The grin: the colour washes out pale and bright.
+	at(starts[7], function()
+		mouth = grinMouth(character)
+		if look and look.Parent then
+			VFXLib.animate(0.4, function(a)
+				look.TintColor = Color3.fromRGB(205, 245, 245):Lerp(Color3.fromRGB(210, 228, 255), a)
+				look.Saturation = 0.25 - 0.55 * a
+				look.Brightness = 0.12 * a
+				look.Contrast = 0.12 + 0.1 * a
+			end)
+		end
+		local h = head
+		if h and h.Parent then
+			for k = 1, 3 do
+				task.delay(k * 0.2, function()
+					if not ended and h.Parent then
+						VFXLib.burst(h.Position + fwd() * 0.6, { Count = 10, Color = Color3.fromRGB(230, 250, 255), Speed = 6, Lifetime = 0.5 })
+					end
+				end)
+			end
+		end
 	end)
 end
 
