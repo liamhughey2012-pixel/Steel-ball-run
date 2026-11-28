@@ -26,6 +26,7 @@
 	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
 	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
 	  Rohan        OPEN BOOK: everyone round him flaps open like a book for a moment
+	  Giorno       LIFE BLOOM: flowers and vines burst up round him: they're held and hurt, he heals
 	  Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him
 	  Kira         CONTACT DETONATION: Killer Queen blows up the ground round him
 	  Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA!
@@ -493,6 +494,25 @@ USE.Rohan = function(S, player, state, character, root)
 		end
 	end
 	fx({ Character = character, Who = "Rohan", Phase = "Books", Position = root.Position, Radius = c.Radius, Targets = hit })
+end
+
+-- LIFE BLOOM: Gold Experience gives life to the ground round Giorno:
+-- flowers and vines burst up, holding and hurting everyone near; he heals.
+USE.Giorno = function(S, player, state, character, root)
+	local c = TuskConfig.Giorno and TuskConfig.Giorno.CorpseBloom or { Radius = 18, Damage = 8, Stun = 1.0, Heal = 12 }
+	S.lock(state, 0.4)
+	local hit = {}
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Position = tr.Position, Source = "GiornoCorpse" }) then
+			table.insert(hit, target)
+		end
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid.Health > 0 then
+		humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + (c.Heal or 0))
+	end
+	fx({ Character = character, Who = "Giorno", Phase = "Bloom", Position = root.Position, Radius = c.Radius, Targets = hit })
 end
 
 -- SPACE PULL: The Hand erases the space round Okuyasu: everyone near is

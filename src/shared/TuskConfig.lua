@@ -145,6 +145,7 @@ TuskConfig.Cutscenes = {
 	RaceWinner = true, -- circle the overall winner at the end of the race
 	Ultimates = true, -- a quick close-up with your ultimate's name (under a second)
 	CorpseComplete = true, -- a golden orbit when you complete the Saint's Corpse
+	GER = true, -- Giorno taking the Requiem Arrow: Gold Experience is pierced and becomes Gold Experience Requiem
 	GyroEyes = true, -- Gyro taking the Saint's Eyes: kneeling with the eye, the camera down over his hat, the eye in his cheek
 }
 
@@ -188,6 +189,7 @@ TuskConfig.Roster = {
 	{ Id = "Kira", Name = "YOSHIKAGE KIRA", Stand = "KILLER QUEEN", Available = true, Color = Color3.fromRGB(196, 120, 200) },
 	{ Id = "Okuyasu", Name = "OKUYASU NIJIMURA", Stand = "THE HAND", Available = true, Color = Color3.fromRGB(90, 130, 220) },
 	{ Id = "Rohan", Name = "ROHAN KISHIBE", Stand = "HEAVEN'S DOOR", Available = true, Color = Color3.fromRGB(110, 190, 120) },
+	{ Id = "Giorno", Name = "GIORNO GIOVANNA", Stand = "GOLD EXPERIENCE", Available = true, Color = Color3.fromRGB(240, 196, 70) },
 }
 
 ---------------------------------------------------------------------------
@@ -284,7 +286,7 @@ TuskConfig.StandBots = {
 	Count = 20, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph", "Polnareff", "Josuke4", "Kira", "Okuyasu", "Rohan" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph", "Polnareff", "Josuke4", "Kira", "Okuyasu", "Rohan", "Giorno" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -1401,6 +1403,97 @@ TuskConfig.Rohan = {
 }
 
 ---------------------------------------------------------------------------
+-- GIORNO GIOVANNA (Part 5): GOLD EXPERIENCE (a visitor from another world).
+-- Gives life to whatever it touches. The Requiem Arrow turns it into GOLD
+-- EXPERIENCE REQUIEM (TuskConfig.GER) until he goes down.
+---------------------------------------------------------------------------
+TuskConfig.Giorno = {
+	M1 = { -- MUDA COMBO: Gold Experience punches with him; the 4th is a heavy straight that launches
+		Interval = 0.26, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.07,
+		HitboxSize = Vector3.new(5, 5, 6.5), HitboxForward = 3.6, MaxTargets = 3,
+		Hits = {
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 3.5, Stun = 0.45, Knockback = 3 },
+			{ Damage = 4.0, Stun = 0.45, Knockback = 5 },
+			{ Damage = 7.5, Stun = 0.55, Knockback = 40, Launch = 16, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	MudaRush = { -- 1: MUDA MUDA RUSH: a storm of punches in front of him, dragging them along
+		Cooldown = 11, Windup = 0.15,
+		Duration = 1.4, Tick = 0.09,
+		Damage = 0.95, Stun = 0.35, Knockback = 0,
+		HitboxSize = Vector3.new(6, 6, 7), HitboxForward = 4, MaxTargets = 4,
+		Drag = 6, WalkMultiplier = 0.55,
+		FinalDamage = 9, FinalStun = 0.6, FinalKnockback = 60, FinalLaunch = 18,
+	},
+	Tree = { -- 2: LIFE GIVER: TREE: roots race to the nearest enemy in front and a tree bursts up under them
+		Cooldown = 10, Windup = 0.3,
+		Range = 34, Cone = 70, MissDistance = 16,
+		Travel = 0.45, -- the roots' race along the ground
+		Radius = 6, Damage = 11, Stun = 1.0, Launch = 46,
+		TreeLife = 5, -- how long the tree stands (just for show)
+	},
+	Overload = { -- 3: SENSE OVERLOAD: too much life: their mind races, their body crawls; the pain comes late
+		Cooldown = 13, MissCooldown = 3, Windup = 0.2,
+		Range = 9, Cone = 75,
+		Damage = 4, Stun = 0.4,
+		Time = 3, SlowMultiplier = 0.25, -- how slow they move meanwhile
+		LateDamage = 15, LateStun = 0.9, -- all at once, when it ends
+	},
+	Ultimate = { -- LIFE BURST: a jungle bursts up round him; vines hold them, snakes bite, he heals, the trees throw them
+		Windup = 0.8, Radius = 28,
+		GrabDamage = 4, HoldTime = 2.4, Tick = 0.4, BiteDamage = 2.5,
+		Heal = 30,
+		FinalDamage = 14, FinalStun = 0.8, FinalKnockback = 50, FinalLaunch = 40,
+	},
+	CorpseBloom = { Radius = 18, Damage = 8, Stun = 1.0, Heal = 12 }, -- corpse move LIFE BLOOM: flowers and vines burst up round him
+}
+
+---------------------------------------------------------------------------
+-- GOLD EXPERIENCE REQUIEM (Giorno, Act 31): what the Requiem Arrow makes of
+-- Gold Experience. Lasts until Giorno goes down. RETURN TO ZERO.
+---------------------------------------------------------------------------
+TuskConfig.GER = {
+	M1 = { -- REQUIEM MUDA COMBO: heavier, longer-reaching blows
+		Interval = 0.3, ResetAfter = 1.2, EndLag = 0.9, Windup = 0.08,
+		HitboxSize = Vector3.new(6.5, 6, 8), HitboxForward = 4.3, MaxTargets = 4,
+		Hits = {
+			{ Damage = 4.8, Stun = 0.5, Knockback = 5 },
+			{ Damage = 4.8, Stun = 0.5, Knockback = 5 },
+			{ Damage = 5.4, Stun = 0.55, Knockback = 7 },
+			{ Damage = 10, Stun = 0.7, Knockback = 55, Launch = 18, ShockwaveRadius = 9, AoeRadius = 8 },
+		},
+	},
+	Rush = { -- 1: MUDA RUSH: REQUIEM: a bigger storm of punches; the last MUDA! blasts them away
+		Cooldown = 10, Windup = 0.12,
+		Duration = 1.6, Tick = 0.08,
+		Damage = 1.1, Stun = 0.35, Knockback = 0,
+		HitboxSize = Vector3.new(7, 6.5, 8), HitboxForward = 4.4, MaxTargets = 5,
+		Drag = 7, WalkMultiplier = 0.6,
+		FinalDamage = 12, FinalStun = 0.7, FinalKnockback = 80, FinalLaunch = 22,
+		ShockwaveRadius = 9, ShockwaveDamage = 5,
+	},
+	Zero = { -- 2: RETURN TO ZERO: for a moment any attack on him never happens; the attacker goes back to where they started
+		Cooldown = 14, Window = 1.3, WhiffLag = 0.35,
+		SendBack = 22, -- studs they're thrown back
+		Damage = 10, Stun = 1.6,
+		SilenceTime = 3, -- and their abilities are blank this long
+	},
+	ZeroPunch = { -- 3: ZERO PUNCH: suddenly in front of them; an unblockable punch that cancels what they were doing
+		Cooldown = 9, Windup = 0.12,
+		Range = 22, Cone = 60,
+		HitboxSize = Vector3.new(6, 6, 6), HitboxForward = 3.2, MaxTargets = 3,
+		Damage = 12, Stun = 0.9, Knockback = 36, Launch = 10,
+		SilenceTime = 2.5,
+	},
+	Ultimate = { -- INFINITE DEATH: the nearest enemy in range dies over and over and never arrives at the truth
+		Windup = 0.6, Range = 60,
+		Duration = 4.6, Deaths = 5, Scatter = 14,
+		FirstDamage = 4, DeathDamage = 6, FinalDamage = 18, FinalStun = 1.4, FinalKnockback = 40, FinalLaunch = 30,
+	},
+}
+
+---------------------------------------------------------------------------
 -- DIO: THE WORLD (a visitor from another world: Part 3). Not Diego's The
 -- World: a vampire with a golden Stand, knives, and a ROAD ROLLER.
 ---------------------------------------------------------------------------
@@ -1541,6 +1634,8 @@ TuskConfig.Polnareff = {
 -- Take it (hold E next to it):
 --   * playing POLNAREFF: Silver Chariot is pierced and becomes SILVER
 --     CHARIOT REQUIEM (Act 24) until you go down
+--   * playing GIORNO: Gold Experience is pierced and becomes GOLD
+--     EXPERIENCE REQUIEM (Act 31) until you go down (with a cutscene)
 --   * anyone else: THE ARROW'S BLESSING for a while
 ---------------------------------------------------------------------------
 TuskConfig.RequiemArrow = {
@@ -1680,7 +1775,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT", Polnareff = "SWORD WHIRL", Josuke4 = "DORA BARRAGE", Kira = "CONTACT DETONATION", Okuyasu = "SPACE PULL", Rohan = "OPEN BOOK",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT", Polnareff = "SWORD WHIRL", Josuke4 = "DORA BARRAGE", Kira = "CONTACT DETONATION", Okuyasu = "SPACE PULL", Rohan = "OPEN BOOK", Giorno = "LIFE BLOOM",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }

@@ -750,6 +750,14 @@ local function onMove(data)
 		-- OPEN BOOK: a ring of pages.
 		ring(data.Position, data.Radius or 18, Color3.fromRGB(250, 246, 232), 0.5)
 		VFXLib.burst(data.Position + Vector3.new(0, 2, 0), { Count = 16, Color = Color3.fromRGB(250, 246, 232), Speed = 14, Lifetime = 0.6 })
+	elseif who == "Giorno" and data.Phase == "Bloom" and data.Position then
+		-- LIFE BLOOM: a ring of gold, then flowers bursting up.
+		ring(data.Position, data.Radius or 18, Color3.fromRGB(255, 214, 90), 0.5)
+		for k = 1, 14 do
+			local a = k / 14 * math.pi * 2
+			local p = data.Position + Vector3.new(math.cos(a), 0, math.sin(a)) * (data.Radius or 18) * (0.3 + math.random() * 0.6) - Vector3.new(0, 2.6, 0)
+			VFXLib.burst(p, { Count = 4, Color = k % 2 == 0 and Color3.fromRGB(255, 120, 170) or Color3.fromRGB(110, 210, 90), Speed = 8, Lifetime = 0.6 })
+		end
 	elseif who == "Okuyasu" and data.Phase == "Pull" and data.Position then
 		-- SPACE PULL: a dark ring snapping inward.
 		ring(data.Position, data.Radius or 26, Color3.fromRGB(150, 200, 255), 0.4)

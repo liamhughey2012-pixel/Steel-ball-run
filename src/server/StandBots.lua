@@ -2,7 +2,7 @@
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO, Joseph, Polnareff, Josuke (4), Kira, Okuyasu, Rohan:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO, Joseph, Polnareff, Josuke (4), Kira, Okuyasu, Rohan, Giorno:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -65,6 +65,7 @@ local LOOKS = {
 	Dio = { Skin = Color3.fromRGB(240, 210, 180), Torso = Color3.fromRGB(26, 26, 30), Legs = Color3.fromRGB(214, 164, 72) },
 	Jotaro = { Skin = Color3.fromRGB(214, 170, 130), Torso = Color3.fromRGB(36, 36, 42), Legs = Color3.fromRGB(36, 36, 42) },
 	Rohan = { Skin = Color3.fromRGB(240, 210, 184), Torso = Color3.fromRGB(214, 232, 196), Legs = Color3.fromRGB(40, 70, 52) },
+	Giorno = { Skin = Color3.fromRGB(240, 206, 176), Torso = Color3.fromRGB(196, 96, 196), Legs = Color3.fromRGB(196, 96, 196) },
 	Okuyasu = { Skin = Color3.fromRGB(226, 184, 150), Torso = Color3.fromRGB(34, 40, 70), Legs = Color3.fromRGB(34, 40, 70) },
 	Kira = { Skin = Color3.fromRGB(236, 206, 176), Torso = Color3.fromRGB(150, 116, 180), Legs = Color3.fromRGB(150, 116, 180) },
 	Josuke4 = { Skin = Color3.fromRGB(226, 186, 150), Torso = Color3.fromRGB(38, 38, 82), Legs = Color3.fromRGB(38, 38, 82) },

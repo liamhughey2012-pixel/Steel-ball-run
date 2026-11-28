@@ -118,11 +118,14 @@ local function onEvent(data)
 	elseif phase == "Vanished" then
 		announce("THE ARROW HAS VANISHED", "ANOTHER ONE WILL TURN UP...", C.PAPER, 4)
 	elseif phase == "Requiem" then
-		announce(string.upper(tostring(data.Name)) .. " TOOK THE ARROW", "SILVER CHARIOT HAS BECOME SILVER CHARIOT REQUIEM", VIOLET, 7)
+		local stand = tostring(data.Stand or "SILVER CHARIOT")
+		local becomes = tostring(data.Becomes or "SILVER CHARIOT REQUIEM")
+		announce(string.upper(tostring(data.Name)) .. " TOOK THE ARROW", stand .. " HAS BECOME " .. becomes, VIOLET, 7)
 		if typeof(data.Character) == "Instance" then
 			pierce(data.Character)
 		end
-		if mine then
+		-- (Giorno's own transformation is a full cutscene, in GERVFX.)
+		if mine and data.Who ~= "Giorno" then
 			task.delay(0.8, function()
 				Cinematic.title("THE ARROW PIERCES SILVER CHARIOT", "SILVER CHARIOT REQUIEM", VIOLET, "UNTIL YOU GO DOWN", 3)
 				TuskVFX.ScreenTint(1.5, { Tint = Color3.fromRGB(160, 120, 220), Brightness = -0.25, Saturation = -0.4, Contrast = 0.2, Release = 0.1, FadeOut = 0.6 })

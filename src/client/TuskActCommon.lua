@@ -50,6 +50,8 @@ Common.Palettes = {
 	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
 	[24] = { Main = Color3.fromRGB(150, 110, 220), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(230, 220, 255) }, -- Silver Chariot Requiem
 	[28] = { Main = Color3.fromRGB(120, 200, 130), Second = Color3.fromRGB(240, 226, 180), Light = Color3.fromRGB(240, 255, 236) }, -- Rohan (Heaven's Door green + paper)
+	[30] = { Main = Color3.fromRGB(245, 200, 70), Second = Color3.fromRGB(180, 90, 210), Light = Color3.fromRGB(255, 246, 210) }, -- Giorno (Gold Experience gold + purple)
+	[31] = { Main = Color3.fromRGB(255, 222, 110), Second = Color3.fromRGB(150, 80, 230), Light = Color3.fromRGB(255, 250, 230) }, -- Gold Experience Requiem (bright gold + violet)
 	[29] = { Main = Color3.fromRGB(120, 220, 95), Second = Color3.fromRGB(240, 196, 70), Light = Color3.fromRGB(230, 255, 210) }, -- Gyro with the Saint's Eyes (green + gold)
 	[27] = { Main = Color3.fromRGB(100, 140, 230), Second = Color3.fromRGB(236, 190, 70), Light = Color3.fromRGB(220, 236, 255) }, -- Okuyasu (The Hand blue + gold)
 	[26] = { Main = Color3.fromRGB(230, 150, 215), Second = Color3.fromRGB(120, 70, 150), Light = Color3.fromRGB(250, 228, 250) }, -- Kira (Killer Queen pink + dark purple)

@@ -55,7 +55,8 @@ __modules["ArrowService"] = function()
 	bounty board posts a contract for it (BountyService).
 	Hold E next to it to take it:
 	  * playing POLNAREFF (Silver Chariot): it pierces Silver Chariot and it
-	    becomes SILVER CHARIOT REQUIEM (Act 24) until he goes down
+	    becomes SILVER CHARIOT REQUIEM (Act 24) until he goes down; Giorno's
+	    Gold Experience becomes GOLD EXPERIENCE REQUIEM (Act 31)
 	  * anyone else: THE ARROW'S BLESSING (hit harder, take less, faster,
 	    quicker ultimate) for a while
 	An arrow nobody takes vanishes when the next one turns up somewhere else.
@@ -291,6 +292,12 @@ local function bless(player, character)
 	end)
 end
 
+-- Who the arrow pierces, and what their Stand becomes (until they go down).
+local REQUIEM_OF = {
+	Polnareff = { Act = 24, Stand = "SILVER CHARIOT", Becomes = "SILVER CHARIOT REQUIEM", Delay = 1.2 },
+	Giorno = { Act = 31, Stand = "GOLD EXPERIENCE", Becomes = "GOLD EXPERIENCE REQUIEM", Delay = 1.2 },
+}
+
 local function take(player)
 	if not current or not current.Model or not current.Model.Parent then
 		return
@@ -308,12 +315,14 @@ local function take(player)
 	end
 	local state = S and S.States and S.States[player]
 	local act = state and state.Act
-	if act and Registry.characterOf(act) == "Polnareff" and act ~= 24 and S.select then
-		-- The arrow pierces Silver Chariot.
-		fx({ Phase = "Requiem", Player = player.UserId, Name = player.DisplayName, Character = character, Position = at })
-		task.delay(1.2, function()
+	local who = act and Registry.characterOf(act)
+	local requiem = who and REQUIEM_OF[who]
+	if requiem and act ~= requiem.Act and S.select then
+		-- The arrow pierces their Stand.
+		fx({ Phase = "Requiem", Player = player.UserId, Name = player.DisplayName, Character = character, Position = at, Who = who, Stand = requiem.Stand, Becomes = requiem.Becomes, Act = requiem.Act })
+		task.delay(requiem.Delay, function()
 			if player.Character == character and humanoid.Health > 0 then
-				S.select(player, 24, true)
+				S.select(player, requiem.Act, true)
 			end
 		end)
 	else
@@ -777,7 +786,7 @@ local function arrowBounty()
 		Name = "THE REQUIEM ARROW",
 		Reward = ((TuskConfig.RequiemArrow or {}).Bounty or 250) + arrowPosted,
 		Placed = arrowPosted > 0 and arrowPosted or nil,
-		Boost = "Polnareff: Silver Chariot Requiem · anyone else: a blessing",
+		Boost = "Polnareff: Silver Chariot Requiem · Giorno: Gold Experience Requiem · anyone else: a blessing",
 	}
 end
 
@@ -2326,6 +2335,7 @@ __modules["CorpseMoves"] = function()
 	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
 	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
 	  Rohan        OPEN BOOK: everyone round him flaps open like a book for a moment
+	  Giorno       LIFE BLOOM: flowers and vines burst up round him: they're held and hurt, he heals
 	  Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him
 	  Kira         CONTACT DETONATION: Killer Queen blows up the ground round him
 	  Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA!
@@ -2793,6 +2803,25 @@ USE.Rohan = function(S, player, state, character, root)
 		end
 	end
 	fx({ Character = character, Who = "Rohan", Phase = "Books", Position = root.Position, Radius = c.Radius, Targets = hit })
+end
+
+-- LIFE BLOOM: Gold Experience gives life to the ground round Giorno:
+-- flowers and vines burst up, holding and hurting everyone near; he heals.
+USE.Giorno = function(S, player, state, character, root)
+	local c = TuskConfig.Giorno and TuskConfig.Giorno.CorpseBloom or { Radius = 18, Damage = 8, Stun = 1.0, Heal = 12 }
+	S.lock(state, 0.4)
+	local hit = {}
+	for _, target in ipairs(S.Hitbox.inRadius(character, root.Position, c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 0, Position = tr.Position, Source = "GiornoCorpse" }) then
+			table.insert(hit, target)
+		end
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid.Health > 0 then
+		humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + (c.Heal or 0))
+	end
+	fx({ Character = character, Who = "Giorno", Phase = "Bloom", Position = root.Position, Radius = c.Radius, Targets = hit })
 end
 
 -- SPACE PULL: The Hand erases the space round Okuyasu: everyone near is
@@ -10041,7 +10070,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO, Joseph, Polnareff, Josuke (4), Kira, Okuyasu, Rohan:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO, Joseph, Polnareff, Josuke (4), Kira, Okuyasu, Rohan, Giorno:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -10104,6 +10133,7 @@ local LOOKS = {
 	Dio = { Skin = Color3.fromRGB(240, 210, 180), Torso = Color3.fromRGB(26, 26, 30), Legs = Color3.fromRGB(214, 164, 72) },
 	Jotaro = { Skin = Color3.fromRGB(214, 170, 130), Torso = Color3.fromRGB(36, 36, 42), Legs = Color3.fromRGB(36, 36, 42) },
 	Rohan = { Skin = Color3.fromRGB(240, 210, 184), Torso = Color3.fromRGB(214, 232, 196), Legs = Color3.fromRGB(40, 70, 52) },
+	Giorno = { Skin = Color3.fromRGB(240, 206, 176), Torso = Color3.fromRGB(196, 96, 196), Legs = Color3.fromRGB(196, 96, 196) },
 	Okuyasu = { Skin = Color3.fromRGB(226, 184, 150), Torso = Color3.fromRGB(34, 40, 70), Legs = Color3.fromRGB(34, 40, 70) },
 	Kira = { Skin = Color3.fromRGB(236, 206, 176), Torso = Color3.fromRGB(150, 116, 180), Legs = Color3.fromRGB(150, 116, 180) },
 	Josuke4 = { Skin = Color3.fromRGB(226, 186, 150), Torso = Color3.fromRGB(38, 38, 82), Legs = Color3.fromRGB(38, 38, 82) },
@@ -12354,6 +12384,39 @@ TuskActRegistry.Acts = {
 		ClientModule = "GyroEyesVFX", -- client visuals (TuskActVFX.GyroEyesVFX)
 		CardTitle = "STAND  ·  BALL BREAKER (SAINT'S EYES)",
 	},
+	-- GIORNO GIOVANNA (Part 5): GOLD EXPERIENCE. Gives life to what it touches.
+	[30] = {
+		Name = "GOLD EXPERIENCE",
+		Character = "Giorno",
+		Tagline = "Muda muda muda",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(240, 196, 70), Secondary = Color3.fromRGB(170, 90, 200) },
+		M1 = "MUDA COMBO",
+		Abilities = { "MUDA MUDA RUSH", "LIFE GIVER: TREE", "SENSE OVERLOAD" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "LIFE BURST",
+		Next = nil,
+		Module = "Giorno", -- server moves
+		ClientModule = "GiornoVFX", -- client visuals (TuskActVFX.GiornoVFX)
+		CardTitle = "STAND  ·  GOLD EXPERIENCE",
+	},
+	-- GOLD EXPERIENCE REQUIEM: Gold Experience pierced by the Requiem Arrow
+	-- (Giorno only, from the arrow; back to Act 30 when he goes down).
+	[31] = {
+		Name = "GOLD EXPERIENCE REQUIEM",
+		Character = "Giorno",
+		Tagline = "What you are seeing is certainly the truth",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(250, 214, 90), Secondary = Color3.fromRGB(150, 80, 220) },
+		M1 = "REQUIEM MUDA COMBO",
+		Abilities = { "MUDA RUSH: REQUIEM", "RETURN TO ZERO", "ZERO PUNCH" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "INFINITE DEATH",
+		Next = nil,
+		Module = "GoldExperienceRequiem", -- server moves
+		ClientModule = "GERVFX", -- client visuals (TuskActVFX.GERVFX)
+		CardTitle = "STAND  ·  GOLD EXPERIENCE REQUIEM",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -12363,7 +12426,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28, Giorno = 30 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -14116,7 +14179,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit", "Josuke4Outfit", "KiraOutfit", "OkuyasuOutfit", "RohanOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit", "Josuke4Outfit", "KiraOutfit", "OkuyasuOutfit", "RohanOutfit", "GiornoOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

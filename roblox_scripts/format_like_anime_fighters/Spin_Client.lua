@@ -4991,6 +4991,14 @@ local function onMove(data)
 		-- OPEN BOOK: a ring of pages.
 		ring(data.Position, data.Radius or 18, Color3.fromRGB(250, 246, 232), 0.5)
 		VFXLib.burst(data.Position + Vector3.new(0, 2, 0), { Count = 16, Color = Color3.fromRGB(250, 246, 232), Speed = 14, Lifetime = 0.6 })
+	elseif who == "Giorno" and data.Phase == "Bloom" and data.Position then
+		-- LIFE BLOOM: a ring of gold, then flowers bursting up.
+		ring(data.Position, data.Radius or 18, Color3.fromRGB(255, 214, 90), 0.5)
+		for k = 1, 14 do
+			local a = k / 14 * math.pi * 2
+			local p = data.Position + Vector3.new(math.cos(a), 0, math.sin(a)) * (data.Radius or 18) * (0.3 + math.random() * 0.6) - Vector3.new(0, 2.6, 0)
+			VFXLib.burst(p, { Count = 4, Color = k % 2 == 0 and Color3.fromRGB(255, 120, 170) or Color3.fromRGB(110, 210, 90), Speed = 8, Lifetime = 0.6 })
+		end
 	elseif who == "Okuyasu" and data.Phase == "Pull" and data.Position then
 		-- SPACE PULL: a dark ring snapping inward.
 		ring(data.Position, data.Radius or 26, Color3.fromRGB(150, 200, 255), 0.4)
@@ -6367,6 +6375,10 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 6) == "Giorno" then
+		starColor = Color3.fromRGB(255, 214, 90)
+	elseif source:sub(1, 3) == "GER" then
+		starColor = Color3.fromRGB(255, 230, 150)
 	elseif source:sub(1, 5) == "Rohan" then
 		starColor = Color3.fromRGB(240, 236, 210)
 	elseif source:sub(1, 7) == "Okuyasu" then
@@ -8067,11 +8079,14 @@ local function onEvent(data)
 	elseif phase == "Vanished" then
 		announce("THE ARROW HAS VANISHED", "ANOTHER ONE WILL TURN UP...", C.PAPER, 4)
 	elseif phase == "Requiem" then
-		announce(string.upper(tostring(data.Name)) .. " TOOK THE ARROW", "SILVER CHARIOT HAS BECOME SILVER CHARIOT REQUIEM", VIOLET, 7)
+		local stand = tostring(data.Stand or "SILVER CHARIOT")
+		local becomes = tostring(data.Becomes or "SILVER CHARIOT REQUIEM")
+		announce(string.upper(tostring(data.Name)) .. " TOOK THE ARROW", stand .. " HAS BECOME " .. becomes, VIOLET, 7)
 		if typeof(data.Character) == "Instance" then
 			pierce(data.Character)
 		end
-		if mine then
+		-- (Giorno's own transformation is a full cutscene, in GERVFX.)
+		if mine and data.Who ~= "Giorno" then
 			task.delay(0.8, function()
 				Cinematic.title("THE ARROW PIERCES SILVER CHARIOT", "SILVER CHARIOT REQUIEM", VIOLET, "UNTIL YOU GO DOWN", 3)
 				TuskVFX.ScreenTint(1.5, { Tint = Color3.fromRGB(160, 120, 220), Brightness = -0.25, Saturation = -0.4, Contrast = 0.2, Release = 0.1, FadeOut = 0.6 })
@@ -8566,6 +8581,8 @@ Common.Palettes = {
 	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
 	[24] = { Main = Color3.fromRGB(150, 110, 220), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(230, 220, 255) }, -- Silver Chariot Requiem
 	[28] = { Main = Color3.fromRGB(120, 200, 130), Second = Color3.fromRGB(240, 226, 180), Light = Color3.fromRGB(240, 255, 236) }, -- Rohan (Heaven's Door green + paper)
+	[30] = { Main = Color3.fromRGB(245, 200, 70), Second = Color3.fromRGB(180, 90, 210), Light = Color3.fromRGB(255, 246, 210) }, -- Giorno (Gold Experience gold + purple)
+	[31] = { Main = Color3.fromRGB(255, 222, 110), Second = Color3.fromRGB(150, 80, 230), Light = Color3.fromRGB(255, 250, 230) }, -- Gold Experience Requiem (bright gold + violet)
 	[29] = { Main = Color3.fromRGB(120, 220, 95), Second = Color3.fromRGB(240, 196, 70), Light = Color3.fromRGB(230, 255, 210) }, -- Gyro with the Saint's Eyes (green + gold)
 	[27] = { Main = Color3.fromRGB(100, 140, 230), Second = Color3.fromRGB(236, 190, 70), Light = Color3.fromRGB(220, 236, 255) }, -- Okuyasu (The Hand blue + gold)
 	[26] = { Main = Color3.fromRGB(230, 150, 215), Second = Color3.fromRGB(120, 70, 150), Light = Color3.fromRGB(250, 228, 250) }, -- Kira (Killer Queen pink + dark purple)
@@ -9379,6 +9396,39 @@ TuskActRegistry.Acts = {
 		ClientModule = "GyroEyesVFX", -- client visuals (TuskActVFX.GyroEyesVFX)
 		CardTitle = "STAND  ·  BALL BREAKER (SAINT'S EYES)",
 	},
+	-- GIORNO GIOVANNA (Part 5): GOLD EXPERIENCE. Gives life to what it touches.
+	[30] = {
+		Name = "GOLD EXPERIENCE",
+		Character = "Giorno",
+		Tagline = "Muda muda muda",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(240, 196, 70), Secondary = Color3.fromRGB(170, 90, 200) },
+		M1 = "MUDA COMBO",
+		Abilities = { "MUDA MUDA RUSH", "LIFE GIVER: TREE", "SENSE OVERLOAD" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "LIFE BURST",
+		Next = nil,
+		Module = "Giorno", -- server moves
+		ClientModule = "GiornoVFX", -- client visuals (TuskActVFX.GiornoVFX)
+		CardTitle = "STAND  ·  GOLD EXPERIENCE",
+	},
+	-- GOLD EXPERIENCE REQUIEM: Gold Experience pierced by the Requiem Arrow
+	-- (Giorno only, from the arrow; back to Act 30 when he goes down).
+	[31] = {
+		Name = "GOLD EXPERIENCE REQUIEM",
+		Character = "Giorno",
+		Tagline = "What you are seeing is certainly the truth",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(250, 214, 90), Secondary = Color3.fromRGB(150, 80, 220) },
+		M1 = "REQUIEM MUDA COMBO",
+		Abilities = { "MUDA RUSH: REQUIEM", "RETURN TO ZERO", "ZERO PUNCH" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "INFINITE DEATH",
+		Next = nil,
+		Module = "GoldExperienceRequiem", -- server moves
+		ClientModule = "GERVFX", -- client visuals (TuskActVFX.GERVFX)
+		CardTitle = "STAND  ·  GOLD EXPERIENCE REQUIEM",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -9388,7 +9438,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28, Giorno = 30 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -9683,6 +9733,12 @@ TuskAnimation.Poses = {
 	OKSwipeWind = { Root = { 0, 30, 0, 0 }, Waist = { 0, 28, 0 }, Neck = { 0, -20, 0 }, RightArm = { 140, 0, 60 }, RightElbow = { 20, 0, 0 }, LeftArm = { 20, 0, -20 }, LeftElbow = { 30, 0, 0 } },
 	OKSwipe = { Root = { 0, -30, 0, -0.1 }, Waist = { 0, -34, 0 }, Neck = { 0, 20, 0 }, RightArm = { 85, -60, -15 }, RightElbow = { 0, 0, 0 }, LeftArm = { 20, 0, -20 }, LeftElbow = { 30, 0, 0 }, LeftHip = { 16, 0, 0 }, LeftKnee = { -16, 0, 0 } },
 	-- ROHAN: posing with his pen raised by his face; quick writing strokes.
+	-- Giorno: hand at his chin, hip cocked (as in his art).
+	GiornoStance = { Root = { 0, 8, 0, 0 }, Waist = { 0, 6, 4 }, Neck = { 6, -8, -4 }, RightArm = { 42, 0, -10 }, RightElbow = { 132, 0, 0 }, LeftArm = { -6, 0, -10 }, LeftElbow = { 14, 0, 0 }, RightHip = { 4, 0, 0 }, LeftHip = { -2, 0, 4 }, LeftKnee = { -8, 0, 0 } },
+	GiornoGround = { Root = { -22, 0, 0, -0.7, 0.3 }, Waist = { -30, 0, 0 }, Neck = { 20, 0, 0 }, RightArm = { 30, 0, 4 }, RightElbow = { 0, 0, 0 }, LeftArm = { 40, 0, -30 }, LeftElbow = { 50, 0, 0 }, RightHip = { 60, 0, 0 }, RightKnee = { -80, 0, 0 }, LeftHip = { -10, 0, 0 }, LeftKnee = { -60, 0, 0 } },
+	GiornoPoint = { Root = { 0, -16, 0, 0 }, Waist = { 0, -14, 0 }, Neck = { 4, 14, 0 }, RightArm = { 92, 0, 6 }, RightElbow = { 6, 0, 0 }, LeftArm = { -10, 0, -14 }, LeftElbow = { 20, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { -8, 0, 0 } },
+	GiornoReveal = { Root = { 4, 0, 0, 0.05 }, Waist = { 8, 0, 0 }, Neck = { -10, 0, 0 }, RightArm = { 60, 0, 70 }, RightElbow = { 20, 0, 0 }, LeftArm = { 60, 0, -70 }, LeftElbow = { 20, 0, 0 } },
+	GiornoZero = { Root = { 0, 0, 0, 0 }, Waist = { 0, 0, 0 }, Neck = { -4, 0, 0 }, RightArm = { 70, 0, -40 }, RightElbow = { 100, 0, 0 }, LeftArm = { 70, 0, 40 }, LeftElbow = { 100, 0, 0 } },
 	RohanStance = { Root = { 0, 12, 0, 0 }, Waist = { 0, 10, 4 }, Neck = { 4, -10, 0 }, RightArm = { 120, 0, 30 }, RightElbow = { 110, 0, 0 }, LeftArm = { 10, 0, -30 }, LeftElbow = { 60, 0, 0 }, RightHip = { 4, 0, 4 }, LeftHip = { -6, 0, -4 } },
 	RohanWrite = { Root = { 0, -10, 0, 0 }, Waist = { 6, -10, 0 }, Neck = { 10, 10, 0 }, RightArm = { 80, 0, 4 }, RightElbow = { 40, 0, 0 }, LeftArm = { 60, 0, -10 }, LeftElbow = { 50, 0, 0 } },
 	RohanWrite2 = { Root = { 0, -14, 0, 0 }, Waist = { 6, -14, 0 }, Neck = { 10, 14, 0 }, RightArm = { 70, 0, -16 }, RightElbow = { 30, 0, 0 }, LeftArm = { 60, 0, -10 }, LeftElbow = { 50, 0, 0 } },
@@ -9946,6 +10002,18 @@ TuskAnimation.Actions = {
 	OKPull = { { 0, "OKStance" }, { 0.2, "OKSwipeWind", "Out" }, { 0.32, "OKSwipe", "Back", 3 }, { 0.55, "OKSwipe", "Linear" }, { 0.8, "OKStance", "Sine" } },
 	OKDash = { { 0, "OKStance" }, { 0.08, "OKSwipeWind", "Out" }, { 0.16, "OKSwipe", "Back", 3 }, { 0.35, "OKSwipe", "Linear" }, { 0.55, "OKStance", "Sine" } },
 	OKUlt = { { 0, "OKStance" }, { 0.25, "OKSwipeWind", "Out" }, { 0.72, "OKSwipe", "Linear" }, { 0.96, "OKSwipeWind", "Linear" }, { 1.20, "OKSwipe", "Linear" }, { 1.44, "OKSwipeWind", "Linear" }, { 1.68, "OKSwipe", "Linear" }, { 1.92, "OKSwipeWind", "Linear" }, { 2.29, "OKStance", "Sine" } },
+	GI_M1_1 = { { 0, "GiornoStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "GiornoStance", "Sine" } },
+	GI_M1_2 = { { 0, "GiornoStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "GiornoStance", "Sine" } },
+	GI_M1_3 = { { 0, "GiornoStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "GiornoStance", "Sine" } },
+	GI_M1_4 = { { 0, "GiornoStance" }, { 0.08, "GiornoPoint", "Back", 4 }, { 0.3, "GiornoPoint", "Linear" }, { 0.5, "GiornoStance", "Sine" } },
+	GIRush = { { 0, "GiornoStance" }, { 0.12, "GiornoPoint", "Out" }, { 1.5, "GiornoPoint", "Linear" }, { 1.75, "GiornoStance", "Sine" } },
+	GIRushLong = { { 0, "GiornoStance" }, { 0.12, "GiornoPoint", "Out" }, { 1.7, "GiornoPoint", "Linear" }, { 1.95, "GiornoStance", "Sine" } },
+	GITree = { { 0, "GiornoStance" }, { 0.15, "GiornoGround", "In" }, { 0.3, "GiornoGround", "Snap", 4 }, { 0.6, "GiornoGround", "Linear" }, { 0.85, "GiornoStance", "Sine" } },
+	GIPunch = { { 0, "GiornoStance" }, { 0.1, "JabStrike", "Back", 4 }, { 0.3, "JabStrike", "Linear" }, { 0.5, "GiornoStance", "Sine" } },
+	GIUlt = { { 0, "GiornoStance" }, { 0.2, "GiornoReveal", "Out" }, { 0.8, "GiornoReveal", "Linear" }, { 1.0, "GiornoGround", "Snap", 5 }, { 1.4, "GiornoGround", "Linear" }, { 1.7, "GiornoStance", "Sine" } },
+	GIZero = { { 0, "GiornoStance" }, { 0.1, "GiornoZero", "Out" }, { 1.3, "GiornoZero", "Linear" }, { 1.5, "GiornoStance", "Sine" } },
+	GIDeath = { { 0, "GiornoStance" }, { 0.15, "GiornoPoint", "Back", 3 }, { 0.6, "GiornoPoint", "Linear" }, { 0.8, "GiornoStance", "Sine" } },
+	GIRequiem = { { 0, "GiornoStance" }, { 0.4, "GiornoReveal", "Out" }, { 3.4, "GiornoReveal", "Linear" }, { 3.8, "GiornoPoint", "Back", 3 }, { 6.0, "GiornoPoint", "Linear" }, { 6.6, "GiornoStance", "Sine" } },
 	RH_M1_1 = { { 0, "RohanStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "RohanStance", "Sine" } },
 	RH_M1_2 = { { 0, "RohanStance" }, { 0.07, "RohanWrite2", "Back", 4 }, { 0.15, "RohanWrite2", "Linear" }, { 0.3, "RohanStance", "Sine" } },
 	RH_M1_3 = { { 0, "RohanStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "RohanStance", "Sine" } },
@@ -13150,6 +13218,16 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("MUDA") then
+		return "barrage"
+	elseif has("LIFE GIVER") or has("LIFE BURST") or has("LIFE BLOOM") then
+		return "rain"
+	elseif has("SENSE OVERLOAD") then
+		return "spiral"
+	elseif has("RETURN TO ZERO") or has("INFINITE DEATH") then
+		return "clock"
+	elseif has("ZERO PUNCH") then
+		return "dash"
 	elseif has("SOUL SWAP") or has("SOUL REVERSAL") then
 		return "ghost"
 	elseif has("REQUIEM'S SLEEP") then

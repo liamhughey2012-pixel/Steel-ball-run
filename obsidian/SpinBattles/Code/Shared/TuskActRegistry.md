@@ -518,6 +518,39 @@ TuskActRegistry.Acts = {
 		ClientModule = "GyroEyesVFX", -- client visuals (TuskActVFX.GyroEyesVFX)
 		CardTitle = "STAND  ·  BALL BREAKER (SAINT'S EYES)",
 	},
+	-- GIORNO GIOVANNA (Part 5): GOLD EXPERIENCE. Gives life to what it touches.
+	[30] = {
+		Name = "GOLD EXPERIENCE",
+		Character = "Giorno",
+		Tagline = "Muda muda muda",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(240, 196, 70), Secondary = Color3.fromRGB(170, 90, 200) },
+		M1 = "MUDA COMBO",
+		Abilities = { "MUDA MUDA RUSH", "LIFE GIVER: TREE", "SENSE OVERLOAD" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "LIFE BURST",
+		Next = nil,
+		Module = "Giorno", -- server moves
+		ClientModule = "GiornoVFX", -- client visuals (TuskActVFX.GiornoVFX)
+		CardTitle = "STAND  ·  GOLD EXPERIENCE",
+	},
+	-- GOLD EXPERIENCE REQUIEM: Gold Experience pierced by the Requiem Arrow
+	-- (Giorno only, from the arrow; back to Act 30 when he goes down).
+	[31] = {
+		Name = "GOLD EXPERIENCE REQUIEM",
+		Character = "Giorno",
+		Tagline = "What you are seeing is certainly the truth",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(250, 214, 90), Secondary = Color3.fromRGB(150, 80, 220) },
+		M1 = "REQUIEM MUDA COMBO",
+		Abilities = { "MUDA RUSH: REQUIEM", "RETURN TO ZERO", "ZERO PUNCH" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "INFINITE DEATH",
+		Next = nil,
+		Module = "GoldExperienceRequiem", -- server moves
+		ClientModule = "GERVFX", -- client visuals (TuskActVFX.GERVFX)
+		CardTitle = "STAND  ·  GOLD EXPERIENCE REQUIEM",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -527,7 +560,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28, Giorno = 30 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

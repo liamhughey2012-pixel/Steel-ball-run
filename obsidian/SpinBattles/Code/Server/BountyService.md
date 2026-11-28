@@ -276,7 +276,7 @@ local function arrowBounty()
 		Name = "THE REQUIEM ARROW",
 		Reward = ((TuskConfig.RequiemArrow or {}).Bounty or 250) + arrowPosted,
 		Placed = arrowPosted > 0 and arrowPosted or nil,
-		Boost = "Polnareff: Silver Chariot Requiem · anyone else: a blessing",
+		Boost = "Polnareff: Silver Chariot Requiem · Giorno: Gold Experience Requiem · anyone else: a blessing",
 	}
 end
 

@@ -175,6 +175,16 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("MUDA") then
+		return "barrage"
+	elseif has("LIFE GIVER") or has("LIFE BURST") or has("LIFE BLOOM") then
+		return "rain"
+	elseif has("SENSE OVERLOAD") then
+		return "spiral"
+	elseif has("RETURN TO ZERO") or has("INFINITE DEATH") then
+		return "clock"
+	elseif has("ZERO PUNCH") then
+		return "dash"
 	elseif has("SOUL SWAP") or has("SOUL REVERSAL") then
 		return "ghost"
 	elseif has("REQUIEM'S SLEEP") then

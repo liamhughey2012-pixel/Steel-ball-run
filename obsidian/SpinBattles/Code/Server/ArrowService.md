@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `ArrowService` (capitals matter) |
 
-**What it does:** THE REQUIEM ARROW. Every few minutes (TuskConfig.RequiemArrow.Every) an arrow turns up at a random spot in the desert: on open, low ground, never on the mountains or in water. For its first few seconds (HighlightTime) a purple Highlight shows it through walls, then it fades and it's an ordinary-looking arrow stuck in the sand: no glow, no beam, no light, no map marker. Everyone is told one has appeared (WorldFX "RequiemArrow"), and the bounty board posts a contract for it (BountyService). Hold E next to it to take it: playing POLNAREFF (Silver Chariot): it pierces Silver Chariot and it becomes SILVER CHARIOT REQUIEM (Act 24) until he goes down anyone else: THE ARROW'S BLESSING (hit harder, take less, faster, quicker ultimate) for a while An arrow nobody takes vanishes when the next one turns up somewhere else. Hooks: ArrowService.OnTaken = { function(player) ... }, ArrowService.OnSpawned / OnVanished = { function() ... }.
+**What it does:** THE REQUIEM ARROW. Every few minutes (TuskConfig.RequiemArrow.Every) an arrow turns up at a random spot in the desert: on open, low ground, never on the mountains or in water. For its first few seconds (HighlightTime) a purple Highlight shows it through walls, then it fades and it's an ordinary-looking arrow stuck in the sand: no glow, no beam, no light, no map marker. Everyone is told one has appeared (WorldFX "RequiemArrow"), and the bounty board posts a contract for it (BountyService). Hold E next to it to take it: playing POLNAREFF (Silver Chariot): it pierces Silver Chariot and it becomes SILVER CHARIOT REQUIEM (Act 24) until he goes down; Giorno's Gold Experience becomes GOLD EXPERIENCE REQUIEM (Act 31) anyone else: THE ARROW'S BLESSING (hit harder, take less, faster, quicker ultimate) for a while An arrow nobody takes vanishes when the next one turns up somewhere else. Hooks: ArrowService.OnTaken = { function(player) ... }, ArrowService.OnSpawned / OnVanished = { function() ... }.
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -36,7 +36,8 @@ Back to [[Where To Put Code]]
 	bounty board posts a contract for it (BountyService).
 	Hold E next to it to take it:
 	  * playing POLNAREFF (Silver Chariot): it pierces Silver Chariot and it
-	    becomes SILVER CHARIOT REQUIEM (Act 24) until he goes down
+	    becomes SILVER CHARIOT REQUIEM (Act 24) until he goes down; Giorno's
+	    Gold Experience becomes GOLD EXPERIENCE REQUIEM (Act 31)
 	  * anyone else: THE ARROW'S BLESSING (hit harder, take less, faster,
 	    quicker ultimate) for a while
 	An arrow nobody takes vanishes when the next one turns up somewhere else.
@@ -272,6 +273,12 @@ local function bless(player, character)
 	end)
 end
 
+-- Who the arrow pierces, and what their Stand becomes (until they go down).
+local REQUIEM_OF = {
+	Polnareff = { Act = 24, Stand = "SILVER CHARIOT", Becomes = "SILVER CHARIOT REQUIEM", Delay = 1.2 },
+	Giorno = { Act = 31, Stand = "GOLD EXPERIENCE", Becomes = "GOLD EXPERIENCE REQUIEM", Delay = 1.2 },
+}
+
 local function take(player)
 	if not current or not current.Model or not current.Model.Parent then
 		return
@@ -289,12 +296,14 @@ local function take(player)
 	end
 	local state = S and S.States and S.States[player]
 	local act = state and state.Act
-	if act and Registry.characterOf(act) == "Polnareff" and act ~= 24 and S.select then
-		-- The arrow pierces Silver Chariot.
-		fx({ Phase = "Requiem", Player = player.UserId, Name = player.DisplayName, Character = character, Position = at })
-		task.delay(1.2, function()
+	local who = act and Registry.characterOf(act)
+	local requiem = who and REQUIEM_OF[who]
+	if requiem and act ~= requiem.Act and S.select then
+		-- The arrow pierces their Stand.
+		fx({ Phase = "Requiem", Player = player.UserId, Name = player.DisplayName, Character = character, Position = at, Who = who, Stand = requiem.Stand, Becomes = requiem.Becomes, Act = requiem.Act })
+		task.delay(requiem.Delay, function()
 			if player.Character == character and humanoid.Health > 0 then
-				S.select(player, 24, true)
+				S.select(player, requiem.Act, true)
 			end
 		end)
 	else

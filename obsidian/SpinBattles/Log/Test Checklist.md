@@ -41,3 +41,10 @@ updated: 2026-11-22
 - [ ] M1 ×4, 1 throw + return, 2 wrecking balls slow dummies, 3 spin vibration stuns, G Ball Breaker vortex pulls and bursts
 - [ ] Switch back to Johnny: Tusk Act 1 returns
 - [ ] R does nothing now (Golden Spin removed)
+
+## Giorno Giovanna (Gold Experience / Requiem)
+- [ ] Card ▼ → GIORNO GIOVANNA → SELECT: curls, braid, heart opening, ladybugs; Gold Experience floats behind him with a gold aura; hand-at-chin stance
+- [ ] M1 ×4 ("MUDA!"), 1 rush drags and launches, 2 roots race out and a tree launches them, 3 slows them then the late damage lands, G jungle holds, bites, heals him, then throws them
+- [ ] Take the Requiem Arrow as Giorno: the cutscene plays (arrow, pillar of light, profile with "WHAT YOU ARE SEEING IS CERTAINLY THE TRUTH.", Requiem towers); you're on Gold Experience Requiem
+- [ ] Requiem: 2 then get hit: the attacker is thrown back and can't use abilities; 3 teleports in front of them; G (with someone in 60 studs) loops them 5 times then a last blow
+- [ ] Die as Requiem: back to Gold Experience

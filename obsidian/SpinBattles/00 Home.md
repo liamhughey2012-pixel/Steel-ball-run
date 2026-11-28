@@ -24,6 +24,7 @@ A Steel Ball Run-inspired Roblox Battlegrounds game. This vault is the project's
 - JoJolion / JOJOLands: [[Josuke Higashikata (8)]] (Soft & Wet) · [[Tooru]] (Wonder of U) · [[Jodio Joestar]] (November Rain) · [[John Rod]]
 - Part 3: [[Jotaro Kujo]] (Star Platinum) · [[DIO]] (The World) · [[Joseph Joestar]] (Hermit Purple) · [[Jean Pierre Polnareff]] (Silver Chariot → Requiem)
 - Part 4: [[Josuke Higashikata (4)]] (Crazy Diamond) · [[Yoshikage Kira]] (Killer Queen) · [[Okuyasu Nijimura]] (The Hand) · [[Rohan Kishibe]] (Heaven's Door)
+- Part 5: [[Giorno Giovanna]] (Gold Experience · Gold Experience Requiem from the [[Requiem Arrow]])
 
 **Combat and events**
 - [[Stand Bots]] · [[Block and Dash]] · [[Bounty Board]] · [[Saints Corpse]] · [[Requiem Arrow]] · [[Steel Ball Run Race]] · [[Golden Spin]] (removed)
