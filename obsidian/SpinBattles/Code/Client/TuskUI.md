@@ -175,6 +175,14 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("LIGHT RAIL") then
+		return "dash"
+	elseif has("MISFORTUNE") then
+		return "spiral"
+	elseif has("LIGHT SPEARS") then
+		return "spray"
+	elseif has("THE CHOSEN ONE") or has("LOVE TRAIN COMBO") then
+		return "portal"
 	elseif has("EPITAPH") then
 		return "portal"
 	elseif has("TIME ERASE") or has("RESULT REMAINS") or has("TIME SKIP") then

@@ -146,6 +146,7 @@ TuskConfig.Cutscenes = {
 	RaceWinner = true, -- circle the overall winner at the end of the race
 	Ultimates = true, -- a quick close-up with your ultimate's name (under a second)
 	CorpseComplete = true, -- a golden orbit when you complete the Saint's Corpse
+	LoveTrain = true, -- Funny Valentine completing the Saint's Corpse: the parts fly into him, the wall of light comes down, D4C -LOVE TRAIN-
 	JohnnyArm = true, -- Johnny taking the Saint's Corpse LEFT ARM: Tusk Act 1's first appearance, out of his palm (the anime clip)
 	KingCrimson = true, -- Diavolo's ultimate: a close-up of King Crimson with Epitaph on its brow, Diavolo behind it, crimson mist
 	ChariotRequiem = true, -- Polnareff taking the Requiem Arrow: the arrow pierces Silver Chariot, its armour shatters into shadow, night falls, Requiem rises
@@ -1534,6 +1535,50 @@ TuskConfig.Diavolo = {
 		Damage = 18, Stun = 1.3, Knockback = 40, Launch = 18,
 	},
 	CorpseSkip = { Distance = 26, Damage = 9, Stun = 0.8, Radius = 5 }, -- corpse move TIME SKIP: he's suddenly 26 studs ahead; everyone he passed is hit
+}
+
+---------------------------------------------------------------------------
+-- D4C -LOVE TRAIN- (Funny Valentine, Act 33): what D4C becomes while he
+-- holds the COMPLETE Saint's Corpse. Back to D4C the moment he doesn't.
+---------------------------------------------------------------------------
+TuskConfig.LoveTrain = {
+	Passive = { -- THE GAP OF LIGHT: he only takes part of every hit; the rest lands on the nearest other enemy
+		Keep = 0.45, -- the share of each hit that reaches him
+		Share = 0.8, -- how much of the rest lands on someone else
+		Range = 80, -- how far away that someone can be
+	},
+	M1 = { -- LOVE TRAIN COMBO: D4C's chops with light behind them; the 4th is a blow of light that launches
+		Interval = 0.27, ResetAfter = 1.1, EndLag = 0.85, Windup = 0.07,
+		HitboxSize = Vector3.new(6, 6, 7.5), HitboxForward = 4, MaxTargets = 4,
+		Hits = {
+			{ Damage = 4.2, Stun = 0.5, Knockback = 4 },
+			{ Damage = 4.2, Stun = 0.5, Knockback = 4 },
+			{ Damage = 4.8, Stun = 0.5, Knockback = 6 },
+			{ Damage = 9, Stun = 0.65, Knockback = 50, Launch = 18, ShockwaveRadius = 8, AoeRadius = 7 },
+		},
+	},
+	Rail = { -- 1: LIGHT RAIL: glide forward inside the wall of light (untouchable); everyone passed through is struck
+		Cooldown = 9, Distance = 34, Time = 0.45,
+		Width = 5, Damage = 10, Stun = 0.9, Knockback = 24, Launch = 12,
+	},
+	Transfer = { -- 2: MISFORTUNE TRANSFER: everything he was hit for lately lands on the nearest enemy in front; he heals
+		Cooldown = 15, Windup = 0.35, Range = 45, Cone = 80,
+		Window = 8, -- seconds of damage it remembers
+		MinDamage = 8, MaxDamage = 45,
+		Stun = 1.4, Knockback = 30,
+		HealShare = 0.5, -- he gets back this much of it
+	},
+	Spears = { -- 3: LIGHT SPEARS: five spears of light fan out; each strikes the first enemy in its path
+		Cooldown = 10, Windup = 0.3,
+		Count = 5, Spread = 50, Range = 45, Width = 2.5,
+		Damage = 9, Stun = 0.8, Knockback = 20,
+	},
+	Ultimate = { -- LOVE TRAIN: THE CHOSEN ONE: nothing reaches him at all; light pulses misfortune into everyone near; a burst at the end
+		Windup = 0.7, Duration = 7,
+		SpeedMultiplier = 1.25,
+		PulseEvery = 1, PulseRadius = 22, PulseDamage = 5, PulseStun = 0.5,
+		BurstRadius = 22, BurstDamage = 16, BurstStun = 1, BurstKnockback = 50,
+	},
 }
 
 ---------------------------------------------------------------------------

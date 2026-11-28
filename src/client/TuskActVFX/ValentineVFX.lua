@@ -630,7 +630,10 @@ local function stepStance()
 				TuskAnimation.hold(character, "VStance")
 			elseif not want and stanced[character] then
 				stanced[character] = nil
-				TuskAnimation.stopHold(character, "VStance")
+				-- (D4C -Love Train- keeps the same stance.)
+				if character:GetAttribute("TuskAct") ~= 33 then
+					TuskAnimation.stopHold(character, "VStance")
+				end
 			end
 		end
 	end

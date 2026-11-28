@@ -6384,6 +6384,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 9) == "LoveTrain" then
+		starColor = Color3.fromRGB(255, 240, 190)
 	elseif source:sub(1, 7) == "Diavolo" then
 		starColor = Color3.fromRGB(240, 70, 100)
 	elseif source:sub(1, 6) == "Giorno" then
@@ -9127,6 +9129,7 @@ Common.Palettes = {
 	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
 	[24] = { Main = Color3.fromRGB(150, 110, 220), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(230, 220, 255) }, -- Silver Chariot Requiem
 	[28] = { Main = Color3.fromRGB(120, 200, 130), Second = Color3.fromRGB(240, 226, 180), Light = Color3.fromRGB(240, 255, 236) }, -- Rohan (Heaven's Door green + paper)
+	[33] = { Main = Color3.fromRGB(255, 236, 170), Second = Color3.fromRGB(236, 120, 170), Light = Color3.fromRGB(255, 252, 235) }, -- D4C -Love Train- (light + D4C pink)
 	[32] = { Main = Color3.fromRGB(220, 50, 85), Second = Color3.fromRGB(235, 235, 245), Light = Color3.fromRGB(255, 215, 225) }, -- Diavolo (King Crimson crimson + white)
 	[30] = { Main = Color3.fromRGB(245, 200, 70), Second = Color3.fromRGB(180, 90, 210), Light = Color3.fromRGB(255, 246, 210) }, -- Giorno (Gold Experience gold + purple)
 	[31] = { Main = Color3.fromRGB(255, 222, 110), Second = Color3.fromRGB(150, 80, 230), Light = Color3.fromRGB(255, 250, 230) }, -- Gold Experience Requiem (bright gold + violet)
@@ -9991,6 +9994,23 @@ TuskActRegistry.Acts = {
 		Module = "Diavolo", -- server moves
 		ClientModule = "DiavoloVFX", -- client visuals (TuskActVFX.DiavoloVFX)
 		CardTitle = "STAND  ·  KING CRIMSON",
+	},
+	-- D4C -LOVE TRAIN-: D4C while Valentine holds the COMPLETE Saint's Corpse
+	-- (back to Act 13 the moment he doesn't).
+	[33] = {
+		Name = "D4C -LOVE TRAIN-",
+		Character = "Valentine",
+		Tagline = "All misfortune goes elsewhere",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(255, 236, 170), Secondary = Color3.fromRGB(236, 120, 170) },
+		M1 = "LOVE TRAIN COMBO",
+		Abilities = { "LIGHT RAIL", "MISFORTUNE TRANSFER", "LIGHT SPEARS" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "LOVE TRAIN: THE CHOSEN ONE",
+		Next = nil,
+		Module = "LoveTrain", -- server moves
+		ClientModule = "LoveTrainVFX", -- client visuals (TuskActVFX.LoveTrainVFX)
+		CardTitle = "STAND  ·  D4C -LOVE TRAIN-",
 	},
 }
 
@@ -13816,6 +13836,14 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("LIGHT RAIL") then
+		return "dash"
+	elseif has("MISFORTUNE") then
+		return "spiral"
+	elseif has("LIGHT SPEARS") then
+		return "spray"
+	elseif has("THE CHOSEN ONE") or has("LOVE TRAIN COMBO") then
+		return "portal"
 	elseif has("EPITAPH") then
 		return "portal"
 	elseif has("TIME ERASE") or has("RESULT REMAINS") or has("TIME SKIP") then

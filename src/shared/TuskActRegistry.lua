@@ -541,6 +541,23 @@ TuskActRegistry.Acts = {
 		ClientModule = "DiavoloVFX", -- client visuals (TuskActVFX.DiavoloVFX)
 		CardTitle = "STAND  ·  KING CRIMSON",
 	},
+	-- D4C -LOVE TRAIN-: D4C while Valentine holds the COMPLETE Saint's Corpse
+	-- (back to Act 13 the moment he doesn't).
+	[33] = {
+		Name = "D4C -LOVE TRAIN-",
+		Character = "Valentine",
+		Tagline = "All misfortune goes elsewhere",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(255, 236, 170), Secondary = Color3.fromRGB(236, 120, 170) },
+		M1 = "LOVE TRAIN COMBO",
+		Abilities = { "LIGHT RAIL", "MISFORTUNE TRANSFER", "LIGHT SPEARS" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "LOVE TRAIN: THE CHOSEN ONE",
+		Next = nil,
+		Module = "LoveTrain", -- server moves
+		ClientModule = "LoveTrainVFX", -- client visuals (TuskActVFX.LoveTrainVFX)
+		CardTitle = "STAND  ·  D4C -LOVE TRAIN-",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).

@@ -71,6 +71,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 9) == "LoveTrain" then
+		starColor = Color3.fromRGB(255, 240, 190)
 	elseif source:sub(1, 7) == "Diavolo" then
 		starColor = Color3.fromRGB(240, 70, 100)
 	elseif source:sub(1, 6) == "Giorno" then

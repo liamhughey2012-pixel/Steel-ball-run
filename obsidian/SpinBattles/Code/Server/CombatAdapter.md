@@ -411,7 +411,30 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	if attackerCharacter and (attackerCharacter:GetAttribute("HairRageUntil") or 0) > shopNow then
 		damage = damage * (attackerCharacter:GetAttribute("HairRageDamage") or 1)
 	end
+	-- D4C LOVE TRAIN: only part of the misfortune reaches him; the rest is
+	-- shed and lands on someone else (TuskActs.LoveTrain). (A hit that IS
+	-- shed misfortune isn't shed again, so two of them can't ping-pong.)
+	local keep = targetCharacter:GetAttribute("LoveTrainKeep")
+	if type(keep) == "number" and info.Source ~= "LoveTrainMisfortune" then
+		local shed = damage * (1 - math.clamp(keep, 0, 1))
+		damage = damage - shed
+		if shed > 0 then
+			Adapter.emit("LoveTrainShed", attackerPlayer, targetCharacter, shed, info)
+		end
+	end
 	local knockback = info.Knockback * (blocked and s.BlockKnockbackMultiplier or 1)
+	local untouched = type(keep) == "number" and keep <= 0 and info.Source ~= "LoveTrainMisfortune"
+	if untouched then
+		-- (Nothing at all reaches him: no knockback, no stun.)
+		knockback = 0
+		local copy = {}
+		for k, v in pairs(info) do
+			copy[k] = v
+		end
+		info = copy
+		info.Stun = 0
+		info.Launch = nil
+	end
 
 	-- Who hit them last (kill credit for bounties and kill streaks).
 	if attackerPlayer then

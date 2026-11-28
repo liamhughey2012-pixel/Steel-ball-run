@@ -212,9 +212,11 @@ end
 
 local function watch(character)
 	local function update()
-		if character:GetAttribute("TuskAct") == ValentineOutfit.Act then
+		local act = character:GetAttribute("TuskAct")
+		if act == ValentineOutfit.Act or act == 33 then -- (and as D4C -Love Train-)
 			task.delay(0.3, function()
-				if character.Parent and character:GetAttribute("TuskAct") == ValentineOutfit.Act then
+				local now = character:GetAttribute("TuskAct")
+				if character.Parent and (now == ValentineOutfit.Act or now == 33) then
 					ValentineOutfit.apply(character)
 				end
 			end)

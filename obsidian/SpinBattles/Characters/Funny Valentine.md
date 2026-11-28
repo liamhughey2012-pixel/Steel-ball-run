@@ -51,3 +51,26 @@ It floats behind him with an ice-blue aura.
 - **Love Train:**
   - every hit it turns away **heals him 2**;
   - the end pulse does **+1.5 per hit turned away** (up to +12).
+
+## D4C -LOVE TRAIN- (Act 33, 2026-11-28)
+While Valentine holds the **complete Saint's Corpse** (all 8 parts), D4C becomes **D4C -LOVE TRAIN-**. The moment he doesn't (the corpse scatters after the Saint's Miracle, or he goes down), he's back to D4C (Act 13). Numbers: `TuskConfig.LoveTrain`. Server: `TuskActs/LoveTrain`, which also watches for the switch (`CorpseComplete`). Visuals: `TuskActVFX/LoveTrainVFX`. Both are in Valentine's scripts.
+
+**The cutscene** (when **you** become Love Train; about 9.4 s, skippable, toggle `TuskConfig.Cutscenes.LoveTrain`):
+1. Wide and low: the eight corpse parts circle him, glowing, as the sky darkens ("THE SAINT'S CORPSE").
+2. The parts fly into him one by one, a flash of gold with each.
+3. Looking up: the walls of light come down out of the sky on either side of him, and D4C lights up behind him.
+4. His face in the gold light: "ALL MISFORTUNE GOES ELSEWHERE".
+5. Wide: Valentine in the gap of light with D4C ("D4C -LOVE TRAIN- · WHILE YOU HOLD THE CORPSE").
+
+**Look:** D4C glows, with a halo of light at its back and a gold aura. Two thin walls of light stand either side of Valentine the whole time, with gold motes rising (everyone sees them).
+
+| Input | Move | What it does |
+|---|---|---|
+| Passive | THE GAP OF LIGHT | he only takes **45%** of every hit; 80% of the rest lands on the nearest other enemy within 80 studs instead (not whoever hit him, if there's anyone else), carried off on a beam of light ("MISFORTUNE") |
+| M1 | LOVE TRAIN COMBO | D4C's chops trailed with light; the 4th hit launches |
+| 1 | LIGHT RAIL | he glides 34 studs inside a wall of light (nothing can touch him); everyone he passes through is struck (10 damage, launched). 9 s |
+| 2 | MISFORTUNE TRANSFER | everything he's been hit for in the last 8 s (8 to 45) lands all at once on the nearest enemy in front (can't be blocked, 1.4 s stun), and he heals half of it ("MISFORTUNE ×N"). 15 s |
+| 3 | LIGHT SPEARS | five spears of light fan out over 50°; each strikes the first enemy in its path, one spear per enemy (9 damage). 10 s |
+| G | LOVE TRAIN: THE CHOSEN ONE | for 7 s nothing reaches him at all (no damage, no stun, no knockback: all of it goes elsewhere), he moves 25% faster, and the light pulses every second (5 damage to everyone within 22 studs); it ends in a burst (16 damage, launched) |
+
+How it works: `CombatAdapter.dealHit` reads the character attribute `LoveTrainKeep`, keeps that share of the damage and emits `LoveTrainShed` with the rest; `TuskActs/LoveTrain` lands it on someone else with the Source `LoveTrainMisfortune`, which is never shed again (so two Love Trains can't bounce it back and forth). During the ultimate `LoveTrainKeep` is 0, which also zeroes the stun and knockback.
