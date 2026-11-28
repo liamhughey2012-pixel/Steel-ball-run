@@ -13,8 +13,10 @@
 	  Ability 2 SCAN: the eyes see through everything: every enemy near is
 	            revealed to him (through walls) and takes more damage from him
 	            for a while
-	  Ability 3 EYE RICOCHET: the eye-ball picks its path, bouncing from one
-	            enemy to the next nearest
+	  Ability 3 EYE RICOCHET: the eye-ball picks its path: it hops from one
+	            enemy to the next nearest (up to 5), bouncing off the ground
+	            between, each hit harder than the last; the last one is sent
+	            flying and the ball comes back to his hand
 	  Ultimate  SCAN: GOLDEN SPIN: the eyes find the nearest enemy anywhere;
 	            a golden-spinning ball goes straight through everything to
 	            them and leaves them paralysed by the Spin
@@ -234,12 +236,14 @@ local function ricochet(S, player, state, aim)
 		if #path == 0 then
 			table.insert(points, from + dir * c.FirstRange)
 		end
-		S.fx("Ability", { Character = char, Act = ACT, Move = "Ricochet", Phase = "Bounce", Points = points, Gap = c.Gap })
+		S.fx("Ability", { Character = char, Act = ACT, Move = "Ricochet", Phase = "Bounce", Points = points, Gap = c.Gap, Hits = #path, Return = c.ReturnTime })
 		for i, p in ipairs(path) do
 			task.delay(i * c.Gap, function()
 				if p.Target.Parent then
 					local d = (p.Position - points[i])
-					S.hit(player, p.Target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = d.Magnitude > 0.1 and d.Unit or dir, Position = p.Position, Source = "GyroEyesRicochet" })
+					local last = i == #path
+					-- Harder with every hop; the last one is sent flying.
+					S.hit(player, p.Target, { Damage = c.Damage + (i - 1) * c.BounceBonus, Stun = c.Stun, Knockback = last and c.FinalKnockback or c.Knockback, Launch = last and c.FinalLaunch or nil, Direction = d.Magnitude > 0.1 and Moves.flat(d) or dir, Position = p.Position, Source = "GyroEyesRicochet" })
 				end
 			end)
 		end

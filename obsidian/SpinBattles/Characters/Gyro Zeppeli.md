@@ -36,14 +36,14 @@ Gyro's Stand is **Ball Breaker** (character card and dropdown say so; not "Steel
 ![[ball_breaker_vs_picture.png]]
 
 ## With the Saint's Corpse EYES (Act 29)
-While Gyro holds the corpse's **Eyes**, he puts them to use: one sits in his face just under his right eye (white eyeball, brown iris, stitched socket), and the other is set into his steel ball. His moves change; when he loses the Eyes or goes down, he's back to Act 5. Numbers: `TuskConfig.GyroEyes`. Server: `TuskActs/GyroEyes`, which also watches for the switch. Visuals: `TuskActVFX/GyroEyesVFX`. Both are in Gyro's pack.
+While Gyro holds the corpse's **Eyes**, he puts them to use: the eye is set into his steel ball. His face stays as normal; the eye in his face was removed on 2026-11-28. His moves change; when he loses the Eyes or goes down, he's back to Act 5. Numbers: `TuskConfig.GyroEyes`. Server: `TuskActs/GyroEyes`, which also watches for the switch. Visuals: `TuskActVFX/GyroEyesVFX`. Both are in Gyro's pack.
 
 | Input | Move | What it does |
 |---|---|---|
 | M1 | STEEL BALL COMBO | as ever |
 | 1 | SCAN SHOT | like the anime: he **tosses the eye-ball up**, throws a **second steel ball into it** at the top, and knocks it **down** onto the nearest enemy in front. It comes from above, so it goes over cover, and steers after them: 13 damage, plus 5 where it lands (6-stud splash), and they're revealed to him for 6 s. 7 s |
 | 2 | SCAN | every enemy within 130 studs is revealed to him through walls (green glow, an eye over their head) for 8 s, and his hits on them do +20%. **Vibration lines** ripple across the ground: five waves roll out one after another, each further and paler, then pairs of wavy rings (near and wide) and jittering dashes round him while the scan lasts, and small rings pulse under everyone revealed. 14 s |
-| 3 | EYE RICOCHET | the eye-ball bounces from enemy to enemy (up to 4), 7 each. 9 s |
+| 3 | EYE RICOCHET | the eye-ball **hops in arcs** from enemy to enemy (up to 5), bouncing off the ground between on long hops. Each hit does more than the last (6, 8, 10, 12, 14), with a climbing "1 HIT… 5 HITS!" count, and the last one is sent flying. Then the ball **flies back to his hand**. 9 s |
 | G | SCAN: GOLDEN SPIN | the eyes find the nearest enemy anywhere within 200 studs. A golden-spinning ball goes **straight through everything** to them: 26 damage, can't be blocked, paralysed 2 s. Anyone in its path takes 10 |
 
 ![[gyro_eye_ball_preview.png]]

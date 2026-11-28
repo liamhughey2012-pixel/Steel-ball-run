@@ -24,9 +24,12 @@
 	    for as long as it lasts); for him the world dims and every enemy in
 	    range glows green through walls, an eye over its head and small
 	    vibration rings pulsing under its feet
-	  * EYE RICOCHET: the eye-ball bounces from enemy to enemy with spin
-	    rings round it, leaving a fading green zigzag of its path; a spark,
-	    a spin ripple and a vibration ring at each one
+	  * EYE RICOCHET: the eye-ball hops in arcs from enemy to enemy,
+	    bouncing off the ground between on the longer hops (a spin ring in
+	    the sand, a puff, small cracks); each hit throws a star, a spin
+	    ripple and a vibration ring, greener to golder as the count climbs
+	    ("1 HIT", "2 HITS", ... "5 HITS!"), the last one a big impact; the
+	    hops stay drawn a moment; then the ball flies back to his hand
 	  * SCAN: GOLDEN SPIN: a turning GOLDEN RECTANGLE (nested golden-ratio
 	    frames) locks onto the target, a gold eye opens over Gyro and a gold
 	    spin gathers in his hand ("SCAN / GOLDEN SPIN" title for him); the
@@ -882,50 +885,133 @@ local function onAbility(data)
 		if phase == "Wind" and character and root then
 			TuskAnimation.play(character, "GyroThrow")
 		elseif phase == "Bounce" and data.Points and #data.Points >= 2 then
-			if character then
-				hideHeld(character, #data.Points * (data.Gap or 0.16) + 0.4)
+			local pts, gap = data.Points, data.Gap or 0.22
+			local hits = data.Hits or (#pts - 1)
+			local back = data.Return or 0.35
+			-- Its route: hop to each target, bouncing off the ground halfway on
+			-- the longer hops; then back to his hand.
+			local segs = {}
+			for i = 1, #pts - 1 do
+				local a0, b0 = pts[i], pts[i + 1]
+				local len = (b0 - a0).Magnitude
+				local isHit = i <= hits
+				if len > 12 then
+					local mid = groundAt((a0 + b0) / 2 + Vector3.new(0, 2, 0)) + Vector3.new(0, 0.6, 0)
+					table.insert(segs, { From = a0, To = mid, Time = gap * 0.5, Height = math.min(4, len * 0.15), Kind = "Ground" })
+					table.insert(segs, { From = mid, To = b0, Time = gap * 0.5, Height = math.min(4, len * 0.15), Kind = isHit and "Hit" or "Ground", Index = i })
+				else
+					table.insert(segs, { From = a0, To = b0, Time = gap, Height = math.min(3, 1 + len * 0.2), Kind = isHit and "Hit" or "Ground", Index = i })
+				end
 			end
-			local model = eyeBall(1.0)
+			local total = 0
+			for _, s in ipairs(segs) do
+				s.Start = total
+				total = total + s.Time
+			end
+			if character then
+				hideHeld(character, total + back + 0.1)
+			end
+			local model = eyeBall(1.1)
 			model.PrimaryPart.Anchored = true
 			model.Parent = VFXLib.Folder
 			trails(model.PrimaryPart, GREEN)
-			arcsOn(model.PrimaryPart, 1.0, 3)
-			local pts, gap = data.Points, data.Gap or 0.16
-			local legs = #pts - 1
-			local alive = true
-			orbitRings(function()
-				return alive and model.PrimaryPart and model.PrimaryPart.CFrame or nil
-			end, GREEN, legs * gap, 2.2)
-			VFXLib.animate(legs * gap, function(a)
-				local f = a * legs
-				local i = math.min(legs, math.floor(f) + 1)
-				local k = f - (i - 1)
-				local p = pts[i]:Lerp(pts[i + 1], math.clamp(k, 0, 1))
-				model:PivotTo(CFrame.lookAt(p, pts[i + 1]))
-			end, function()
-				alive = false
-				model:Destroy()
-			end)
-			for i = 2, #pts do
-				task.delay((i - 1) * gap, function()
-					-- The path it took stays drawn a moment: a green zigzag.
-					local a0, b0 = pts[i - 1], pts[i]
-					local len = (b0 - a0).Magnitude
-					if len > 0.5 then
-						local line = VFXLib.part({ Size = Vector3.new(0.14, 0.14, len), CFrame = CFrame.lookAt((a0 + b0) / 2, b0), Color = GREEN, Transparency = 0.2 })
-						VFXLib.animate(0.8, function(a)
-							line.Transparency = 0.2 + 0.8 * a
-							line.Size = Vector3.new(0.14 * (1 - a), 0.14 * (1 - a), len)
+			arcsOn(model.PrimaryPart, 1.1, 3)
+			local function arcPoint(s, k)
+				return s.From:Lerp(s.To, k) + Vector3.new(0, math.sin(k * math.pi) * s.Height, 0)
+			end
+			local done = {}
+			local function landed(s)
+				local at = s.To
+				if s.Kind == "Hit" then
+					local n = s.Index or 1
+					local last = n == hits
+					local tint = GREEN:Lerp(GOLD, math.min(1, (n - 1) / 4))
+					TuskVFX.CreateImpactStar(at, { Size = 2.2 + n * 0.3, Rays = 6 + n, Color = tint, Color2 = WHITE, Duration = 0.14 })
+					TuskVFX.CreateRotationalShockwave(CFrame.lookAt(at, at + (at - s.From)) * CFrame.Angles(math.pi / 2, 0, 0), { Radius = 2.4 + n * 0.4, Layers = 2, Color = ORANGE, Color2 = tint, Particles = 0.6, Width = 0.22, Duration = 0.28, Spin = 10 })
+					vibrationRing(at, 4 + n, tint, 0.6, 7)
+					-- The count climbs with every hit.
+					local anchor = VFXLib.part({ Size = Vector3.new(0.2, 0.2, 0.2), CFrame = CFrame.new(at + Vector3.new(0, 2.5, 0)), Transparency = 1 })
+					local bb = Instance.new("BillboardGui")
+					bb.Size = UDim2.fromOffset(110 + n * 18, 34 + n * 5)
+					bb.AlwaysOnTop = true
+					bb.Adornee = anchor
+					local tl = Instance.new("TextLabel")
+					tl.BackgroundTransparency = 1
+					tl.Size = UDim2.fromScale(1, 1)
+					tl.Font = Enum.Font.Bangers
+					tl.TextScaled = true
+					tl.Text = n == 1 and "1 HIT" or (n .. " HITS" .. (last and "!" or ""))
+					tl.TextColor3 = tint
+					tl.TextStrokeTransparency = 0.1
+					tl.Parent = bb
+					bb.Parent = VFXLib.Folder
+					VFXLib.animate(0.8, function(a)
+						bb.StudsOffset = Vector3.new(0, a * 1.5, 0)
+						tl.TextTransparency = math.max(0, a * 1.6 - 0.6)
+					end, function()
+						bb:Destroy()
+						anchor:Destroy()
+					end)
+					VFXLib.sound(sounds.NailImpact, at, 0.45, 1.1 + n * 0.08)
+					if last then
+						TuskVFX.CreateImpact(at, Vector3.new(0, 1, 0), { Size = 1.4, Radius = 5, Layers = 3, Color = GOLD, Color2 = GREEN, Sound = sounds.NailImpact, Pitch = 0.8 })
+						CameraFX.shakeAt(at, 0.6, 50)
+					end
+				else
+					-- Off the ground: a spin ring in the sand, a puff, small cracks.
+					local g = groundAt(at + Vector3.new(0, 1, 0))
+					TuskVFX.CreateRotationalShockwave(CFrame.new(g + Vector3.new(0, 0.15, 0)), { Radius = 2.6, Layers = 1, Color = ORANGE, Color2 = GREEN, Particles = 0.5, Width = 0.2, Duration = 0.3, Spin = 8 })
+					TuskVFX.CreateGroundCracks(g, { Radius = 2.5, Count = 4, Color = GREEN, Duration = 0.8 })
+					VFXLib.burst(g, { Count = 8, Color = Color3.fromRGB(220, 190, 140), Speed = 10, Lifetime = 0.4, Acceleration = Vector3.new(0, -40, 0) })
+					VFXLib.sound(sounds.NailImpact, g, 0.3, 1.4)
+				end
+				-- The hop it just made stays drawn a moment.
+				local steps = 6
+				for k = 1, steps do
+					local p0, p1 = arcPoint(s, (k - 1) / steps), arcPoint(s, k / steps)
+					local len = (p1 - p0).Magnitude
+					if len > 0.1 then
+						local line = VFXLib.part({ Size = Vector3.new(0.12, 0.12, len), CFrame = CFrame.lookAt((p0 + p1) / 2, p1), Color = s.Kind == "Hit" and GREEN or ORANGE_LIGHT, Transparency = 0.25 })
+						VFXLib.animate(0.7, function(a)
+							line.Transparency = 0.25 + 0.75 * a
 						end, function()
 							line:Destroy()
 						end)
 					end
-					TuskVFX.CreateImpactStar(pts[i], { Size = 2.4, Rays = 6, Color = GREEN, Color2 = WHITE, Duration = 0.14 })
-					TuskVFX.CreateRotationalShockwave(CFrame.lookAt(b0, b0 + (b0 - a0)) * CFrame.Angles(math.pi / 2, 0, 0), { Radius = 2.6, Layers = 1, Color = GREEN, Color2 = WHITE, Particles = 0.5, Width = 0.2, Duration = 0.25, Spin = 10 })
-					vibrationRing(b0, 5, GREEN, 0.6, 7)
-					VFXLib.sound(sounds.NailImpact, pts[i], 0.4, 1.2 + i * 0.05)
-				end)
+				end
 			end
+			-- Hop by hop...
+			VFXLib.animate(total, function(a)
+				local now = a * total
+				for i, s in ipairs(segs) do
+					if now >= s.Start and now <= s.Start + s.Time then
+						local k = math.clamp((now - s.Start) / s.Time, 0, 1)
+						local p = arcPoint(s, k)
+						model:PivotTo(CFrame.lookAt(p, arcPoint(s, math.min(1, k + 0.05)) + Vector3.new(0, 0.001, 0)))
+					end
+					if not done[i] and now >= s.Start + s.Time - 1e-3 then
+						done[i] = true
+						landed(s)
+					end
+				end
+			end, function()
+				for i, s in ipairs(segs) do
+					if not done[i] then
+						done[i] = true
+						landed(s)
+					end
+				end
+				-- ...then back to his hand.
+				local from = segs[#segs] and segs[#segs].To or pts[#pts]
+				VFXLib.animate(back, function(a)
+					local r = character and Common.rootOf(character)
+					local to = r and (r.CFrame * CFrame.new(0.8, 0.5, -1)).Position or from
+					local p = from:Lerp(to, VFXLib.easeOut(a)) + Vector3.new(0, math.sin(a * math.pi) * 3, 0)
+					model:PivotTo(CFrame.lookAt(p, to + Vector3.new(0, 0.001, 0)))
+				end, function()
+					model:Destroy()
+				end)
+			end)
 		end
 	end
 end

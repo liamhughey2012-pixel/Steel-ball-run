@@ -2021,11 +2021,14 @@ TuskConfig.GyroEyes = {
 		Cooldown = 14, Range = 130, Time = 8,
 		BonusDamage = 1.2, -- his hits on someone he's scanned
 	},
-	Ricochet = { -- 3: the eye-ball picks its path: it bounces from enemy to enemy
+	Ricochet = { -- 3: the eye-ball picks its path: it hops from enemy to enemy (bouncing off the ground between), harder each time, then back to his hand
 		Cooldown = 9, Windup = 0.25,
 		FirstRange = 60, Cone = 100, -- the first one in front
-		Range = 40, Bounces = 4, Gap = 0.16, -- then the nearest one it hasn't hit, up to this many times
-		Damage = 7, Stun = 0.5, Knockback = 10,
+		Range = 40, Bounces = 5, Gap = 0.22, -- then the nearest one it hasn't hit, up to this many; seconds per hop
+		Damage = 6, BounceBonus = 2, -- each hit does this much more than the last
+		Stun = 0.5, Knockback = 8,
+		FinalKnockback = 40, FinalLaunch = 12, -- the last one it hits is sent flying
+		ReturnTime = 0.35, -- flying back to his hand
 	},
 	Ultimate = { -- SCAN: GOLDEN SPIN: the eyes find the nearest enemy anywhere; a golden-spinning ball goes straight through everything to them
 		Windup = 1.0,

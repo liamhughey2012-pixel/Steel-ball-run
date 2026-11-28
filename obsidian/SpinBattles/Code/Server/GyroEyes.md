@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer › TuskActs` |
 | **Exact name** | `GyroEyes` (capitals matter) |
 
-**What it does:** GYRO WITH THE SAINT'S EYES. Registered as "Act" 29 (Character "Gyro"). Gyro holding the Saint's Corpse EYES puts them to use: one in his own eye socket, one set into his steel ball. While he holds them his moves change; when he loses them (or goes down) he's back to Act 5. M1        STEEL BALL COMBO (the same as ever) Ability 1 SCAN SHOT: he tosses the eye-ball up, throws a second ball into it at the top, and knocks it DOWN onto the nearest enemy in front (it comes from above, so it goes over cover), steering after them; whoever it hits is left revealed to him for a while Ability 2 SCAN: the eyes see through everything: every enemy near is revealed to him (through walls) and takes more damage from him for a while Ability 3 EYE RICOCHET: the eye-ball picks its path, bouncing from one enemy to the next nearest Ultimate  SCAN: GOLDEN SPIN: the eyes find the nearest enemy anywhere; a golden-spinning ball goes straight through everything to them and leaves them paralysed by the Spin The switch (5 <-> 29) is watched here (Init): CorpseParts holding "Eyes". Numbers: TuskConfig.GyroEyes. All damage goes through S.hit (CombatAdapter).
+**What it does:** GYRO WITH THE SAINT'S EYES. Registered as "Act" 29 (Character "Gyro"). Gyro holding the Saint's Corpse EYES puts them to use: one in his own eye socket, one set into his steel ball. While he holds them his moves change; when he loses them (or goes down) he's back to Act 5. M1        STEEL BALL COMBO (the same as ever) Ability 1 SCAN SHOT: he tosses the eye-ball up, throws a second ball into it at the top, and knocks it DOWN onto the nearest enemy in front (it comes from above, so it goes over cover), steering after them; whoever it hits is left revealed to him for a while Ability 2 SCAN: the eyes see through everything: every enemy near is revealed to him (through walls) and takes more damage from him for a while Ability 3 EYE RICOCHET: the eye-ball picks its path: it hops from one enemy to the next nearest (up to 5), bouncing off the ground between, each hit harder than the last; the last one is sent flying and the ball comes back to his hand Ultimate  SCAN: GOLDEN SPIN: the eyes find the nearest enemy anywhere; a golden-spinning ball goes straight through everything to them and leaves them paralysed by the Spin The switch (5 <-> 29) is watched here (Init): CorpseParts holding "Eyes". Numbers: TuskConfig.GyroEyes. All damage goes through S.hit (CombatAdapter).
 
 ## How to add it
 1. In Studio's Explorer, find **TuskActs** (ServerScriptService › SpinServer › TuskActs).
@@ -39,8 +39,10 @@ Back to [[Where To Put Code]]
 	  Ability 2 SCAN: the eyes see through everything: every enemy near is
 	            revealed to him (through walls) and takes more damage from him
 	            for a while
-	  Ability 3 EYE RICOCHET: the eye-ball picks its path, bouncing from one
-	            enemy to the next nearest
+	  Ability 3 EYE RICOCHET: the eye-ball picks its path: it hops from one
+	            enemy to the next nearest (up to 5), bouncing off the ground
+	            between, each hit harder than the last; the last one is sent
+	            flying and the ball comes back to his hand
 	  Ultimate  SCAN: GOLDEN SPIN: the eyes find the nearest enemy anywhere;
 	            a golden-spinning ball goes straight through everything to
 	            them and leaves them paralysed by the Spin
@@ -260,12 +262,14 @@ local function ricochet(S, player, state, aim)
 		if #path == 0 then
 			table.insert(points, from + dir * c.FirstRange)
 		end
-		S.fx("Ability", { Character = char, Act = ACT, Move = "Ricochet", Phase = "Bounce", Points = points, Gap = c.Gap })
+		S.fx("Ability", { Character = char, Act = ACT, Move = "Ricochet", Phase = "Bounce", Points = points, Gap = c.Gap, Hits = #path, Return = c.ReturnTime })
 		for i, p in ipairs(path) do
 			task.delay(i * c.Gap, function()
 				if p.Target.Parent then
 					local d = (p.Position - points[i])
-					S.hit(player, p.Target, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Direction = d.Magnitude > 0.1 and d.Unit or dir, Position = p.Position, Source = "GyroEyesRicochet" })
+					local last = i == #path
+					-- Harder with every hop; the last one is sent flying.
+					S.hit(player, p.Target, { Damage = c.Damage + (i - 1) * c.BounceBonus, Stun = c.Stun, Knockback = last and c.FinalKnockback or c.Knockback, Launch = last and c.FinalLaunch or nil, Direction = d.Magnitude > 0.1 and Moves.flat(d) or dir, Position = p.Position, Source = "GyroEyesRicochet" })
 				end
 			end)
 		end
