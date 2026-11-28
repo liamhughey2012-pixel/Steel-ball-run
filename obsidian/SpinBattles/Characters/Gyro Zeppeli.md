@@ -38,16 +38,21 @@ Gyro's Stand is **Ball Breaker** (character card and dropdown say so; not "Steel
 ## With the Saint's Corpse EYES (Act 29)
 While Gyro holds the corpse's **Eyes**, he puts them to use: the eye is set into his steel ball. His face stays as normal; the eye in his face was removed on 2026-11-28.
 
-**The cutscene (2026-11-28, from the user's anime clip; reworked the same day to follow the clip shot by shot):** when *you* pick up the Eyes as Gyro:
-1. A wide shot: he kneels in the desert, with wind streaks and blowing sand ("THE SAINT'S EYES").
-2. A close-up on his palm, with the eye glistening and water dripping from his hand.
-3. From above and in front: his bowed hat.
-4. The camera slides down over the brim and goggles (a slow, linear move).
-5. Under the brim to his cheek: the eye is now in his cheek. It has a rim, stitches and a violet iris that darts about and then fixes on the camera. The FOV punches in.
-6. Manga panels slam in (right, left, then middle): halftone dots, green hair strands, a slit green eye and a lashed eye, with "ドドド", a flash, an impact frame and a jitter.
-7. He grins with teal lips and gold teeth, as the picture fades to a pale blue grade with sparkles ("GO! GO! ZEPPELI").
+**The cutscene (2026-11-28; rebuilt frame by frame against the user's anime clip):** when *you* pick up the Eyes as Gyro. It lasts 10.75 s, exactly as long as the clip, and every shot length is measured from it:
+1. **0.00–0.40 s, wide:** from high in front, he kneels in the dunes. The picture fades in from dark into a bright cyan-teal grade, and his long hair and a green cape whip to the side in the wind, with sand and streaks blowing past.
+2. **0.40–1.57 s, his palm:** close on his cupped hand. The Saint's eyes have melted into glowing pale-cyan liquid, with three thin streams running out between his fingers and drops falling. There's no eyeball here, just as in the clip.
+3. **1.57–3.13 s, the hat:** straight down on his bowed hat (the crown, the slotted brim, the goggles at the front), held still.
+4. **3.13–5.45 s, the goggles:** right on the goggles, the camera tilting slowly down until the brim's edge shows. His eyes begin to glow cyan underneath.
+5. **5.45–7.80 s, under the brim:** the grade drops to deep indigo. From just outside the brim, the camera tilts down past his glowing eye to the big eyeball now set in his cheek. It's lavender in the shadow, with a pale blue iris, a crescent of light and creases round the socket, and it stares.
+6. **7.80–9.40 s, the panels:** three slanted panels with thick white borders slide in over the held shot, in the clip's order and timing. First the RIGHT one (7.8 s: a pale face, lime-green hair, a wide-open eye, purple lips). Then the LEFT one (8.4 s: cyan skin, a yellow-green slit eye). Then the MIDDLE one pops in (8.85 s: a big black-ringed eye with lashes and cracked skin). There's no text and no flash.
+7. **9.40–10.75 s, the grin:** washed out pale blue. His eyes glow, the cheek eye sits under his right eye, and he grins with thick teal lips and two rows of gold teeth engraved "GO! GO!" / "ZEPPELI".
 
-The whole scene has a cyan colour grade. It lasts about 10.8 s and can be skipped. The cheek eye, mouth and grade exist only during the cutscene, are local to you, and are cleaned up when it ends or is skipped. It won't replay within 20 s. Toggle: `TuskConfig.Cutscenes.GyroEyes`. Code: `GyroEyesVFX` (playEyesCutscene); poses `GyroKneel`, `GyroKneelLook` and `GyroGrin`, and action `GyroEyesKneel` in TuskAnimation. His moves change; when he loses the Eyes or goes down, he's back to Act 5. Numbers: `TuskConfig.GyroEyes`. Server: `TuskActs/GyroEyes`, which also watches for the switch. Visuals: `TuskActVFX/GyroEyesVFX`. Both are in Gyro's pack.
+He stays kneeling the whole time and only lifts his head for the grin. There are no title cards, just as in the clip. Everything it adds (the liquid, cheek eye, glowing eyes, mouth, hair, cape and grade) only shows for you and is removed when it ends or you skip it.
+
+![[gyro_eyes_cutscene_shots.png]]
+*Test renders of shots 1–5 and 7 (on a standing test rig, with the head bowed).*
+
+It won't replay within 20 s. Toggle: `TuskConfig.Cutscenes.GyroEyes`. Code: `GyroEyesVFX` (playEyesCutscene); poses `GyroKneel`, `GyroKneelLook` and `GyroGrin`, and action `GyroEyesKneel` in TuskAnimation. His moves change; when he loses the Eyes or goes down, he's back to Act 5. Numbers: `TuskConfig.GyroEyes`. Server: `TuskActs/GyroEyes`, which also watches for the switch. Visuals: `TuskActVFX/GyroEyesVFX`. Both are in Gyro's pack.
 
 | Input | Move | What it does |
 |---|---|---|
