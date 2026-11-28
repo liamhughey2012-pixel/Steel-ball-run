@@ -20,6 +20,16 @@
 	  Ultimate  SCAN: GOLDEN SPIN: the eyes find the nearest enemy anywhere;
 	            a golden-spinning ball goes straight through everything to
 	            them and leaves them paralysed by the Spin
+	VARIANTS (TuskConfig.GyroEyes.Variants):
+	  in the air      SKY SCAN (1): straight down from where he is, faster,
+	                  a bigger landing; SKY EYE (2): sees further and slams a
+	                  stunning vibration into the ground below; DOWNWARD
+	                  RICOCHET (3): smashes the ground in front first, then
+	                  hops on from the crater
+	  while scanning  SPLIT SHOT (1): the struck ball splits onto up to 3
+	                  scanned enemies; TRACKING RICOCHET (3): only scanned
+	                  enemies, longer hops, one more, unblockable; FULL SCAN
+	                  (G): a scanned target takes +35% and a longer paralysis
 	The switch (5 <-> 29) is watched here (Init): CorpseParts holding "Eyes".
 	Numbers: TuskConfig.GyroEyes. All damage goes through S.hit (CombatAdapter).
 ]]
@@ -70,23 +80,140 @@ function GyroEyes.M1(S, player, state, aim)
 end
 
 ---------------------------------------------------------------------------
--- 1: SCAN SHOT (toss one ball up, knock it down onto them with another)
+-- VARIANTS: in the air, and while his Scan is active, the moves change.
 ---------------------------------------------------------------------------
+local function airborne(humanoid)
+	if not humanoid then
+		return false
+	end
+	local st = humanoid:GetState()
+	return st == Enum.HumanoidStateType.Freefall or st == Enum.HumanoidStateType.Jumping or humanoid.FloorMaterial == Enum.Material.Air
+end
+
+local function scanning(char)
+	return (char:GetAttribute("ScanBonusUntil") or 0) > now()
+end
+
+local function isScanned(target)
+	return (target:GetAttribute("ScannedUntil") or 0) > now()
+end
+
+-- Scanned enemies near a point, nearest first.
+local function scannedNear(S, char, pos, range, max)
+	local list = {}
+	for _, target in ipairs(S.Hitbox.inRadius(char, pos, range, 30)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr and aliveModel(target) and isScanned(target) then
+			table.insert(list, { Target = target, D = (tr.Position - pos).Magnitude })
+		end
+	end
+	table.sort(list, function(a, b)
+		return a.D < b.D
+	end)
+	local out = {}
+	for k = 1, math.min(max, #list) do
+		out[k] = list[k].Target
+	end
+	return out
+end
+
+---------------------------------------------------------------------------
+-- 1: SCAN SHOT (toss one ball up, knock it down onto them with another)
+--   in the air: SKY SCAN (no toss: straight down from where he is, faster,
+--   a bigger landing); while scanning: SPLIT SHOT (the struck ball splits,
+--   one eye-ball diving at each of up to 3 scanned enemies)
+---------------------------------------------------------------------------
+-- An eye-ball diving from `from` onto `target` (or `aimAt`), steering.
+local function dive(S, player, char, id, from, target, aimAt, opts)
+	local c = cfg.ScanShot
+	local speed = opts.Speed or c.Speed
+	local pos = from
+	local vel = (aimAt - pos).Unit * speed
+	S.fx("Ability", { Character = char, Act = ACT, Move = "ScanShot", Phase = "Dive", Id = id, From = pos, Direction = vel.Unit, Target = target, Speed = speed, Turn = c.Turn, Life = c.Life, Aim = aimAt, Variant = opts.Variant })
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { char }
+	local t, step = 0, 1 / 30
+	local function landed(at, victim)
+		local hitIt = false
+		if victim then
+			local vr = victim:FindFirstChild("HumanoidRootPart")
+			hitIt = S.hit(player, victim, { Damage = opts.Damage or c.Damage, Stun = c.Stun, Knockback = c.Knockback, Launch = c.Launch, Direction = Moves.flat(vel), Position = vr and vr.Position or at, Source = "GyroEyesShot" })
+			if hitIt then
+				scan(char, victim, c.RevealTime)
+			end
+		end
+		local splash = opts.Splash or c.SplashRadius
+		Moves.aoe(S, player, at, splash, { Damage = opts.SplashDamage or c.SplashDamage, Stun = 0.3, Knockback = 12, Source = "GyroEyesShot" }, 6, victim and { [victim] = true } or nil)
+		S.fx("Ability", { Character = char, Act = ACT, Move = "ScanShot", Phase = "End", Id = id, Position = at, Hit = hitIt, Target = hitIt and victim or nil, Reveal = c.RevealTime, Radius = splash, Variant = opts.Variant })
+	end
+	local function tick()
+		t = t + step
+		local ttr = target and aliveModel(target) and target:FindFirstChild("HumanoidRootPart")
+		if ttr then
+			local want = (ttr.Position - pos).Unit * speed
+			vel = (vel + (want - vel) * math.min(1, c.Turn * step)).Unit * speed
+		end
+		local move = vel * step
+		local wall = workspace:Raycast(pos, move, params)
+		if wall and not (wall.Instance.Parent and wall.Instance.Parent:FindFirstChildOfClass("Humanoid")) then
+			landed(wall.Position, nil)
+			return
+		end
+		pos = pos + move
+		local victim
+		if ttr and (ttr.Position - pos).Magnitude <= c.HitRadius then
+			victim = target
+		else
+			for _, other in ipairs(S.Hitbox.inRadius(char, pos, c.HitRadius, 1)) do
+				victim = other
+			end
+		end
+		if victim then
+			landed(pos, victim)
+			return
+		end
+		if t >= c.Life then
+			landed(pos, nil)
+			return
+		end
+		task.delay(step, tick)
+	end
+	task.delay(step, tick)
+end
+
 local function scanShot(S, player, state, aim)
 	local c = cfg.ScanShot
+	local v = cfg.Variants or {}
 	if not ready(S, player, state, "ScanShot", 1) then
 		return
 	end
 	S.startCooldown(player, state, "ScanShot", c.Cooldown, 1)
-	S.lock(state, c.TossTime + c.StrikeTime + 0.15)
-	local character, _, root = alive(S, player)
+	local character, humanoid, root = alive(S, player)
 	local life = state.Life
 	local look = Moves.flat(S.aim(aim, root))
+	local id = tostring({})
+	-- SKY SCAN: in the air, straight down at them from where he is.
+	if airborne(humanoid) then
+		S.lock(state, 0.25)
+		local from = root.Position + Vector3.new(0, 1.5, 0)
+		local target = Moves.findTarget(S, character, root, c.LockRange, c.Cone, look)
+		local tr = target and target:FindFirstChild("HumanoidRootPart")
+		local aimAt = tr and tr.Position or Moves.groundBelow(root.Position + look * 25, { character })
+		S.fx("Ability", { Character = character, Act = ACT, Move = "ScanShot", Phase = "Sky", Id = id, From = from })
+		task.delay(0.12, function()
+			if S.stillValid(player, state, life) then
+				dive(S, player, character, id, from, target, aimAt, { Speed = c.Speed * (v.SkySpeed or 1.25), Damage = c.Damage + (v.SkyBonusDamage or 2), Splash = c.SplashRadius * (v.SkySplash or 1.6), SplashDamage = c.SplashDamage + 2, Variant = "Sky" })
+			end
+		end)
+		return
+	end
+	local split = scanning(character)
+	S.lock(state, c.TossTime + c.StrikeTime + 0.15)
 	-- The eye-ball goes up above him.
 	local hand = S.origin(character, root, Moves.HAND)
 	local apex = root.Position + look * c.TossForward + Vector3.new(0, c.TossHeight, 0)
-	local id = tostring({})
-	S.fx("Ability", { Character = character, Act = ACT, Move = "ScanShot", Phase = "Toss", Id = id, From = hand, Apex = apex, Time = c.TossTime })
+	S.fx("Ability", { Character = character, Act = ACT, Move = "ScanShot", Phase = "Toss", Id = id, From = hand, Apex = apex, Time = c.TossTime, Variant = split and "Split" or nil })
 	-- At the top, the second ball meets it.
 	task.delay(c.TossTime, function()
 		if not S.stillValid(player, state, life) then
@@ -95,69 +222,26 @@ local function scanShot(S, player, state, aim)
 		end
 		local char, _, r = alive(S, player)
 		local from = S.origin(char, r, Moves.HAND)
-		S.fx("Ability", { Character = char, Act = ACT, Move = "ScanShot", Phase = "Strike", Id = id, From = from, Apex = apex, Time = c.StrikeTime })
+		S.fx("Ability", { Character = char, Act = ACT, Move = "ScanShot", Phase = "Strike", Id = id, From = from, Apex = apex, Time = c.StrikeTime, Variant = split and "Split" or nil })
 		task.delay(c.StrikeTime, function()
 			if not S.stillValid(player, state, life) then
 				S.fx("Ability", { Act = ACT, Move = "ScanShot", Phase = "End", Id = id, Position = apex, Hit = false })
 				return
 			end
+			-- SPLIT SHOT: while scanning, the ball splits onto up to 3 scanned enemies.
+			local targets = split and scannedNear(S, char, r.Position, c.LockRange, v.SplitCount or 3) or {}
+			if #targets >= 2 then
+				for k, target in ipairs(targets) do
+					local tr = target:FindFirstChild("HumanoidRootPart")
+					dive(S, player, char, k == 1 and id or (id .. ":" .. k), apex, target, tr.Position, { Damage = v.SplitDamage or 9, Variant = "Split" })
+				end
+				return
+			end
 			-- The eye picks its target, and the first ball dives down at them.
-			local target = Moves.findTarget(S, char, r, c.LockRange, c.Cone, look)
+			local target = targets[1] or Moves.findTarget(S, char, r, c.LockRange, c.Cone, look)
 			local tr = target and target:FindFirstChild("HumanoidRootPart")
 			local aimAt = tr and tr.Position or Moves.groundBelow(r.Position + look * 40, { char })
-			local pos = apex
-			local vel = (aimAt - pos).Unit * c.Speed
-			S.fx("Ability", { Character = char, Act = ACT, Move = "ScanShot", Phase = "Dive", Id = id, From = pos, Direction = vel.Unit, Target = target, Speed = c.Speed, Turn = c.Turn, Life = c.Life, Aim = aimAt })
-			local params = RaycastParams.new()
-			params.FilterType = Enum.RaycastFilterType.Exclude
-			params.FilterDescendantsInstances = { char }
-			local t, step = 0, 1 / 30
-			local function landed(at, victim)
-				local hitIt = false
-				if victim then
-					local vr = victim:FindFirstChild("HumanoidRootPart")
-					hitIt = S.hit(player, victim, { Damage = c.Damage, Stun = c.Stun, Knockback = c.Knockback, Launch = c.Launch, Direction = Moves.flat(vel), Position = vr and vr.Position or at, Source = "GyroEyesShot" })
-					if hitIt then
-						scan(char, victim, c.RevealTime)
-					end
-				end
-				-- The ground where it lands takes a hit too.
-				Moves.aoe(S, player, at, c.SplashRadius, { Damage = c.SplashDamage, Stun = 0.3, Knockback = 12, Source = "GyroEyesShot" }, 6, victim and { [victim] = true } or nil)
-				S.fx("Ability", { Character = char, Act = ACT, Move = "ScanShot", Phase = "End", Id = id, Position = at, Hit = hitIt, Target = hitIt and victim or nil, Reveal = c.RevealTime, Radius = c.SplashRadius })
-			end
-			local function tick()
-				t = t + step
-				local ttr = target and aliveModel(target) and target:FindFirstChild("HumanoidRootPart")
-				if ttr then
-					local want = (ttr.Position - pos).Unit * c.Speed
-					vel = (vel + (want - vel) * math.min(1, c.Turn * step)).Unit * c.Speed
-				end
-				local move = vel * step
-				local wall = workspace:Raycast(pos, move, params)
-				if wall and not (wall.Instance.Parent and wall.Instance.Parent:FindFirstChildOfClass("Humanoid")) then
-					landed(wall.Position, nil)
-					return
-				end
-				pos = pos + move
-				local victim
-				if ttr and (ttr.Position - pos).Magnitude <= c.HitRadius then
-					victim = target
-				else
-					for _, other in ipairs(S.Hitbox.inRadius(char, pos, c.HitRadius, 1)) do
-						victim = other
-					end
-				end
-				if victim then
-					landed(pos, victim)
-					return
-				end
-				if t >= c.Life then
-					landed(pos, nil)
-					return
-				end
-				task.delay(step, tick)
-			end
-			task.delay(step, tick)
+			dive(S, player, char, id, apex, target, aimAt, {})
 		end)
 	end)
 end
@@ -172,9 +256,17 @@ local function scanAll(S, player, state)
 	end
 	S.startCooldown(player, state, "Scan", c.Cooldown, 2)
 	S.lock(state, 0.3)
-	local char, _, r = alive(S, player)
+	local char, hum, r = alive(S, player)
+	local v = cfg.Variants or {}
+	-- SKY EYE: in the air, the eyes see further, and the vibration slams down.
+	local sky = airborne(hum)
+	local range = sky and c.Range * (v.SkyEyeRange or 1.4) or c.Range
+	if sky then
+		local ground = Moves.groundBelow(r.Position, { char })
+		Moves.aoe(S, player, ground, v.SkyEyeSlamRadius or 11, { Damage = v.SkyEyeSlamDamage or 4, Stun = v.SkyEyeSlamStun or 1.0, Knockback = 6, Launch = 10, Source = "GyroEyesScan" }, 8)
+	end
 	local found = {}
-	for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, c.Range, 30)) do
+	for _, target in ipairs(S.Hitbox.inRadius(char, r.Position, range, 30)) do
 		if aliveModel(target) then
 			scan(char, target, c.Time)
 			table.insert(found, target)
@@ -182,7 +274,7 @@ local function scanAll(S, player, state)
 	end
 	char:SetAttribute("ScanBonusUntil", now() + c.Time)
 	char:SetAttribute("ScanBonus", c.BonusDamage)
-	S.fx("Ability", { Character = char, Act = ACT, Move = "Scan", Phase = "Pulse", Position = r.Position, Range = c.Range, Time = c.Time, Targets = found })
+	S.fx("Ability", { Character = char, Act = ACT, Move = "Scan", Phase = "Pulse", Position = r.Position, Range = range, Time = c.Time, Targets = found, Variant = sky and "Sky" or nil, SlamRadius = sky and (v.SkyEyeSlamRadius or 11) or nil })
 end
 
 ---------------------------------------------------------------------------
@@ -202,14 +294,34 @@ local function ricochet(S, player, state, aim)
 		if not S.stillValid(player, state, life) then
 			return
 		end
-		local char, _, r = alive(S, player)
+		local char, hum, r = alive(S, player)
+		local v = cfg.Variants or {}
 		local dir = Moves.flat(S.aim(aim, r))
 		local from = S.origin(char, r, Moves.HAND)
+		-- TRACKING RICOCHET (while scanning): it only goes for scanned enemies,
+		-- reaches further, one more hop, and can't be blocked.
+		-- DOWNWARD RICOCHET (in the air): it smashes into the ground in front
+		-- first, blasting everyone there, and hops on from the crater.
+		local tracking = scanning(char)
+		local downward = not tracking and airborne(hum)
+		local variant = tracking and "Tracking" or (downward and "Downward" or nil)
+		local hopRange = tracking and (v.TrackingRange or 60) or c.Range
+		local bounces = tracking and c.Bounces + 1 or c.Bounces
+		if downward then
+			local smash = Moves.groundBelow(r.Position + dir * 8, { char })
+			Moves.aoe(S, player, smash, v.DownwardRadius or 7, { Damage = v.DownwardDamage or 6, Stun = 0.5, Knockback = 10, Launch = 14, Source = "GyroEyesRicochet" }, 8)
+			S.fx("Ability", { Character = char, Act = ACT, Move = "Ricochet", Phase = "Smash", From = from, Position = smash, Radius = v.DownwardRadius or 7 })
+			from = smash + Vector3.new(0, 0.8, 0)
+		end
 		-- Its path: the first in front, then the nearest one not yet hit.
 		local path, hitSet = {}, {}
-		local current = Moves.findTarget(S, char, r, c.FirstRange, c.Cone, dir)
+		local current
+		if tracking then
+			current = scannedNear(S, char, r.Position, c.FirstRange, 1)[1]
+		end
+		current = current or Moves.findTarget(S, char, r, c.FirstRange, downward and 360 or c.Cone, dir)
 		local at = from
-		while current and #path < c.Bounces do
+		while current and #path < bounces do
 			local tr = current:FindFirstChild("HumanoidRootPart")
 			if not tr then
 				break
@@ -218,9 +330,9 @@ local function ricochet(S, player, state, aim)
 			hitSet[current] = true
 			at = tr.Position
 			local best, bestD
-			for _, other in ipairs(S.Hitbox.inRadius(char, at, c.Range, 20)) do
+			for _, other in ipairs(S.Hitbox.inRadius(char, at, hopRange, 20)) do
 				local orr = other:FindFirstChild("HumanoidRootPart")
-				if orr and not hitSet[other] and aliveModel(other) then
+				if orr and not hitSet[other] and aliveModel(other) and (not tracking or isScanned(other)) then
 					local d = (orr.Position - at).Magnitude
 					if not bestD or d < bestD then
 						best, bestD = other, d
@@ -236,14 +348,14 @@ local function ricochet(S, player, state, aim)
 		if #path == 0 then
 			table.insert(points, from + dir * c.FirstRange)
 		end
-		S.fx("Ability", { Character = char, Act = ACT, Move = "Ricochet", Phase = "Bounce", Points = points, Gap = c.Gap, Hits = #path, Return = c.ReturnTime })
+		S.fx("Ability", { Character = char, Act = ACT, Move = "Ricochet", Phase = "Bounce", Points = points, Gap = c.Gap, Hits = #path, Return = c.ReturnTime, Variant = variant })
 		for i, p in ipairs(path) do
 			task.delay(i * c.Gap, function()
 				if p.Target.Parent then
 					local d = (p.Position - points[i])
 					local last = i == #path
 					-- Harder with every hop; the last one is sent flying.
-					S.hit(player, p.Target, { Damage = c.Damage + (i - 1) * c.BounceBonus, Stun = c.Stun, Knockback = last and c.FinalKnockback or c.Knockback, Launch = last and c.FinalLaunch or nil, Direction = d.Magnitude > 0.1 and Moves.flat(d) or dir, Position = p.Position, Source = "GyroEyesRicochet" })
+					S.hit(player, p.Target, { Damage = c.Damage + (i - 1) * c.BounceBonus, Stun = c.Stun, Knockback = last and c.FinalKnockback or c.Knockback, Launch = last and c.FinalLaunch or nil, Direction = d.Magnitude > 0.1 and Moves.flat(d) or dir, Position = p.Position, Source = "GyroEyesRicochet", Unblockable = tracking or nil })
 				end
 			end)
 		end
@@ -293,7 +405,7 @@ function GyroEyes.Ultimate(S, player, state, aim)
 	local life = state.Life
 	S.lock(state, u.Windup + 0.3)
 	char:SetAttribute("Armored", true)
-	S.fx("Ultimate", { Character = char, Act = ACT, Phase = "Lock", Target = best, Windup = u.Windup })
+	S.fx("Ultimate", { Character = char, Act = ACT, Phase = "Lock", Target = best, Windup = u.Windup, Variant = isScanned(best) and "Full" or nil })
 	task.delay(u.Windup, function()
 		if char.Parent then
 			char:SetAttribute("Armored", nil)
@@ -320,9 +432,14 @@ function GyroEyes.Ultimate(S, player, state, aim)
 				S.hit(player, other, { Damage = u.PassDamage, Stun = 0.6, Knockback = 20, Direction = dir, Position = orr and orr.Position or mid, Source = "GyroEyesUlt" })
 			end
 		end
-		S.hit(player, best, { Damage = u.Damage, Stun = u.Stun, Knockback = u.Knockback, Direction = dir, Position = to, Source = "GyroEyesUlt", Unblockable = true })
+		-- FULL SCAN: someone he's already scanned takes the full Golden Spin.
+		local v = cfg.Variants or {}
+		local full = isScanned(best)
+		local damage = full and u.Damage * (v.FullScanDamage or 1.35) or u.Damage
+		local stun = full and u.Stun + (v.FullScanStun or 1) or u.Stun
+		S.hit(player, best, { Damage = damage, Stun = stun, Knockback = u.Knockback, Direction = dir, Position = to, Source = "GyroEyesUlt", Unblockable = true })
 		scan(char, best, 4)
-		S.fx("Ultimate", { Character = char, Act = ACT, Phase = "Spin", From = from, To = to, Target = best, Stun = u.Stun })
+		S.fx("Ultimate", { Character = char, Act = ACT, Phase = "Spin", From = from, To = to, Target = best, Stun = stun, Variant = full and "Full" or nil })
 	end)
 end
 

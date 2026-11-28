@@ -2005,6 +2005,14 @@ TuskConfig.GyroEyes = {
 		FinalKnockback = 40, FinalLaunch = 12, -- the last one it hits is sent flying
 		ReturnTime = 0.35, -- flying back to his hand
 	},
+	Variants = { -- the moves change in the air, and while his Scan is active
+		SkySpeed = 1.25, SkyBonusDamage = 2, SkySplash = 1.6, -- 1 in the air: SKY SCAN
+		SplitCount = 3, SplitDamage = 9, -- 1 while scanning: SPLIT SHOT (each eye-ball)
+		SkyEyeRange = 1.4, SkyEyeSlamRadius = 11, SkyEyeSlamDamage = 4, SkyEyeSlamStun = 1.0, -- 2 in the air: SKY EYE
+		DownwardRadius = 7, DownwardDamage = 6, -- 3 in the air: DOWNWARD RICOCHET (the ground smash)
+		TrackingRange = 60, -- 3 while scanning: TRACKING RICOCHET (hops this far, scanned only, +1 hop, unblockable)
+		FullScanDamage = 1.35, FullScanStun = 1, -- G on a scanned target: FULL SCAN
+	},
 	Ultimate = { -- SCAN: GOLDEN SPIN: the eyes find the nearest enemy anywhere; a golden-spinning ball goes straight through everything to them
 		Windup = 1.0,
 		Range = 200, Width = 4,

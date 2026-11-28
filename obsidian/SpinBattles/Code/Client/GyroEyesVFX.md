@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
 | **Exact name** | `GyroEyesVFX` (capitals matter) |
 
-**What it does:** Client visuals for GYRO WITH THE SAINT'S EYES (Act 29). Blocky. his steel ball now has the corpse's EYE set into it, matched to the art: a green ball with darker streaks, a big white eyeball bulging out, a gold-brown iris ringed with dark flecks, ORANGE SPIN ARCS whirling round it and gold-white sparkles shedding off it; the other eye is in his face (GyroOutfit) the eye-ball in his hand has a thin green Spin ring circling it, and every few seconds the eye "looks": a thin green beam sweeps out from it STEEL BALL COMBO: green swipes; the eye-ball whirls with each swing, the 4th throws off a spin ring, the finisher sends a vibration ring out SCAN SHOT: he tosses the eye-ball straight up; it spins at the top, the eye looking down; he throws a second steel ball into it (CRACK: an orange star and spin ring, the second ball glancing off and falling away) and the eye-ball streaks down onto the target with green afterimages and a lock-on beam, steering after them; it lands in cracked ground, an orange spin ring and thrown-up sand; the hit drills spiral ripples and a vibration ring, and an eye opens over them; they glow for him (seen through walls) SCAN: a big eye opens over his head; green scan lines sweep down his screen; a green ring sweeps out; VIBRATION LINES ripple across the ground (a big wave, then wavy rings and jittering dashes round him for as long as it lasts); for him the world dims and every enemy in range glows green through walls, an eye over its head and small vibration rings pulsing under its feet EYE RICOCHET: the eye-ball hops in arcs from enemy to enemy, bouncing off the ground between on the longer hops (a spin ring in the sand, a puff, small cracks); each hit throws a star, a spin ripple and a vibration ring, greener to golder as the count climbs ("1 HIT", "2 HITS", ... "5 HITS!"), the last one a big impact; the hops stay drawn a moment; then the ball flies back to his hand THE CUTSCENE, when you take the Eyes as Gyro: kneeling in the sand with the eye glistening in his palm; close on his hand; straight down on his hat, tilting down over the brim and goggles to his face; the eye in his cheek, manga panels flashing; "GO! GO! ZEPPELI" SCAN: GOLDEN SPIN: a turning GOLDEN RECTANGLE (nested golden-ratio frames) locks onto the target, a gold eye opens over Gyro and a gold spin gathers in his hand ("SCAN / GOLDEN SPIN" title for him); the ball streaks straight through everything, a golden helix unwinding along its path; golden rectangles burst out where it hits, a gold vibration ring, and golden spirals hold them paralysed
+**What it does:** Client visuals for GYRO WITH THE SAINT'S EYES (Act 29). Blocky. his steel ball now has the corpse's EYE set into it, matched to the art: a green ball with darker streaks, a big white eyeball bulging out, a gold-brown iris ringed with dark flecks, ORANGE SPIN ARCS whirling round it and gold-white sparkles shedding off it; the other eye is in his face (GyroOutfit) the eye-ball in his hand has a thin green Spin ring circling it, and every few seconds the eye "looks": a thin green beam sweeps out from it STEEL BALL COMBO: green swipes; the eye-ball whirls with each swing, the 4th throws off a spin ring, the finisher sends a vibration ring out SCAN SHOT: he tosses the eye-ball straight up; it spins at the top, the eye looking down; he throws a second steel ball into it (CRACK: an orange star and spin ring, the second ball glancing off and falling away) and the eye-ball streaks down onto the target with green afterimages and a lock-on beam, steering after them; it lands in cracked ground, an orange spin ring and thrown-up sand; the hit drills spiral ripples and a vibration ring, and an eye opens over them; they glow for him (seen through walls) SCAN: a big eye opens over his head; green scan lines sweep down his screen; a green ring sweeps out; VIBRATION LINES ripple across the ground (a big wave, then wavy rings and jittering dashes round him for as long as it lasts); for him the world dims and every enemy in range glows green through walls, an eye over its head and small vibration rings pulsing under its feet EYE RICOCHET: the eye-ball hops in arcs from enemy to enemy, bouncing off the ground between on the longer hops (a spin ring in the sand, a puff, small cracks); each hit throws a star, a spin ripple and a vibration ring, greener to golder as the count climbs ("1 HIT", "2 HITS", ... "5 HITS!"), the last one a big impact; the hops stay drawn a moment; then the ball flies back to his hand VARIANTS (a name pops up over him): SKY SCAN (1 in the air: straight down from him with a flash); SPLIT SHOT (1 while scanning: the struck ball splits in a golden burst into several eye-balls); SKY EYE (2 in the air: a green beam slams down, cracks and rings in the ground); DOWNWARD RICOCHET (3 in the air: the ball cracks into the ground in front first); TRACKING RICOCHET (3 while scanning); FULL SCAN (G on a scanned target: rectangles keep bursting) THE CUTSCENE, when you take the Eyes as Gyro: kneeling in the sand with the eye glistening in his palm; close on his hand; straight down on his hat, tilting down over the brim and goggles to his face; the eye in his cheek, manga panels flashing; "GO! GO! ZEPPELI" SCAN: GOLDEN SPIN: a turning GOLDEN RECTANGLE (nested golden-ratio frames) locks onto the target, a gold eye opens over Gyro and a gold spin gathers in his hand ("SCAN / GOLDEN SPIN" title for him); the ball streaks straight through everything, a golden helix unwinding along its path; golden rectangles burst out where it hits, a gold vibration ring, and golden spirals hold them paralysed
 
 ## How to add it
 1. In Studio's Explorer, find **TuskActVFX** (StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX).
@@ -56,6 +56,13 @@ Back to [[Where To Put Code]]
 	    ripple and a vibration ring, greener to golder as the count climbs
 	    ("1 HIT", "2 HITS", ... "5 HITS!"), the last one a big impact; the
 	    hops stay drawn a moment; then the ball flies back to his hand
+	  * VARIANTS (a name pops up over him): SKY SCAN (1 in the air: straight
+	    down from him with a flash); SPLIT SHOT (1 while scanning: the
+	    struck ball splits in a golden burst into several eye-balls); SKY
+	    EYE (2 in the air: a green beam slams down, cracks and rings in the
+	    ground); DOWNWARD RICOCHET (3 in the air: the ball cracks into the
+	    ground in front first); TRACKING RICOCHET (3 while scanning); FULL
+	    SCAN (G on a scanned target: rectangles keep bursting)
 	  * THE CUTSCENE, when you take the Eyes as Gyro: kneeling in the sand
 	    with the eye glistening in his palm; close on his hand; straight down
 	    on his hat, tilting down over the brim and goggles to his face; the
@@ -741,12 +748,58 @@ local function flyShot(data)
 	VFXLib.sound(sounds.NailFire, data.From, 0.5, 0.85)
 end
 
+-- A variant's name popping up over him.
+local function variantName(character, text, color)
+	local head = character and character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromOffset(300, 54)
+	bb.StudsOffset = Vector3.new(0, 3.4, 0)
+	bb.AlwaysOnTop = true
+	bb.Adornee = head
+	local tl = Instance.new("TextLabel")
+	tl.BackgroundTransparency = 1
+	tl.Size = UDim2.fromScale(1, 1)
+	tl.Font = Enum.Font.Bangers
+	tl.TextScaled = true
+	tl.Text = text
+	tl.TextColor3 = color
+	tl.TextStrokeTransparency = 0.1
+	tl.Parent = bb
+	bb.Parent = VFXLib.Folder
+	VFXLib.animate(1.3, function(a)
+		bb.StudsOffset = Vector3.new(0, 3.4 + a * 1.2, 0)
+		local pop = a < 0.12 and 0.6 + a / 0.12 * 0.4 or 1
+		bb.Size = UDim2.fromOffset(300 * pop, 54 * pop)
+		tl.TextTransparency = math.max(0, a * 1.8 - 0.8)
+	end, function()
+		bb:Destroy()
+	end)
+end
+
+local splitBurst = {} -- [base id] = true once its split flash has played
+
 local function onAbility(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
 	local move, phase = data.Move, data.Phase
 	if move == "ScanShot" then
-		if phase == "Toss" and data.From and data.Apex then
+		if phase == "Sky" and data.From then
+			-- SKY SCAN: no toss, straight down from where he is.
+			variantName(character, "SKY SCAN", ORANGE_LIGHT)
+			if character then
+				TuskAnimation.play(character, "GyroThrow")
+				hideHeld(character, 0.9)
+			end
+			newShotBall(data.Id).Model:PivotTo(CFrame.new(data.From))
+			VFXLib.flash(data.From, ORANGE_LIGHT, 5, 16, 0.12)
+			TuskVFX.CreateRotationalShockwave(CFrame.new(data.From), { Radius = 3, Layers = 2, Color = ORANGE, Color2 = GREEN, Particles = 0.5, Width = 0.25, Duration = 0.25, Spin = 10 })
+		elseif phase == "Toss" and data.From and data.Apex then
+			if data.Variant == "Split" then
+				variantName(character, "SPLIT SHOT", GOLD)
+			end
 			-- He tosses the eye-ball straight up; it spins at the top, the eye looking down.
 			if character then
 				TuskAnimation.play(character, "GyroBowl")
@@ -800,6 +853,16 @@ local function onAbility(data)
 				end
 			end)
 		elseif phase == "Dive" and data.From then
+			if data.Variant == "Split" then
+				local base = string.match(tostring(data.Id), "^[^:]+")
+				if base and not splitBurst[base] then
+					splitBurst[base] = true
+					-- The struck ball splits apart in a golden burst.
+					VFXLib.flash(data.From, GOLD, 7, 20, 0.14)
+					goldenBurst(data.From, 5)
+					VFXLib.burst(data.From, { Count = 20, Color = GOLD, Speed = 22, Lifetime = 0.4 })
+				end
+			end
 			-- Knocked down onto them: a streak from the top, the eye fixed on its target.
 			flyShot(data)
 			local streakLen = 6
@@ -845,6 +908,26 @@ local function onAbility(data)
 		end
 	elseif move == "Scan" then
 		if phase == "Pulse" and data.Position then
+			if data.Variant == "Sky" then
+				-- SKY EYE: from the air the vibration slams down into the ground.
+				variantName(character, "SKY EYE", Color3.fromRGB(170, 245, 130))
+				local g = groundAt(data.Position)
+				local r = data.SlamRadius or 11
+				TuskVFX.CreateRotationalShockwave(CFrame.new(g + Vector3.new(0, 0.2, 0)), { Radius = r, Layers = 3, Color = GREEN, Color2 = WHITE, Particles = 1, Width = 0.5, Duration = 0.4, Spin = 4 })
+				TuskVFX.CreateGroundCracks(g, { Radius = r, Count = 8, Color = GREEN, Duration = 1.6 })
+				local beam = VFXLib.part({ Size = Vector3.new(0.6, (data.Position - g).Magnitude + 0.1, 0.6), CFrame = CFrame.new((data.Position + g) / 2), Color = GREEN, Transparency = 0.2 })
+				VFXLib.animate(0.35, function(a)
+					beam.Transparency = 0.2 + 0.8 * a
+				end, function()
+					beam:Destroy()
+				end)
+				for w = 0, 2 do
+					task.delay(w * 0.1, function()
+						vibrationRing(g, r * (0.6 + w * 0.3), GREEN, 0.8, 10)
+					end)
+				end
+				CameraFX.shakeAt(g, 0.7, 50)
+			end
 			local ring = VFXLib.part({ Shape = Enum.PartType.Ball, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(data.Position), Color = GREEN, Material = Enum.Material.ForceField, Transparency = 0.4 })
 			VFXLib.animate(0.8, function(a)
 				local d = (data.Range or 130) * 2 * VFXLib.easeOut(a)
@@ -915,7 +998,28 @@ local function onAbility(data)
 	elseif move == "Ricochet" then
 		if phase == "Wind" and character and root then
 			TuskAnimation.play(character, "GyroThrow")
+		elseif phase == "Smash" and data.Position then
+			-- DOWNWARD RICOCHET: the eye-ball cracks into the ground in front first.
+			variantName(character, "DOWNWARD RICOCHET", ORANGE_LIGHT)
+			local g = data.Position
+			if data.From then
+				local len = (g - data.From).Magnitude
+				local line = VFXLib.part({ Size = Vector3.new(0.3, 0.3, len), CFrame = CFrame.lookAt((data.From + g) / 2, g), Color = ORANGE_LIGHT, Transparency = 0.2 })
+				VFXLib.animate(0.4, function(a)
+					line.Transparency = 0.2 + 0.8 * a
+				end, function()
+					line:Destroy()
+				end)
+			end
+			TuskVFX.CreateImpact(g, Vector3.new(0, 1, 0), { Size = 1.4, Radius = data.Radius or 7, Layers = 3, Color = ORANGE, Color2 = GREEN, Sound = sounds.NailImpact, Pitch = 0.7 })
+			TuskVFX.CreateGroundCracks(g, { Radius = data.Radius or 7, Count = 7, Color = ORANGE, Duration = 1.4 })
+			VFXLib.burst(g, { Count = 18, Color = Color3.fromRGB(220, 190, 140), Speed = 20, Lifetime = 0.5, Acceleration = Vector3.new(0, -40, 0) })
+			vibrationRing(g, (data.Radius or 7) + 3, ORANGE, 0.7, 9)
+			CameraFX.shakeAt(g, 0.6, 50)
 		elseif phase == "Bounce" and data.Points and #data.Points >= 2 then
+			if data.Variant == "Tracking" then
+				variantName(character, "TRACKING RICOCHET", GOLD)
+			end
 			local pts, gap = data.Points, data.Gap or 0.22
 			local hits = data.Hits or (#pts - 1)
 			local back = data.Return or 0.35
@@ -1051,6 +1155,9 @@ local function onUltimate(data)
 	local character = data.Character
 	local root = Common.rootOf(character)
 	if data.Phase == "Lock" and character and root then
+		if data.Variant == "Full" then
+			variantName(character, "FULL SCAN", GOLD)
+		end
 		TuskAnimation.play(character, "GyroBreakerCharge")
 		-- The golden rectangle locks onto them (everyone sees it), a gold eye over Gyro.
 		if typeof(data.Target) == "Instance" then
@@ -1092,6 +1199,14 @@ local function onUltimate(data)
 		end
 		VFXLib.sound(sounds.AwakeningBuild, root, 0.6, 1.0)
 	elseif data.Phase == "Spin" and data.From and data.To then
+		if data.Variant == "Full" then
+			-- The full Golden Spin: rectangles keep bursting.
+			for k = 0, 2 do
+				task.delay(0.25 + k * 0.12, function()
+					goldenBurst(data.To, 7 + k * 3)
+				end)
+			end
+		end
 		if character then
 			TuskAnimation.play(character, "GyroThrow")
 			hideHeld(character, 0.8)

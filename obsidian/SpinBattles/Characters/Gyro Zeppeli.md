@@ -66,4 +66,14 @@ It lasts about 6.5 s and can be skipped. The cheek eye exists only during the cu
 - Ricochet: a fading green zigzag of its path, with a ripple and a vibration ring at each bounce.
 - Golden Spin: a turning golden rectangle locks onto the target, a gold eye opens over Gyro, a gold spin gathers in his hand and a "SCAN / GOLDEN SPIN" title appears. A golden helix unwinds along the path, and golden rectangles burst out where it hits.
 
+### Variants (2026-11-28)
+The moves change **in the air** (jump, then use them) and **while Scan is active**. A name pops up over him for each. Numbers: `TuskConfig.GyroEyes.Variants`.
+
+| Move | In the air | While scanning |
+|---|---|---|
+| 1 Scan Shot | **SKY SCAN**: no toss; straight down from where he is, 25% faster, 15 damage, a bigger 9.6-stud landing (7) | **SPLIT SHOT**: the struck ball splits in a golden burst onto up to 3 scanned enemies (9 each) |
+| 2 Scan | **SKY EYE**: sees 40% further (182 studs) and slams a vibration into the ground below (11 studs, 4 damage, 1 s stun) | (on cooldown) |
+| 3 Eye Ricochet | **DOWNWARD RICOCHET**: smashes the ground in front first (7 studs, 6 damage, launches), then hops on from the crater to anyone near | **TRACKING RICOCHET**: only goes for scanned enemies, 60-stud hops, one extra hop, can't be blocked |
+| G Golden Spin | | **FULL SCAN** on a scanned target: +35% damage (35) and 1 s more paralysis |
+
 **Shop:** Gyro buying a Steel Ball gets a **Spin boost** for 60 s: +20% damage, +10% speed and abilities recharge 25% faster (`TuskConfig.ShopBalls.GyroBoost`).
