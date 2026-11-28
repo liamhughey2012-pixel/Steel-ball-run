@@ -48,6 +48,7 @@ local Cutscenes = require(script.Cutscenes)
 local Cinematic = require(script.Cinematic)
 local RequiemClient = require(script.RequiemClient)
 local ShopBallClient = require(script.ShopBallClient)
+local JohnnyArmCutscene = require(script.JohnnyArmCutscene)
 
 SettingsUI.init()
 HitFX.init()
@@ -67,4 +68,5 @@ Cutscenes.init()
 Cinematic.init()
 RequiemClient.init()
 ShopBallClient.init()
+JohnnyArmCutscene.init()
 ```

@@ -146,6 +146,7 @@ TuskConfig.Cutscenes = {
 	RaceWinner = true, -- circle the overall winner at the end of the race
 	Ultimates = true, -- a quick close-up with your ultimate's name (under a second)
 	CorpseComplete = true, -- a golden orbit when you complete the Saint's Corpse
+	JohnnyArm = true, -- Johnny taking the Saint's Corpse LEFT ARM: Tusk Act 1's first appearance, out of his palm (the anime clip)
 	KingCrimson = true, -- Diavolo's ultimate: a close-up of King Crimson with Epitaph on its brow, Diavolo behind it, crimson mist
 	ChariotRequiem = true, -- Polnareff taking the Requiem Arrow: the arrow pierces Silver Chariot, its armour shatters into shadow, night falls, Requiem rises
 	GER = true, -- Giorno taking the Requiem Arrow: Gold Experience is pierced and becomes Gold Experience Requiem

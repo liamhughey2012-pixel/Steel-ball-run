@@ -285,6 +285,17 @@ local function update(stand, root, dt, now)
 			local out = a < 0.25 and VFXLib.easeOut(a / 0.25) or (a < 0.85 and 1 or 1 - VFXLib.easeInOut((a - 0.85) / 0.15))
 			desired = desired:Lerp(target, out)
 			snap = 20
+		elseif action.Kind == "Present" then
+			-- (Cutscenes) From `From` (or where it is) to `Target`, both
+			-- root-local; it holds there, bobbing, and only goes back at the end.
+			local d = action.Data
+			local bob = CFrame.new(0, math.sin(now * 3) * 0.12, 0) * CFrame.Angles(0, 0, math.sin(now * 2.2) * 0.05)
+			local target = root.CFrame * (d.Target or CFrame.new(0, 1, -2.5)) * bob
+			local inA = d.In or 0.2
+			local out = a < inA and VFXLib.easeOut(a / inA) or (a < 0.95 and 1 or 1 - VFXLib.easeInOut((a - 0.95) / 0.05))
+			local base = (d.From and a < 0.95) and (root.CFrame * d.From) or desired
+			desired = base:Lerp(target, out)
+			snap = d.Snap or 25
 		elseif action.Kind == "Emerge" then
 			local s = VFXLib.easeOut(a)
 			desired = root.CFrame * CFrame.new(1.2, -3 + s * 4.2, -1.2) * CFrame.Angles(0, s * math.pi * 2, 0)
