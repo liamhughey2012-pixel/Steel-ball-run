@@ -14234,8 +14234,7 @@ local function __loadPacks(side)
 end
 
 __loadPacks("server")
-game:GetService("ReplicatedStorage"):SetAttribute("SpinServerProblems", table.concat(__packProblems, "
-"))
+game:GetService("ReplicatedStorage"):SetAttribute("SpinServerProblems", table.concat(__packProblems, "\n"))
 local ProjectileService = __require("ProjectileService")
 local TuskService = __require("TuskService")
 local NPCService = __require("NPCService")

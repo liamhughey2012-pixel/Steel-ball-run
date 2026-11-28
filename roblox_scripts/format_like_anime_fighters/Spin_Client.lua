@@ -17114,8 +17114,7 @@ task.spawn(function()
 	-- What went wrong loading the scripts, on the server and here.
 	local serverProblems = rs:GetAttribute("SpinServerProblems")
 	if type(serverProblems) == "string" then
-		for line in string.gmatch(serverProblems, "[^
-]+") do
+		for line in string.gmatch(serverProblems, "[^\n]+") do
 			table.insert(problems, "(server) " .. line)
 		end
 	end

@@ -330,7 +330,7 @@ end
 _G.__SpinServerRunning = script:GetFullName()
 ''' + LOAD_PACKS + '''
 __loadPacks("server")
-game:GetService("ReplicatedStorage"):SetAttribute("SpinServerProblems", table.concat(__packProblems, "\n"))
+game:GetService("ReplicatedStorage"):SetAttribute("SpinServerProblems", table.concat(__packProblems, "\\n"))
 local ProjectileService = __require("ProjectileService")
 local TuskService = __require("TuskService")
 local NPCService = __require("NPCService")
@@ -428,7 +428,7 @@ task.spawn(function()
 	-- What went wrong loading the scripts, on the server and here.
 	local serverProblems = rs:GetAttribute("SpinServerProblems")
 	if type(serverProblems) == "string" then
-		for line in string.gmatch(serverProblems, "[^\n]+") do
+		for line in string.gmatch(serverProblems, "[^\\n]+") do
 			table.insert(problems, "(server) " .. line)
 		end
 	end
@@ -752,3 +752,27 @@ for d in [out] + ([f"{out}/core"] if SPLIT_CORE else []) + [f"{out}/characters"]
     for f in sorted(os.listdir(d)):
         if f.endswith(".lua"):
             print(os.path.relpath(os.path.join(d, f), out), os.path.getsize(os.path.join(d, f)) // 1024, "KB")
+
+# Safety net: every script we ship must at least compile. (Uses lupa if it's
+# installed; Luau-only syntax like `continue` and `+=` is rewritten first.)
+try:
+    from lupa import LuaRuntime
+except ImportError:
+    LuaRuntime = None
+if LuaRuntime is not None:
+    def _plain_lua(src):
+        src = re.sub(r'\bcontinue\b', 'do end', src)
+        return re.sub(r'(\w+(?:\.\w+|\[[^\]]+\])*)\s*([+\-*/]|\.\.)=\s*', lambda m: f"{m.group(1)} = {m.group(1)} {m.group(2)} ", src)
+    _compile = LuaRuntime().eval("function(src, name) local f, err = load(src, '=' .. name) return err end")
+    _broken = []
+    for d in [out, f"{out}/characters"] + ([f"{out}/core"] if SPLIT_CORE else []):
+        for f in sorted(os.listdir(d)):
+            if f.endswith(".lua"):
+                err = _compile(_plain_lua(open(os.path.join(d, f)).read()), f)
+                if err:
+                    _broken.append(err)
+    if _broken:
+        for e in _broken:
+            print("SYNTAX ERROR:", e)
+        raise SystemExit("Build produced scripts that don't compile (see above). Nothing should be shipped.")
+    print("All shipped scripts compile.")
