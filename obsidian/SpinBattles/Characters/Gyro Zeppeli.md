@@ -36,7 +36,16 @@ Gyro's Stand is **Ball Breaker** (character card and dropdown say so; not "Steel
 ![[ball_breaker_vs_picture.png]]
 
 ## With the Saint's Corpse EYES (Act 29)
-While Gyro holds the corpse's **Eyes**, he puts them to use: the eye is set into his steel ball. His face stays as normal; the eye in his face was removed on 2026-11-28. His moves change; when he loses the Eyes or goes down, he's back to Act 5. Numbers: `TuskConfig.GyroEyes`. Server: `TuskActs/GyroEyes`, which also watches for the switch. Visuals: `TuskActVFX/GyroEyesVFX`. Both are in Gyro's pack.
+While Gyro holds the corpse's **Eyes**, he puts them to use: the eye is set into his steel ball. His face stays as normal; the eye in his face was removed on 2026-11-28.
+
+**The cutscene (2026-11-28, from the user's anime clip):** when *you* pick up the Eyes as Gyro:
+1. He kneels in the sand with the eye glistening in his palm ("THE SAINT'S EYES").
+2. The camera closes in on his hand.
+3. It looks straight down on his hat and tilts down over the brim and goggles to his face.
+4. The eye is in his cheek, while three manga panels slam across the screen (an eye, a slit green eye, a wide lashed eye) with a flash.
+5. He grins ("GO! GO! ZEPPELI").
+
+It lasts about 6.5 s and can be skipped. The cheek eye exists only during the cutscene and is local to you. It won't replay within 20 s. Toggle: `TuskConfig.Cutscenes.GyroEyes`. Code: `GyroEyesVFX` (playEyesCutscene); pose `GyroKneel` and action `GyroEyesKneel` in TuskAnimation. His moves change; when he loses the Eyes or goes down, he's back to Act 5. Numbers: `TuskConfig.GyroEyes`. Server: `TuskActs/GyroEyes`, which also watches for the switch. Visuals: `TuskActVFX/GyroEyesVFX`. Both are in Gyro's pack.
 
 | Input | Move | What it does |
 |---|---|---|

@@ -171,6 +171,7 @@ TuskConfig.Cutscenes = {
 	RaceWinner = true, -- circle the overall winner at the end of the race
 	Ultimates = true, -- a quick close-up with your ultimate's name (under a second)
 	CorpseComplete = true, -- a golden orbit when you complete the Saint's Corpse
+	GyroEyes = true, -- Gyro taking the Saint's Eyes: kneeling with the eye, the camera down over his hat, the eye in his cheek
 }
 
 -- CINEMATIC: the film look over the whole game (client; scaled by the VFX

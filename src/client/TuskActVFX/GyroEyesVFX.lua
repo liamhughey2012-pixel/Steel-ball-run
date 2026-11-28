@@ -30,6 +30,10 @@
 	    ripple and a vibration ring, greener to golder as the count climbs
 	    ("1 HIT", "2 HITS", ... "5 HITS!"), the last one a big impact; the
 	    hops stay drawn a moment; then the ball flies back to his hand
+	  * THE CUTSCENE, when you take the Eyes as Gyro: kneeling in the sand
+	    with the eye glistening in his palm; close on his hand; straight down
+	    on his hat, tilting down over the brim and goggles to his face; the
+	    eye in his cheek, manga panels flashing; "GO! GO! ZEPPELI"
 	  * SCAN: GOLDEN SPIN: a turning GOLDEN RECTANGLE (nested golden-ratio
 	    frames) locks onto the target, a gold eye opens over Gyro and a gold
 	    spin gathers in his hand ("SCAN / GOLDEN SPIN" title for him); the
@@ -52,6 +56,7 @@ local TuskAnimation = require(script.Parent.Parent.TuskAnimation)
 local Common = require(script.Parent.Parent.TuskActCommon)
 local Fighters = require(script.Parent.Parent.Fighters)
 local Cinematic = require(script.Parent.Parent.Cinematic)
+local Cutscenes = require(script.Parent.Parent.Cutscenes)
 
 local GyroEyesVFX = {}
 local ACT = 29
@@ -1151,6 +1156,272 @@ local function onUltimate(data)
 	end
 end
 
+---------------------------------------------------------------------------
+-- THE CUTSCENE (you, picking up the Saint's Eyes as Gyro): he kneels in
+-- the sand with the eye glistening in his palm; close on his hand; the
+-- camera looks straight down on his hat and tilts down over the brim and
+-- goggles to his face; the eye is in his cheek (manga panels flash: his
+-- eye, a slit green eye, a wide eye); he grins.
+---------------------------------------------------------------------------
+local function weldTo(parent, holder, name, size, color, cf, material)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.CFrame = parent.CFrame * cf
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = p
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = parent
+	w.Part1 = p
+	w.Parent = p
+	p.Parent = holder
+	return p
+end
+
+-- The Saint's eye lying in his open palm, glistening.
+local function palmEye(character)
+	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	if not hand then
+		return nil
+	end
+	local holder = Instance.new("Model")
+	holder.Name = "SaintsEyePalm"
+	local at = CFrame.new(0, -hand.Size.Y / 2 - 0.05, -0.15)
+	weldTo(hand, holder, "Eyeball", Vector3.new(0.42, 0.42, 0.42), WHITE, at)
+	weldTo(hand, holder, "Iris", Vector3.new(0.2, 0.2, 0.06), IRIS, at * CFrame.new(0, 0, -0.2))
+	weldTo(hand, holder, "Pupil", Vector3.new(0.09, 0.09, 0.04), Color3.fromRGB(16, 12, 10), at * CFrame.new(0, 0, -0.23))
+	local glow = weldTo(hand, holder, "Shine", Vector3.new(0.5, 0.12, 0.5), Color3.fromRGB(200, 240, 255), at * CFrame.new(0, -0.2, 0), Enum.Material.Neon)
+	glow.Transparency = 0.5
+	local a = Instance.new("Attachment")
+	a.Parent = glow
+	local e = Instance.new("ParticleEmitter")
+	e.Color = ColorSequence.new(Color3.fromRGB(220, 250, 255), Color3.fromRGB(160, 230, 255))
+	e.LightEmission = 1
+	e.Size = NumberSequence.new(0.08, 0)
+	e.Transparency = NumberSequence.new(0, 1)
+	e.Lifetime = NumberRange.new(0.3, 0.6)
+	e.Speed = NumberRange.new(0.5, 2)
+	e.Acceleration = Vector3.new(0, -6, 0)
+	e.Rate = 30
+	e.Parent = a
+	holder.Parent = VFXLib.Folder
+	return holder
+end
+
+-- The eye in his cheek (Gyro's right cheek, just under his eye), with a dark rim.
+local function cheekEye(character)
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return nil
+	end
+	local s = head.Size.Y / 1.2
+	local holder = Instance.new("Model")
+	holder.Name = "SaintsEyeCheek"
+	local at = CFrame.new(0.27 * s, -0.17 * s, -head.Size.Z / 2 - 0.01 * s)
+	weldTo(head, holder, "Rim", Vector3.new(0.36, 0.36, 0.1) * s, Color3.fromRGB(70, 46, 60), at)
+	weldTo(head, holder, "Eyeball", Vector3.new(0.3, 0.3, 0.18) * s, WHITE, at * CFrame.new(0, 0, -0.04 * s))
+	weldTo(head, holder, "Iris", Vector3.new(0.15, 0.15, 0.05) * s, Color3.fromRGB(110, 110, 190), at * CFrame.new(-0.02 * s, 0, -0.13 * s))
+	weldTo(head, holder, "Pupil", Vector3.new(0.07, 0.07, 0.03) * s, Color3.fromRGB(16, 12, 20), at * CFrame.new(-0.02 * s, 0, -0.15 * s))
+	holder.Parent = VFXLib.Folder
+	return holder
+end
+
+-- Three slanted manga panels flash across the screen: an eye, a slit green
+-- eye, a wide lashed eye.
+local function mangaFlash(duration)
+	local pg = localPlayer and localPlayer:FindFirstChild("PlayerGui")
+	if not pg then
+		return nil
+	end
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "SaintsEyesPanels"
+	gui.IgnoreGuiInset = true
+	gui.DisplayOrder = 40
+	local looks = {
+		{ Bg = Color3.fromRGB(150, 220, 230), Iris = Color3.fromRGB(70, 160, 230), Slit = false, Lashes = false },
+		{ Bg = Color3.fromRGB(40, 170, 200), Iris = Color3.fromRGB(170, 230, 40), Slit = true, Lashes = false },
+		{ Bg = Color3.fromRGB(120, 210, 230), Iris = Color3.fromRGB(40, 140, 220), Slit = false, Lashes = true },
+	}
+	local panels = {}
+	for i, l in ipairs(looks) do
+		local panel = Instance.new("Frame")
+		panel.AnchorPoint = Vector2.new(0.5, 0.5)
+		panel.Size = UDim2.fromScale(0.36, 1.4)
+		panel.Position = UDim2.fromScale((i - 0.5) / 3, -0.8)
+		panel.Rotation = 12
+		panel.BackgroundColor3 = l.Bg
+		panel.BorderSizePixel = 0
+		panel.ClipsDescendants = true
+		panel.Parent = gui
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.new(1, 1, 1)
+		stroke.Thickness = 6
+		stroke.Parent = panel
+		local white = Instance.new("Frame")
+		white.AnchorPoint = Vector2.new(0.5, 0.5)
+		white.Position = UDim2.fromScale(0.5, 0.5)
+		white.Size = UDim2.fromScale(0.9, 0.16)
+		white.Rotation = -12
+		white.BackgroundColor3 = WHITE
+		white.Parent = panel
+		roundCorner(white)
+		local iris = Instance.new("Frame")
+		iris.AnchorPoint = Vector2.new(0.5, 0.5)
+		iris.Position = UDim2.fromScale(0.5, 0.5)
+		iris.Size = l.Slit and UDim2.fromScale(0.45, 1.2) or UDim2.fromScale(0.34, 1.05)
+		iris.BackgroundColor3 = l.Iris
+		iris.Parent = white
+		roundCorner(iris)
+		local pupil = Instance.new("Frame")
+		pupil.AnchorPoint = Vector2.new(0.5, 0.5)
+		pupil.Position = UDim2.fromScale(0.5, 0.5)
+		pupil.Size = l.Slit and UDim2.fromScale(0.12, 0.95) or UDim2.fromScale(0.4, 0.4)
+		pupil.BackgroundColor3 = Color3.fromRGB(10, 14, 20)
+		pupil.Parent = iris
+		if not l.Slit then
+			roundCorner(pupil)
+		end
+		if l.Lashes then
+			for k = -3, 3 do
+				local lash = Instance.new("Frame")
+				lash.AnchorPoint = Vector2.new(0.5, 1)
+				lash.Position = UDim2.fromScale(0.5 + k * 0.11, 0.05)
+				lash.Size = UDim2.fromOffset(5, 26)
+				lash.Rotation = k * 10
+				lash.BackgroundColor3 = Color3.fromRGB(10, 14, 20)
+				lash.BorderSizePixel = 0
+				lash.Parent = white
+			end
+		end
+		panels[i] = panel
+	end
+	gui.Parent = pg
+	duration = duration or 0.8
+	VFXLib.animate(duration, function(a)
+		for i, panel in ipairs(panels) do
+			-- Slam in one after another, hold, then slide away.
+			local k = math.clamp((a * duration - (i - 1) * 0.06) / 0.12, 0, 1)
+			local out = math.clamp((a - 0.75) / 0.25, 0, 1)
+			panel.Position = UDim2.fromScale((i - 0.5) / 3, -0.8 + 1.3 * VFXLib.easeOut(k) + out * 1.4)
+		end
+	end, function()
+		gui:Destroy()
+	end)
+	return gui
+end
+
+local lastEyesCutscene -- (not again within 20 s)
+local function playEyesCutscene(character)
+	local cc = TuskConfig.Cutscenes or {}
+	if cc.Enabled == false or cc.GyroEyes == false or (lastEyesCutscene and os.clock() - lastEyesCutscene < 20) then
+		return
+	end
+	local root = character:FindFirstChild("HumanoidRootPart")
+	local head = character:FindFirstChild("Head")
+	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	if not root or not head or not hand then
+		return
+	end
+	lastEyesCutscene = os.clock()
+	TuskAnimation.play(character, "GyroEyesKneel")
+	local palm = palmEye(character)
+	local cheek
+	local ended = false
+	local function headAt()
+		return head.Parent and head.Position or root.Position + Vector3.new(0, 1.5, 0)
+	end
+	local function rel(x, y, z)
+		return (root.CFrame * CFrame.new(x, y, z)).Position
+	end
+	local shots = {
+		-- Kneeling in the desert.
+		{ From = function()
+			return root.Parent and CFrame.lookAt(rel(7, 1.5, -9), rel(0, -0.8, 0)) or nil
+		end, To = function()
+			return root.Parent and CFrame.lookAt(rel(4, 0.6, -6.5), rel(0, -0.6, 0)) or nil
+		end, Time = 1.3, FOV = { 60, 50 }, Title = "THE SAINT'S EYES", Subtitle = "GYRO ZEPPELI", Color = Color3.fromRGB(150, 220, 255) },
+		-- Close on the eye in his palm.
+		{ From = function()
+			return hand.Parent and CFrame.lookAt(hand.Position + root.CFrame:VectorToWorldSpace(Vector3.new(1.4, 0.4, -2.6)), hand.Position) or nil
+		end, To = function()
+			return hand.Parent and CFrame.lookAt(hand.Position + root.CFrame:VectorToWorldSpace(Vector3.new(0.8, 0.5, -1.7)), hand.Position) or nil
+		end, Time = 1.2, FOV = { 40, 32 } },
+		-- Straight down on his hat, then tilting down over the brim and goggles to his face.
+		{ From = function()
+			local h = headAt()
+			return root.Parent and CFrame.lookAt(h + Vector3.new(0, 6, 0), h, root.CFrame.LookVector) or nil
+		end, To = function()
+			local h = headAt()
+			return root.Parent and CFrame.lookAt(h + root.CFrame.LookVector * 2.4 + Vector3.new(0, 0.6, 0), h - Vector3.new(0, 0.1, 0)) or nil
+		end, Time = 1.5, FOV = { 50, 40 } },
+		-- His face: the eye is in his cheek.
+		{ From = function()
+			local h = headAt()
+			return root.Parent and CFrame.lookAt(h + root.CFrame.LookVector * 2.6 + root.CFrame.RightVector * 0.3, h) or nil
+		end, To = function()
+			local h = headAt()
+			return root.Parent and CFrame.lookAt(h + root.CFrame.LookVector * 1.8 + root.CFrame.RightVector * 0.4 - Vector3.new(0, 0.1, 0), h - Vector3.new(0, 0.12, 0)) or nil
+		end, Time = 0.9, FOV = { 40, 34 } },
+		-- The grin.
+		{ From = function()
+			local h = headAt()
+			return root.Parent and CFrame.lookAt(h + root.CFrame.LookVector * 2.2 - root.CFrame.RightVector * 0.5, h) or nil
+		end, To = function()
+			local h = headAt()
+			return root.Parent and CFrame.lookAt(h + root.CFrame.LookVector * 2.6 - root.CFrame.RightVector * 0.8 + Vector3.new(0, 0.2, 0), h) or nil
+		end, Time = 1.6, FOV = { 36, 40 }, Title = "GO! GO! ZEPPELI", Subtitle = "THE EYES SEE EVERYTHING", Color = Color3.fromRGB(150, 230, 120) },
+	}
+	local function cleanup()
+		ended = true
+		if palm then
+			palm:Destroy()
+			palm = nil
+		end
+		if cheek then
+			cheek:Destroy()
+			cheek = nil
+		end
+	end
+	local started = Cutscenes.play(shots, { Priority = 3, Skippable = true, OnEnd = cleanup })
+	if not started then
+		cleanup()
+		return
+	end
+	-- The reveal, as the camera reaches his face.
+	task.delay(4.0, function()
+		if ended then
+			return
+		end
+		if palm then
+			palm:Destroy()
+			palm = nil
+		end
+		cheek = cheekEye(character)
+		mangaFlash(0.9)
+		CameraFX.impactFrame(Color3.fromRGB(200, 240, 255))
+		VFXLib.sound(sounds.AwakeningBurst or sounds.Swing, root, 0.6, 1.2)
+	end)
+end
+
+local watchedAct -- your own act last frame (to see 5 -> 29)
+local function watchMine()
+	local c = localPlayer and localPlayer.Character
+	local act = c and c:GetAttribute("TuskAct")
+	if act == ACT and watchedAct == 5 then
+		playEyesCutscene(c)
+	end
+	watchedAct = act
+end
+GyroEyesVFX.playEyesCutscene = playEyesCutscene
+
 function GyroEyesVFX.handle(name, data)
 	if name == "M1" then
 		Common.m1(data, pal, { AnimPrefix = "G_M1_" })
@@ -1181,6 +1452,7 @@ function GyroEyesVFX.step(dt)
 	dt = dt or 1 / 60
 	updateHeld(dt)
 	stepArcs()
+	watchMine()
 	slow = slow + dt
 	if slow > 0.2 then
 		slow = 0
