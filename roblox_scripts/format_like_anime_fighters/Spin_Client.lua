@@ -4991,6 +4991,15 @@ local function onMove(data)
 		-- OPEN BOOK: a ring of pages.
 		ring(data.Position, data.Radius or 18, Color3.fromRGB(250, 246, 232), 0.5)
 		VFXLib.burst(data.Position + Vector3.new(0, 2, 0), { Count = 16, Color = Color3.fromRGB(250, 246, 232), Speed = 14, Lifetime = 0.6 })
+	elseif who == "Diavolo" and data.Phase == "Skip" and data.From and data.To then
+		-- TIME SKIP: a crimson streak where the moment was erased.
+		local mid = (data.From + data.To) / 2
+		local streak = VFXLib.part({ Size = Vector3.new(0.4, 3, (data.To - data.From).Magnitude), CFrame = CFrame.lookAt(mid, data.To), Color = Color3.fromRGB(220, 50, 85), Material = Enum.Material.Neon, Transparency = 0.3 })
+		VFXLib.animate(0.5, function(a)
+			streak.Transparency = 0.3 + 0.7 * a
+		end, function()
+			streak:Destroy()
+		end)
 	elseif who == "Giorno" and data.Phase == "Bloom" and data.Position then
 		-- LIFE BLOOM: a ring of gold, then flowers bursting up.
 		ring(data.Position, data.Radius or 18, Color3.fromRGB(255, 214, 90), 0.5)
@@ -6375,6 +6384,8 @@ local function onHit(data)
 	local starColor = Color3.fromRGB(90, 230, 255)
 	if source:sub(1, 4) == "Gyro" then
 		starColor = Color3.fromRGB(120, 225, 95)
+	elseif source:sub(1, 7) == "Diavolo" then
+		starColor = Color3.fromRGB(240, 70, 100)
 	elseif source:sub(1, 6) == "Giorno" then
 		starColor = Color3.fromRGB(255, 214, 90)
 	elseif source:sub(1, 3) == "GER" then
@@ -8085,8 +8096,12 @@ local function onEvent(data)
 		if typeof(data.Character) == "Instance" then
 			pierce(data.Character)
 		end
-		-- (Giorno's own transformation is a full cutscene, in GERVFX.)
-		if mine and data.Who ~= "Giorno" then
+		-- (Giorno's and Polnareff's own transformations are full cutscenes, in
+		-- GERVFX / ChariotRequiemVFX; the title only shows if theirs is off.)
+		local cuts = TuskConfig.Cutscenes or {}
+		local cutKey = data.Who == "Giorno" and "GER" or (data.Who == "Polnareff" and "ChariotRequiem" or nil)
+		local hasCutscene = cutKey ~= nil and cuts.Enabled ~= false and cuts[cutKey] ~= false
+		if mine and not hasCutscene then
 			task.delay(0.8, function()
 				Cinematic.title("THE ARROW PIERCES SILVER CHARIOT", "SILVER CHARIOT REQUIEM", VIOLET, "UNTIL YOU GO DOWN", 3)
 				TuskVFX.ScreenTint(1.5, { Tint = Color3.fromRGB(160, 120, 220), Brightness = -0.25, Saturation = -0.4, Contrast = 0.2, Release = 0.1, FadeOut = 0.6 })
@@ -8581,6 +8596,7 @@ Common.Palettes = {
 	[18] = { Main = Color3.fromRGB(220, 228, 240), Second = Color3.fromRGB(120, 200, 255), Light = Color3.fromRGB(255, 255, 255) }, -- John Rod (bright metal + blue)
 	[24] = { Main = Color3.fromRGB(150, 110, 220), Second = Color3.fromRGB(240, 200, 90), Light = Color3.fromRGB(230, 220, 255) }, -- Silver Chariot Requiem
 	[28] = { Main = Color3.fromRGB(120, 200, 130), Second = Color3.fromRGB(240, 226, 180), Light = Color3.fromRGB(240, 255, 236) }, -- Rohan (Heaven's Door green + paper)
+	[32] = { Main = Color3.fromRGB(220, 50, 85), Second = Color3.fromRGB(235, 235, 245), Light = Color3.fromRGB(255, 215, 225) }, -- Diavolo (King Crimson crimson + white)
 	[30] = { Main = Color3.fromRGB(245, 200, 70), Second = Color3.fromRGB(180, 90, 210), Light = Color3.fromRGB(255, 246, 210) }, -- Giorno (Gold Experience gold + purple)
 	[31] = { Main = Color3.fromRGB(255, 222, 110), Second = Color3.fromRGB(150, 80, 230), Light = Color3.fromRGB(255, 250, 230) }, -- Gold Experience Requiem (bright gold + violet)
 	[29] = { Main = Color3.fromRGB(120, 220, 95), Second = Color3.fromRGB(240, 196, 70), Light = Color3.fromRGB(230, 255, 210) }, -- Gyro with the Saint's Eyes (green + gold)
@@ -9429,6 +9445,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "GERVFX", -- client visuals (TuskActVFX.GERVFX)
 		CardTitle = "STAND  ·  GOLD EXPERIENCE REQUIEM",
 	},
+	-- DIAVOLO (Part 5): KING CRIMSON. Erases time; Epitaph sees the future.
+	[32] = {
+		Name = "KING CRIMSON",
+		Character = "Diavolo",
+		Tagline = "Only the result remains",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(210, 50, 80), Secondary = Color3.fromRGB(230, 230, 240) },
+		M1 = "KING CRIMSON COMBO",
+		Abilities = { "EPITAPH", "TIME ERASE", "HEART PUNCH" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "ONLY THE RESULT REMAINS",
+		Next = nil,
+		Module = "Diavolo", -- server moves
+		ClientModule = "DiavoloVFX", -- client visuals (TuskActVFX.DiavoloVFX)
+		CardTitle = "STAND  ·  KING CRIMSON",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -9438,7 +9470,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28, Giorno = 30 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28, Giorno = 30, Diavolo = 32 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -9739,6 +9771,11 @@ TuskAnimation.Poses = {
 	GiornoPoint = { Root = { 0, -16, 0, 0 }, Waist = { 0, -14, 0 }, Neck = { 4, 14, 0 }, RightArm = { 92, 0, 6 }, RightElbow = { 6, 0, 0 }, LeftArm = { -10, 0, -14 }, LeftElbow = { 20, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { -8, 0, 0 } },
 	GiornoReveal = { Root = { 4, 0, 0, 0.05 }, Waist = { 8, 0, 0 }, Neck = { -10, 0, 0 }, RightArm = { 60, 0, 70 }, RightElbow = { 20, 0, 0 }, LeftArm = { 60, 0, -70 }, LeftElbow = { 20, 0, 0 } },
 	GiornoZero = { Root = { 0, 0, 0, 0 }, Waist = { 0, 0, 0 }, Neck = { -4, 0, 0 }, RightArm = { 70, 0, -40 }, RightElbow = { 100, 0, 0 }, LeftArm = { 70, 0, 40 }, LeftElbow = { 100, 0, 0 } },
+	-- Diavolo: a hand on his hip, weight on one leg.
+	DIStance = { Root = { 0, 10, 0, 0 }, Waist = { 2, 8, 0 }, Neck = { 4, -6, 0 }, RightArm = { -4, 0, 10 }, RightElbow = { 10, 0, 0 }, LeftArm = { -10, 0, -50 }, LeftElbow = { 95, 0, 0 }, RightHip = { 6, 0, 0 }, LeftHip = { -4, 0, 4 } },
+	DIEpitaph = { Root = { 0, 6, 0, 0 }, Waist = { 0, 4, 0 }, Neck = { -6, 0, 0 }, RightArm = { 150, 0, 10 }, RightElbow = { 120, 0, 0 }, LeftArm = { -10, 0, -50 }, LeftElbow = { 95, 0, 0 } },
+	DIErase = { Root = { 4, 0, 0, 0.05 }, Waist = { 10, 0, 0 }, Neck = { -14, 0, 0 }, RightArm = { 40, 0, 60 }, RightElbow = { 30, 0, 0 }, LeftArm = { 40, 0, -60 }, LeftElbow = { 30, 0, 0 } },
+	DIChop = { Root = { -10, -14, 0, -0.1, 0.4 }, Waist = { -14, -16, 0 }, Neck = { 6, 14, 0 }, RightArm = { 150, 0, 20 }, RightElbow = { 10, 0, 0 }, LeftArm = { 20, 0, -30 }, LeftElbow = { 40, 0, 0 }, RightHip = { 20, 0, 0 }, RightKnee = { -24, 0, 0 } },
 	RohanStance = { Root = { 0, 12, 0, 0 }, Waist = { 0, 10, 4 }, Neck = { 4, -10, 0 }, RightArm = { 120, 0, 30 }, RightElbow = { 110, 0, 0 }, LeftArm = { 10, 0, -30 }, LeftElbow = { 60, 0, 0 }, RightHip = { 4, 0, 4 }, LeftHip = { -6, 0, -4 } },
 	RohanWrite = { Root = { 0, -10, 0, 0 }, Waist = { 6, -10, 0 }, Neck = { 10, 10, 0 }, RightArm = { 80, 0, 4 }, RightElbow = { 40, 0, 0 }, LeftArm = { 60, 0, -10 }, LeftElbow = { 50, 0, 0 } },
 	RohanWrite2 = { Root = { 0, -14, 0, 0 }, Waist = { 6, -14, 0 }, Neck = { 10, 14, 0 }, RightArm = { 70, 0, -16 }, RightElbow = { 30, 0, 0 }, LeftArm = { 60, 0, -10 }, LeftElbow = { 50, 0, 0 } },
@@ -9946,6 +9983,7 @@ TuskAnimation.Actions = {
 	RGDraw = { { 0, "RGStance" }, { 0.12, "RGShoot", "Back", 3 }, { 0.45, "RGShoot", "Linear" }, { 0.65, "RGStance", "Sine" } },
 	RGWatchTurn = { { 0, "RGStance" }, { 0.15, "RGWatch", "Out" }, { 0.55, "RGWatch", "Linear" }, { 0.8, "RGStance", "Sine" } },
 	RGCounter = { { 0, "RGStance" }, { 0.1, "RGWatch", "Out" }, { 1.0, "RGWatch", "Linear" }, { 1.2, "RGStance", "Sine" } },
+	PNRequiem = { { 0, "PNStance" }, { 0.3, "PNThrustPose", "Back", 3 }, { 1.6, "PNThrustPose", "Linear" }, { 2.4, "GyroKneel", "Sine" }, { 8.0, "GyroKneel", "Linear" }, { 8.6, "PNStance", "Sine" } },
 	PN_M1_1 = { { 0, "PNStance" }, { 0.05, "PNThrustPose", "Snap", 3 }, { 0.12, "PNThrustPose", "Linear" }, { 0.26, "PNStance", "Sine" } },
 	PN_M1_2 = { { 0, "PNStance" }, { 0.05, "PNPointPose", "Snap", 3 }, { 0.12, "PNPointPose", "Linear" }, { 0.26, "PNStance", "Sine" } },
 	PN_M1_3 = { { 0, "PNStance" }, { 0.05, "PNThrustPose", "Snap", 3 }, { 0.12, "PNThrustPose", "Linear" }, { 0.26, "PNStance", "Sine" } },
@@ -10002,6 +10040,14 @@ TuskAnimation.Actions = {
 	OKPull = { { 0, "OKStance" }, { 0.2, "OKSwipeWind", "Out" }, { 0.32, "OKSwipe", "Back", 3 }, { 0.55, "OKSwipe", "Linear" }, { 0.8, "OKStance", "Sine" } },
 	OKDash = { { 0, "OKStance" }, { 0.08, "OKSwipeWind", "Out" }, { 0.16, "OKSwipe", "Back", 3 }, { 0.35, "OKSwipe", "Linear" }, { 0.55, "OKStance", "Sine" } },
 	OKUlt = { { 0, "OKStance" }, { 0.25, "OKSwipeWind", "Out" }, { 0.72, "OKSwipe", "Linear" }, { 0.96, "OKSwipeWind", "Linear" }, { 1.20, "OKSwipe", "Linear" }, { 1.44, "OKSwipeWind", "Linear" }, { 1.68, "OKSwipe", "Linear" }, { 1.92, "OKSwipeWind", "Linear" }, { 2.29, "OKStance", "Sine" } },
+	DI_M1_1 = { { 0, "DIStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DIStance", "Sine" } },
+	DI_M1_2 = { { 0, "DIStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DIStance", "Sine" } },
+	DI_M1_3 = { { 0, "DIStance" }, { 0.07, "DIChop", "Back", 4 }, { 0.17, "DIChop", "Linear" }, { 0.32, "DIStance", "Sine" } },
+	DI_M1_4 = { { 0, "DIStance" }, { 0.1, "OverheadSmash", "Back", 5 }, { 0.32, "OverheadSmash", "Linear" }, { 0.52, "DIStance", "Sine" } },
+	DIEpitaph = { { 0, "DIStance" }, { 0.12, "DIEpitaph", "Out" }, { 1.4, "DIEpitaph", "Linear" }, { 1.7, "DIStance", "Sine" } },
+	DIErase = { { 0, "DIStance" }, { 0.15, "DIErase", "Back", 3 }, { 0.5, "DIErase", "Linear" }, { 0.8, "DIStance", "Sine" } },
+	DIHeart = { { 0, "DIStance" }, { 0.15, "PitchBack", "In" }, { 0.3, "JabStrike", "Snap", 6 }, { 0.6, "JabStrike", "Linear" }, { 0.85, "DIStance", "Sine" } },
+	DIChop = { { 0, "DIStance" }, { 0.06, "DIChop", "Snap", 5 }, { 0.2, "DIChop", "Linear" }, { 0.35, "DIStance", "Sine" } },
 	GI_M1_1 = { { 0, "GiornoStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "GiornoStance", "Sine" } },
 	GI_M1_2 = { { 0, "GiornoStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "GiornoStance", "Sine" } },
 	GI_M1_3 = { { 0, "GiornoStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "GiornoStance", "Sine" } },
@@ -13218,6 +13264,12 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("EPITAPH") then
+		return "portal"
+	elseif has("TIME ERASE") or has("RESULT REMAINS") or has("TIME SKIP") then
+		return "clock"
+	elseif has("HEART PUNCH") or has("KING CRIMSON COMBO") then
+		return "barrage"
 	elseif has("MUDA") then
 		return "barrage"
 	elseif has("LIFE GIVER") or has("LIFE BURST") or has("LIFE BLOOM") then
@@ -16964,6 +17016,11 @@ _G.__SpinClientRunning = script:GetFullName()
 -- places (a SpinCharacters folder is tidy but not required), and anything
 -- set up wrong is explained in the Output window.
 local __packsLoaded = {}
+local __packProblems = {} -- plain-English setup problems (shown on screen too)
+local function __problem(text)
+	table.insert(__packProblems, text)
+	warn("[Spin] " .. text)
+end
 local function __loadPacks(side)
 	local suffix = side == "server" and "_server" or "_client"
 	local roots = side == "server"
@@ -16973,7 +17030,7 @@ local function __loadPacks(side)
 	-- scripts in the game that happen to end in _Server / _Client are ignored.
 	local allowed = {}
 	for id in pairs(__require("TuskActRegistry").StartAct) do
-		allowed[string.lower(id) .. suffix] = true
+		allowed[string.lower(id) .. suffix] = id
 	end
 	local found = 0
 	for _, root in ipairs(roots) do
@@ -16988,24 +17045,24 @@ local function __loadPacks(side)
 				-- A character script this copy of the game doesn't know about:
 				-- Spin_Server / Spin_Client is older than the character.
 				__packsLoaded[name] = true
-				warn("[Spin] " .. pack:GetFullName() .. " is a character this Spin_" .. (side == "server" and "Server" or "Client")
+				__problem(pack.Name .. " is a character this Spin_" .. (side == "server" and "Server" or "Client")
 					.. " doesn't know yet. Replace Spin_" .. (side == "server" and "Server" or "Client") .. " (and TuskConfig) with the newest version.")
 			elseif allowed[name] and not __packsLoaded[name] then
 				if pack:IsA("ModuleScript") then
 					local ok, install = pcall(require, pack)
 					if ok and type(install) == "function" then
-						local ok2, err = pcall(install, __modules, __require, __hasModule)
+						local ok2, err = pcall(install, __modules, __require, __hasModule, { Name = allowed[name], Side = side, Script = pack.Name })
 						if ok2 then
 							__packsLoaded[name] = true
 							found = found + 1
 						else
-							warn("[Spin] Character script " .. pack:GetFullName() .. " failed: " .. tostring(err))
+							__problem(pack.Name .. ": " .. tostring(err))
 						end
 					else
-						warn("[Spin] " .. pack:GetFullName() .. " isn't a character script (did the whole file get pasted in?): " .. tostring(install))
+						__problem(pack.Name .. " didn't load (is the whole file pasted in, and nothing else?): " .. tostring(install))
 					end
 				elseif pack:IsA("LuaSourceContainer") then
-					warn("[Spin] " .. pack:GetFullName() .. " is a " .. pack.ClassName .. ". It must be a ModuleScript: delete it, insert a ModuleScript with the same name, and paste the code into that.")
+					__problem(pack.Name .. " is a " .. pack.ClassName .. ". It must be a ModuleScript: delete it, insert a ModuleScript with the same name, and paste the code into that.")
 				end
 			end
 		end
@@ -17022,7 +17079,7 @@ local function __loadPacks(side)
 					end
 				end
 				if isPack and pack:IsA("LuaSourceContainer") then
-					warn("[Spin] " .. pack:GetFullName() .. " is in " .. where.Name .. ", where players can't see it. Move it to ReplicatedStorage > SpinCharacters.")
+					__problem(pack.Name .. " is in " .. where.Name .. ", where players can't see it. Move it to ReplicatedStorage > SpinCharacters.")
 				end
 			end
 		end
@@ -17054,20 +17111,43 @@ task.spawn(function()
 	end
 	local Registry = __require("TuskActRegistry")
 	local problems = {}
+	-- What went wrong loading the scripts, on the server and here.
+	local serverProblems = rs:GetAttribute("SpinServerProblems")
+	if type(serverProblems) == "string" then
+		for line in string.gmatch(serverProblems, "[^
+]+") do
+			table.insert(problems, "(server) " .. line)
+		end
+	end
+	for _, line in ipairs(__packProblems) do
+		table.insert(problems, line)
+	end
 	for id in string.gmatch(list, "[^,]+") do
 		local act = Registry.StartAct[id]
 		local info = act and Registry.Acts[act]
 		if not info then
 			table.insert(problems, id .. ": this Spin_Client is older than the server. Replace Spin_Client with the newest version.")
-		elseif info.ClientModule and not __hasModule(info.ClientModule) then
-			table.insert(problems, id .. ": " .. id .. "_Client is missing. Put it in ReplicatedStorage > SpinCharacters (as a ModuleScript).")
+		elseif info.ClientModule and not __hasModule(info.ClientModule) and not __packsLoaded[string.lower(id) .. "_client"] then
+			table.insert(problems, id .. ": " .. id .. "_Client is missing or didn't load. Put it in ReplicatedStorage > SpinCharacters (as a ModuleScript).")
+		end
+	end
+	-- A character the menu would call NOT INSTALLED: why.
+	for id, act in pairs(Registry.StartAct) do
+		local found = false
+		for listed in string.gmatch(list, "[^,]+") do
+			if listed == id then
+				found = true
+			end
+		end
+		if not found and id ~= "Johnny" and __packsLoaded[string.lower(id) .. "_client"] then
+			table.insert(problems, id .. ": " .. id .. "_Client is here but the server didn't install " .. id .. ". Check " .. id .. "_Server is a ModuleScript in ServerScriptService > SpinCharacters with " .. id .. "_Server's code in it.")
 		end
 	end
 	for _, p in ipairs(problems) do
 		warn("[Spin] No effects or animations for " .. p)
 	end
 	if #problems > 0 then
-		local text = #problems == 1 and problems[1] or (#problems .. " characters have no effects: see the Output window.")
+		local text = #problems <= 2 and table.concat(problems, "  |  ") or (problems[1] .. "  |  (+" .. (#problems - 1) .. " more in the Output window)")
 		-- Our own notice (not StarterGui:SetCore, which errors until Roblox's
 		-- CoreScripts are ready and stops Studio's debugger).
 		local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui", 10)
@@ -17079,7 +17159,7 @@ task.spawn(function()
 			local box = Instance.new("TextButton")
 			box.AnchorPoint = Vector2.new(0.5, 0)
 			box.Position = UDim2.new(0.5, 0, 0, 12)
-			box.Size = UDim2.fromOffset(520, 64)
+			box.Size = UDim2.fromOffset(640, 96)
 			box.BackgroundColor3 = Color3.fromRGB(92, 58, 32)
 			box.TextColor3 = Color3.fromRGB(255, 236, 200)
 			box.Font = Enum.Font.GothamBold

@@ -26,6 +26,7 @@
 	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
 	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
 	  Rohan        OPEN BOOK: everyone round him flaps open like a book for a moment
+	  Diavolo      TIME SKIP: he's suddenly far ahead; everyone he passed is hit
 	  Giorno       LIFE BLOOM: flowers and vines burst up round him: they're held and hurt, he heals
 	  Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him
 	  Kira         CONTACT DETONATION: Killer Queen blows up the ground round him
@@ -494,6 +495,29 @@ USE.Rohan = function(S, player, state, character, root)
 		end
 	end
 	fx({ Character = character, Who = "Rohan", Phase = "Books", Position = root.Position, Radius = c.Radius, Targets = hit })
+end
+
+-- TIME SKIP: King Crimson erases the moment: Diavolo is suddenly far ahead,
+-- and everyone in the way is hit.
+USE.Diavolo = function(S, player, state, character, root)
+	local c = TuskConfig.Diavolo and TuskConfig.Diavolo.CorpseSkip or { Distance = 26, Damage = 9, Stun = 0.8, Radius = 5 }
+	S.lock(state, 0.3)
+	local dir = Moves.flat(root.CFrame.LookVector)
+	local from = root.Position
+	local to = Moves.safeStep(character, root, dir, c.Distance) or from
+	character:PivotTo(CFrame.lookAt(to, to + dir))
+	local hit = {}
+	for _, target in ipairs(S.Hitbox.inRadius(character, (from + to) / 2, (to - from).Magnitude / 2 + c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			-- Only those near the line he skipped along.
+			local along = math.clamp((tr.Position - from):Dot(dir), 0, (to - from).Magnitude)
+			if (tr.Position - (from + dir * along)).Magnitude <= c.Radius and S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 10, Direction = dir, Position = tr.Position, Source = "DiavoloCorpse" }) then
+				table.insert(hit, target)
+			end
+		end
+	end
+	fx({ Character = character, Who = "Diavolo", Phase = "Skip", From = from, To = to, Targets = hit })
 end
 
 -- LIFE BLOOM: Gold Experience gives life to the ground round Giorno:

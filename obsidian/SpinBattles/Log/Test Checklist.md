@@ -48,3 +48,9 @@ updated: 2026-11-22
 - [ ] Take the Requiem Arrow as Giorno: the cutscene plays (arrow, pillar of light, profile with "WHAT YOU ARE SEEING IS CERTAINLY THE TRUTH.", Requiem towers); you're on Gold Experience Requiem
 - [ ] Requiem: 2 then get hit: the attacker is thrown back and can't use abilities; 3 teleports in front of them; G (with someone in 60 studs) loops them 5 times then a last blow
 - [ ] Die as Requiem: back to Gold Experience
+
+## Diavolo (King Crimson)
+- [ ] Card ▼ → DIAVOLO → SELECT: pink spotted hair, web mesh, ladder strap; King Crimson with lattice and Epitaph behind him
+- [ ] 1 then get hit: you're behind them and they're chopped; 2: shards, crimson world, you can't hit anything, then the result window; 3 punches through; G with someone near: close-up, then everyone chopped and hit at once
+- [ ] A second player watching sees Diavolo vanish into red afterimages during time erase
+- [ ] Polnareff takes the Requiem Arrow: the Chariot Requiem cutscene plays and night falls, then the day comes back

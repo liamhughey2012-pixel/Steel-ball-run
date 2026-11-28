@@ -164,6 +164,8 @@ PACKS = [
      "Rohan Kishibe (Part 4): Heaven's Door."),
     ("Giorno", {"server": ["Giorno", "GiornoOutfit", "GoldExperienceRequiem"], "client": ["GiornoVFX", "GoldExperienceStand", "GERVFX", "GERStand"]},
      "Giorno Giovanna (Part 5): Gold Experience, and Gold Experience Requiem from the Requiem Arrow."),
+    ("Diavolo", {"server": ["Diavolo", "DiavoloOutfit"], "client": ["DiavoloVFX", "KingCrimsonStand"]},
+     "Diavolo (Part 5): King Crimson."),
 ]
 
 def deps(code):
@@ -197,6 +199,11 @@ LOAD_PACKS = '''
 -- places (a SpinCharacters folder is tidy but not required), and anything
 -- set up wrong is explained in the Output window.
 local __packsLoaded = {}
+local __packProblems = {} -- plain-English setup problems (shown on screen too)
+local function __problem(text)
+	table.insert(__packProblems, text)
+	warn("[Spin] " .. text)
+end
 local function __loadPacks(side)
 	local suffix = side == "server" and "_server" or "_client"
 	local roots = side == "server"
@@ -206,7 +213,7 @@ local function __loadPacks(side)
 	-- scripts in the game that happen to end in _Server / _Client are ignored.
 	local allowed = {}
 	for id in pairs(__require("TuskActRegistry").StartAct) do
-		allowed[string.lower(id) .. suffix] = true
+		allowed[string.lower(id) .. suffix] = id
 	end
 	local found = 0
 	for _, root in ipairs(roots) do
@@ -221,24 +228,24 @@ local function __loadPacks(side)
 				-- A character script this copy of the game doesn't know about:
 				-- Spin_Server / Spin_Client is older than the character.
 				__packsLoaded[name] = true
-				warn("[Spin] " .. pack:GetFullName() .. " is a character this Spin_" .. (side == "server" and "Server" or "Client")
+				__problem(pack.Name .. " is a character this Spin_" .. (side == "server" and "Server" or "Client")
 					.. " doesn't know yet. Replace Spin_" .. (side == "server" and "Server" or "Client") .. " (and TuskConfig) with the newest version.")
 			elseif allowed[name] and not __packsLoaded[name] then
 				if pack:IsA("ModuleScript") then
 					local ok, install = pcall(require, pack)
 					if ok and type(install) == "function" then
-						local ok2, err = pcall(install, __modules, __require, __hasModule)
+						local ok2, err = pcall(install, __modules, __require, __hasModule, { Name = allowed[name], Side = side, Script = pack.Name })
 						if ok2 then
 							__packsLoaded[name] = true
 							found = found + 1
 						else
-							warn("[Spin] Character script " .. pack:GetFullName() .. " failed: " .. tostring(err))
+							__problem(pack.Name .. ": " .. tostring(err))
 						end
 					else
-						warn("[Spin] " .. pack:GetFullName() .. " isn't a character script (did the whole file get pasted in?): " .. tostring(install))
+						__problem(pack.Name .. " didn't load (is the whole file pasted in, and nothing else?): " .. tostring(install))
 					end
 				elseif pack:IsA("LuaSourceContainer") then
-					warn("[Spin] " .. pack:GetFullName() .. " is a " .. pack.ClassName .. ". It must be a ModuleScript: delete it, insert a ModuleScript with the same name, and paste the code into that.")
+					__problem(pack.Name .. " is a " .. pack.ClassName .. ". It must be a ModuleScript: delete it, insert a ModuleScript with the same name, and paste the code into that.")
 				end
 			end
 		end
@@ -255,7 +262,7 @@ local function __loadPacks(side)
 					end
 				end
 				if isPack and pack:IsA("LuaSourceContainer") then
-					warn("[Spin] " .. pack:GetFullName() .. " is in " .. where.Name .. ", where players can't see it. Move it to ReplicatedStorage > SpinCharacters.")
+					__problem(pack.Name .. " is in " .. where.Name .. ", where players can't see it. Move it to ReplicatedStorage > SpinCharacters.")
 				end
 			end
 		end
@@ -277,7 +284,11 @@ def pack_source(name, side, mods, about):
 	Loaded by Spin_{side.capitalize()}: don't put any code in front of this.
 ]]
 
-return function(__modules, __require, __hasModule)
+return function(__modules, __require, __hasModule, __expect)
+	-- Pasted into the wrong script? (e.g. Gyro_Client's code in Gyro_Server)
+	if type(__expect) == "table" and (string.lower(tostring(__expect.Name)) ~= "{name.lower()}" or __expect.Side ~= "{side}") then
+		error("this is the code for {name}_{side.capitalize()}, but it's in the ModuleScript named " .. tostring(__expect.Script) .. ". Paste " .. tostring(__expect.Script) .. "'s own code into it (or rename it to {name}_{side.capitalize()} and put it in {where}).", 0)
+	end
 ''']
     for n in sorted(mods):
         parts.append(module_block(n, mods[n]))
@@ -319,6 +330,7 @@ end
 _G.__SpinServerRunning = script:GetFullName()
 ''' + LOAD_PACKS + '''
 __loadPacks("server")
+game:GetService("ReplicatedStorage"):SetAttribute("SpinServerProblems", table.concat(__packProblems, "\n"))
 local ProjectileService = __require("ProjectileService")
 local TuskService = __require("TuskService")
 local NPCService = __require("NPCService")
@@ -327,7 +339,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit", "Josuke4Outfit", "KiraOutfit", "OkuyasuOutfit", "RohanOutfit", "GiornoOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit", "Josuke4Outfit", "KiraOutfit", "OkuyasuOutfit", "RohanOutfit", "GiornoOutfit", "DiavoloOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end
@@ -413,20 +425,42 @@ task.spawn(function()
 	end
 	local Registry = __require("TuskActRegistry")
 	local problems = {}
+	-- What went wrong loading the scripts, on the server and here.
+	local serverProblems = rs:GetAttribute("SpinServerProblems")
+	if type(serverProblems) == "string" then
+		for line in string.gmatch(serverProblems, "[^\n]+") do
+			table.insert(problems, "(server) " .. line)
+		end
+	end
+	for _, line in ipairs(__packProblems) do
+		table.insert(problems, line)
+	end
 	for id in string.gmatch(list, "[^,]+") do
 		local act = Registry.StartAct[id]
 		local info = act and Registry.Acts[act]
 		if not info then
 			table.insert(problems, id .. ": this Spin_Client is older than the server. Replace Spin_Client with the newest version.")
-		elseif info.ClientModule and not __hasModule(info.ClientModule) then
-			table.insert(problems, id .. ": " .. id .. "_Client is missing. Put it in ReplicatedStorage > SpinCharacters (as a ModuleScript).")
+		elseif info.ClientModule and not __hasModule(info.ClientModule) and not __packsLoaded[string.lower(id) .. "_client"] then
+			table.insert(problems, id .. ": " .. id .. "_Client is missing or didn't load. Put it in ReplicatedStorage > SpinCharacters (as a ModuleScript).")
+		end
+	end
+	-- A character the menu would call NOT INSTALLED: why.
+	for id, act in pairs(Registry.StartAct) do
+		local found = false
+		for listed in string.gmatch(list, "[^,]+") do
+			if listed == id then
+				found = true
+			end
+		end
+		if not found and id ~= "Johnny" and __packsLoaded[string.lower(id) .. "_client"] then
+			table.insert(problems, id .. ": " .. id .. "_Client is here but the server didn't install " .. id .. ". Check " .. id .. "_Server is a ModuleScript in ServerScriptService > SpinCharacters with " .. id .. "_Server's code in it.")
 		end
 	end
 	for _, p in ipairs(problems) do
 		warn("[Spin] No effects or animations for " .. p)
 	end
 	if #problems > 0 then
-		local text = #problems == 1 and problems[1] or (#problems .. " characters have no effects: see the Output window.")
+		local text = #problems <= 2 and table.concat(problems, "  |  ") or (problems[1] .. "  |  (+" .. (#problems - 1) .. " more in the Output window)")
 		-- Our own notice (not StarterGui:SetCore, which errors until Roblox's
 		-- CoreScripts are ready and stops Studio's debugger).
 		local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui", 10)
@@ -438,7 +472,7 @@ task.spawn(function()
 			local box = Instance.new("TextButton")
 			box.AnchorPoint = Vector2.new(0.5, 0)
 			box.Position = UDim2.new(0.5, 0, 0, 12)
-			box.Size = UDim2.fromOffset(520, 64)
+			box.Size = UDim2.fromOffset(640, 96)
 			box.BackgroundColor3 = Color3.fromRGB(92, 58, 32)
 			box.TextColor3 = Color3.fromRGB(255, 236, 200)
 			box.Font = Enum.Font.GothamBold

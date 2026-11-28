@@ -149,6 +149,12 @@ local function iconKind(name)
 	end
 	if has("PLUNDER") or has("BUBBLE") or has("GO BEYOND") then
 		return "bubble"
+	elseif has("EPITAPH") then
+		return "portal"
+	elseif has("TIME ERASE") or has("RESULT REMAINS") or has("TIME SKIP") then
+		return "clock"
+	elseif has("HEART PUNCH") or has("KING CRIMSON COMBO") then
+		return "barrage"
 	elseif has("MUDA") then
 		return "barrage"
 	elseif has("LIFE GIVER") or has("LIFE BURST") or has("LIFE BLOOM") then

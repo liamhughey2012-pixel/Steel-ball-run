@@ -2125,6 +2125,11 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 		return false
 	end
 	local humanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
+	-- KING CRIMSON: in the moment after erased time, only the result remains:
+	-- Diavolo's hits can't be blocked (and land harder, below).
+	if attackerPlayer and attackerPlayer.Character and (attackerPlayer.Character:GetAttribute("KCResultUntil") or 0) > workspace:GetServerTimeNow() then
+		info.Unblockable = true
+	end
 	-- (info.Unblockable: e.g. Soft & Wet's Go Beyond goes straight through a guard.)
 	local blocked = not info.Unblockable and Adapter.isBlocking(targetCharacter) and Adapter.isFrontal(attackerPlayer, targetCharacter, info)
 	local s = Adapter.Settings
@@ -2204,6 +2209,10 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	-- Gyro with the Saint's Eyes: his hits on someone he's scanned.
 	if attackerCharacter and (attackerCharacter:GetAttribute("ScanBonusUntil") or 0) > shopNow and (targetCharacter:GetAttribute("ScannedUntil") or 0) > shopNow then
 		damage = damage * (attackerCharacter:GetAttribute("ScanBonus") or 1)
+	end
+	-- King Crimson: the hit right after erased time.
+	if attackerCharacter and (attackerCharacter:GetAttribute("KCResultUntil") or 0) > shopNow then
+		damage = damage * (attackerCharacter:GetAttribute("KCResultDamage") or 1)
 	end
 	-- Josuke's rage ("WHAT DID YOU SAY ABOUT MY HAIR?!").
 	if attackerCharacter and (attackerCharacter:GetAttribute("HairRageUntil") or 0) > shopNow then
@@ -2343,6 +2352,7 @@ __modules["CorpseMoves"] = function()
 	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
 	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
 	  Rohan        OPEN BOOK: everyone round him flaps open like a book for a moment
+	  Diavolo      TIME SKIP: he's suddenly far ahead; everyone he passed is hit
 	  Giorno       LIFE BLOOM: flowers and vines burst up round him: they're held and hurt, he heals
 	  Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him
 	  Kira         CONTACT DETONATION: Killer Queen blows up the ground round him
@@ -2811,6 +2821,29 @@ USE.Rohan = function(S, player, state, character, root)
 		end
 	end
 	fx({ Character = character, Who = "Rohan", Phase = "Books", Position = root.Position, Radius = c.Radius, Targets = hit })
+end
+
+-- TIME SKIP: King Crimson erases the moment: Diavolo is suddenly far ahead,
+-- and everyone in the way is hit.
+USE.Diavolo = function(S, player, state, character, root)
+	local c = TuskConfig.Diavolo and TuskConfig.Diavolo.CorpseSkip or { Distance = 26, Damage = 9, Stun = 0.8, Radius = 5 }
+	S.lock(state, 0.3)
+	local dir = Moves.flat(root.CFrame.LookVector)
+	local from = root.Position
+	local to = Moves.safeStep(character, root, dir, c.Distance) or from
+	character:PivotTo(CFrame.lookAt(to, to + dir))
+	local hit = {}
+	for _, target in ipairs(S.Hitbox.inRadius(character, (from + to) / 2, (to - from).Magnitude / 2 + c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			-- Only those near the line he skipped along.
+			local along = math.clamp((tr.Position - from):Dot(dir), 0, (to - from).Magnitude)
+			if (tr.Position - (from + dir * along)).Magnitude <= c.Radius and S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 10, Direction = dir, Position = tr.Position, Source = "DiavoloCorpse" }) then
+				table.insert(hit, target)
+			end
+		end
+	end
+	fx({ Character = character, Who = "Diavolo", Phase = "Skip", From = from, To = to, Targets = hit })
 end
 
 -- LIFE BLOOM: Gold Experience gives life to the ground round Giorno:
@@ -10078,7 +10111,7 @@ __modules["StandBots"] = function()
 	StandBots  (ServerScriptService.SpinServer.StandBots)
 
 	Enemy NPCs that fight you with a Stand. Each one plays a real character
-	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO, Joseph, Polnareff, Josuke (4), Kira, Okuyasu, Rohan, Giorno:
+	(Johnny / Tusk, Gyro, Diego, Pork Pie Hat Kid, Sandman, Mountain Tim, Hot Pants, Blackmore, Axl RO, Funny Valentine, Diego (AU), Josuke (8), Tooru, Jodio, John Rod, Ringo Roadagain, Jotaro, DIO, Joseph, Polnareff, Josuke (4), Kira, Okuyasu, Rohan, Giorno, Diavolo:
 	whichever are installed) through exactly the same move code as players, so their M1s,
 	abilities and ultimates hit, stun and look the same.
 	  * they're scattered round the map (TuskConfig.StandBots.Spots), chase
@@ -10141,6 +10174,7 @@ local LOOKS = {
 	Dio = { Skin = Color3.fromRGB(240, 210, 180), Torso = Color3.fromRGB(26, 26, 30), Legs = Color3.fromRGB(214, 164, 72) },
 	Jotaro = { Skin = Color3.fromRGB(214, 170, 130), Torso = Color3.fromRGB(36, 36, 42), Legs = Color3.fromRGB(36, 36, 42) },
 	Rohan = { Skin = Color3.fromRGB(240, 210, 184), Torso = Color3.fromRGB(214, 232, 196), Legs = Color3.fromRGB(40, 70, 52) },
+	Diavolo = { Skin = Color3.fromRGB(232, 196, 166), Torso = Color3.fromRGB(232, 196, 166), Legs = Color3.fromRGB(130, 90, 190) },
 	Giorno = { Skin = Color3.fromRGB(240, 206, 176), Torso = Color3.fromRGB(196, 96, 196), Legs = Color3.fromRGB(196, 96, 196) },
 	Okuyasu = { Skin = Color3.fromRGB(226, 184, 150), Torso = Color3.fromRGB(34, 40, 70), Legs = Color3.fromRGB(34, 40, 70) },
 	Kira = { Skin = Color3.fromRGB(236, 206, 176), Torso = Color3.fromRGB(150, 116, 180), Legs = Color3.fromRGB(150, 116, 180) },
@@ -12425,6 +12459,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "GERVFX", -- client visuals (TuskActVFX.GERVFX)
 		CardTitle = "STAND  ·  GOLD EXPERIENCE REQUIEM",
 	},
+	-- DIAVOLO (Part 5): KING CRIMSON. Erases time; Epitaph sees the future.
+	[32] = {
+		Name = "KING CRIMSON",
+		Character = "Diavolo",
+		Tagline = "Only the result remains",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(210, 50, 80), Secondary = Color3.fromRGB(230, 230, 240) },
+		M1 = "KING CRIMSON COMBO",
+		Abilities = { "EPITAPH", "TIME ERASE", "HEART PUNCH" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "ONLY THE RESULT REMAINS",
+		Next = nil,
+		Module = "Diavolo", -- server moves
+		ClientModule = "DiavoloVFX", -- client visuals (TuskActVFX.DiavoloVFX)
+		CardTitle = "STAND  ·  KING CRIMSON",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -12434,7 +12484,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28, Giorno = 30 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28, Giorno = 30, Diavolo = 32 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]
@@ -14112,6 +14162,11 @@ _G.__SpinServerRunning = script:GetFullName()
 -- places (a SpinCharacters folder is tidy but not required), and anything
 -- set up wrong is explained in the Output window.
 local __packsLoaded = {}
+local __packProblems = {} -- plain-English setup problems (shown on screen too)
+local function __problem(text)
+	table.insert(__packProblems, text)
+	warn("[Spin] " .. text)
+end
 local function __loadPacks(side)
 	local suffix = side == "server" and "_server" or "_client"
 	local roots = side == "server"
@@ -14121,7 +14176,7 @@ local function __loadPacks(side)
 	-- scripts in the game that happen to end in _Server / _Client are ignored.
 	local allowed = {}
 	for id in pairs(__require("TuskActRegistry").StartAct) do
-		allowed[string.lower(id) .. suffix] = true
+		allowed[string.lower(id) .. suffix] = id
 	end
 	local found = 0
 	for _, root in ipairs(roots) do
@@ -14136,24 +14191,24 @@ local function __loadPacks(side)
 				-- A character script this copy of the game doesn't know about:
 				-- Spin_Server / Spin_Client is older than the character.
 				__packsLoaded[name] = true
-				warn("[Spin] " .. pack:GetFullName() .. " is a character this Spin_" .. (side == "server" and "Server" or "Client")
+				__problem(pack.Name .. " is a character this Spin_" .. (side == "server" and "Server" or "Client")
 					.. " doesn't know yet. Replace Spin_" .. (side == "server" and "Server" or "Client") .. " (and TuskConfig) with the newest version.")
 			elseif allowed[name] and not __packsLoaded[name] then
 				if pack:IsA("ModuleScript") then
 					local ok, install = pcall(require, pack)
 					if ok and type(install) == "function" then
-						local ok2, err = pcall(install, __modules, __require, __hasModule)
+						local ok2, err = pcall(install, __modules, __require, __hasModule, { Name = allowed[name], Side = side, Script = pack.Name })
 						if ok2 then
 							__packsLoaded[name] = true
 							found = found + 1
 						else
-							warn("[Spin] Character script " .. pack:GetFullName() .. " failed: " .. tostring(err))
+							__problem(pack.Name .. ": " .. tostring(err))
 						end
 					else
-						warn("[Spin] " .. pack:GetFullName() .. " isn't a character script (did the whole file get pasted in?): " .. tostring(install))
+						__problem(pack.Name .. " didn't load (is the whole file pasted in, and nothing else?): " .. tostring(install))
 					end
 				elseif pack:IsA("LuaSourceContainer") then
-					warn("[Spin] " .. pack:GetFullName() .. " is a " .. pack.ClassName .. ". It must be a ModuleScript: delete it, insert a ModuleScript with the same name, and paste the code into that.")
+					__problem(pack.Name .. " is a " .. pack.ClassName .. ". It must be a ModuleScript: delete it, insert a ModuleScript with the same name, and paste the code into that.")
 				end
 			end
 		end
@@ -14170,7 +14225,7 @@ local function __loadPacks(side)
 					end
 				end
 				if isPack and pack:IsA("LuaSourceContainer") then
-					warn("[Spin] " .. pack:GetFullName() .. " is in " .. where.Name .. ", where players can't see it. Move it to ReplicatedStorage > SpinCharacters.")
+					__problem(pack.Name .. " is in " .. where.Name .. ", where players can't see it. Move it to ReplicatedStorage > SpinCharacters.")
 				end
 			end
 		end
@@ -14179,6 +14234,8 @@ local function __loadPacks(side)
 end
 
 __loadPacks("server")
+game:GetService("ReplicatedStorage"):SetAttribute("SpinServerProblems", table.concat(__packProblems, "
+"))
 local ProjectileService = __require("ProjectileService")
 local TuskService = __require("TuskService")
 local NPCService = __require("NPCService")
@@ -14187,7 +14244,7 @@ __require("StandAssetLoader").init()
 
 ProjectileService.MaxActivePerPlayer = 20
 TuskService.init()
-for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit", "Josuke4Outfit", "KiraOutfit", "OkuyasuOutfit", "RohanOutfit", "GiornoOutfit" }) do
+for _, outfit in ipairs({ "JohnnyOutfit", "GyroOutfit", "DiegoOutfit", "PorkPieOutfit", "SandmanOutfit", "MountainTimOutfit", "HotPantsOutfit", "BlackmoreOutfit", "AxlOutfit", "ValentineOutfit", "DiegoAUOutfit", "JosukeOutfit", "TooruOutfit", "JodioOutfit", "RingoOutfit", "JotaroOutfit", "DioOutfit", "JosephOutfit", "PolnareffOutfit", "Josuke4Outfit", "KiraOutfit", "OkuyasuOutfit", "RohanOutfit", "GiornoOutfit", "DiavoloOutfit" }) do
 	if __hasModule(outfit) then
 		__require(outfit).init()
 	end

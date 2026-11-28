@@ -318,6 +318,11 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 		return false
 	end
 	local humanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
+	-- KING CRIMSON: in the moment after erased time, only the result remains:
+	-- Diavolo's hits can't be blocked (and land harder, below).
+	if attackerPlayer and attackerPlayer.Character and (attackerPlayer.Character:GetAttribute("KCResultUntil") or 0) > workspace:GetServerTimeNow() then
+		info.Unblockable = true
+	end
 	-- (info.Unblockable: e.g. Soft & Wet's Go Beyond goes straight through a guard.)
 	local blocked = not info.Unblockable and Adapter.isBlocking(targetCharacter) and Adapter.isFrontal(attackerPlayer, targetCharacter, info)
 	local s = Adapter.Settings
@@ -397,6 +402,10 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 	-- Gyro with the Saint's Eyes: his hits on someone he's scanned.
 	if attackerCharacter and (attackerCharacter:GetAttribute("ScanBonusUntil") or 0) > shopNow and (targetCharacter:GetAttribute("ScannedUntil") or 0) > shopNow then
 		damage = damage * (attackerCharacter:GetAttribute("ScanBonus") or 1)
+	end
+	-- King Crimson: the hit right after erased time.
+	if attackerCharacter and (attackerCharacter:GetAttribute("KCResultUntil") or 0) > shopNow then
+		damage = damage * (attackerCharacter:GetAttribute("KCResultDamage") or 1)
 	end
 	-- Josuke's rage ("WHAT DID YOU SAY ABOUT MY HAIR?!").
 	if attackerCharacter and (attackerCharacter:GetAttribute("HairRageUntil") or 0) > shopNow then

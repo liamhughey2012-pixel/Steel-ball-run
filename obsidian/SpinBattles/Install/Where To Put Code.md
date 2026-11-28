@@ -77,74 +77,76 @@ Damage, cooldowns, projectiles, Tusk, Sneak, NPCs. Players can't see or change t
 | 8 | [[CorpseService]] | ModuleScript | `ServerScriptService › SpinServer` |
 | 9 | [[DataService]] | ModuleScript | `ServerScriptService › SpinServer` |
 | 10 | [[DefenseService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 11 | [[DiegoAUOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 12 | [[DiegoOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 13 | [[DioOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 14 | [[GiornoOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 15 | [[GyroOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 16 | [[HotPantsOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 17 | [[JodioOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 18 | [[JohnnyOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 19 | [[JosephOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 20 | [[Josuke4Outfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 21 | [[JosukeOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 22 | [[JotaroOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 23 | [[KiraOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 24 | [[MountainTimOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 25 | [[NPCService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 26 | [[OkuyasuOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 27 | [[PolnareffOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 28 | [[PorkPieOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 29 | [[ProjectileService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 30 | [[RaceMap]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 31 | [[RaceService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 32 | [[RingoOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 33 | [[RohanOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 34 | [[SandmanOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 35 | [[ShopBalls]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 36 | [[StandAssetLoader]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 37 | [[StandBots]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 38 | [[TestDummies]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 39 | [[TooruOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 40 | [[TuskAwakening]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 41 | [[TuskHitbox]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 42 | [[TuskMoves]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 43 | [[TuskService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 44 | [[TuskSneakService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 45 | [[ValentineOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 46 | [[WeatherService]] | ModuleScript | `ServerScriptService › SpinServer` |
-| 47 | [[SpinServer]] | Script | `ServerScriptService` |
-| 48 | [[Axl]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 49 | [[Blackmore]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 50 | [[ChariotRequiem]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 51 | [[DiegoAU]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 52 | [[DiegoBrando]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 53 | [[Dio]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 54 | [[Giorno]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 55 | [[GoldExperienceRequiem]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 56 | [[GyroEyes]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 57 | [[GyroZeppeli]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 58 | [[HotPants]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 59 | [[Jodio]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 60 | [[JohnRod]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 61 | [[Joseph]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 62 | [[Josuke]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 63 | [[Josuke4]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 64 | [[Jotaro]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 65 | [[Kira]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 66 | [[MountainTim]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 67 | [[Okuyasu]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 68 | [[Polnareff]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 69 | [[PorkPieHatKid]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 70 | [[Ringo]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 71 | [[Rohan]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 72 | [[Sandman]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 73 | [[Tooru]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 74 | [[TuskAct1]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 75 | [[TuskAct2]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 76 | [[TuskAct3]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 77 | [[TuskAct4]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
-| 78 | [[Valentine]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 11 | [[DiavoloOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 12 | [[DiegoAUOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 13 | [[DiegoOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 14 | [[DioOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 15 | [[GiornoOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 16 | [[GyroOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 17 | [[HotPantsOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 18 | [[JodioOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 19 | [[JohnnyOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 20 | [[JosephOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 21 | [[Josuke4Outfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 22 | [[JosukeOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 23 | [[JotaroOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 24 | [[KiraOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 25 | [[MountainTimOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 26 | [[NPCService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 27 | [[OkuyasuOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 28 | [[PolnareffOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 29 | [[PorkPieOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 30 | [[ProjectileService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 31 | [[RaceMap]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 32 | [[RaceService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 33 | [[RingoOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 34 | [[RohanOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 35 | [[SandmanOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 36 | [[ShopBalls]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 37 | [[StandAssetLoader]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 38 | [[StandBots]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 39 | [[TestDummies]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 40 | [[TooruOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 41 | [[TuskAwakening]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 42 | [[TuskHitbox]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 43 | [[TuskMoves]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 44 | [[TuskService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 45 | [[TuskSneakService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 46 | [[ValentineOutfit]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 47 | [[WeatherService]] | ModuleScript | `ServerScriptService › SpinServer` |
+| 48 | [[SpinServer]] | Script | `ServerScriptService` |
+| 49 | [[Axl]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 50 | [[Blackmore]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 51 | [[ChariotRequiem]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 52 | [[Diavolo]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 53 | [[DiegoAU]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 54 | [[DiegoBrando]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 55 | [[Dio]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 56 | [[Giorno]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 57 | [[GoldExperienceRequiem]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 58 | [[GyroEyes]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 59 | [[GyroZeppeli]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 60 | [[HotPants]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 61 | [[Jodio]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 62 | [[JohnRod]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 63 | [[Joseph]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 64 | [[Josuke]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 65 | [[Josuke4]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 66 | [[Jotaro]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 67 | [[Kira]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 68 | [[MountainTim]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 69 | [[Okuyasu]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 70 | [[Polnareff]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 71 | [[PorkPieHatKid]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 72 | [[Ringo]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 73 | [[Rohan]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 74 | [[Sandman]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 75 | [[Tooru]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 76 | [[TuskAct1]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 77 | [[TuskAct2]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 78 | [[TuskAct3]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 79 | [[TuskAct4]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
+| 80 | [[Valentine]] | ModuleScript | `ServerScriptService › SpinServer › TuskActs` |
 
 ## Client: StarterPlayer › StarterPlayerScripts › SpinClient
 Controls, effects, the Tusk Stand, HUD, NPC speech bubbles.
@@ -183,52 +185,54 @@ Controls, effects, the Tusk Stand, HUD, NPC speech bubbles.
 | 31 | [[CivilWarStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
 | 32 | [[CrazyDiamondStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
 | 33 | [[D4CStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 34 | [[Diego]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 35 | [[DiegoAUVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 36 | [[DioVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 37 | [[GERStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 38 | [[GERVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 39 | [[GiornoVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 40 | [[GoldExperienceStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 41 | [[Gyro]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 42 | [[GyroEyesVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 43 | [[HeavensDoorStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 44 | [[HermitPurpleStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 45 | [[HotPantsVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 46 | [[JodioVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 47 | [[JohnRodStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 48 | [[JohnRodVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 49 | [[JosephVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 50 | [[Josuke4VFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 51 | [[JosukeVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 52 | [[JotaroVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 53 | [[KillerQueenStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 54 | [[KiraVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 55 | [[MandomStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 56 | [[MountainTimVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 57 | [[NovemberRainStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 58 | [[OkuyasuVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 59 | [[PolnareffVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 60 | [[PorkPie]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 61 | [[RingoVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 62 | [[RohanVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 63 | [[SandmanVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 64 | [[SilentWayStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 65 | [[SilverChariotStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 66 | [[SoftAndWetStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 67 | [[StarPlatinumStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 68 | [[TheHandStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 69 | [[TheWorldDioStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 70 | [[TheWorldStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 71 | [[TooruVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 72 | [[ValentineVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 73 | [[WonderOfUStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
-| 74 | [[BountyUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
-| 75 | [[CharacterCard]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
-| 76 | [[CombatUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
-| 77 | [[SettingsUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
-| 78 | [[TuskUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
-| 79 | [[UITheme]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
+| 34 | [[DiavoloVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 35 | [[Diego]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 36 | [[DiegoAUVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 37 | [[DioVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 38 | [[GERStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 39 | [[GERVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 40 | [[GiornoVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 41 | [[GoldExperienceStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 42 | [[Gyro]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 43 | [[GyroEyesVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 44 | [[HeavensDoorStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 45 | [[HermitPurpleStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 46 | [[HotPantsVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 47 | [[JodioVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 48 | [[JohnRodStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 49 | [[JohnRodVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 50 | [[JosephVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 51 | [[Josuke4VFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 52 | [[JosukeVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 53 | [[JotaroVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 54 | [[KillerQueenStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 55 | [[KingCrimsonStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 56 | [[KiraVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 57 | [[MandomStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 58 | [[MountainTimVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 59 | [[NovemberRainStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 60 | [[OkuyasuVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 61 | [[PolnareffVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 62 | [[PorkPie]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 63 | [[RingoVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 64 | [[RohanVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 65 | [[SandmanVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 66 | [[SilentWayStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 67 | [[SilverChariotStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 68 | [[SoftAndWetStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 69 | [[StarPlatinumStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 70 | [[TheHandStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 71 | [[TheWorldDioStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 72 | [[TheWorldStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 73 | [[TooruVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 74 | [[ValentineVFX]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 75 | [[WonderOfUStand]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › TuskActVFX` |
+| 76 | [[BountyUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
+| 77 | [[CharacterCard]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
+| 78 | [[CombatUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
+| 79 | [[SettingsUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
+| 80 | [[TuskUI]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
+| 81 | [[UITheme]] | ModuleScript | `StarterPlayer › StarterPlayerScripts › SpinClient › UI` |
 
 ## Tools: ServerStorage › SpinTools
 Only used in Studio, to build the map once.

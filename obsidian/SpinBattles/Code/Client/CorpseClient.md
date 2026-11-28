@@ -776,6 +776,15 @@ local function onMove(data)
 		-- OPEN BOOK: a ring of pages.
 		ring(data.Position, data.Radius or 18, Color3.fromRGB(250, 246, 232), 0.5)
 		VFXLib.burst(data.Position + Vector3.new(0, 2, 0), { Count = 16, Color = Color3.fromRGB(250, 246, 232), Speed = 14, Lifetime = 0.6 })
+	elseif who == "Diavolo" and data.Phase == "Skip" and data.From and data.To then
+		-- TIME SKIP: a crimson streak where the moment was erased.
+		local mid = (data.From + data.To) / 2
+		local streak = VFXLib.part({ Size = Vector3.new(0.4, 3, (data.To - data.From).Magnitude), CFrame = CFrame.lookAt(mid, data.To), Color = Color3.fromRGB(220, 50, 85), Material = Enum.Material.Neon, Transparency = 0.3 })
+		VFXLib.animate(0.5, function(a)
+			streak.Transparency = 0.3 + 0.7 * a
+		end, function()
+			streak:Destroy()
+		end)
 	elseif who == "Giorno" and data.Phase == "Bloom" and data.Position then
 		-- LIFE BLOOM: a ring of gold, then flowers bursting up.
 		ring(data.Position, data.Radius or 18, Color3.fromRGB(255, 214, 90), 0.5)

@@ -551,6 +551,22 @@ TuskActRegistry.Acts = {
 		ClientModule = "GERVFX", -- client visuals (TuskActVFX.GERVFX)
 		CardTitle = "STAND  ·  GOLD EXPERIENCE REQUIEM",
 	},
+	-- DIAVOLO (Part 5): KING CRIMSON. Erases time; Epitaph sees the future.
+	[32] = {
+		Name = "KING CRIMSON",
+		Character = "Diavolo",
+		Tagline = "Only the result remains",
+		Implemented = true,
+		Theme = { Primary = Color3.fromRGB(210, 50, 80), Secondary = Color3.fromRGB(230, 230, 240) },
+		M1 = "KING CRIMSON COMBO",
+		Abilities = { "EPITAPH", "TIME ERASE", "HEART PUNCH" },
+		AbilityKinds = { "Press", "Press", "Press" },
+		Ultimate = "ONLY THE RESULT REMAINS",
+		Next = nil,
+		Module = "Diavolo", -- server moves
+		ClientModule = "DiavoloVFX", -- client visuals (TuskActVFX.DiavoloVFX)
+		CardTitle = "STAND  ·  KING CRIMSON",
+	},
 }
 
 -- Which character an Act belongs to ("Johnny" for Tusk Acts 1-4).
@@ -560,7 +576,7 @@ function TuskActRegistry.characterOf(act)
 end
 
 -- The Act a character starts on.
-TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28, Giorno = 30 }
+TuskActRegistry.StartAct = { Johnny = 1, Gyro = 5, Diego = 6, PorkPie = 7, Sandman = 8, MountainTim = 9, HotPants = 10, Blackmore = 11, Axl = 12, Valentine = 13, DiegoAU = 14, Josuke = 15, Tooru = 16, Jodio = 17, JohnRod = 18, Ringo = 19, Jotaro = 20, Dio = 21, Joseph = 22, Polnareff = 23, Josuke4 = 25, Kira = 26, Okuyasu = 27, Rohan = 28, Giorno = 30, Diavolo = 32 }
 
 function TuskActRegistry.get(act)
 	return TuskActRegistry.Acts[act]

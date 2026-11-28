@@ -12,7 +12,7 @@ updated: 2026-11-22
 | **Put it in** | `ServerScriptService › SpinServer` |
 | **Exact name** | `CorpseMoves` (capitals matter) |
 
-**What it does:** Every character's CORPSE MOVE (V), unlocked while holding a Saint's Corpse part. One shared cooldown (TuskConfig.Corpse.Move.Cooldown); the ready time is the character attribute CorpseReadyAt (server time) for the HUD. Visuals: CorpseClient, from WorldFX "CorpseMove". Johnny       GOLDEN SPIN NAIL: a huge golden spinning nail Gyro         GOLDEN RECTANGLE: a spinning shockwave straight ahead Diego        DINOSAUR CRASH: leaps to the aim point and slams down Pork Pie     HOOK HARVEST: hooks yank everyone round him in Sandman      SOUND BARRIER: dashes through enemies, then a blast Mountain Tim LASSO CYCLONE: a spinning lasso pulls everyone in Hot Pants    FLESH COCOON: heals and armours herself, then a burst Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse Diego (AU)   REVOLVER: draws a six-shooter, fans six shots where he aims Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is) Ringo        SECOND HAND: everyone round him loses 6 seconds (hit, dazed) Jotaro       ORA BARRAGE: Star Platinum punches everyone round him, then a big ORA! DIO          WRYYY: drains everyone round him (he heals) Joseph       HAMON BEAT: a Hamon ripple through the ground round him Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him Rohan        OPEN BOOK: everyone round him flaps open like a book for a moment Giorno       LIFE BLOOM: flowers and vines burst up round him: they're held and hurt, he heals Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him Kira         CONTACT DETONATION: Killer Queen blows up the ground round him Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA! With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead (TuskConfig.Corpse.Miracle), and afterwards every part scatters. All damage goes through S.hit (CombatAdapter).
+**What it does:** Every character's CORPSE MOVE (V), unlocked while holding a Saint's Corpse part. One shared cooldown (TuskConfig.Corpse.Move.Cooldown); the ready time is the character attribute CorpseReadyAt (server time) for the HUD. Visuals: CorpseClient, from WorldFX "CorpseMove". Johnny       GOLDEN SPIN NAIL: a huge golden spinning nail Gyro         GOLDEN RECTANGLE: a spinning shockwave straight ahead Diego        DINOSAUR CRASH: leaps to the aim point and slams down Pork Pie     HOOK HARVEST: hooks yank everyone round him in Sandman      SOUND BARRIER: dashes through enemies, then a blast Mountain Tim LASSO CYCLONE: a spinning lasso pulls everyone in Hot Pants    FLESH COCOON: heals and armours herself, then a burst Blackmore    RAIN CURTAIN: a cone of frozen drops that cut and slow Axl RO       GUILT FLOOD: guilt for everyone round him, and a hit Valentine    CORPSE BLESSING: a few seconds untouchable, a heal, a pulse Diego (AU)   REVOLVER: draws a six-shooter, fans six shots where he aims Josuke (8)   PLUNDER: SOUND: everyone round him can't use abilities for a while Tooru        UNAVOIDABLE CALAMITY: something falls on everyone round him Jodio        HEAVY RAINFALL: a storm cloud over him crushes everyone round him John Rod     ROD SNAP: the rod lashes out at everyone round John Rod (wherever it is) Ringo        SECOND HAND: everyone round him loses 6 seconds (hit, dazed) Jotaro       ORA BARRAGE: Star Platinum punches everyone round him, then a big ORA! DIO          WRYYY: drains everyone round him (he heals) Joseph       HAMON BEAT: a Hamon ripple through the ground round him Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him Rohan        OPEN BOOK: everyone round him flaps open like a book for a moment Diavolo      TIME SKIP: he's suddenly far ahead; everyone he passed is hit Giorno       LIFE BLOOM: flowers and vines burst up round him: they're held and hurt, he heals Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him Kira         CONTACT DETONATION: Killer Queen blows up the ground round him Josuke4      DORA BARRAGE: Crazy Diamond punches everyone round him, then a big DORA! With the COMPLETE corpse (all 8 parts), V is THE SAINT'S MIRACLE instead (TuskConfig.Corpse.Miracle), and afterwards every part scatters. All damage goes through S.hit (CombatAdapter).
 
 ## How to add it
 1. In Studio's Explorer, find **SpinServer** (ServerScriptService › SpinServer).
@@ -52,6 +52,7 @@ Back to [[Where To Put Code]]
 	  Joseph       HAMON BEAT: a Hamon ripple through the ground round him
 	  Polnareff    SWORD WHIRL: Silver Chariot's rapier spins round him
 	  Rohan        OPEN BOOK: everyone round him flaps open like a book for a moment
+	  Diavolo      TIME SKIP: he's suddenly far ahead; everyone he passed is hit
 	  Giorno       LIFE BLOOM: flowers and vines burst up round him: they're held and hurt, he heals
 	  Okuyasu      SPACE PULL: The Hand yanks everyone near in next to him
 	  Kira         CONTACT DETONATION: Killer Queen blows up the ground round him
@@ -520,6 +521,29 @@ USE.Rohan = function(S, player, state, character, root)
 		end
 	end
 	fx({ Character = character, Who = "Rohan", Phase = "Books", Position = root.Position, Radius = c.Radius, Targets = hit })
+end
+
+-- TIME SKIP: King Crimson erases the moment: Diavolo is suddenly far ahead,
+-- and everyone in the way is hit.
+USE.Diavolo = function(S, player, state, character, root)
+	local c = TuskConfig.Diavolo and TuskConfig.Diavolo.CorpseSkip or { Distance = 26, Damage = 9, Stun = 0.8, Radius = 5 }
+	S.lock(state, 0.3)
+	local dir = Moves.flat(root.CFrame.LookVector)
+	local from = root.Position
+	local to = Moves.safeStep(character, root, dir, c.Distance) or from
+	character:PivotTo(CFrame.lookAt(to, to + dir))
+	local hit = {}
+	for _, target in ipairs(S.Hitbox.inRadius(character, (from + to) / 2, (to - from).Magnitude / 2 + c.Radius, 10)) do
+		local tr = target:FindFirstChild("HumanoidRootPart")
+		if tr then
+			-- Only those near the line he skipped along.
+			local along = math.clamp((tr.Position - from):Dot(dir), 0, (to - from).Magnitude)
+			if (tr.Position - (from + dir * along)).Magnitude <= c.Radius and S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 10, Direction = dir, Position = tr.Position, Source = "DiavoloCorpse" }) then
+				table.insert(hit, target)
+			end
+		end
+	end
+	fx({ Character = character, Who = "Diavolo", Phase = "Skip", From = from, To = to, Targets = hit })
 end
 
 -- LIFE BLOOM: Gold Experience gives life to the ground round Giorno:

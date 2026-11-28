@@ -10,7 +10,14 @@ Server: `ArrowService`. Client: `RequiemClient`. Numbers: `TuskConfig.RequiemArr
 - **Not marked:** it's an ordinary arrow stuck in the sand at a slant (wooden shaft, gold head with a scarab, white fletching). It has no glow, light, beam, particles, highlight or map marker. The only way to find it is to look.
 - **Everyone is told:** a wooden sign drops in at the top of the screen ("A REQUIEM ARROW HAS APPEARED · SOMEWHERE IN THE DESERT · IT'S ON THE BOUNTY BOARD"), with a letterboxed title card. Everyone also hears who takes it, and when an untaken one vanishes.
 - **Taking it:** hold E for 1.5 s next to it (the prompt only shows up close).
-  - **Playing Polnareff (Silver Chariot):** an arrow streaks out of the sky into Silver Chariot, with a dark violet burst, and it becomes **SILVER CHARIOT REQUIEM** (Act 24) until he goes down. Dying sends him back to Act 23 (Progression `ResetOnDeath`).
+  - **Playing Polnareff (Silver Chariot):** a cutscene (about 8.2 s, skippable, toggle `TuskConfig.Cutscenes.ChariotRequiem`):
+    1. Wide: Polnareff and Silver Chariot as the daylight fades.
+    2. Close on Silver Chariot's chest: the arrow strikes ("ズキュゥゥン").
+    3. Its silver armour shatters off it and a whirl of black shadow rises, with violet lightning, as night really falls on your screen.
+    4. The camera tilts up Chariot Requiem from its boots to its hat while pale souls slip loose ("THE STAND HAS GONE BEYOND ITSELF").
+    5. Requiem towers over Polnareff, collapsed on his knees.
+
+    It's **SILVER CHARIOT REQUIEM** (Act 24) until he goes down. Dying sends him back to Act 23. Anyone else near sees the shadow rise and darkness pulse out.
   - **Playing Giorno (Gold Experience):** a cutscene: the arrow streaks into Gold Experience, a pillar of gold and violet light swallows it, Giorno and Requiem in profile against a cosmic sky ("WHAT YOU ARE SEEING IS CERTAINLY THE TRUTH."), then Requiem towers over him. It's **GOLD EXPERIENCE REQUIEM** (Act 31) until he goes down; everyone else near sees the pillar of light. See [[Giorno Giovanna]].
   - **Anyone else** (or Requiem Polnareff picking up another): **THE ARROW'S BLESSING** for 90 s. You hit 20% harder, take 20% less, move 15% faster and charge your ultimate 50% faster. A gold glint round you shows it (everyone can see).
 - **Bounty board:** while an arrow is out, the board has a **FIND IT** poster ("LOCATION UNKNOWN", $250). Accept it, and the tracker says only "SOMEWHERE IN THE DESERT", with no distance and no marker. You're paid the moment you take the arrow; anyone else holding the contract loses it ("X took the Requiem Arrow").

@@ -7,7 +7,11 @@
 	Loaded by Spin_Client: don't put any code in front of this.
 ]]
 
-return function(__modules, __require, __hasModule)
+return function(__modules, __require, __hasModule, __expect)
+	-- Pasted into the wrong script? (e.g. Gyro_Client's code in Gyro_Server)
+	if type(__expect) == "table" and (string.lower(tostring(__expect.Name)) ~= "tooru" or __expect.Side ~= "client") then
+		error("this is the code for Tooru_Client, but it's in the ModuleScript named " .. tostring(__expect.Script) .. ". Paste " .. tostring(__expect.Script) .. "'s own code into it (or rename it to Tooru_Client and put it in ReplicatedStorage > SpinCharacters).", 0)
+	end
 
 -- ======================================================================
 -- MODULE: TooruVFX

@@ -146,6 +146,8 @@ TuskConfig.Cutscenes = {
 	RaceWinner = true, -- circle the overall winner at the end of the race
 	Ultimates = true, -- a quick close-up with your ultimate's name (under a second)
 	CorpseComplete = true, -- a golden orbit when you complete the Saint's Corpse
+	KingCrimson = true, -- Diavolo's ultimate: a close-up of King Crimson with Epitaph on its brow, Diavolo behind it, crimson mist
+	ChariotRequiem = true, -- Polnareff taking the Requiem Arrow: the arrow pierces Silver Chariot, its armour shatters into shadow, night falls, Requiem rises
 	GER = true, -- Giorno taking the Requiem Arrow: Gold Experience is pierced and becomes Gold Experience Requiem
 	GyroEyes = true, -- Gyro taking the Saint's Eyes: kneeling with the eye, the camera down over his hat, the eye in his cheek
 }
@@ -191,6 +193,7 @@ TuskConfig.Roster = {
 	{ Id = "Okuyasu", Name = "OKUYASU NIJIMURA", Stand = "THE HAND", Available = true, Color = Color3.fromRGB(90, 130, 220) },
 	{ Id = "Rohan", Name = "ROHAN KISHIBE", Stand = "HEAVEN'S DOOR", Available = true, Color = Color3.fromRGB(110, 190, 120) },
 	{ Id = "Giorno", Name = "GIORNO GIOVANNA", Stand = "GOLD EXPERIENCE", Available = true, Color = Color3.fromRGB(240, 196, 70) },
+	{ Id = "Diavolo", Name = "DIAVOLO", Stand = "KING CRIMSON", Available = true, Color = Color3.fromRGB(210, 50, 80) },
 }
 
 ---------------------------------------------------------------------------
@@ -287,7 +290,7 @@ TuskConfig.StandBots = {
 	Count = 20, -- how many at once (each takes a free spot below)
 	-- Every installed character gets an NPC: each new NPC is whichever of these
 	-- has the fewest NPCs out right now (ties picked at random).
-	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph", "Polnareff", "Josuke4", "Kira", "Okuyasu", "Rohan", "Giorno" },
+	Characters = { "Johnny", "Gyro", "Diego", "PorkPie", "Sandman", "MountainTim", "HotPants", "Blackmore", "Axl", "Ringo", "Valentine", "DiegoAU", "Josuke", "Tooru", "Jodio", "JohnRod", "Jotaro", "Dio", "Joseph", "Polnareff", "Josuke4", "Kira", "Okuyasu", "Rohan", "Giorno", "Diavolo" },
 	CorpseSeekRange = 60, -- idle bots pick up corpse parts lying this close to their camp
 	CorpseSeekDelay = 120, -- seconds after an NPC spawns before it goes looking for parts
 	CorpseFreshTime = 90, -- a part that just appeared is left alone by NPCs this long (players get first go)
@@ -1495,6 +1498,44 @@ TuskConfig.GER = {
 }
 
 ---------------------------------------------------------------------------
+-- DIAVOLO (Part 5): KING CRIMSON (a visitor from another world). Erases
+-- time; its forehead face, Epitaph, sees the future.
+---------------------------------------------------------------------------
+TuskConfig.Diavolo = {
+	M1 = { -- KING CRIMSON COMBO: heavy chops and punches; the 4th is a hammering blow that launches
+		Interval = 0.28, ResetAfter = 1.1, EndLag = 0.9, Windup = 0.08,
+		HitboxSize = Vector3.new(5.5, 5.5, 7), HitboxForward = 3.8, MaxTargets = 3,
+		Hits = {
+			{ Damage = 4.0, Stun = 0.5, Knockback = 4 },
+			{ Damage = 4.0, Stun = 0.5, Knockback = 4 },
+			{ Damage = 4.5, Stun = 0.5, Knockback = 6 },
+			{ Damage = 8.5, Stun = 0.6, Knockback = 46, Launch = 16, ShockwaveRadius = 7, AoeRadius = 6.5 },
+		},
+	},
+	Epitaph = { -- 1: EPITAPH: for a moment, the next attack on him never lands: he's behind them and King Crimson chops
+		Cooldown = 12, Window = 1.6,
+		Damage = 11, Stun = 1.2, Knockback = 30,
+	},
+	Erase = { -- 2: TIME ERASE: untouchable and faster (but he can't hit anything); then ONLY THE RESULT REMAINS
+		Cooldown = 18, Time = 3,
+		SpeedMultiplier = 1.45,
+		ResultTime = 1.5, ResultDamage = 1.5, -- after it: his hits land 50% harder and can't be blocked
+		SeenRadius = 60, -- (how far away other players see time skip)
+	},
+	HeartPunch = { -- 3: HEART PUNCH: King Crimson's fist straight through the nearest enemy in front; they bleed
+		Cooldown = 12, MissCooldown = 3, Windup = 0.3,
+		Range = 9, Cone = 70,
+		Damage = 16, Stun = 1.2, Knockback = 34, Launch = 6,
+		BleedTicks = 4, BleedEvery = 0.6, BleedDamage = 2,
+	},
+	Ultimate = { -- ONLY THE RESULT REMAINS: time erased; behind each enemy near him in turn; every blow lands at once
+		Windup = 0.6, Radius = 40, MaxTargets = 4, Gap = 0.35,
+		Damage = 18, Stun = 1.3, Knockback = 40, Launch = 18,
+	},
+	CorpseSkip = { Distance = 26, Damage = 9, Stun = 0.8, Radius = 5 }, -- corpse move TIME SKIP: he's suddenly 26 studs ahead; everyone he passed is hit
+}
+
+---------------------------------------------------------------------------
 -- DIO: THE WORLD (a visitor from another world: Part 3). Not Diego's The
 -- World: a vampire with a golden Stand, knives, and a ROAD ROLLER.
 ---------------------------------------------------------------------------
@@ -1776,7 +1817,7 @@ TuskConfig.Corpse = {
 	MoveNames = {
 		Johnny = "GOLDEN SPIN NAIL", Gyro = "GOLDEN RECTANGLE", Diego = "DINOSAUR CRASH", PorkPie = "HOOK HARVEST",
 		Sandman = "SOUND BARRIER", MountainTim = "LASSO CYCLONE", HotPants = "FLESH COCOON", Blackmore = "RAIN CURTAIN",
-		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT", Polnareff = "SWORD WHIRL", Josuke4 = "DORA BARRAGE", Kira = "CONTACT DETONATION", Okuyasu = "SPACE PULL", Rohan = "OPEN BOOK", Giorno = "LIFE BLOOM",
+		Axl = "GUILT FLOOD", Valentine = "CORPSE BLESSING", DiegoAU = "REVOLVER", Josuke = "PLUNDER: SOUND", Tooru = "UNAVOIDABLE CALAMITY", Jodio = "HEAVY RAINFALL", JohnRod = "ROD SNAP", Ringo = "SECOND HAND", Jotaro = "ORA BARRAGE", Dio = "WRYYY", Joseph = "HAMON BEAT", Polnareff = "SWORD WHIRL", Josuke4 = "DORA BARRAGE", Kira = "CONTACT DETONATION", Okuyasu = "SPACE PULL", Rohan = "OPEN BOOK", Giorno = "LIFE BLOOM", Diavolo = "TIME SKIP",
 		Miracle = "THE SAINT'S MIRACLE", -- with the complete corpse (any character)
 	},
 }

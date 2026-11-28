@@ -150,8 +150,12 @@ local function onEvent(data)
 		if typeof(data.Character) == "Instance" then
 			pierce(data.Character)
 		end
-		-- (Giorno's own transformation is a full cutscene, in GERVFX.)
-		if mine and data.Who ~= "Giorno" then
+		-- (Giorno's and Polnareff's own transformations are full cutscenes, in
+		-- GERVFX / ChariotRequiemVFX; the title only shows if theirs is off.)
+		local cuts = TuskConfig.Cutscenes or {}
+		local cutKey = data.Who == "Giorno" and "GER" or (data.Who == "Polnareff" and "ChariotRequiem" or nil)
+		local hasCutscene = cutKey ~= nil and cuts.Enabled ~= false and cuts[cutKey] ~= false
+		if mine and not hasCutscene then
 			task.delay(0.8, function()
 				Cinematic.title("THE ARROW PIERCES SILVER CHARIOT", "SILVER CHARIOT REQUIEM", VIOLET, "UNTIL YOU GO DOWN", 3)
 				TuskVFX.ScreenTint(1.5, { Tint = Color3.fromRGB(160, 120, 220), Brightness = -0.25, Saturation = -0.4, Contrast = 0.2, Release = 0.1, FadeOut = 0.6 })
