@@ -185,7 +185,7 @@ local function overload(S, player, state, aim)
 		if not tr or not th then
 			return
 		end
-		local landed = S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 2, Position = tr.Position, Source = "GiornoOverload" })
+		local landed = S.hit(player, target, { Damage = c.Damage, Stun = c.Stun, Knockback = 2, Direction = Moves.flat(tr.Position - root.Position), Position = tr.Position, Source = "GiornoOverload" })
 		if not landed then
 			return
 		end
@@ -203,7 +203,7 @@ local function overload(S, player, state, aim)
 			target:SetAttribute("SenseOverloadUntil", nil)
 			if aliveModel(target) and tr.Parent then
 				-- The pain catches up with them, all at once.
-				S.hit(player, target, { Damage = c.LateDamage, Stun = c.LateStun, Knockback = 18, Launch = 8, Position = tr.Position, Source = "GiornoOverload", Unblockable = true })
+				S.hit(player, target, { Damage = c.LateDamage, Stun = c.LateStun, Knockback = 18, Launch = 8, Direction = -tr.CFrame.LookVector, Position = tr.Position, Source = "GiornoOverload", Unblockable = true })
 				S.fx("Ability", { Act = ACT, Move = "Overload", Phase = "Pain", Target = target })
 			end
 		end)

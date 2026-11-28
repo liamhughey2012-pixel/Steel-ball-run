@@ -47,6 +47,15 @@ While Gyro holds the corpse's **Eyes**, he puts them to use: the eye is set into
 6. **7.80–9.40 s, the panels:** three slanted panels with thick white borders slide in over the held shot, in the clip's order and timing. First the RIGHT one (7.8 s: a pale face, lime-green hair, a wide-open eye, purple lips). Then the LEFT one (8.4 s: cyan skin, a yellow-green slit eye). Then the MIDDLE one pops in (8.85 s: a big black-ringed eye with lashes and cracked skin). There's no text and no flash.
 7. **9.40–10.75 s, the grin:** washed out pale blue. His eyes glow, the cheek eye sits under his right eye, and he grins with thick teal lips and two rows of gold teeth engraved "GO! GO!" / "ZEPPELI".
 
+**The film layer on top (same shots, same timing):**
+- Depth of field follows each shot's subject (the liquid, the hat, the goggles, his face), with the rest soft.
+- Bloom makes the liquid and his eyes really glow (strongest under the brim).
+- A slow handheld drift on every shot.
+- The liquid lights his hand cyan and glitters.
+- His eyes flicker on (on, off, on, steady) and throw cyan light on his face.
+- **THE STARE:** the cheek eye arrives rolled up into his head (only the white showing). As the camera reaches it, it rolls down and locks onto the camera, the pupil shrinking to a pinpoint, with a ring of light, anime focus lines rushing in and a bloom flash. It keeps staring at you through the panels and the grin.
+- A glint sweeps across the gold teeth, with a sparkle off the end.
+
 He stays kneeling the whole time and only lifts his head for the grin. There are no title cards, just as in the clip. Everything it adds (the liquid, cheek eye, glowing eyes, mouth, hair, cape and grade) only shows for you and is removed when it ends or you skip it.
 
 ![[gyro_eyes_cutscene_shots.png]]

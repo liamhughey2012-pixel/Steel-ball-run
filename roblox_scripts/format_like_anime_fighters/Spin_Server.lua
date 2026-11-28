@@ -2051,7 +2051,8 @@ function Adapter.applyKnockback(character, direction, strength, upward)
 	if character:GetAttribute(Adapter.Settings.ArmorAttribute) == true then
 		return
 	end
-	local flat = Vector3.new(direction.X, 0, direction.Z)
+	-- (No direction given, or not a Vector3: straight back from where they face.)
+	local flat = typeof(direction) == "Vector3" and Vector3.new(direction.X, 0, direction.Z) or Vector3.new()
 	if flat.Magnitude < 1e-3 then
 		flat = -root.CFrame.LookVector
 	end
@@ -2227,7 +2228,14 @@ function Adapter.dealHit(attackerPlayer, targetCharacter, info)
 		Adapter.applyStun(humanoid, info.Stun or 0)
 	end
 	local launch = info.Launch and info.Launch * (blocked and s.BlockKnockbackMultiplier or 1) or nil
-	Adapter.applyKnockback(targetCharacter, info.Direction, knockback, launch)
+	-- A hit with no direction is pushed straight away from whoever landed it.
+	local direction = info.Direction
+	if typeof(direction) ~= "Vector3" then
+		local ar = attackerCharacter and attackerCharacter:FindFirstChild("HumanoidRootPart")
+		local tr = targetCharacter:FindFirstChild("HumanoidRootPart")
+		direction = (ar and tr) and (tr.Position - ar.Position) or nil
+	end
+	Adapter.applyKnockback(targetCharacter, direction, knockback, launch)
 
 	FX:FireAllClients("Hit", {
 		Position = info.Position,
