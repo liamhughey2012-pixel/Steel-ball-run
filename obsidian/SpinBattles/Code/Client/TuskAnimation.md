@@ -307,6 +307,13 @@ TuskAnimation.Poses = {
 	GiornoPoint = { Root = { 0, -16, 0, 0 }, Waist = { 0, -14, 0 }, Neck = { 4, 14, 0 }, RightArm = { 92, 0, 6 }, RightElbow = { 6, 0, 0 }, LeftArm = { -10, 0, -14 }, LeftElbow = { 20, 0, 0 }, RightHip = { 10, 0, 0 }, LeftHip = { -8, 0, 0 } },
 	GiornoReveal = { Root = { 4, 0, 0, 0.05 }, Waist = { 8, 0, 0 }, Neck = { -10, 0, 0 }, RightArm = { 60, 0, 70 }, RightElbow = { 20, 0, 0 }, LeftArm = { 60, 0, -70 }, LeftElbow = { 20, 0, 0 } },
 	GiornoZero = { Root = { 0, 0, 0, 0 }, Waist = { 0, 0, 0 }, Neck = { -4, 0, 0 }, RightArm = { 70, 0, -40 }, RightElbow = { 100, 0, 0 }, LeftArm = { 70, 0, 40 }, LeftElbow = { 100, 0, 0 } },
+	-- Johnny, Tusk Act 1's first appearance: sitting on the ground, legs out
+	-- in front (he can't use them), leaning back on his right hand, his left
+	-- forearm lying across his lap.
+	JASit = { Root = { 0, 0, 0, -1.9, 0 }, Waist = { 8, 0, 0 }, Neck = { -24, 0, 0 }, RightHip = { 88, 0, 4 }, RightKnee = { -4, 0, 0 }, LeftHip = { 88, 0, -4 }, LeftKnee = { -4, 0, 0 }, RightArm = { -38, 0, 22 }, RightElbow = { 8, 0, 0 }, LeftArm = { -8, -62, -4 }, LeftElbow = { 96, 0, 0 } },
+	JALook = { Root = { 0, 0, 0, -1.9, 0 }, Waist = { 10, 0, 0 }, Neck = { -2, 0, 0 }, RightHip = { 88, 0, 4 }, RightKnee = { -4, 0, 0 }, LeftHip = { 88, 0, -4 }, LeftKnee = { -4, 0, 0 }, RightArm = { -40, 0, 24 }, RightElbow = { 8, 0, 0 }, LeftArm = { -10, -60, -4 }, LeftElbow = { 94, 0, 0 } },
+	JAShock = { Root = { 0, 0, 0, -1.9, 0 }, Waist = { 20, 0, 0 }, Neck = { 10, 0, 0 }, RightHip = { 88, 0, 4 }, RightKnee = { -4, 0, 0 }, LeftHip = { 88, 0, -4 }, LeftKnee = { -4, 0, 0 }, RightArm = { -55, 0, 30 }, RightElbow = { 4, 0, 0 }, LeftArm = { -12, -55, -10 }, LeftElbow = { 100, 0, 0 } },
+	JAWince = { Root = { 0, 0, 0, -1.9, 0 }, Waist = { 22, 12, 0 }, Neck = { 6, 30, -14 }, RightHip = { 88, 0, 4 }, RightKnee = { -4, 0, 0 }, LeftHip = { 88, 0, -4 }, LeftKnee = { -4, 0, 0 }, RightArm = { -58, 0, 32 }, RightElbow = { 4, 0, 0 }, LeftArm = { -12, -55, -12 }, LeftElbow = { 102, 0, 0 } },
 	-- Diavolo: a hand on his hip, weight on one leg.
 	DIStance = { Root = { 0, 10, 0, 0 }, Waist = { 2, 8, 0 }, Neck = { 4, -6, 0 }, RightArm = { -4, 0, 10 }, RightElbow = { 10, 0, 0 }, LeftArm = { -10, 0, -50 }, LeftElbow = { 95, 0, 0 }, RightHip = { 6, 0, 0 }, LeftHip = { -4, 0, 4 } },
 	DIEpitaph = { Root = { 0, 6, 0, 0 }, Waist = { 0, 4, 0 }, Neck = { -6, 0, 0 }, RightArm = { 150, 0, 10 }, RightElbow = { 120, 0, 0 }, LeftArm = { -10, 0, -50 }, LeftElbow = { 95, 0, 0 } },
@@ -576,6 +583,9 @@ TuskAnimation.Actions = {
 	OKPull = { { 0, "OKStance" }, { 0.2, "OKSwipeWind", "Out" }, { 0.32, "OKSwipe", "Back", 3 }, { 0.55, "OKSwipe", "Linear" }, { 0.8, "OKStance", "Sine" } },
 	OKDash = { { 0, "OKStance" }, { 0.08, "OKSwipeWind", "Out" }, { 0.16, "OKSwipe", "Back", 3 }, { 0.35, "OKSwipe", "Linear" }, { 0.55, "OKStance", "Sine" } },
 	OKUlt = { { 0, "OKStance" }, { 0.25, "OKSwipeWind", "Out" }, { 0.72, "OKSwipe", "Linear" }, { 0.96, "OKSwipeWind", "Linear" }, { 1.20, "OKSwipe", "Linear" }, { 1.44, "OKSwipeWind", "Linear" }, { 1.68, "OKSwipe", "Linear" }, { 1.92, "OKSwipeWind", "Linear" }, { 2.29, "OKStance", "Sine" } },
+	-- (Shot times in JohnnyArmCutscene: 3.0, 3.2, 2.8, 1.8, 2.6.)
+	JohnnyFirstTusk = { { 0, "JASit", "Out" }, { 0.25, "JASit", "Linear" }, { 4.4, "JASit", "Linear" }, { 5.2, "JALook", "Sine" }, { 6.2, "JALook", "Linear" }, { 6.45, "JAShock", "Back", 3 }, { 9.0, "JAShock", "Linear" }, { 9.15, "JAWince", "Snap", 4 }, { 10.8, "JAWince", "Linear" }, { 11.1, "JAShock", "Sine" }, { 13.4, "JAShock", "Linear" }, { 14.0, "Rest", "Sine" } },
+	JohnnyStandUp = { { 0, "Rest" }, { 0.45, "Rest", "Sine" } }, -- (from wherever he is, e.g. a skipped cutscene)
 	DI_M1_1 = { { 0, "DIStance" }, { 0.07, "JabStrike", "Back", 4 }, { 0.15, "JabStrike", "Linear" }, { 0.3, "DIStance", "Sine" } },
 	DI_M1_2 = { { 0, "DIStance" }, { 0.07, "JabStrikeL", "Back", 4 }, { 0.15, "JabStrikeL", "Linear" }, { 0.3, "DIStance", "Sine" } },
 	DI_M1_3 = { { 0, "DIStance" }, { 0.07, "DIChop", "Back", 4 }, { 0.17, "DIChop", "Linear" }, { 0.32, "DIStance", "Sine" } },

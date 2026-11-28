@@ -11,15 +11,22 @@ Top-left card: portrait, **JOHNNY JOESTAR** name plate, current Stand ("STAND ·
 - Roster settings: `TuskConfig.Roster`
 - Code: `CharacterCard` (client)
 
-## Cutscene: Tusk Act 1's first appearance (2026-11-28, from the user's anime clip)
-When **you**, playing Johnny (any Tusk Act), pick up the Saint's Corpse **LEFT ARM**. It lasts about 12 s, can be skipped, and has its own toggle (`TuskConfig.Cutscenes.JohnnyArm`):
-1. **Looking down at his left hand:** the picture fades in from dark with a green haze. The corpse's withered arm sinks into his own in a golden glow, streaks of light shoot up out of his palm, and Tusk rises out of it with its face turned up to us.
-2. **Tusk hovering in front of him**, bobbing, with a burst of teal light and rays behind it.
-3. **Over Tusk's back**, at Johnny's face, in a violet tint. His eyes go wide.
-4. **Close from the side:** Tusk right by his face, Johnny sweating with his mouth open in shock.
-5. **Tusk's face close up** in a pink haze: the star on its forehead, the nail at its chin. Title: "TUSK ACT 1 · FIRST APPEARANCE".
+## Cutscene: Tusk Act 1's first appearance (2026-11-28, from the user's anime clip; rebuilt the same day to follow it more closely)
+When **you**, playing Johnny (any Tusk Act), pick up the Saint's Corpse **LEFT ARM**. It lasts 13.4 s (the clip's 20 s, tightened), can be skipped, and has its own toggle (`TuskConfig.Cutscenes.JohnnyArm`).
 
-Everything it adds is local to you and removed when it ends or is skipped. It won't replay within 20 s, and it doesn't play for anyone else, or for any part but the Left Arm. Code: `JohnnyArmCutscene` (core client); Tusk is moved with `TuskStand.action(character, "Present", { From, Target, In, Duration })`.
+As in the clip, Johnny **sits on the ground** (legs out in front, leaning back on his right hand, his **left forearm lying across his lap**), and **Tusk is tiny**: forearm-sized. The cutscene builds its own small Tusk (the real Act 1 model at 0.4 scale) and animates it by hand: ears and arms flapping, the four legs kicking their heart feet (wildly as it climbs out, calmly later), and its head tilting. Your normal Stand is hidden while it plays.
+1. **Close above his forearm** (fading in from dark, a green glow behind): light slices along his arm and Tusk climbs up **out of his forearm**, struggling, face up to us.
+2. **From Johnny's eyes:** Tusk floats over his lap, wobbling and drifting closer, with a burst of teal light behind it.
+3. **Over Tusk's back** at Johnny's face (violet tint). He leans back, eyes wide.
+4. **Close:** Tusk jabs its golden nail at his cheek twice (a glint). He winces with his head turned away, eyes squeezed shut, sweating.
+5. **Tusk's face** in a pink haze, its head tilting: "TUSK ACT 1 · FIRST APPEARANCE".
+
+**Johnny's animations** (TuskAnimation): poses `JASit`, `JALook`, `JAShock` and `JAWince`, in the action `JohnnyFirstTusk` (timed to the shots), plus `JohnnyStandUp` to blend him back up if it's skipped.
+
+Everything it adds is local to you and removed when it ends or is skipped. It won't replay within 20 s, and it doesn't play for anyone else, or for any part but the Left Arm. Code: `JohnnyArmCutscene` (core client).
+
+![[johnny_first_tusk_poses.png]]
+*Johnny sitting (top) and in shock (bottom): front, three-quarter and side.*
 
 ![[johnny_tusk_first_appearance_shots.png]]
-*Test renders of the five shots (with the real Tusk Act 1 model; shot 5 without its pink haze).*
+*Test renders of shots 1–5 with the posed test figure and the small Tusk. The grey eye shapes floating in shots 3 and 5 are a quirk of the test (his face overlay doesn't follow when the test figure is re-posed); in game they're on his face.*
